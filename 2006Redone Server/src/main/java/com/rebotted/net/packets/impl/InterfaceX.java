@@ -2,13 +2,11 @@ package com.rebotted.net.packets.impl;
 
 import com.rebotted.game.content.random.PartyRoom;
 import com.rebotted.game.content.skills.cooking.Cooking;
+import com.rebotted.game.content.skills.smithing.Smelting;
 import com.rebotted.game.players.Player;
 import com.rebotted.net.packets.PacketType;
 
-/**
- * Bank X Items
- **/
-public class BankX2 implements PacketType {
+public class InterfaceX implements PacketType {
 
 	@Override
 	public void processPacket(Player player, int packetType, int packetSize) {
@@ -23,6 +21,9 @@ public class BankX2 implements PacketType {
         if (player.playerIsCooking && player.doAmount > 0) {
 			Cooking.cookItem(player, player.cookingItem, Xamount, player.cookingObject);
 		}
+        if (player.isSmelting && player.doAmount > 0) {
+        	Smelting.smeltBar(player, player.smeltingItem);
+        }
 		switch (player.xInterfaceId) {
 			case 5064:
 				if (player.inPartyRoom) {
