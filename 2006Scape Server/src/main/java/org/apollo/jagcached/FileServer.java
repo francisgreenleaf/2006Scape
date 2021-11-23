@@ -69,14 +69,15 @@ public final class FileServer {
 	 * @throws Exception if an error occurs.
 	 */
 	public void start() throws Exception {
-		if (!new File("cache").exists())
+		if (!new File(Constants.FILE_SYSTEM_DIR).exists())
 		{
+			System.out.println("Working Directory = " + System.getProperty("user.dir"));
 			System.out.println("************************************");
 			System.out.println("************************************");
 			System.out.println("************************************");
-			System.out.println("WARNING: I could not find the /cache folder. You are LIKELY running this in the wrong directory!");
-			System.out.println("In IntelliJ, fix it by clicking \"FileServer\" > Edit Configurations at the top of your screen");
-			System.out.println("Then changing the \"Working Directory\" to be in \"2006Scape/2006Scape file_server\", instead of just \"2006Scape\"");
+			System.out.println("WARNING: I could not find the data/cache folder. You are LIKELY running this in the wrong directory!");
+			System.out.println("In IntelliJ, fix it by clicking \"GameEngine\" > Edit Configurations at the top of your screen");
+			System.out.println("Then changing the \"Working Directory\" to be in \"2006Scape/2006Scape Server\", instead of just \"2006Scape\"");
 			System.out.println("************************************");
 			System.out.println("************************************");
 			System.out.println("************************************");

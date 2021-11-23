@@ -14,7 +14,7 @@ public final class Constants {
 	/**
 	 * The directory of the file system.
 	 */
-	public static final String FILE_SYSTEM_DIR = "./cache/";
+	public static final String FILE_SYSTEM_DIR = "./data/cache/";
 
 	/**
 	 * Default private constructor to prevent instantiation.
