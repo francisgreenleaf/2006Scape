@@ -9,6 +9,36 @@
 
 # Installation + Running (Developers)
 
+## One-command local launch on macOS
+
+From the repository root:
+
+```sh
+./scripts/run-local.sh
+```
+
+This builds both Maven modules, starts the server from `2006Scape Server`, waits for the local game port, and launches the client with `-local -s localhost`. Closing the client stops the background server process started by the script.
+
+The server uses `2006Scape Server/ServerConfig.json` when it exists, otherwise it falls back to `2006Scape Server/ServerConfig.Sample.json`. To use a specific config:
+
+```sh
+SERVER_CONFIG="2006Scape Server/ServerConfig.Sample.json" ./scripts/run-local.sh
+```
+
+Useful focused scripts:
+
+```sh
+./scripts/build-local.sh
+./scripts/start-server.sh
+./scripts/start-client.sh
+```
+
+Client arguments can be appended to either client launcher, for example:
+
+```sh
+./scripts/run-local.sh -u myname -p mypass
+```
+
 1. Import Project in IntelliJ
 
 2. Hit File > Project Settings > Set SDK to Java 8 (Download [Java 8 SDK](https://adoptopenjdk.net/?variant=openjdk8) if you don't have one already)

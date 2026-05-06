@@ -1840,6 +1840,10 @@ public class Game extends RSApplet {
 
 						drawButton(customSettingVisualFixes, centerX - 73, currentY += 40, 146);
 						aTextDrawingArea_1271.textCenterShadow(Color.YELLOW.hashCode(), centerX, "visual fixes", currentY + textMiddle, true);
+
+						drawButton(ClientSettings.AGENT_ENABLED, centerX - 73, currentY += 40, 146);
+						aTextDrawingArea_1271.textCenterShadow(Color.YELLOW.hashCode(), centerX, "agent setup", currentY + textTop, true);
+						aTextDrawingArea_1271.textCenterShadow(Color.WHITE.hashCode(), centerX, agentSettingsStatus(), currentY + textBottom, true);
 					} catch (Exception e) { }
 				}
 			}
@@ -2276,8 +2280,17 @@ public class Game extends RSApplet {
 		}
 		loopCycle++;
 		if (!loggedIn) {
-			processLoginScreenInput();
+			if (ClientSettings.AGENT_AUTO_LOGIN && !agentAutoLoginAttempted
+					&& myUsername != null && !myUsername.trim().isEmpty()
+					&& myPassword != null && !myPassword.trim().isEmpty()) {
+				agentAutoLoginAttempted = true;
+				loginFailures = 0;
+				login(myUsername, myPassword, false);
+			} else {
+				processLoginScreenInput();
+			}
 		} else {
+			maybeAutoClaimAgentBridge();
 			mainGameProcessor();
 		}
 		processOnDemandQueue();
@@ -4989,7 +5002,7 @@ public class Game extends RSApplet {
 				}
 			} else {
 				// typing characters
-				if (j >= 32 && j <= 122 && inputString.length() < 80) {
+				if (j >= 32 && j <= 122 && inputString.length() < maxInputStringLength()) {
 					inputString += (char) j;
 					inputTaken = true;
 					if (inputString.startsWith("::search")) {
@@ -5103,6 +5116,12 @@ public class Game extends RSApplet {
 						if (inputString.equals("::dataon")) {
 							showInfo = !showInfo;
 						}
+					if (inputString.toLowerCase().startsWith("/agent")) {
+						handleAgentChatCommand(inputString);
+						inputString = "";
+						inputTaken = true;
+						return;
+					}
 					if (inputString.startsWith("::")) {
 						stream.createFrame(103);
 						stream.writeWordBigEndian(inputString.length() - 1);
@@ -5653,6 +5672,45 @@ public class Game extends RSApplet {
 		chatNames[0] = s1;
 		chatMessages[0] = s;
 	}
+
+	private int maxInputStringLength() {
+		String lower = inputString == null ? "" : inputString.toLowerCase();
+		return lower.startsWith("/agent") || "/agent".startsWith(lower) ? 240 : 80;
+	}
+
+	private void handleAgentChatCommand(String command) {
+		if (agentController == null) {
+			pushMessage("[Agent] Agent controller is not ready.", 0, "");
+			return;
+		}
+		agentController.handleChatCommand(command);
+	}
+
+	private String agentSettingsStatus() {
+		if (agentController == null) {
+			return "starting";
+		}
+		String status = agentController.getSettingsStatusLine();
+		return status.length() > 18 ? status.substring(0, 18) : status;
+	}
+
+	public boolean sendAgentBridgeClaimCommand(String nonce) {
+		if (stream == null || nonce == null || nonce.trim().isEmpty()) {
+			return false;
+		}
+		String command = "agentbridge claim " + nonce;
+		stream.createFrame(103);
+		stream.writeWordBigEndian(command.length() + 1);
+		stream.writeString(command);
+		return true;
+	}
+
+	private void maybeAutoClaimAgentBridge() {
+		if (agentAutoClaimSent || ClientSettings.AGENT_AUTO_CLAIM_NONCE == null || ClientSettings.AGENT_AUTO_CLAIM_NONCE.trim().isEmpty()) {
+			return;
+		}
+		agentAutoClaimSent = sendAgentBridgeClaimCommand(ClientSettings.AGENT_AUTO_CLAIM_NONCE);
+	}
 	
 	public void processMinimapActions() {
         int x = super.mouseX;
@@ -5799,6 +5857,10 @@ public class Game extends RSApplet {
 							ClientSettings.BILINEAR_MINIMAP_FILTERING = !ClientSettings.BILINEAR_MINIMAP_FILTERING;
 							ClientSettings.FIX_TRANSPARENCY_OVERFLOW = !ClientSettings.FIX_TRANSPARENCY_OVERFLOW;
 							ClientSettings.FULL_512PX_VIEWPORT = !ClientSettings.FULL_512PX_VIEWPORT;
+						}
+						startY += 40;
+						if (super.saveClickY >= startY && super.saveClickY <= (startY + 30)) {
+							agentController.promptForApiKey();
 						}
 					}
 				}
@@ -12001,12 +12063,12 @@ public class Game extends RSApplet {
 
 	public Game() {
 	    //Test if they're on 32-bit, warn them if they are
-		if (!System.getProperty("sun.arch.data.model").contains("64"))
+		if (ClientSettings.SHOW_JAVA_VERSION_WARNINGS && !System.getProperty("sun.arch.data.model").contains("64"))
 		{
 			JOptionPane.showMessageDialog(null, "You're running 32-bit java. This will definitely cause problems.\nYou can get the right Java 8 at AdoptOpenJDK.net", "You're running 32-bit Java!", JOptionPane.INFORMATION_MESSAGE);
 			System.out.println("Please upgrade to 64-bit java to avoid problems! (AdoptOpenJDK.net)");
 		}
-		if (Double.parseDouble(System.getProperty("java.specification.version")) >= 1.9) {
+		if (ClientSettings.SHOW_JAVA_VERSION_WARNINGS && Double.parseDouble(System.getProperty("java.specification.version")) >= 1.9) {
 			JOptionPane.showMessageDialog(null, "You're not running Java 8. If you're using Parabot, this will cause problems!\nYou can get Java 8 from AdoptOpenJDK.net", "You're not running Java 8!", JOptionPane.INFORMATION_MESSAGE);
 			System.out.println("Please downgrade to Java 8 to avoid problems! (AdoptOpenJDK.net)");
 		}
@@ -12032,6 +12094,7 @@ public class Game extends RSApplet {
 		unknownInt10 = -1;
 		menuOpen = false;
 		inputString = "";
+		agentController = new AgentClientController(this);
 		maxPlayers = 2048;
 		myPlayerIndex = 2047;
 		playerArray = new Player[maxPlayers];
@@ -12226,6 +12289,9 @@ public class Game extends RSApplet {
 	public boolean menuOpen;
 	public int anInt886;
 	public String inputString;
+	private AgentClientController agentController;
+	private boolean agentAutoClaimSent;
+	private boolean agentAutoLoginAttempted;
 	public final int maxPlayers;
 	public final int myPlayerIndex;
 	public Player[] playerArray;

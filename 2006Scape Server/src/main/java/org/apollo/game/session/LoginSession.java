@@ -68,7 +68,7 @@ public final class LoginSession extends Session {
 			returnCode = 11;
 		}
 		
-		if (!username.matches("[A-Za-z0-9 ]+")) {
+		if (!username.matches("[A-Za-z0-9 .]+")) {
 			returnCode = 4;
 		}
 		if (username.length() > 12) {

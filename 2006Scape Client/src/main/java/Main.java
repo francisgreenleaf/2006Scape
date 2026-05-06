@@ -54,6 +54,10 @@ public final class Main {
 					case"-show-zoom":
 						ClientSettings.SHOW_ZOOM_LEVEL_MESSAGES = true;
 						break;
+					case"-no-java-warnings":
+					case"-hide-java-warnings":
+						ClientSettings.SHOW_JAVA_VERSION_WARNINGS = false;
+						break;
 					case"-screenshots":
 					case"-enable-screenshots":
 						ClientSettings.SCREENSHOTS_ENABLED = true;
@@ -61,6 +65,10 @@ public final class Main {
 					case"-auto-screenshots":
 					case"-enable-auto-screenshots":
 						ClientSettings.AUTOMATIC_SCREENSHOTS_ENABLED = true;
+						break;
+					case"-auto-login":
+					case"-agent-auto-login":
+						ClientSettings.AGENT_AUTO_LOGIN = true;
 						break;
 				}
 				if (args[i].startsWith("-") && (i + 1) < args.length  && !args[i + 1].startsWith("-")) {
@@ -93,6 +101,10 @@ public final class Main {
 						case "-w":
 						case "-world":
 							ClientSettings.SERVER_WORLD = Integer.parseInt(args[++i]);
+							break;
+						case "-agent-claim":
+						case "-agent-claim-nonce":
+							ClientSettings.AGENT_AUTO_CLAIM_NONCE = args[++i];
 							break;
 					}
 				}

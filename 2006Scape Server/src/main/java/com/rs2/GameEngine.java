@@ -14,6 +14,8 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.google.common.base.Stopwatch;
+import com.rs2.agent.AgentActionService;
+import com.rs2.agent.AgentBridgeServer;
 import com.rs2.game.npcs.Npc;
 import com.rs2.game.npcs.NpcList;
 import com.rs2.gui.ControlPanel;
@@ -221,6 +223,7 @@ public class GameEngine {
 		 * Load Plugins
 		 */
 		Player.getPluginService().load();
+		AgentBridgeServer.start();
 
 		/**
 		 * Server Successfully Loaded
@@ -258,6 +261,7 @@ public class GameEngine {
 					if (GameEngine.shutdownServer) {
 						scheduler.shutdown();
 					}
+					AgentActionService.INSTANCE.processPendingActions();
 					long startItemHandler = System.currentTimeMillis();
 					itemHandler.process();
 					long durationItemHandler = System.currentTimeMillis() - startItemHandler;
