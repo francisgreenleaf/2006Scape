@@ -101,7 +101,7 @@ public class AgentKnowledgeBase {
                 closestDistance = distance;
             }
         }
-        int nextIndex = closestDistance <= 8 ? closest + 1 : closest;
+        int nextIndex = closestDistance <= 16 ? closest + 1 : closest;
         if (nextIndex >= route.size()) {
             nextIndex = route.size() - 1;
         }
@@ -139,7 +139,10 @@ public class AgentKnowledgeBase {
                 tile(3252, 3266, 0), tile(3253, 3267, 0), tile(3250, 3275, 0),
                 tile(3237, 3284, 0), tile(3237, 3295, 0), tile(3240, 3302, 0),
                 tile(3261, 3322, 0), tile(3280, 3343, 0), tile(3285, 3365, 0),
-                tile(3260, 3420, 0), tile(3274, 3417, 0), tile(3278, 3408, 0),
+                tile(3289, 3388, 0), tile(3288, 3396, 0), tile(3278, 3408, 0),
+                tile(3274, 3417, 0), tile(3260, 3420, 0), tile(3238, 3420, 0),
+                tile(3210, 3424, 0), tile(3238, 3420, 0), tile(3260, 3420, 0),
+                tile(3274, 3417, 0), tile(3278, 3408, 0),
                 tile(3288, 3396, 0), tile(3289, 3388, 0), tile(3285, 3365, 0));
     }
 

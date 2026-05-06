@@ -129,6 +129,12 @@ Agent session logging:
 - Every agent bridge session must write both raw JSONL events and a human-readable Markdown summary under `2006Scape Server/data/logs/agent-sessions/<yyyy-MM-dd>/`.
 - Use matching file stems per session: `<sessionId>.jsonl` for raw events and `<sessionId>.md` for the readable summary.
 - The Markdown summary must focus on the task, what was built or done, obstacles encountered, the solution/result, and a logical next step.
+- Write the Markdown summary as a short, readable story of the session: what the agent set out to do, what it tried, where the world pushed back, how it adapted, and where the player ended up.
+- When available, read the corresponding Codex rollout transcript under `~/.codex/sessions/<yyyy>/<MM>/<dd>/` and weave the agent's reasoning process into the story. Use the visible transcript events: user goal, assistant updates, tool calls, tool results, retries, course corrections, and final outcome.
+- Summarize the reasoning process as an observable decision trail, not as raw hidden chain-of-thought. It should explain why the agent chose each major step, what evidence changed its plan, and how it interpreted tool results.
+- Include a brief reflection on how the session felt from inside the harness, grounded in observable events rather than exaggerated emotion. It should describe confidence, uncertainty, friction, surprise, or satisfaction when those reactions help explain the agent's behavior.
+- Include a concise assessment of what the agent appears to be learning over time in the harness: which patterns are becoming easier, which failures repeated, and what would make the next session more capable.
+- Logs and summaries must explicitly capture in-game failures and blockers, including player death, missing required tools or equipment, insufficient inventory space, missing skill requirements, unreachable targets, unavailable objects/NPCs/items, closed or wrong interfaces, and any state that prevented normal gameplay execution.
 - Do not write session tokens, API keys, passwords, secrets, or other credentials to either log format; redact sensitive fields before logging.
 
 Dynamic tools currently supported:
