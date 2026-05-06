@@ -15,6 +15,8 @@ import com.rs2.GameEngine;
 import com.rs2.game.content.consumables.Food;
 import com.rs2.game.content.skills.SkillHandler;
 import com.rs2.game.content.skills.core.Mining;
+import com.rs2.agent.AgentSmithingPlanner.SmithingChoice;
+import com.rs2.agent.AgentSmithingPlanner.Strategy;
 import com.rs2.game.content.skills.smithing.Smelting;
 import com.rs2.game.content.skills.smithing.SmithingData;
 import com.rs2.game.content.skills.woodcutting.Woodcutting;
@@ -116,6 +118,9 @@ public class AgentToolService {
         if ("sell_inventory_item".equals(tool)) {
             return sellInventoryItem(player, arguments);
         }
+        if ("sell_inventory_items".equals(tool)) {
+            return sellInventoryItems(player, arguments);
+        }
         if ("interact_object".equals(tool)) {
             return interactObject(player, arguments);
         }
@@ -139,6 +144,12 @@ public class AgentToolService {
         }
         if ("smith_item".equals(tool)) {
             return smithItem(player, arguments);
+        }
+        if ("smith_best_item".equals(tool)) {
+            return smithBestItem(player, arguments);
+        }
+        if ("plan_smithing".equals(tool)) {
+            return planSmithing(player, arguments);
         }
         return failure("Unknown RuneScape agent tool: " + tool);
     }
@@ -181,6 +192,9 @@ public class AgentToolService {
         player.getCombatAssistant().resetPlayerAttack();
         player.endCurrentTask();
         SkillHandler.resetSkills(player);
+        player.getPacketSender().closeAllWindows();
+        player.isBanking = false;
+        player.isShopping = false;
         player.getPlayerAssistant().playerWalk(x, y);
         JsonObject result = success("Walking toward tile.");
         addPlayerState(result, player);
@@ -212,6 +226,9 @@ public class AgentToolService {
             player.getCombatAssistant().resetPlayerAttack();
             player.endCurrentTask();
             SkillHandler.resetSkills(player);
+            player.getPacketSender().closeAllWindows();
+            player.isBanking = false;
+            player.isShopping = false;
             player.getPlayerAssistant().playerWalk(step.getTile().x, step.getTile().y);
         }
         addPlayerState(result, player);
@@ -647,6 +664,70 @@ public class AgentToolService {
         return result;
     }
 
+    private static JsonObject sellInventoryItems(Player player, JsonObject arguments) {
+        if (!player.isShopping) {
+            return failure("The player must have a shop open before selling items.");
+        }
+        String category = normalize(getString(arguments, "category", ""));
+        String name = normalize(getString(arguments, "name", ""));
+        List<Integer> itemIds = getIntList(arguments, "itemIds");
+        int requestedId = getInt(arguments, "itemId", -1);
+        if (requestedId >= 0) {
+            itemIds.add(requestedId);
+        }
+        int maxAmount = Math.max(1, getInt(arguments, "amount", Integer.MAX_VALUE));
+        int sold = 0;
+        int coinsReceived = 0;
+        JsonArray soldItems = new JsonArray();
+        boolean smithingProducts = "smithing products".equals(category) || "smithing_products".equals(category)
+                || "smithing".equals(category) || "armor".equals(category) || "armour".equals(category);
+        for (int i = 0; i < player.playerItems.length && sold < maxAmount; i++) {
+            int storedId = player.playerItems[i];
+            if (storedId <= 0) {
+                continue;
+            }
+            int itemId = storedId - 1;
+            if (!itemIds.isEmpty() && !itemIds.contains(itemId)) {
+                continue;
+            }
+            if (smithingProducts && !AgentSmithingPlanner.isSmithingProduct(itemId)) {
+                continue;
+            }
+            String itemName = normalize(DeprecatedItems.getItemName(itemId));
+            if (!name.isEmpty() && !itemName.contains(name)) {
+                continue;
+            }
+            if (itemIds.isEmpty() && name.isEmpty() && !smithingProducts) {
+                continue;
+            }
+            int amount = Math.min(Math.max(1, player.playerItemsN[i]), maxAmount - sold);
+            int before = countInventoryItem(player, itemId);
+            int beforeCoins = countInventoryItem(player, 995);
+            boolean soldItem = player.getShopAssistant().sellItem(itemId, i, amount);
+            int moved = Math.max(0, before - countInventoryItem(player, itemId));
+            int coins = Math.max(0, countInventoryItem(player, 995) - beforeCoins);
+            if (!soldItem || moved <= 0) {
+                continue;
+            }
+            JsonObject soldJson = new JsonObject();
+            soldJson.addProperty("id", itemId);
+            soldJson.addProperty("name", DeprecatedItems.getItemName(itemId));
+            soldJson.addProperty("amount", moved);
+            soldJson.addProperty("coinsReceived", coins);
+            soldItems.add(soldJson);
+            sold += moved;
+            coinsReceived += coins;
+            i = -1;
+        }
+        JsonObject result = sold > 0 ? success("Sold " + sold + " inventory item" + (sold == 1 ? "." : "s."))
+                : failure("No matching inventory items were sold.");
+        result.addProperty("sold", sold);
+        result.addProperty("coinsReceived", coinsReceived);
+        result.add("soldItems", soldItems);
+        addPlayerState(result, player);
+        return result;
+    }
+
     private static JsonObject continueDialogue(Player player) {
         if (player == null) {
             return failure("Player is not online.");
@@ -711,6 +792,7 @@ public class AgentToolService {
             return failure("Player is not online.");
         }
         player.getPacketSender().closeAllWindows();
+        player.isBanking = false;
         player.isShopping = false;
         player.updateShop = false;
         JsonObject result = success("Closed open interfaces.");
@@ -835,6 +917,10 @@ public class AgentToolService {
 
         String name = normalize(getString(arguments, "name", ""));
         List<Integer> itemIds = getIntList(arguments, "itemIds");
+        int requestedId = getInt(arguments, "itemId", -1);
+        if (requestedId >= 0) {
+            itemIds.add(requestedId);
+        }
         int deposited = 0;
         int depositedAmount = 0;
         for (int i = 0; i < player.playerItems.length; i++) {
@@ -881,6 +967,10 @@ public class AgentToolService {
         String name = normalize(getString(arguments, "name", ""));
         int amount = Math.max(1, getInt(arguments, "amount", 1));
         List<Integer> itemIds = getIntList(arguments, "itemIds");
+        int requestedId = getInt(arguments, "itemId", -1);
+        if (requestedId >= 0) {
+            itemIds.add(requestedId);
+        }
         int withdrawn = 0;
         int withdrawnAmount = 0;
         for (int i = 0; i < player.bankItems.length; i++) {
@@ -963,6 +1053,7 @@ public class AgentToolService {
         player.getPlayerAssistant().resetFollow();
         player.getCombatAssistant().resetPlayerAttack();
         SkillHandler.resetSkills(player);
+        player.isBanking = false;
         player.turnPlayerTo(anvil.object.objectX, anvil.object.objectY);
         player.getSmithingInt().showSmithInterface(requiredBarForSmithingItem(itemId));
         player.getSmithing().readInput(player, player.playerLevel[Constants.SMITHING], itemId, amount);
@@ -970,6 +1061,74 @@ public class AgentToolService {
         result.addProperty("amount", amount);
         result.addProperty("itemId", itemId);
         result.add("object", objectJson(anvil.object, anvil.distance));
+        addPlayerState(result, player);
+        return result;
+    }
+
+    private static JsonObject smithBestItem(Player player, JsonObject arguments) {
+        int barItemId = getInt(arguments, "barItemId", -1);
+        if (barItemId < 0) {
+            barItemId = AgentSmithingPlanner.barItemId(getString(arguments, "bar", getString(arguments, "name", "")));
+        }
+        if (barItemId < 0) {
+            barItemId = bestAvailableBar(player);
+        }
+        if (barItemId < 0) {
+            return failure("No recognized bars are available to smith.");
+        }
+        int availableBars = countInventoryItem(player, barItemId);
+        Strategy strategy = AgentSmithingPlanner.strategy(getString(arguments, "strategy", "xp_per_bar"));
+        String category = getString(arguments, "category", "");
+        SmithingChoice choice = AgentSmithingPlanner.bestSmithableItem(player.playerLevel[Constants.SMITHING], barItemId,
+                availableBars, strategy, category);
+        if (choice == null) {
+            return failure("No smithable item is available for the current Smithing level and bars.");
+        }
+        int maxActions = availableBars / Math.max(1, choice.getBarsNeeded());
+        int amount = Math.max(1, Math.min(maxActions, getInt(arguments, "amount", maxActions)));
+        JsonObject smithArgs = new JsonObject();
+        smithArgs.addProperty("itemId", choice.getItemId());
+        smithArgs.addProperty("amount", amount);
+        JsonObject result = smithItem(player, smithArgs);
+        result.addProperty("selectedBy", strategy == Strategy.XP_PER_ACTION ? "xp_per_action" : "xp_per_bar");
+        result.add("smithingChoice", smithingChoiceJson(player, choice, barItemId, amount));
+        return result;
+    }
+
+    private static JsonObject planSmithing(Player player, JsonObject arguments) {
+        Strategy strategy = AgentSmithingPlanner.strategy(getString(arguments, "strategy", "xp_per_bar"));
+        String category = getString(arguments, "category", "");
+        JsonObject result = success("Planned smithing options.");
+        result.addProperty("strategy", strategy == Strategy.XP_PER_ACTION ? "xp_per_action" : "xp_per_bar");
+        result.addProperty("category", category.isEmpty() ? "any" : category);
+        JsonArray bars = new JsonArray();
+        int[] barIds = {2349, 2351, 2353, 2359, 2361, 2363};
+        for (int barId : barIds) {
+            int inventoryAmount = countInventoryItem(player, barId);
+            int bankAmount = countBankItem(player, barId);
+            int availableBars = inventoryAmount + bankAmount;
+            JsonObject bar = new JsonObject();
+            bar.addProperty("id", barId);
+            bar.addProperty("name", DeprecatedItems.getItemName(barId));
+            bar.addProperty("inventoryAmount", inventoryAmount);
+            bar.addProperty("bankAmount", bankAmount);
+            bar.addProperty("availableAmount", availableBars);
+            SmithingChoice best = AgentSmithingPlanner.bestSmithableItem(player.playerLevel[Constants.SMITHING], barId,
+                    availableBars, strategy, category);
+            if (best != null) {
+                int actions = availableBars / Math.max(1, best.getBarsNeeded());
+                bar.add("bestItem", smithingChoiceJson(player, best, barId, actions));
+            }
+            JsonArray candidates = new JsonArray();
+            for (SmithingChoice choice : AgentSmithingPlanner.smithableItems(player.playerLevel[Constants.SMITHING], barId,
+                    Math.max(availableBars, 1), category)) {
+                candidates.add(smithingChoiceJson(player, choice, barId, 1));
+            }
+            bar.add("smithableItems", candidates);
+            bars.add(bar);
+        }
+        result.add("bars", bars);
+        result.add("smelting", smeltingPlan(player));
         addPlayerState(result, player);
         return result;
     }
@@ -990,6 +1149,8 @@ public class AgentToolService {
         player.attackTimer = 0;
         player.faceUpdate(0);
         SkillHandler.resetSkills(player);
+        player.isBanking = false;
+        player.isShopping = false;
         JsonObject result = success("Cancelled current action.");
         addPlayerState(result, player);
         return result;
@@ -1654,6 +1815,89 @@ public class AgentToolService {
             }
         }
         return count;
+    }
+
+    private static int countBankItem(Player player, int itemId) {
+        int count = 0;
+        for (int i = 0; i < player.bankItems.length; i++) {
+            if (player.bankItems[i] == itemId + 1) {
+                count += Math.max(1, player.bankItemsN[i]);
+            }
+        }
+        return count;
+    }
+
+    private static int bestAvailableBar(Player player) {
+        int[] barIds = {2363, 2361, 2359, 2353, 2351, 2349};
+        for (int barId : barIds) {
+            int amount = countInventoryItem(player, barId);
+            if (amount <= 0) {
+                continue;
+            }
+            if (AgentSmithingPlanner.bestSmithableItem(player.playerLevel[Constants.SMITHING], barId, amount,
+                    Strategy.XP_PER_BAR) != null) {
+                return barId;
+            }
+        }
+        return -1;
+    }
+
+    private static JsonObject smithingChoiceJson(Player player, SmithingChoice choice, int barItemId, int actions) {
+        JsonObject json = new JsonObject();
+        json.addProperty("itemId", choice.getItemId());
+        json.addProperty("name", choice.getItemName());
+        json.addProperty("barItemId", barItemId);
+        json.addProperty("barName", DeprecatedItems.getItemName(barItemId));
+        json.addProperty("barsNeeded", choice.getBarsNeeded());
+        json.addProperty("requiredLevel", choice.getRequiredLevel());
+        json.addProperty("xp", choice.getXp());
+        json.addProperty("xpPerThousandBars", choice.getXpPerThousandBars());
+        json.addProperty("actions", Math.max(0, actions));
+        json.addProperty("totalBars", Math.max(0, actions) * choice.getBarsNeeded());
+        json.addProperty("totalXp", Math.max(0, actions) * choice.getXp());
+        json.addProperty("estimatedSellValueEach", estimatedSellValue(player, choice.getItemId()));
+        json.addProperty("estimatedSellValueTotal", Math.max(0, actions) * estimatedSellValue(player, choice.getItemId()));
+        return json;
+    }
+
+    private static JsonArray smeltingPlan(Player player) {
+        JsonArray array = new JsonArray();
+        for (int[] row : Smelting.data) {
+            int primaryItemId = row[3];
+            int secondaryItemId = row[4];
+            int secondaryAmount = row[5];
+            int outputItemId = row[6];
+            int levelRequired = row[1];
+            int possible = countInventoryItem(player, primaryItemId) + countBankItem(player, primaryItemId);
+            if (secondaryItemId > 0 && secondaryAmount > 0) {
+                int secondaryPossible = (countInventoryItem(player, secondaryItemId) + countBankItem(player, secondaryItemId))
+                        / secondaryAmount;
+                possible = Math.min(possible, secondaryPossible);
+            }
+            JsonObject json = new JsonObject();
+            json.addProperty("barType", row[0]);
+            json.addProperty("barItemId", outputItemId);
+            json.addProperty("barName", DeprecatedItems.getItemName(outputItemId));
+            json.addProperty("requiredLevel", levelRequired);
+            json.addProperty("xp", row[2]);
+            json.addProperty("possibleAmount", player.playerLevel[Constants.SMITHING] >= levelRequired ? Math.max(0, possible) : 0);
+            json.addProperty("primaryOreId", primaryItemId);
+            json.addProperty("primaryOreName", DeprecatedItems.getItemName(primaryItemId));
+            if (secondaryItemId > 0) {
+                json.addProperty("secondaryOreId", secondaryItemId);
+                json.addProperty("secondaryOreName", DeprecatedItems.getItemName(secondaryItemId));
+                json.addProperty("secondaryOreAmount", secondaryAmount);
+            }
+            array.add(json);
+        }
+        return array;
+    }
+
+    private static int estimatedSellValue(Player player, int itemId) {
+        if (player.isShopping) {
+            return player.getShopAssistant().getItemShopValue(itemId, 0, true);
+        }
+        return 0;
     }
 
     private static int smeltingBarType(JsonObject arguments) {
