@@ -310,4 +310,9 @@ public class Food {
 	public static boolean isFood(int id) {
 		return FoodToEat.food.containsKey(id);
 	}
+
+	public static int getHealAmount(int id) {
+		FoodToEat food = FoodToEat.food.get(id);
+		return food == null ? 0 : food.getHeal();
+	}
 }

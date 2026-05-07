@@ -20,6 +20,12 @@ public class AgentKnowledgeBase {
                 route(tile(3222, 3218, 0), tile(3234, 3230, 0), tile(3252, 3236, 0))));
         add(new Landmark("goblins", tile(3252, 3236, 0),
                 route(tile(3222, 3218, 0), tile(3234, 3230, 0), tile(3252, 3236, 0))));
+        add(new Landmark("lumbridge cows", tile(3255, 3266, 0),
+                route(tile(3222, 3218, 0), tile(3234, 3230, 0), tile(3252, 3236, 0),
+                        tile(3255, 3266, 0))));
+        add(new Landmark("cows", tile(3255, 3266, 0),
+                route(tile(3222, 3218, 0), tile(3234, 3230, 0), tile(3252, 3236, 0),
+                        tile(3255, 3266, 0))));
         add(new Landmark("lumbridge trees", tile(3233, 3233, 0),
                 route(tile(3222, 3218, 0), tile(3233, 3229, 0), tile(3233, 3233, 0))));
         add(new Landmark("lumbridge oaks", tile(3209, 3243, 0),
@@ -41,6 +47,7 @@ public class AgentKnowledgeBase {
         add(new Landmark("east bank", tile(3253, 3420, 0), varrockEastBankRoute()));
         add(new Landmark("varrock west bank", tile(3185, 3436, 0), varrockWestBankRoute()));
         add(new Landmark("west bank", tile(3185, 3436, 0), varrockWestBankRoute()));
+        add(new Landmark("varrock guards", tile(3214, 3429, 0), varrockGuardsRoute()));
         add(new Landmark("varrock west anvils", tile(3188, 3425, 0), varrockWestAnvilRoute()));
         add(new Landmark("anvils", tile(3188, 3425, 0), varrockWestAnvilRoute()));
         add(new Landmark("varrock sword shop", tile(3206, 3399, 0), varrockSwordShopRoute()));
@@ -54,7 +61,13 @@ public class AgentKnowledgeBase {
         add(new Landmark("monastery", tile(3052, 3484, 0), edgevilleMonasteryRoute()));
         add(new Landmark("al kharid legs shop", tile(3315, 3175, 0), alKharidLegsShopRoute()));
         add(new Landmark("al kharid scimitar shop", tile(3289, 3189, 0), alKharidScimitarShopRoute()));
+        add(new Landmark("al kharid kebab shop", tile(3275, 3180, 0), alKharidKebabShopRoute()));
+        add(new Landmark("kebab shop", tile(3275, 3180, 0), alKharidKebabShopRoute()));
+        add(new Landmark("karim kebabs", tile(3275, 3180, 0), alKharidKebabShopRoute()));
         add(new Landmark("falador shield shop", tile(2974, 3383, 0), faladorShieldShopRoute()));
+        add(new Landmark("falador white knights", tile(2977, 3343, 0), faladorWhiteKnightsRoute()));
+        add(new Landmark("white knights", tile(2977, 3343, 0), faladorWhiteKnightsRoute()));
+        add(new Landmark("rock crabs", tile(2666, 3716, 0), rockCrabsRoute()));
     }
 
     public static Landmark findLandmark(String name) {
@@ -165,6 +178,15 @@ public class AgentKnowledgeBase {
                 tile(3194, 3430, 0), tile(3185, 3436, 0));
     }
 
+    private static List<Tile> varrockGuardsRoute() {
+        return route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
+                tile(3252, 3266, 0), tile(3253, 3267, 0), tile(3250, 3275, 0),
+                tile(3237, 3284, 0), tile(3237, 3295, 0), tile(3240, 3302, 0),
+                tile(3261, 3322, 0), tile(3280, 3343, 0), tile(3285, 3365, 0),
+                tile(3289, 3388, 0), tile(3288, 3396, 0), tile(3278, 3408, 0), tile(3274, 3417, 0),
+                tile(3260, 3420, 0), tile(3238, 3420, 0), tile(3214, 3429, 0));
+    }
+
     private static List<Tile> varrockWestAnvilRoute() {
         return route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
                 tile(3252, 3266, 0), tile(3253, 3267, 0), tile(3250, 3275, 0),
@@ -229,6 +251,15 @@ public class AgentKnowledgeBase {
                 tile(3274, 3195, 0), tile(3289, 3189, 0));
     }
 
+    private static List<Tile> alKharidKebabShopRoute() {
+        List<Tile> route = reverse(barbarianVillageRoute());
+        route.add(tile(3239, 3218, 0));
+        route.add(tile(3260, 3220, 0));
+        route.add(tile(3274, 3195, 0));
+        route.add(tile(3275, 3180, 0));
+        return route;
+    }
+
     private static List<Tile> faladorShieldShopRoute() {
         return route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
                 tile(3252, 3266, 0), tile(3253, 3267, 0), tile(3250, 3275, 0),
@@ -247,6 +278,31 @@ public class AgentKnowledgeBase {
                 tile(2974, 3383, 0));
     }
 
+    private static List<Tile> faladorWhiteKnightsRoute() {
+        List<Tile> route = new ArrayList<Tile>(faladorShieldShopRoute());
+        route.add(tile(2974, 3365, 0));
+        route.add(tile(2977, 3343, 0));
+        return route;
+    }
+
+    private static List<Tile> rockCrabsRoute() {
+        List<Tile> route = new ArrayList<Tile>(edgevilleMonasteryRoute());
+        route.add(tile(3038, 3489, 0));
+        route.add(tile(3018, 3510, 0));
+        route.add(tile(3005, 3512, 0));
+        route.add(tile(2980, 3505, 0));
+        route.add(tile(2948, 3492, 0));
+        route.add(tile(2902, 3490, 0));
+        route.add(tile(2848, 3490, 0));
+        route.add(tile(2806, 3434, 0));
+        route.add(tile(2740, 3480, 0));
+        route.add(tile(2720, 3540, 0));
+        route.add(tile(2700, 3608, 0));
+        route.add(tile(2672, 3668, 0));
+        route.add(tile(2666, 3716, 0));
+        return route;
+    }
+
     private static Tile tile(int x, int y, int height) {
         return new Tile(x, y, height);
     }
@@ -254,6 +310,12 @@ public class AgentKnowledgeBase {
     private static List<Tile> route(Tile... tiles) {
         ArrayList<Tile> route = new ArrayList<Tile>();
         Collections.addAll(route, tiles);
+        return route;
+    }
+
+    private static List<Tile> reverse(List<Tile> tiles) {
+        ArrayList<Tile> route = new ArrayList<Tile>(tiles);
+        Collections.reverse(route);
         return route;
     }
 
