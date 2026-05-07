@@ -1,6 +1,10 @@
 package com.rs2.agent;
 
+import static com.rs2.game.content.StaticItemList.KEBAB;
+
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
@@ -12,7 +16,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.rs2.Constants;
 import com.rs2.GameEngine;
+import com.rs2.agent.AgentCombatPlanner.TrainingArea;
 import com.rs2.game.content.consumables.Food;
+import com.rs2.game.content.consumables.Kebabs;
 import com.rs2.game.content.skills.SkillHandler;
 import com.rs2.game.content.skills.core.Mining;
 import com.rs2.agent.AgentSmithingPlanner.SmithingChoice;
@@ -43,6 +49,7 @@ public class AgentToolService {
 
     private static final int DEFAULT_SCAN_DISTANCE = 30;
     private static final int DEFAULT_OBJECT_SCAN_DISTANCE = 60;
+    private static final int COINS = AgentCombatPlanner.coinsItemId();
     private static final String[] SKILL_NAMES = {"attack", "defence", "strength", "hitpoints", "ranged",
             "prayer", "magic", "cooking", "woodcutting", "fletching", "fishing", "firemaking", "crafting",
             "smithing", "mining", "herblore", "agility", "thieving", "slayer", "farming", "runecraft",
@@ -54,6 +61,9 @@ public class AgentToolService {
         }
         if ("observe_state".equals(tool)) {
             return observeState(player);
+        }
+        if ("plan_combat_training".equals(tool)) {
+            return planCombatTraining(player, arguments);
         }
         if ("cancel_current_action".equals(tool)) {
             return cancelCurrentAction(player);
@@ -79,8 +89,14 @@ public class AgentToolService {
         if ("find_nearest_npc".equals(tool)) {
             return findNearestNpc(player, arguments);
         }
+        if ("find_training_npc".equals(tool)) {
+            return findTrainingNpc(player, arguments);
+        }
         if ("attack_npc".equals(tool)) {
             return attackNpc(player, arguments);
+        }
+        if ("train_combat".equals(tool)) {
+            return trainCombat(player, arguments);
         }
         if ("find_nearest_object".equals(tool)) {
             return findNearestObject(player, arguments);
@@ -105,6 +121,9 @@ public class AgentToolService {
         }
         if ("eat_item".equals(tool)) {
             return eatItem(player, arguments);
+        }
+        if ("eat_best_food".equals(tool)) {
+            return eatBestFood(player, arguments);
         }
         if ("pickup_ground_item".equals(tool)) {
             return pickupGroundItem(player, arguments);
@@ -139,6 +158,9 @@ public class AgentToolService {
         if ("withdraw_bank_items".equals(tool)) {
             return withdrawBankItems(player, arguments);
         }
+        if ("deposit_excess_coins".equals(tool)) {
+            return depositExcessCoins(player, arguments);
+        }
         if ("smelt_bar".equals(tool)) {
             return smeltBar(player, arguments);
         }
@@ -160,6 +182,47 @@ public class AgentToolService {
         result.add("nearbyNpcs", nearbyNpcs(player, DEFAULT_SCAN_DISTANCE, 12));
         result.add("nearbyObjects", nearbyObjects(player, 20, 16));
         result.add("nearbyGroundItems", nearbyGroundItems(player, 20, 16));
+        return result;
+    }
+
+    private static JsonObject planCombatTraining(Player player, JsonObject arguments) {
+        int targetLevel = getInt(arguments, "targetLevel", AgentCombatPlanner.TARGET_MELEE_LEVEL);
+        int attackLevel = baseLevel(player, Constants.ATTACK);
+        int strengthLevel = baseLevel(player, Constants.STRENGTH);
+        int defenceLevel = baseLevel(player, Constants.DEFENCE);
+        int hitpointsLevel = baseLevel(player, Constants.HITPOINTS);
+        int foodCount = countInventoryFood(player);
+        String nextStyle = AgentCombatPlanner.nextTrainingStyle(attackLevel, strengthLevel, defenceLevel, targetLevel);
+        TrainingArea area = AgentCombatPlanner.recommendedArea(attackLevel, strengthLevel, defenceLevel, hitpointsLevel, foodCount);
+        int coinBudget = AgentCombatPlanner.recommendedCoinBudget(attackLevel, defenceLevel, foodCount);
+
+        JsonObject result = success("Planned combat training.");
+        result.addProperty("targetLevel", targetLevel);
+        result.addProperty("nextStyle", nextStyle);
+        result.addProperty("allTargetsReached", "complete".equals(nextStyle));
+        result.addProperty("eatAtHitpoints", AgentCombatPlanner.eatAtHitpoints(hitpointsLevel));
+        result.addProperty("retreatAtHitpoints", AgentCombatPlanner.retreatAtHitpoints(hitpointsLevel));
+        result.add("recommendedArea", trainingAreaJson(area));
+        result.add("trainingAreas", trainingAreasJson());
+        result.add("loadout", combatLoadoutJson(player));
+        result.add("supplies", combatSuppliesJson(player));
+
+        JsonObject money = new JsonObject();
+        int inventoryCoins = countInventoryItem(player, COINS);
+        money.addProperty("inventoryCoins", inventoryCoins);
+        money.addProperty("bankCoins", countBankItem(player, COINS));
+        money.addProperty("recommendedInventoryCoinBudget", coinBudget);
+        money.addProperty("carryingExcessCoins", inventoryCoins > coinBudget);
+        money.addProperty("excessCoins", Math.max(0, inventoryCoins - coinBudget));
+        result.add("money", money);
+
+        JsonArray futureLog = new JsonArray();
+        futureLog.add("Measure XP per hour by target and feed observed kill time back into training scores.");
+        futureLog.add("Add exact shop price lookup to the loadout planner so it can buy only the cheapest missing upgrades.");
+        futureLog.add("Add bank-object routing for restocking food from any training area instead of relying on nearby bank areas.");
+        futureLog.add("Record target deaths, food used, and forced retreats in session summaries to tune risk thresholds.");
+        result.add("futureEfficiencyLog", futureLog);
+        addPlayerState(result, player);
         return result;
     }
 
@@ -266,6 +329,67 @@ public class AgentToolService {
         return result;
     }
 
+    private static JsonObject findTrainingNpc(Player player, JsonObject arguments) {
+        String name = normalize(getString(arguments, "name", getString(arguments, "npc", "")));
+        int maxDistance = getInt(arguments, "maxDistance", DEFAULT_SCAN_DISTANCE);
+        int minHitpoints = getInt(arguments, "minHitpoints", 1);
+        int maxNpcMaxHit = getInt(arguments, "maxNpcMaxHit", Integer.MAX_VALUE);
+        boolean reachableOnly = getBoolean(arguments, "reachable", true);
+        boolean allowUnderAttack = getBoolean(arguments, "allowUnderAttack", false);
+        ArrayList<TrainingNpcMatch> matches = new ArrayList<TrainingNpcMatch>();
+        for (Npc npc : NpcHandler.npcs) {
+            if (!isNpcCandidate(player, npc)) {
+                continue;
+            }
+            String npcName = normalize(npc.name());
+            if (!name.isEmpty() && !npcName.contains(name)) {
+                continue;
+            }
+            if (npc.MaxHP < minHitpoints) {
+                continue;
+            }
+            int npcMaxHit = npcMaxHit(npc);
+            if (npcMaxHit > maxNpcMaxHit) {
+                continue;
+            }
+            boolean busy = npc.underAttack && npc.killedBy != player.playerId;
+            if (busy && !allowUnderAttack) {
+                continue;
+            }
+            int distance = AgentKnowledgeBase.distance(player.absX, player.absY, npc.absX, npc.absY);
+            if (distance > maxDistance) {
+                continue;
+            }
+            if (reachableOnly && !isReachableNpc(player, npc)) {
+                continue;
+            }
+            int score = trainingScore(player, npc, distance);
+            matches.add(new TrainingNpcMatch(npc, distance, score));
+        }
+        Collections.sort(matches, new Comparator<TrainingNpcMatch>() {
+            @Override
+            public int compare(TrainingNpcMatch left, TrainingNpcMatch right) {
+                if (left.score != right.score) {
+                    return right.score - left.score;
+                }
+                return left.distance - right.distance;
+            }
+        });
+        if (matches.isEmpty()) {
+            return failure("No suitable combat training NPC found nearby.");
+        }
+        JsonObject result = success("Found suitable combat training NPC.");
+        TrainingNpcMatch best = matches.get(0);
+        result.add("npc", npcJson(best.npc, best.distance, best.score));
+        JsonArray candidates = new JsonArray();
+        for (int i = 0; i < matches.size() && i < 8; i++) {
+            TrainingNpcMatch match = matches.get(i);
+            candidates.add(npcJson(match.npc, match.distance, match.score));
+        }
+        result.add("candidates", candidates);
+        return result;
+    }
+
     private static JsonObject attackNpc(Player player, JsonObject arguments) {
         int npcIndex = getInt(arguments, "npcIndex", -1);
         if (npcIndex < 0 || npcIndex >= NpcHandler.npcs.length) {
@@ -297,6 +421,101 @@ public class AgentToolService {
         result.addProperty("approaching", !inMeleeRange);
         result.add("npc", npcJson(npc, AgentKnowledgeBase.distance(player.absX, player.absY, npc.absX, npc.absY)));
         addPlayerState(result, player);
+        return result;
+    }
+
+    private static JsonObject trainCombat(Player player, JsonObject arguments) {
+        int targetLevel = getInt(arguments, "targetLevel", AgentCombatPlanner.TARGET_MELEE_LEVEL);
+        int maxHitpoints = baseLevel(player, Constants.HITPOINTS);
+        int eatAt = getInt(arguments, "eatAtHitpoints", AgentCombatPlanner.eatAtHitpoints(maxHitpoints));
+        int retreatAt = getInt(arguments, "retreatAtHitpoints", AgentCombatPlanner.retreatAtHitpoints(maxHitpoints));
+        if (player.playerLevel[Constants.HITPOINTS] <= eatAt && countInventoryFood(player) > 0) {
+            JsonObject eatArgs = new JsonObject();
+            eatArgs.addProperty("emergency", player.playerLevel[Constants.HITPOINTS] <= retreatAt);
+            eatArgs.addProperty("messagePrefix", "Combat safety");
+            return eatBestFood(player, eatArgs);
+        }
+        if (player.playerLevel[Constants.HITPOINTS] <= retreatAt) {
+            JsonObject result = cancelCurrentAction(player);
+            result.addProperty("success", false);
+            result.addProperty("message", "Hitpoints are unsafe and no food is available. Stopped combat; restock food before continuing.");
+            return result;
+        }
+
+        int attackLevel = baseLevel(player, Constants.ATTACK);
+        int strengthLevel = baseLevel(player, Constants.STRENGTH);
+        int defenceLevel = baseLevel(player, Constants.DEFENCE);
+        String nextStyle = AgentCombatPlanner.nextTrainingStyle(attackLevel, strengthLevel, defenceLevel, targetLevel);
+        String requestedStyle = normalizeCombatStyle(getString(arguments, "style", getString(arguments, "trainingStyle", "")));
+        if (!requestedStyle.isEmpty()) {
+            nextStyle = requestedStyle;
+        }
+        if ("complete".equals(nextStyle)) {
+            JsonObject result = success("Attack, strength, and defence have reached the target level.");
+            addPlayerState(result, player);
+            return result;
+        }
+        if (!combatStyleName(player.fightMode).equals(nextStyle)) {
+            JsonObject styleArgs = new JsonObject();
+            styleArgs.addProperty("style", nextStyle);
+            setCombatStyle(player, styleArgs);
+        }
+
+        Npc currentTarget = targetNpc(player);
+        if (currentTarget != null) {
+            if (!player.goodDistance(player.getX(), player.getY(), currentTarget.getX(), currentTarget.getY(), 1)) {
+                JsonObject attackArgs = new JsonObject();
+                attackArgs.addProperty("npcIndex", currentTarget.npcId);
+                JsonObject result = attackNpc(player, attackArgs);
+                result.addProperty("message", "Repositioning to continue combat with " + currentTarget.name() + ".");
+                result.addProperty("trainingStyle", nextStyle);
+                return result;
+            }
+            if (!currentTarget.underAttack && currentTarget.killedBy != player.playerId && player.attackTimer <= 0) {
+                JsonObject attackArgs = new JsonObject();
+                attackArgs.addProperty("npcIndex", currentTarget.npcId);
+                JsonObject result = attackNpc(player, attackArgs);
+                result.addProperty("message", "Reacquiring combat target " + currentTarget.name() + ".");
+                result.addProperty("trainingStyle", nextStyle);
+                return result;
+            }
+            JsonObject result = success("Continuing combat while monitoring hitpoints.");
+            result.add("npc", npcJson(currentTarget,
+                    AgentKnowledgeBase.distance(player.absX, player.absY, currentTarget.absX, currentTarget.absY)));
+            addPlayerState(result, player);
+            return result;
+        }
+
+        TrainingArea area = AgentCombatPlanner.recommendedArea(attackLevel, strengthLevel, defenceLevel, maxHitpoints,
+                countInventoryFood(player));
+        String requestedArea = getString(arguments, "area", getString(arguments, "landmark", ""));
+        if (!requestedArea.trim().isEmpty()) {
+            area = AgentCombatPlanner.findArea(requestedArea);
+        }
+
+        JsonObject findArgs = new JsonObject();
+        String requestedNpc = getString(arguments, "name", getString(arguments, "npc", ""));
+        findArgs.addProperty("name", requestedNpc.trim().isEmpty() ? area.getNpcName() : requestedNpc);
+        findArgs.addProperty("maxDistance", getInt(arguments, "maxDistance", DEFAULT_SCAN_DISTANCE));
+        findArgs.addProperty("minHitpoints", getInt(arguments, "minHitpoints", Math.max(1, area.getTypicalHitpoints())));
+        findArgs.addProperty("maxNpcMaxHit", getInt(arguments, "maxNpcMaxHit", Math.max(2, Math.max(area.getMaxHit(), maxHitpoints / 4))));
+        JsonObject found = findTrainingNpc(player, findArgs);
+        if (found.has("success") && found.get("success").getAsBoolean() && found.has("npc")) {
+            JsonObject npc = found.get("npc").getAsJsonObject();
+            JsonObject attackArgs = new JsonObject();
+            attackArgs.addProperty("npcIndex", npc.get("npcIndex").getAsInt());
+            JsonObject result = attackNpc(player, attackArgs);
+            result.addProperty("trainingStyle", nextStyle);
+            result.add("trainingPlan", trainingAreaJson(area));
+            return result;
+        }
+
+        JsonObject travelArgs = new JsonObject();
+        travelArgs.addProperty("name", area.getLandmark());
+        JsonObject result = travelToLandmark(player, travelArgs);
+        result.addProperty("message", "No suitable " + area.getNpcName() + " is nearby; moving toward " + area.getName() + ".");
+        result.addProperty("trainingStyle", nextStyle);
+        result.add("trainingPlan", trainingAreaJson(area));
         return result;
     }
 
@@ -500,13 +719,45 @@ public class AgentToolService {
         if (item == null) {
             return failure("No matching inventory item found to eat.");
         }
-        if (!Food.isFood(item.itemId)) {
+        if (!isAgentFood(item.itemId)) {
             return failure(DeprecatedItems.getItemName(item.itemId) + " is not edible food.");
         }
         int before = player.playerLevel[Constants.HITPOINTS];
-        Food.eat(player, item.itemId, item.slot);
+        eatFood(player, item.itemId, item.slot);
         JsonObject result = success("Ate " + DeprecatedItems.getItemName(item.itemId) + ".");
         result.addProperty("healed", Math.max(0, player.playerLevel[Constants.HITPOINTS] - before));
+        addPlayerState(result, player);
+        return result;
+    }
+
+    private static JsonObject eatBestFood(Player player, JsonObject arguments) {
+        int maxHitpoints = baseLevel(player, Constants.HITPOINTS);
+        if (player.playerLevel[Constants.HITPOINTS] >= maxHitpoints) {
+            JsonObject result = failure("Hitpoints are already full; eating would waste food.");
+            addPlayerState(result, player);
+            return result;
+        }
+        boolean emergency = getBoolean(arguments, "emergency", false);
+        FoodMatch food = bestFood(player, emergency);
+        if (food == null) {
+            JsonObject result = failure("No edible food found in inventory.");
+            addPlayerState(result, player);
+            return result;
+        }
+        int beforeHp = player.playerLevel[Constants.HITPOINTS];
+        int beforeAmount = countInventoryItem(player, food.itemId);
+        eatFood(player, food.itemId, food.slot);
+        int afterAmount = countInventoryItem(player, food.itemId);
+        int healed = Math.max(0, player.playerLevel[Constants.HITPOINTS] - beforeHp);
+        boolean consumed = afterAmount < beforeAmount;
+        String prefix = getString(arguments, "messagePrefix", "").trim();
+        JsonObject result = consumed
+                ? success((prefix.isEmpty() ? "Ate" : prefix + ": ate") + " " + DeprecatedItems.getItemName(food.itemId) + ".")
+                : failure("Unable to eat " + DeprecatedItems.getItemName(food.itemId) + " yet; food delay may still be active.");
+        result.addProperty("itemId", food.itemId);
+        result.addProperty("itemName", DeprecatedItems.getItemName(food.itemId));
+        result.addProperty("healAmount", food.healAmount);
+        result.addProperty("healed", healed);
         addPlayerState(result, player);
         return result;
     }
@@ -1006,6 +1257,51 @@ public class AgentToolService {
         return result;
     }
 
+    private static JsonObject depositExcessCoins(Player player, JsonObject arguments) {
+        if (!Boundary.isIn(player, Boundary.BANK_AREA)) {
+            return failure("The player must be in a bank area before depositing excess coins.");
+        }
+        int attackLevel = baseLevel(player, Constants.ATTACK);
+        int defenceLevel = baseLevel(player, Constants.DEFENCE);
+        int keepAmount = Math.max(0, getInt(arguments, "keepAmount",
+                AgentCombatPlanner.recommendedCoinBudget(attackLevel, defenceLevel, countInventoryFood(player))));
+        int inventoryCoins = countInventoryItem(player, COINS);
+        if (inventoryCoins <= keepAmount) {
+            JsonObject result = success("Coin stack is already within the combat budget.");
+            result.addProperty("inventoryCoins", inventoryCoins);
+            result.addProperty("keptCoins", inventoryCoins);
+            result.addProperty("depositedCoins", 0);
+            addPlayerState(result, player);
+            return result;
+        }
+        player.stopMovement();
+        player.endCurrentTask();
+        player.getPlayerAssistant().resetFollow();
+        player.getCombatAssistant().resetPlayerAttack();
+        SkillHandler.resetSkills(player);
+        player.getPacketSender().openUpBank();
+
+        int toDeposit = inventoryCoins - keepAmount;
+        int deposited = 0;
+        for (int i = 0; i < player.playerItems.length && deposited < toDeposit; i++) {
+            if (player.playerItems[i] != COINS + 1) {
+                continue;
+            }
+            int amount = Math.min(toDeposit - deposited, Math.max(1, player.playerItemsN[i]));
+            if (player.getItemAssistant().bankItem(COINS, i, amount)) {
+                deposited += amount;
+                i = -1;
+            }
+        }
+        JsonObject result = deposited > 0 ? success("Deposited excess coins for safer combat training.")
+                : failure("Unable to deposit excess coins.");
+        result.addProperty("inventoryCoinsBefore", inventoryCoins);
+        result.addProperty("keptCoins", countInventoryItem(player, COINS));
+        result.addProperty("depositedCoins", deposited);
+        addPlayerState(result, player);
+        return result;
+    }
+
     private static JsonObject smeltBar(Player player, JsonObject arguments) {
         int barType = smeltingBarType(arguments);
         if (barType < 0) {
@@ -1498,10 +1794,114 @@ public class AgentToolService {
         playerJson.add("inventory", inventory(player));
         playerJson.add("equipment", equipment(player));
         playerJson.add("bank", bank(player));
+        playerJson.add("combatReadiness", combatReadiness(player));
         if (player.isShopping) {
             playerJson.add("shop", shop(player));
         }
         result.add("player", playerJson);
+    }
+
+    private static JsonObject combatReadiness(Player player) {
+        int attackLevel = baseLevel(player, Constants.ATTACK);
+        int strengthLevel = baseLevel(player, Constants.STRENGTH);
+        int defenceLevel = baseLevel(player, Constants.DEFENCE);
+        int hitpointsLevel = baseLevel(player, Constants.HITPOINTS);
+        int foodCount = countInventoryFood(player);
+        JsonObject json = new JsonObject();
+        json.addProperty("nextStyle", AgentCombatPlanner.nextTrainingStyle(attackLevel, strengthLevel, defenceLevel,
+                AgentCombatPlanner.TARGET_MELEE_LEVEL));
+        json.addProperty("eatAtHitpoints", AgentCombatPlanner.eatAtHitpoints(hitpointsLevel));
+        json.addProperty("retreatAtHitpoints", AgentCombatPlanner.retreatAtHitpoints(hitpointsLevel));
+        json.addProperty("inventoryFoodCount", foodCount);
+        json.addProperty("inventoryFoodHealing", totalInventoryFoodHealing(player));
+        json.addProperty("bankFoodCount", countBankFood(player));
+        json.add("recommendedArea", trainingAreaJson(AgentCombatPlanner.recommendedArea(attackLevel, strengthLevel,
+                defenceLevel, hitpointsLevel, foodCount)));
+        int coinBudget = AgentCombatPlanner.recommendedCoinBudget(attackLevel, defenceLevel, foodCount);
+        json.addProperty("recommendedInventoryCoinBudget", coinBudget);
+        json.addProperty("inventoryCoins", countInventoryItem(player, COINS));
+        json.addProperty("bankCoins", countBankItem(player, COINS));
+        json.addProperty("carryingExcessCoins", countInventoryItem(player, COINS) > coinBudget);
+        return json;
+    }
+
+    private static JsonObject trainingAreaJson(TrainingArea area) {
+        JsonObject json = new JsonObject();
+        json.addProperty("name", area.getName());
+        json.addProperty("landmark", area.getLandmark());
+        json.addProperty("npcName", area.getNpcName());
+        json.addProperty("typicalHitpoints", area.getTypicalHitpoints());
+        json.addProperty("highHitpoints", area.getHighHitpoints());
+        json.addProperty("maxHit", area.getMaxHit());
+        json.addProperty("recommendedMeleeLevel", area.getRecommendedMeleeLevel());
+        json.addProperty("recommendedUntilLevel", area.getRecommendedUntilLevel());
+        return json;
+    }
+
+    private static JsonArray trainingAreasJson() {
+        JsonArray array = new JsonArray();
+        for (TrainingArea area : AgentCombatPlanner.trainingAreas()) {
+            array.add(trainingAreaJson(area));
+        }
+        return array;
+    }
+
+    private static JsonObject combatSuppliesJson(Player player) {
+        JsonObject json = new JsonObject();
+        json.addProperty("inventoryFoodCount", countInventoryFood(player));
+        json.addProperty("inventoryFoodHealing", totalInventoryFoodHealing(player));
+        json.addProperty("bankFoodCount", countBankFood(player));
+        json.addProperty("bankFoodHealing", totalBankFoodHealing(player));
+        json.add("inventoryFood", foodInventory(player));
+        return json;
+    }
+
+    private static JsonObject combatLoadoutJson(Player player) {
+        JsonObject json = new JsonObject();
+        json.add("weapon", recommendedGearJson(player, "weapon", AgentCombatPlanner.recommendedWeaponId(
+                baseLevel(player, Constants.ATTACK)), ItemConstants.WEAPON));
+        json.add("body", recommendedGearJson(player, "body", AgentCombatPlanner.recommendedBodyId(
+                baseLevel(player, Constants.DEFENCE)), ItemConstants.CHEST));
+        json.add("legs", recommendedGearJson(player, "legs", AgentCombatPlanner.recommendedLegsId(
+                baseLevel(player, Constants.DEFENCE)), ItemConstants.LEGS));
+        json.add("shield", recommendedGearJson(player, "shield", AgentCombatPlanner.recommendedShieldId(
+                baseLevel(player, Constants.DEFENCE)), ItemConstants.SHIELD));
+        return json;
+    }
+
+    private static JsonObject recommendedGearJson(Player player, String slotName, int itemId, int equipmentSlot) {
+        JsonObject json = new JsonObject();
+        json.addProperty("slotName", slotName);
+        json.addProperty("recommendedItemId", itemId);
+        json.addProperty("recommendedItemName", AgentCombatPlanner.itemName(itemId));
+        json.addProperty("currentlyEquippedItemId", player.playerEquipment[equipmentSlot]);
+        json.addProperty("currentlyEquippedItemName", AgentCombatPlanner.itemName(player.playerEquipment[equipmentSlot]));
+        json.addProperty("inInventory", itemId >= 0 && countInventoryItem(player, itemId) > 0);
+        json.addProperty("inBank", itemId >= 0 && countBankItem(player, itemId) > 0);
+        json.addProperty("equipped", itemId >= 0 && player.playerEquipment[equipmentSlot] == itemId);
+        return json;
+    }
+
+    private static JsonArray foodInventory(Player player) {
+        JsonArray array = new JsonArray();
+        for (int i = 0; i < player.playerItems.length; i++) {
+            int storedId = player.playerItems[i];
+            if (storedId <= 0) {
+                continue;
+            }
+            int itemId = storedId - 1;
+            if (!isAgentFood(itemId)) {
+                continue;
+            }
+            JsonObject food = new JsonObject();
+            food.addProperty("slot", i);
+            food.addProperty("id", itemId);
+            food.addProperty("name", DeprecatedItems.getItemName(itemId));
+            food.addProperty("amount", player.playerItemsN[i]);
+            food.addProperty("heal", agentFoodHealAmount(itemId));
+            array.add(food);
+        }
+        return array;
     }
 
     private static JsonObject skills(Player player) {
@@ -1529,6 +1929,9 @@ public class AgentToolService {
             item.addProperty("id", itemId);
             item.addProperty("amount", player.playerItemsN[i]);
             item.addProperty("name", DeprecatedItems.getItemName(itemId));
+            if (isAgentFood(itemId)) {
+                item.addProperty("foodHeal", agentFoodHealAmount(itemId));
+            }
             array.add(item);
         }
         return array;
@@ -1565,6 +1968,9 @@ public class AgentToolService {
             item.addProperty("id", itemId);
             item.addProperty("amount", player.bankItemsN[i]);
             item.addProperty("name", DeprecatedItems.getItemName(itemId));
+            if (isAgentFood(itemId)) {
+                item.addProperty("foodHeal", agentFoodHealAmount(itemId));
+            }
             array.add(item);
         }
         return array;
@@ -1597,6 +2003,10 @@ public class AgentToolService {
     }
 
     private static JsonObject npcJson(Npc npc, int distance) {
+        return npcJson(npc, distance, Integer.MIN_VALUE);
+    }
+
+    private static JsonObject npcJson(Npc npc, int distance, int trainingScore) {
         JsonObject object = new JsonObject();
         object.addProperty("npcIndex", npc.npcId);
         object.addProperty("type", npc.npcType);
@@ -1608,6 +2018,14 @@ public class AgentToolService {
         object.addProperty("maxHitpoints", npc.MaxHP);
         object.addProperty("distance", distance);
         object.addProperty("underAttack", npc.underAttack);
+        object.addProperty("combatLevel", npcCombatLevel(npc));
+        object.addProperty("maxHit", npcMaxHit(npc));
+        object.addProperty("attack", npc.attack);
+        object.addProperty("defence", npc.defence);
+        object.addProperty("aggressive", npc.aggressive);
+        if (trainingScore != Integer.MIN_VALUE) {
+            object.addProperty("trainingScore", trainingScore);
+        }
         return object;
     }
 
@@ -1729,6 +2147,27 @@ public class AgentToolService {
         return value == null ? "" : value.trim().toLowerCase(Locale.ENGLISH).replace('_', ' ');
     }
 
+    private static String normalizeCombatStyle(String value) {
+        String style = normalize(value);
+        if ("accurate".equals(style)) {
+            return "attack";
+        }
+        if ("aggressive".equals(style)) {
+            return "strength";
+        }
+        if ("defense".equals(style) || "defensive".equals(style)) {
+            return "defence";
+        }
+        if ("shared".equals(style)) {
+            return "controlled";
+        }
+        if ("attack".equals(style) || "strength".equals(style)
+                || "defence".equals(style) || "controlled".equals(style)) {
+            return style;
+        }
+        return "";
+    }
+
     private static ItemMatch findInventoryItem(Player player, JsonObject arguments) {
         int slot = getInt(arguments, "slot", -1);
         int requestedId = getInt(arguments, "itemId", -1);
@@ -1805,6 +2244,128 @@ public class AgentToolService {
             return false;
         }
         return !itemIds.isEmpty() || !name.isEmpty();
+    }
+
+    private static int baseLevel(Player player, int skill) {
+        return player.getPlayerAssistant().getLevelForXP(player.playerXP[skill]);
+    }
+
+    private static int countInventoryFood(Player player) {
+        int count = 0;
+        for (int i = 0; i < player.playerItems.length; i++) {
+            int storedId = player.playerItems[i];
+            if (storedId > 0 && isAgentFood(storedId - 1)) {
+                count += Math.max(1, player.playerItemsN[i]);
+            }
+        }
+        return count;
+    }
+
+    private static int totalInventoryFoodHealing(Player player) {
+        int healing = 0;
+        for (int i = 0; i < player.playerItems.length; i++) {
+            int storedId = player.playerItems[i];
+            if (storedId > 0 && isAgentFood(storedId - 1)) {
+                healing += Math.max(1, player.playerItemsN[i]) * agentFoodHealAmount(storedId - 1);
+            }
+        }
+        return healing;
+    }
+
+    private static int countBankFood(Player player) {
+        int count = 0;
+        for (int i = 0; i < player.bankItems.length; i++) {
+            int storedId = player.bankItems[i];
+            if (storedId > 0 && isAgentFood(storedId - 1)) {
+                count += Math.max(1, player.bankItemsN[i]);
+            }
+        }
+        return count;
+    }
+
+    private static int totalBankFoodHealing(Player player) {
+        int healing = 0;
+        for (int i = 0; i < player.bankItems.length; i++) {
+            int storedId = player.bankItems[i];
+            if (storedId > 0 && isAgentFood(storedId - 1)) {
+                healing += Math.max(1, player.bankItemsN[i]) * agentFoodHealAmount(storedId - 1);
+            }
+        }
+        return healing;
+    }
+
+    private static FoodMatch bestFood(Player player, boolean emergency) {
+        int maxHitpoints = baseLevel(player, Constants.HITPOINTS);
+        int missing = Math.max(1, maxHitpoints - player.playerLevel[Constants.HITPOINTS]);
+        FoodMatch best = null;
+        for (int i = 0; i < player.playerItems.length; i++) {
+            int storedId = player.playerItems[i];
+            if (storedId <= 0) {
+                continue;
+            }
+            int itemId = storedId - 1;
+            if (!isAgentFood(itemId)) {
+                continue;
+            }
+            int heal = agentFoodHealAmount(itemId);
+            FoodMatch candidate = new FoodMatch(i, itemId, heal);
+            if (best == null) {
+                best = candidate;
+                continue;
+            }
+            if (emergency) {
+                if (candidate.healAmount > best.healAmount) {
+                    best = candidate;
+                }
+                continue;
+            }
+            boolean candidateCovers = candidate.healAmount >= missing;
+            boolean bestCovers = best.healAmount >= missing;
+            if (candidateCovers && (!bestCovers || candidate.healAmount < best.healAmount)) {
+                best = candidate;
+            } else if (!candidateCovers && !bestCovers && candidate.healAmount > best.healAmount) {
+                best = candidate;
+            }
+        }
+        return best;
+    }
+
+    private static boolean isAgentFood(int itemId) {
+        return itemId == KEBAB || Food.isFood(itemId);
+    }
+
+    private static int agentFoodHealAmount(int itemId) {
+        if (itemId == KEBAB) {
+            return 5;
+        }
+        return Food.getHealAmount(itemId);
+    }
+
+    private static void eatFood(Player player, int itemId, int slot) {
+        if (itemId == KEBAB) {
+            Kebabs.eat(player, slot);
+            return;
+        }
+        Food.eat(player, itemId, slot);
+    }
+
+    private static int trainingScore(Player player, Npc npc, int distance) {
+        return AgentCombatPlanner.scoreNpc(npc.name(), npc.MaxHP, npcCombatLevel(npc), npcMaxHit(npc), npc.attack,
+                npc.defence, player.combatLevel, baseLevel(player, Constants.HITPOINTS), distance, npc.underAttack);
+    }
+
+    private static int npcCombatLevel(Npc npc) {
+        return npc == null ? 0 : NpcHandler.getNpcListCombat(npc.npcType);
+    }
+
+    private static int npcMaxHit(Npc npc) {
+        if (npc == null) {
+            return 0;
+        }
+        if (npc.maxHit > 0) {
+            return npc.maxHit;
+        }
+        return NpcHandler.getMaxHit(npc.npcId);
     }
 
     private static int countInventoryItem(Player player, int itemId) {
@@ -2139,6 +2700,30 @@ public class AgentToolService {
         private GroundItemMatch(GroundItem item, int distance) {
             this.item = item;
             this.distance = distance;
+        }
+    }
+
+    private static class FoodMatch {
+        private final int slot;
+        private final int itemId;
+        private final int healAmount;
+
+        private FoodMatch(int slot, int itemId, int healAmount) {
+            this.slot = slot;
+            this.itemId = itemId;
+            this.healAmount = healAmount;
+        }
+    }
+
+    private static class TrainingNpcMatch {
+        private final Npc npc;
+        private final int distance;
+        private final int score;
+
+        private TrainingNpcMatch(Npc npc, int distance, int score) {
+            this.npc = npc;
+            this.distance = distance;
+            this.score = score;
         }
     }
 

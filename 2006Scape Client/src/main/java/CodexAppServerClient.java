@@ -377,6 +377,7 @@ public class CodexAppServerClient {
     private JsonArray dynamicTools() {
         JsonArray tools = new JsonArray();
         tools.add(tool("observe_state", "Observe current player state, inventory, nearby NPCs, nearby objects, and nearby ground items.", schema()));
+        tools.add(tool("plan_combat_training", "Plan safe and efficient melee combat training toward target attack, strength, and defence levels. Returns next style, target area, food, gear, and coin-budget guidance.", schema("targetLevel", "number")));
         tools.add(tool("continue_dialogue", "Continue the currently open dialogue using the normal dialogue continue flow.", schema()));
         tools.add(tool("select_dialogue_option", "Select a visible dialogue option by number, using normal dialogue button handling. For ladder prompts, option 1 climbs up and option 2 climbs down.", schema("option", "number")));
         tools.add(tool("close_interfaces", "Close open game interfaces such as shops or dialogues.", schema()));
@@ -384,7 +385,9 @@ public class CodexAppServerClient {
         tools.add(tool("travel_to_landmark", "Walk toward a known landmark waypoint. Call repeatedly with wait_ticks until complete is true.", schema("name", "string")));
         tools.add(tool("wait_ticks", "Wait a small number of server ticks, then return updated state.", schema("ticks", "number")));
         tools.add(tool("find_nearest_npc", "Find the nearest live NPC by name. Set reachable=true to skip NPCs blocked by clipping or fences.", schema("name", "string", "maxDistance", "number", "reachable", "boolean")));
+        tools.add(tool("find_training_npc", "Find the best nearby combat-training NPC by balancing high hitpoints, low max hit, combat level, reachability, and whether it is already under attack.", schema("name", "string", "npc", "string", "maxDistance", "number", "minHitpoints", "number", "maxNpcMaxHit", "number", "reachable", "boolean", "allowUnderAttack", "boolean")));
         tools.add(tool("attack_npc", "Attack a live NPC by npcIndex using normal combat mechanics, walking into melee range first when needed.", schema("npcIndex", "number")));
+        tools.add(tool("train_combat", "Run one safe combat-training step: eat if HP is low, set the next melee style, continue current combat, attack a good nearby target, or travel to the recommended training area. Use style to temporarily force attack, strength, defence, or controlled.", schema("targetLevel", "number", "style", "string", "trainingStyle", "string", "eatAtHitpoints", "number", "retreatAtHitpoints", "number", "area", "string", "landmark", "string", "name", "string", "npc", "string", "maxDistance", "number", "minHitpoints", "number", "maxNpcMaxHit", "number")));
         tools.add(tool("find_nearest_object", "Find the nearest object by name, objectIds, or resource such as iron.", schema("name", "string", "resource", "string", "maxDistance", "number")));
         tools.add(tool("find_nearest_rock", "Find the nearest mineable rock by ore/resource name such as copper, tin, or iron.", schema("ore", "string", "resource", "string", "maxDistance", "number")));
         tools.add(tool("find_nearest_tree", "Find the nearest choppable tree by tree/resource name such as tree, oak, willow, maple, yew, or magic.", schema("tree", "string", "resource", "string", "maxDistance", "number")));
@@ -393,18 +396,23 @@ public class CodexAppServerClient {
         tools.add(tool("unequip_item", "Unequip a matching equipped item into inventory by equipment slot, slotName, name, or itemId using normal equipment mechanics.", schema("equipmentSlot", "number", "slotName", "string", "name", "string", "item", "string", "itemId", "number")));
         tools.add(tool("equip_best_items", "Equip the best combat upgrades currently in inventory using normal equipment requirements. Call after picking up gear drops, buying gear, or smithing gear.", schema()));
         tools.add(tool("eat_item", "Eat matching inventory food by name, itemId, or slot using normal food mechanics.", schema("name", "string", "item", "string", "itemId", "number", "slot", "number")));
+        tools.add(tool("eat_best_food", "Eat the best inventory food for the current missing hitpoints. Set emergency=true to prefer the highest-healing food.", schema("emergency", "boolean")));
         tools.add(tool("pickup_ground_item", "Pick up a visible nearby ground item or known global spawn by name, itemId, itemIds, or tile using normal ground-item mechanics. Call again after walking toward the item.", schema("name", "string", "item", "string", "itemId", "number", "x", "number", "y", "number", "maxDistance", "number")));
         tools.add(tool("open_nearest_shop", "Open a nearby shopkeeper's shop through normal shop mechanics. Use name to prefer a shop or NPC name.", schema("name", "string", "maxDistance", "number")));
         tools.add(tool("buy_shop_item", "Buy a matching item from the currently open shop by name, itemId, itemIds, or slot using coins and normal stock rules.", schema("name", "string", "item", "string", "itemId", "number", "slot", "number", "amount", "number")));
         tools.add(tool("sell_inventory_item", "Sell a matching inventory item to the currently open shop by name, itemId, or slot using normal shop rules.", schema("name", "string", "item", "string", "itemId", "number", "slot", "number", "amount", "number")));
+        tools.add(tool("sell_inventory_items", "Sell multiple matching inventory items to the currently open shop by category, name, itemId, or itemIds using normal shop rules.", schema("category", "string", "name", "string", "item", "string", "itemId", "number", "amount", "number")));
         tools.add(tool("interact_object", "Interact with an object using first, second, third, or fourth option.", schema("objectId", "number", "x", "number", "y", "number", "option", "string")));
         tools.add(tool("mine_ore", "Find and mine the requested ore with normal mining mechanics.", schema("ore", "string", "maxDistance", "number")));
         tools.add(tool("chop_tree", "Find and chop a nearby tree with normal woodcutting mechanics. Use tree=tree below level 15 and tree=oak at level 15+ when oaks are nearby.", schema("tree", "string", "resource", "string", "maxDistance", "number")));
         tools.add(tool("drop_inventory_items", "Drop inventory items by name or itemIds using the normal drop mechanic. Use this only when explicitly asked to drop items.", schema("name", "string")));
         tools.add(tool("deposit_inventory_items", "Deposit matching inventory items into the bank by name or itemIds. The player must already be in a bank area.", schema("name", "string")));
         tools.add(tool("withdraw_bank_items", "Withdraw matching bank items by name or itemIds. The player must already be in a bank area.", schema("name", "string", "amount", "number")));
+        tools.add(tool("deposit_excess_coins", "Deposit inventory coins above a combat budget into the bank. Use this before training or shopping so the player does not carry unnecessary capital.", schema("keepAmount", "number")));
         tools.add(tool("smelt_bar", "Smelt bars at a nearby furnace using normal smelting mechanics.", schema("bar", "string", "name", "string", "itemId", "number", "amount", "number", "maxDistance", "number")));
         tools.add(tool("smith_item", "Smith an item at a nearby anvil using normal smithing requirements and bars.", schema("name", "string", "item", "string", "itemId", "number", "amount", "number", "maxDistance", "number")));
+        tools.add(tool("smith_best_item", "Smith the best currently available item for the supplied bar and strategy using normal smithing mechanics.", schema("bar", "string", "name", "string", "barItemId", "number", "strategy", "string", "category", "string", "amount", "number")));
+        tools.add(tool("plan_smithing", "Plan smithing choices from inventory and bank bars, including best items by strategy and available smelting inputs.", schema("strategy", "string", "category", "string")));
         tools.add(tool("cancel_current_action", "Stop movement, combat follow, and current skilling/action task.", schema()));
         return tools;
     }
@@ -466,7 +474,10 @@ public class CodexAppServerClient {
                 + "Use the rs tools to complete the task with normal gameplay mechanics. "
                 + "Observe first. For travel, call travel_to_landmark, wait_ticks, and observe until complete. "
                 + "For gates, quests, or tolls, use interact_object, continue_dialogue, and select_dialogue_option instead of bypassing dialogue. "
-                + "For combat, set_combat_style before training a target skill, find the NPC before attacking, pick up useful drops through pickup_ground_item, call equip_best_items after acquiring gear, eat food or stop/retreat if hitpoints become unsafe, and keep death-risk items minimal. "
+                + "For combat, call plan_combat_training first, use train_combat in short observe/wait loops, eat_best_food when hitpoints approach the plan threshold, and stop or restock if food runs out. "
+                + "Train attack, strength, and defence toward the requested target, upgrade weapons and armour when levels unlock them, and use find_training_npc when choosing between nearby targets. "
+                + "Before shopping or training, bank unnecessary capital with deposit_excess_coins and only withdraw the coins needed for the next food or gear purchase. "
+                + "Pick up useful drops through pickup_ground_item, call equip_best_items after acquiring gear, and keep death-risk items minimal. "
                 + "Avoid dark wizards and other aggressive high-level NPC areas while low level. "
                 + "For mining, use mine_ore, wait_ticks, observe skill XP, switch to iron at level 15 if iron is reachable, and bank ores when inventory is full. "
                 + "For shops, travel to a store first, open_nearest_shop, then buy or sell only through shop tools. "

@@ -140,14 +140,42 @@ Agent session logging:
 Dynamic tools currently supported:
 
 - `rs.observe_state`
+- `rs.plan_combat_training`
+- `rs.continue_dialogue`
+- `rs.select_dialogue_option`
+- `rs.close_interfaces`
 - `rs.walk_to_tile`
 - `rs.travel_to_landmark`
 - `rs.wait_ticks`
 - `rs.find_nearest_npc`
+- `rs.find_training_npc`
 - `rs.attack_npc`
+- `rs.train_combat`
 - `rs.find_nearest_object`
+- `rs.find_nearest_rock`
+- `rs.find_nearest_tree`
+- `rs.set_combat_style`
+- `rs.equip_item`
+- `rs.unequip_item`
+- `rs.equip_best_items`
+- `rs.eat_item`
+- `rs.eat_best_food`
+- `rs.pickup_ground_item`
+- `rs.open_nearest_shop`
+- `rs.buy_shop_item`
+- `rs.sell_inventory_item`
+- `rs.sell_inventory_items`
 - `rs.interact_object`
+- `rs.chop_tree`
+- `rs.drop_inventory_items`
+- `rs.deposit_inventory_items`
+- `rs.withdraw_bank_items`
+- `rs.deposit_excess_coins`
 - `rs.mine_ore`
+- `rs.smelt_bar`
+- `rs.smith_item`
+- `rs.smith_best_item`
+- `rs.plan_smithing`
 - `rs.cancel_current_action`
 
 Gameplay guardrails:
@@ -156,7 +184,7 @@ Gameplay guardrails:
 - Do not add screen automation, admin teleports, item spawning, or direct player state edits for agent behavior.
 - Preserve session scoping: reject offline, disconnected, dead, expired-token, and wrong-player sessions.
 - Keep the Codex thread read-only with `approvalPolicy: "never"` and no network access at turn time. The model should use only `rs` dynamic tools for gameplay.
-- Initial world knowledge is in `AgentKnowledgeBase` and covers Lumbridge, Lumbridge goblins, Varrock, Varrock east mine, and short waypoint routes.
+- Initial world knowledge is in `AgentKnowledgeBase` and covers Lumbridge, Lumbridge goblins/cows, Varrock, Varrock east mine/banks, combat shops, Barbarian Village, Falador, rock crabs, and short waypoint routes.
 
 ## Runtime Config Files
 
