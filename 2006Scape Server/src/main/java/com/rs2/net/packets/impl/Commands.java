@@ -51,12 +51,7 @@ public class Commands implements PacketType {
         switch (playerCommand.toLowerCase()) {
             case "agentbridge":
                 if (arguments.length >= 2 && "claim".equalsIgnoreCase(arguments[0])) {
-                    String token = AgentSessionManager.INSTANCE.registerClaim(player, arguments[1]);
-                    if (token == null) {
-                        player.getPacketSender().sendMessage("[Agent] Unable to claim local agent bridge session.");
-                    } else {
-                        player.getPacketSender().sendMessage("[Agent] Local bridge session claimed.");
-                    }
+                    AgentSessionManager.INSTANCE.registerClaim(player, arguments[1]);
                 }
                 break;
             case "stuck":

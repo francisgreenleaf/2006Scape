@@ -85,7 +85,7 @@ public class AgentBridgeHttpClient {
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestMethod(method);
         connection.setConnectTimeout(2000);
-        connection.setReadTimeout(10000);
+        connection.setReadTimeout(180000);
         connection.setRequestProperty("Accept", "application/json");
         if (token != null && !token.isEmpty()) {
             connection.setRequestProperty("X-Agent-Token", token);

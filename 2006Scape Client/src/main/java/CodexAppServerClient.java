@@ -24,6 +24,7 @@ public class CodexAppServerClient {
 
     private final AgentBridgeHttpClient bridgeHttpClient;
     private final Consumer<String> messageConsumer;
+    private final AgentTerminalLog terminalLog;
     private final Runnable turnCompleteConsumer;
     private final AtomicInteger requestId = new AtomicInteger(1);
     private final Map<Integer, CompletableFuture<JsonObject>> pendingRequests = new ConcurrentHashMap<Integer, CompletableFuture<JsonObject>>();
@@ -38,8 +39,13 @@ public class CodexAppServerClient {
     private volatile String currentTurnId;
 
     public CodexAppServerClient(AgentBridgeHttpClient bridgeHttpClient, Consumer<String> messageConsumer, Runnable turnCompleteConsumer) {
+        this(bridgeHttpClient, messageConsumer, new AgentTerminalLog(), turnCompleteConsumer);
+    }
+
+    public CodexAppServerClient(AgentBridgeHttpClient bridgeHttpClient, Consumer<String> messageConsumer, AgentTerminalLog terminalLog, Runnable turnCompleteConsumer) {
         this.bridgeHttpClient = bridgeHttpClient;
         this.messageConsumer = messageConsumer;
+        this.terminalLog = terminalLog;
         this.turnCompleteConsumer = turnCompleteConsumer;
     }
 
@@ -57,6 +63,7 @@ public class CodexAppServerClient {
         readerThread = new Thread(() -> readLoop(), "CodexAppServerReader");
         readerThread.setDaemon(true);
         readerThread.start();
+        terminalLog.system("Codex app-server started.");
     }
 
     public synchronized void initialize() throws Exception {
@@ -76,6 +83,7 @@ public class CodexAppServerClient {
         awaitResult(sendRequest("initialize", params), 30_000L);
         sendNotification("initialized", new JsonObject());
         initialized = true;
+        terminalLog.system("Codex app-server initialized.");
         refreshAccount();
     }
 
@@ -102,6 +110,7 @@ public class CodexAppServerClient {
         params.addProperty("apiKey", apiKey);
         awaitResult(sendRequest("account/login/start", params), 30_000L);
         accountReady = true;
+        terminalLog.system("Codex account authenticated.");
     }
 
     public synchronized void ensureThread() throws Exception {
@@ -122,6 +131,7 @@ public class CodexAppServerClient {
         JsonObject result = awaitResult(sendRequest("thread/start", params), 30_000L);
         JsonObject thread = result.get("thread").getAsJsonObject();
         threadId = thread.get("id").getAsString();
+        terminalLog.system("Codex thread ready.");
     }
 
     public synchronized void startTurn(String userCommand) throws Exception {
@@ -143,6 +153,7 @@ public class CodexAppServerClient {
         event.addProperty("turnId", currentTurnId);
         event.addProperty("command", userCommand == null ? "" : userCommand);
         recordSessionEvent("turn_started", event);
+        terminalLog.task("Turn started: " + (userCommand == null ? "" : userCommand));
     }
 
     public synchronized void interruptCurrentTurn() {
@@ -153,6 +164,7 @@ public class CodexAppServerClient {
         event.addProperty("threadId", threadId);
         event.addProperty("turnId", currentTurnId);
         recordSessionEvent("turn_interrupted", event);
+        terminalLog.warn("Turn interrupted.");
         JsonObject params = new JsonObject();
         params.addProperty("threadId", threadId);
         params.addProperty("turnId", currentTurnId);
@@ -248,6 +260,7 @@ public class CodexAppServerClient {
                 handleServerMessage(line);
             }
         } catch (IOException e) {
+            terminalLog.error("Codex app-server disconnected: " + cleanMessage(e));
             messageConsumer.accept("Codex app-server disconnected: " + e.getMessage());
         }
     }
@@ -283,14 +296,19 @@ public class CodexAppServerClient {
             sendError(id, -32601, "Unsupported app-server request: " + method);
             return;
         }
+        String displayTool = "tool";
+        long startedAt = System.currentTimeMillis();
         try {
             JsonObject params = request.get("params").getAsJsonObject();
             String namespace = params.has("namespace") && !params.get("namespace").isJsonNull() ? params.get("namespace").getAsString() : "";
             String tool = params.get("tool").getAsString();
+            displayTool = namespace == null || namespace.length() == 0 ? tool : namespace + "." + tool;
             JsonObject arguments = params.has("arguments") && params.get("arguments").isJsonObject()
                     ? params.get("arguments").getAsJsonObject()
                     : new JsonObject();
             JsonObject toolResponse = "rs".equals(namespace) ? bridgeHttpClient.callTool(tool, arguments) : errorObject("Unknown tool namespace: " + namespace);
+            boolean success = toolResponse.has("success") && toolResponse.get("success").getAsBoolean();
+            terminalLog.toolResult(displayTool, success, summarizeToolResponse(toolResponse), System.currentTimeMillis() - startedAt);
             JsonObject result = new JsonObject();
             JsonArray contentItems = new JsonArray();
             JsonObject text = new JsonObject();
@@ -304,6 +322,7 @@ public class CodexAppServerClient {
             response.add("result", result);
             sendJson(response);
         } catch (Exception e) {
+            terminalLog.toolResult(displayTool, false, cleanMessage(e), System.currentTimeMillis() - startedAt);
             sendError(id, -32000, e.getMessage());
         }
     }
@@ -338,7 +357,9 @@ public class CodexAppServerClient {
         if ("item/started".equals(method) && params.has("item")) {
             JsonObject item = params.get("item").getAsJsonObject();
             if (item.has("type") && "dynamicToolCall".equals(item.get("type").getAsString()) && item.has("tool")) {
-                messageConsumer.accept("Using rs." + item.get("tool").getAsString() + "...");
+                String tool = "rs." + item.get("tool").getAsString();
+                terminalLog.toolStart(tool);
+                messageConsumer.accept("Using " + tool + "...");
             }
             return;
         }
@@ -347,6 +368,7 @@ public class CodexAppServerClient {
             if (item.has("type") && "agentMessage".equals(item.get("type").getAsString()) && item.has("text")) {
                 String text = item.get("text").getAsString().trim();
                 if (!text.isEmpty()) {
+                    terminalLog.assistant(text);
                     messageConsumer.accept(text);
                     JsonObject event = new JsonObject();
                     event.addProperty("threadId", threadId == null ? "" : threadId);
@@ -362,9 +384,39 @@ public class CodexAppServerClient {
             event.addProperty("threadId", threadId == null ? "" : threadId);
             event.addProperty("turnId", currentTurnId == null ? "" : currentTurnId);
             recordSessionEvent("turn_completed", event);
+            terminalLog.success("Turn completed.");
             currentTurnId = null;
             turnCompleteConsumer.run();
         }
+    }
+
+    private String summarizeToolResponse(JsonObject response) {
+        if (response == null) {
+            return "No response.";
+        }
+        if (response.has("message") && response.get("message").isJsonPrimitive()) {
+            return compact(response.get("message").getAsString(), 260);
+        }
+        return compact(GSON.toJson(response), 260);
+    }
+
+    private String compact(String value, int maxLength) {
+        if (value == null) {
+            return "";
+        }
+        String text = value.replace('\n', ' ').replace('\r', ' ').replace('\t', ' ').trim();
+        if (text.length() > maxLength) {
+            text = text.substring(0, maxLength - 3) + "...";
+        }
+        return text;
+    }
+
+    private String cleanMessage(Exception e) {
+        String message = e.getMessage();
+        if (message == null || message.trim().isEmpty()) {
+            message = e.getClass().getSimpleName();
+        }
+        return compact(message, 260);
     }
 
     private void recordSessionEvent(String event, JsonObject data) {
@@ -381,9 +433,13 @@ public class CodexAppServerClient {
         tools.add(tool("continue_dialogue", "Continue the currently open dialogue using the normal dialogue continue flow.", schema()));
         tools.add(tool("select_dialogue_option", "Select a visible dialogue option by number, using normal dialogue button handling. For ladder prompts, option 1 climbs up and option 2 climbs down.", schema("option", "number")));
         tools.add(tool("close_interfaces", "Close open game interfaces such as shops or dialogues.", schema()));
+        tools.add(tool("set_run", "Enable or disable the normal run toggle. Use enabled=true before repeated travel when run energy is available.", schema("enabled", "boolean")));
         tools.add(tool("walk_to_tile", "Walk the player toward an absolute tile using normal pathfinding.", schema("x", "number", "y", "number", "height", "number", "stopDistance", "number")));
-        tools.add(tool("travel_to_landmark", "Walk toward a known landmark waypoint. Call repeatedly with wait_ticks until complete is true.", schema("name", "string")));
-        tools.add(tool("wait_ticks", "Wait a small number of server ticks, then return updated state.", schema("ticks", "number")));
+        tools.add(tool("walk_to_tile_until_arrived", "Walk toward an absolute tile through normal pathfinding on server ticks until within stopDistance, maxTicks is reached, or a blocker occurs. Use this for efficient repeated routes when exact tiles are known.", schema("x", "number", "y", "number", "height", "number", "stopDistance", "number", "maxTicks", "number")));
+        tools.add(tool("travel_to_landmark", "Walk toward a known landmark waypoint. Call again after movement advances until complete is true; wait_ticks returns updated state, so avoid an extra observe after each wait.", schema("name", "string")));
+        tools.add(tool("travel_to_landmark_until_arrived", "Walk toward a known landmark through normal pathing on server ticks until arrived, maxTicks is reached, or a blocker occurs. Use this for efficient repeated bank and resource trips instead of polling travel_to_landmark and wait_ticks.", schema("name", "string", "maxTicks", "number")));
+        tools.add(tool("wait_ticks", "Wait for server ticks and return updated state. Use this as the observation after waiting, and prefer one multi-tick wait over repeated one-tick polling. Prefer wait_until_idle or an *_until_* batch tool when one fits.", schema("ticks", "number")));
+        tools.add(tool("wait_until_idle", "Wait server-side until selected busy states clear, then return observed state. Use after smelting, smithing, cooking, fishing, combat, or object interactions instead of repeated wait_ticks polling. Defaults: movement=true, skilling=true, combat=false.", schema("maxTicks", "number", "movement", "boolean", "skilling", "boolean", "combat", "boolean", "includeMovement", "boolean", "includeSkilling", "boolean", "includeCombat", "boolean")));
         tools.add(tool("find_nearest_npc", "Find the nearest live NPC by name. Set reachable=true to skip NPCs blocked by clipping or fences.", schema("name", "string", "maxDistance", "number", "reachable", "boolean")));
         tools.add(tool("find_training_npc", "Find the best nearby combat-training NPC by balancing high hitpoints, low max hit, combat level, reachability, and whether it is already under attack.", schema("name", "string", "npc", "string", "maxDistance", "number", "minHitpoints", "number", "maxNpcMaxHit", "number", "reachable", "boolean", "allowUnderAttack", "boolean")));
         tools.add(tool("attack_npc", "Attack a live NPC by npcIndex using normal combat mechanics, walking into melee range first when needed.", schema("npcIndex", "number")));
@@ -403,8 +459,10 @@ public class CodexAppServerClient {
         tools.add(tool("sell_inventory_item", "Sell a matching inventory item to the currently open shop by name, itemId, or slot using normal shop rules.", schema("name", "string", "item", "string", "itemId", "number", "slot", "number", "amount", "number")));
         tools.add(tool("sell_inventory_items", "Sell multiple matching inventory items to the currently open shop by category, name, itemId, or itemIds using normal shop rules.", schema("category", "string", "name", "string", "item", "string", "itemId", "number", "amount", "number")));
         tools.add(tool("interact_object", "Interact with an object using first, second, third, or fourth option.", schema("objectId", "number", "x", "number", "y", "number", "option", "string")));
-        tools.add(tool("mine_ore", "Find and mine the requested ore with normal mining mechanics.", schema("ore", "string", "maxDistance", "number")));
-        tools.add(tool("chop_tree", "Find and chop a nearby tree with normal woodcutting mechanics. Use tree=tree below level 15 and tree=oak at level 15+ when oaks are nearby.", schema("tree", "string", "resource", "string", "maxDistance", "number")));
+        tools.add(tool("mine_ore", "Find and mine the requested ore with normal mining mechanics. If mining is already underway, do not restart it; wait_ticks returns updated inventory and XP state.", schema("ore", "string", "maxDistance", "number")));
+        tools.add(tool("mine_ore_until_inventory_full", "Mine the requested ore through normal mining mechanics on server ticks until inventory is full, maxTicks is reached, or a blocker occurs. Use this for efficient banking runs instead of polling mine_ore and wait_ticks per ore.", schema("ore", "string", "maxDistance", "number", "maxTicks", "number")));
+        tools.add(tool("chop_tree", "Find and chop a nearby tree with normal woodcutting mechanics. If woodcutting is already underway, do not restart it. Use tree=tree below level 15 and tree=oak at level 15+ when oaks are nearby.", schema("tree", "string", "resource", "string", "maxDistance", "number")));
+        tools.add(tool("chop_tree_until_inventory_full", "Chop the requested tree through normal woodcutting mechanics on server ticks until inventory is full, maxTicks is reached, or a blocker occurs. Use this for efficient log gathering instead of polling chop_tree and wait_ticks per log.", schema("tree", "string", "resource", "string", "maxDistance", "number", "maxTicks", "number")));
         tools.add(tool("drop_inventory_items", "Drop inventory items by name or itemIds using the normal drop mechanic. Use this only when explicitly asked to drop items.", schema("name", "string")));
         tools.add(tool("deposit_inventory_items", "Deposit matching inventory items into the bank by name or itemIds. The player must already be in a bank area.", schema("name", "string")));
         tools.add(tool("withdraw_bank_items", "Withdraw matching bank items by name or itemIds. The player must already be in a bank area.", schema("name", "string", "amount", "number")));
@@ -472,17 +530,18 @@ public class CodexAppServerClient {
     private String userPrompt(String userCommand) {
         return "Player command: " + userCommand + "\n\n"
                 + "Use the rs tools to complete the task with normal gameplay mechanics. "
-                + "Observe first. For travel, call travel_to_landmark, wait_ticks, and observe until complete. "
+                + "Observe first. Enable run with set_run when energy is available before repeated travel. Prefer server-side batch tools for long actions: travel_to_landmark_until_arrived, walk_to_tile_until_arrived, mine_ore_until_inventory_full, chop_tree_until_inventory_full, and wait_until_idle. "
+                + "Do not poll one tick at a time unless no batch or idle wait can represent the next decision point. A batch tool's returned state is the next observation. "
                 + "For gates, quests, or tolls, use interact_object, continue_dialogue, and select_dialogue_option instead of bypassing dialogue. "
-                + "For combat, call plan_combat_training first, use train_combat in short observe/wait loops, eat_best_food when hitpoints approach the plan threshold, and stop or restock if food runs out. "
+                + "For combat, call plan_combat_training first, use train_combat in short loops, wait_until_idle with combat=true when waiting for a fight to resolve, eat_best_food when hitpoints approach the plan threshold, and stop or restock if food runs out. "
                 + "Train attack, strength, and defence toward the requested target, upgrade weapons and armour when levels unlock them, and use find_training_npc when choosing between nearby targets. "
                 + "Before shopping or training, bank unnecessary capital with deposit_excess_coins and only withdraw the coins needed for the next food or gear purchase. "
                 + "Pick up useful drops through pickup_ground_item, call equip_best_items after acquiring gear, and keep death-risk items minimal. "
                 + "Avoid dark wizards and other aggressive high-level NPC areas while low level. "
-                + "For mining, use mine_ore, wait_ticks, observe skill XP, switch to iron at level 15 if iron is reachable, and bank ores when inventory is full. "
+                + "For mining, use mine_ore_until_inventory_full for efficient inventory fills when staying at a mine, then bank ores when inventory is full; use single mine_ore calls only for setup or recovery. Switch to iron at level 15 if iron is reachable. "
                 + "For shops, travel to a store first, open_nearest_shop, then buy or sell only through shop tools. "
-                + "For smithing, use a hammer acquired through normal gameplay, withdraw ores/bars at a bank, smelt_bar only at furnaces, smith_item only at anvils, call equip_best_items after smithing upgrades, and keep only the best three protected items if death-risk minimization matters. "
-                + "For woodcutting, use chop_tree, wait_ticks, observe skill XP, and drop logs when inventory is full. "
+                + "For smithing, use a hammer acquired through normal gameplay, withdraw ores/bars at a bank, smelt_bar only at furnaces, smith_item only at anvils, then wait_until_idle for the production batch to finish before banking, withdrawing, or equipping. "
+                + "For woodcutting, use chop_tree_until_inventory_full for efficient inventory fills, then bank logs if the user asked to keep them or drop logs only when explicitly asked to power-train. "
                 + "Do not attempt shell commands, file edits, web access, or non-game tools. "
                 + "If the task is blocked, report the concrete blocker in one short final answer.";
     }
@@ -490,7 +549,7 @@ public class CodexAppServerClient {
     private String developerInstructions() {
         return "You are controlling a 2006Scape player through dynamic tools in namespace rs. "
                 + "All game actions must use those tools only. The environment is read-only and not for code editing. "
-                + "Prefer short, observable loops: observe, act, wait, observe. "
+                + "Prefer efficient observable loops: observe once, call a server-side batch or idle-wait tool when possible, then use the returned state before deciding the next action. Avoid repeated one-tick waits. "
                 + "Never use admin shortcuts, teleportation, item spawning, shell commands, or external services. "
                 + "Stop when the user task is complete or when a normal gameplay blocker is reached.";
     }

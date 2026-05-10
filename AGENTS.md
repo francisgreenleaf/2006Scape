@@ -145,8 +145,11 @@ Dynamic tools currently supported:
 - `rs.select_dialogue_option`
 - `rs.close_interfaces`
 - `rs.walk_to_tile`
+- `rs.walk_to_tile_until_arrived`
 - `rs.travel_to_landmark`
+- `rs.travel_to_landmark_until_arrived`
 - `rs.wait_ticks`
+- `rs.wait_until_idle`
 - `rs.find_nearest_npc`
 - `rs.find_training_npc`
 - `rs.attack_npc`
@@ -172,15 +175,19 @@ Dynamic tools currently supported:
 - `rs.withdraw_bank_items`
 - `rs.deposit_excess_coins`
 - `rs.mine_ore`
+- `rs.mine_ore_until_inventory_full`
 - `rs.smelt_bar`
 - `rs.smith_item`
 - `rs.smith_best_item`
 - `rs.plan_smithing`
+- `rs.chop_tree_until_inventory_full`
 - `rs.cancel_current_action`
 
 Gameplay guardrails:
 
 - Keep actions server-authoritative and routed through existing mechanics such as `PlayerAssistant.playerWalk`, `CombatAssistant.attackNpc`, `ClickObject`, and `Mining.startMining`.
+- Prefer server-side batch tools for long-running actions. Use `travel_to_landmark_until_arrived` or `walk_to_tile_until_arrived` instead of travel/walk plus repeated one-tick waits, `mine_ore_until_inventory_full` or `chop_tree_until_inventory_full` instead of polling per resource, and `wait_until_idle` after production actions such as smelting, smithing, cooking, fishing, or combat waits.
+- Treat a batch tool response as the next observation; do not immediately call `observe_state` unless the returned state is missing needed context.
 - Do not add screen automation, admin teleports, item spawning, or direct player state edits for agent behavior.
 - Preserve session scoping: reject offline, disconnected, dead, expired-token, and wrong-player sessions.
 - Keep the Codex thread read-only with `approvalPolicy: "never"` and no network access at turn time. The model should use only `rs` dynamic tools for gameplay.
