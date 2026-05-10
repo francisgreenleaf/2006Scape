@@ -19,15 +19,21 @@ public class AgentClientController {
     });
     private final AgentBridgeHttpClient bridgeHttpClient;
     private final CodexAppServerClient codexClient;
+    private final AgentTerminalLog terminalLog;
     private final SecureRandom secureRandom = new SecureRandom();
 
     private volatile boolean taskRunning;
 
     public AgentClientController(Game game) {
+        this(game, new AgentTerminalLog());
+    }
+
+    public AgentClientController(Game game, AgentTerminalLog terminalLog) {
         this.game = game;
+        this.terminalLog = terminalLog;
         this.bridgeHttpClient = new AgentBridgeHttpClient(ClientSettings.AGENT_BRIDGE_PORT);
-        Consumer<String> messages = text -> pushAgentMessage(text);
-        this.codexClient = new CodexAppServerClient(bridgeHttpClient, messages, () -> taskRunning = false);
+        Consumer<String> messages = text -> { };
+        this.codexClient = new CodexAppServerClient(bridgeHttpClient, messages, terminalLog, () -> taskRunning = false);
     }
 
     public void handleChatCommand(String rawCommand) {
@@ -62,15 +68,15 @@ public class AgentClientController {
                 password[i] = 0;
             }
             if (apiKey.isEmpty()) {
-                pushAgentMessage("No API key entered.");
+                terminalLog.warn("API key entry was cancelled or empty.");
                 return;
             }
             executor.submit(() -> {
                 try {
                     codexClient.loginWithApiKey(apiKey);
-                    pushAgentMessage("API key saved by Codex auth.");
+                    terminalLog.system("API key saved by Codex auth.");
                 } catch (Exception e) {
-                    pushAgentMessage("API-key login failed: " + cleanMessage(e));
+                    terminalLog.error("API-key login failed: " + cleanMessage(e));
                 }
             });
         });
@@ -90,12 +96,13 @@ public class AgentClientController {
                 }
             } catch (Exception ignored) {
             }
-            pushAgentMessage("Status: " + codexClient.status());
+            terminalLog.system("Status: " + codexClient.status());
         });
     }
 
     private void stopAgent() {
         executor.submit(() -> {
+            terminalLog.warn("Stop requested.");
             codexClient.interruptCurrentTurn();
             if (bridgeHttpClient.hasSession()) {
                 try {
@@ -104,17 +111,17 @@ public class AgentClientController {
                 }
             }
             taskRunning = false;
-            pushAgentMessage("Stopped.");
+            terminalLog.warn("Stopped.");
         });
     }
 
     private void runTask(String command) {
         if (taskRunning) {
-            pushAgentMessage("Already running. Use /agent stop first.");
+            terminalLog.warn("Already running. Use /agent stop first.");
             return;
         }
         taskRunning = true;
-        pushAgentMessage("Starting: " + command);
+        terminalLog.task("Task requested: " + command);
         executor.submit(() -> {
             try {
                 ensureReadyForTask();
@@ -122,7 +129,7 @@ public class AgentClientController {
                 codexClient.startTurn(command);
             } catch (Exception e) {
                 taskRunning = false;
-                pushAgentMessage(cleanMessage(e));
+                terminalLog.error(cleanMessage(e));
             }
         });
     }
@@ -130,12 +137,14 @@ public class AgentClientController {
     private void ensureReadyForTask() throws Exception {
         ensureAppServer();
         if (!bridgeHttpClient.health()) {
+            terminalLog.error("Local agent bridge is not running. Start the 2006Scape server first.");
             throw new IOException("Local agent bridge is not running. Start the 2006Scape server first.");
         }
         if (!bridgeHttpClient.hasSession()) {
             tryClaimGameSession();
         }
         if (!codexClient.hasAccount() && !codexClient.refreshAccount()) {
+            terminalLog.warn("Codex needs an API key. Use /agent key.");
             throw new IOException("Codex needs an API key. Use /agent key.");
         }
     }
@@ -147,6 +156,7 @@ public class AgentClientController {
     private void tryClaimGameSession() throws Exception {
         String nonce = nonce();
         if (!game.sendAgentBridgeClaimCommand(nonce)) {
+            terminalLog.warn("Log in before using the agent.");
             throw new IOException("Log in before using the agent.");
         }
         Exception lastError = null;
@@ -155,14 +165,16 @@ public class AgentClientController {
                 Thread.sleep(150L);
                 JsonObject response = bridgeHttpClient.claimSession(nonce);
                 if (response.has("success") && response.get("success").getAsBoolean()) {
-                    pushAgentMessage("Game bridge connected for " + bridgeHttpClient.getPlayerName() + ".");
+                    terminalLog.system("Game bridge connected for " + bridgeHttpClient.getPlayerName() + ".");
                     return;
                 }
             } catch (Exception e) {
                 lastError = e;
             }
         }
-        throw new IOException(lastError == null ? "Unable to claim game bridge session." : cleanMessage(lastError));
+        String message = lastError == null ? "Unable to claim game bridge session." : cleanMessage(lastError);
+        terminalLog.error(message);
+        throw new IOException(message);
     }
 
     private void recordTurnRequested(String command) {
@@ -182,32 +194,6 @@ public class AgentClientController {
             builder.append(String.format("%02x", b & 0xff));
         }
         return builder.toString();
-    }
-
-    private void pushAgentMessage(String text) {
-        if (text == null || text.trim().isEmpty()) {
-            return;
-        }
-        String normalized = text.replace('\n', ' ').replace('\r', ' ').trim();
-        int max = 72;
-        int offset = 0;
-        while (offset < normalized.length()) {
-            int end = Math.min(normalized.length(), offset + max);
-            if (end < normalized.length()) {
-                int lastSpace = normalized.lastIndexOf(' ', end);
-                if (lastSpace > offset + 20) {
-                    end = lastSpace;
-                }
-            }
-            String part = normalized.substring(offset, end).trim();
-            if (!part.isEmpty()) {
-                game.pushMessage("[Agent] " + part, 0, "");
-            }
-            offset = end;
-            while (offset < normalized.length() && normalized.charAt(offset) == ' ') {
-                offset++;
-            }
-        }
     }
 
     private String cleanMessage(Exception e) {

@@ -16,6 +16,7 @@ The agent bridge currently supports:
 - Local client-to-Codex app-server sessions started from the game client.
 - A server-side HTTP bridge on `127.0.0.1:43610` that exposes only the logged-in player's scoped session.
 - Dynamic `rs` tools for observing state, walking to known landmarks, dialogue/object interaction, NPC combat, food use, shops, banking, mining, woodcutting, smelting, and smithing.
+- Server-side batch tools for long-running actions such as landmark travel, tile walking, mining to a full inventory, woodcutting to a full inventory, and waiting until movement/skilling/combat activity settles. These avoid slow one-tick polling from the client or in-app chat.
 - Combat-training planning toward melee goals, including training-style selection, safer target choice, food thresholds, gear recommendations, and excess-coin banking.
 - Starter world knowledge for Lumbridge, Varrock, Barbarian Village, Al Kharid shops, Falador, rock crabs, banks, mines, trees, and combat areas.
 - Agent session logs under `2006Scape Server/data/logs/agent-sessions/<yyyy-MM-dd>/`, with raw JSONL events and a readable Markdown summary.
@@ -92,7 +93,7 @@ Basic flow:
 
 6. Use `/agent stop` to interrupt the active turn and clear the current server-side action.
 
-Agent sessions are local gameplay runs. The model is expected to observe first, call `rs` tools repeatedly, wait for server ticks, and adapt to game state such as missing tools, low hitpoints, full inventory, unreachable targets, closed interfaces, or insufficient skill levels.
+Agent sessions are local gameplay runs. The model is expected to observe first, prefer server-side batch tools for repeated travel and resource gathering, use `wait_until_idle` for production batches such as smelting or smithing, and adapt to game state such as missing tools, low hitpoints, full inventory, unreachable targets, closed interfaces, or insufficient skill levels.
 
 Useful checks while developing the bridge:
 

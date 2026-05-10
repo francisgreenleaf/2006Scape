@@ -28,6 +28,7 @@ import java.text.DecimalFormatSymbols;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.zip.CRC32;
 
 /**
@@ -38,6 +39,20 @@ import java.util.zip.CRC32;
 public class Game extends RSApplet {
 	
 	private boolean graphicsEnabled = true;
+	private static final int AGENT_TERMINAL_TAB = 7;
+	private static final int AGENT_TERMINAL_PANEL_X = 5;
+	private static final int AGENT_TERMINAL_PANEL_Y = 6;
+	private static final int AGENT_TERMINAL_PANEL_WIDTH = 180;
+	private static final int AGENT_TERMINAL_PANEL_HEIGHT = 248;
+	private static final int AGENT_TERMINAL_CONTENT_X = AGENT_TERMINAL_PANEL_X + 4;
+	private static final int AGENT_TERMINAL_CONTENT_Y = AGENT_TERMINAL_PANEL_Y + 27;
+	private static final int AGENT_TERMINAL_CONTENT_WIDTH = AGENT_TERMINAL_PANEL_WIDTH - 25;
+	private static final int AGENT_TERMINAL_CONTENT_HEIGHT = AGENT_TERMINAL_PANEL_HEIGHT - 58;
+	private static final int AGENT_TERMINAL_INPUT_X = AGENT_TERMINAL_PANEL_X + 4;
+	private static final int AGENT_TERMINAL_INPUT_Y = AGENT_TERMINAL_CONTENT_Y + AGENT_TERMINAL_CONTENT_HEIGHT + 5;
+	private static final int AGENT_TERMINAL_INPUT_WIDTH = AGENT_TERMINAL_PANEL_WIDTH - 8;
+	private static final int AGENT_TERMINAL_INPUT_HEIGHT = 19;
+	private static final int AGENT_TERMINAL_LINE_HEIGHT = 12;
 	
 	public static int random(final float range) {
 		return (int) (java.lang.Math.random() * (range + 1));
@@ -1811,7 +1826,9 @@ public class Game extends RSApplet {
 		invBack.method361(0, 0);
 		if (invOverlayInterfaceID == -1) {
 			if (tabInterfaceIDs[tabID] != -1) {
-				if (tabID == 7 && ClientSettings.CUSTOM_SETTINGS_TAB) {
+				if (isAgentTerminalTabSelected()) {
+					drawAgentTerminalPanel();
+				} else if (tabID == 7 && ClientSettings.CUSTOM_SETTINGS_TAB) {
 					try {
 						int centerX = 95;
 						int currentY = 10;
@@ -1850,7 +1867,7 @@ public class Game extends RSApplet {
 		}
 		if (invOverlayInterfaceID != -1) {
 			drawInterface(0, 0, RSInterface.interfaceCache[invOverlayInterfaceID], 0);
-		} else if (tabInterfaceIDs[tabID] != -1) {
+		} else if (tabInterfaceIDs[tabID] != -1 && !isAgentTerminalTabSelected()) {
 			drawInterface(0, 0, RSInterface.interfaceCache[tabInterfaceIDs[tabID]], 0);
 		}
 		if (menuOpen && menuScreenArea == 1) {
@@ -1859,6 +1876,229 @@ public class Game extends RSApplet {
 		aRSImageProducer_1163.drawGraphics(205, super.graphics, 553);
 		aRSImageProducer_1165.initDrawingArea();
 		Texture.lineOffsets = chatBoxAreaOffsets;
+	}
+
+	private boolean isAgentTerminalTabSelected() {
+		return ClientSettings.AGENT_ENABLED && tabID == AGENT_TERMINAL_TAB;
+	}
+
+	private void drawAgentTerminalPanel() {
+		if (agentTerminalLog == null) {
+			return;
+		}
+		TextDrawingArea font = agentTerminalFont();
+		int panelX = AGENT_TERMINAL_PANEL_X;
+		int panelY = AGENT_TERMINAL_PANEL_Y;
+		int panelWidth = AGENT_TERMINAL_PANEL_WIDTH;
+		int panelHeight = AGENT_TERMINAL_PANEL_HEIGHT;
+		int contentX = AGENT_TERMINAL_CONTENT_X;
+		int contentY = AGENT_TERMINAL_CONTENT_Y;
+		int contentWidth = AGENT_TERMINAL_CONTENT_WIDTH;
+		int contentHeight = AGENT_TERMINAL_CONTENT_HEIGHT;
+		int scrollX = panelX + panelWidth - 17;
+
+		DrawingArea.fillArea(panelHeight, panelY, 0x1c1812, panelWidth, panelX);
+		DrawingArea.fillPixels(panelY, panelHeight, 0x5d5447, panelX, panelWidth);
+		DrawingArea.fillArea(20, panelY + 1, 0, panelWidth - 2, panelX + 1);
+		aTextDrawingArea_1271.textLeft(0xc6bda8, "Agent Terminal", panelY + 15, panelX + 5);
+		String status = compactAgentTerminalText(agentSettingsStatus(), 17);
+		aTextDrawingArea_1270.textLeft(0x9bd6ff, status, panelY + 14, panelX + panelWidth - aTextDrawingArea_1270.getTextWidth(status) - 5);
+		DrawingArea.fillArea(contentHeight, contentY, 0x100d0a, contentWidth + 1, contentX - 1);
+
+		List<AgentTerminalLog.RenderLine> lines = agentTerminalLog.renderLines(font, contentWidth - 2);
+		int visibleRows = agentTerminalVisibleRows();
+		int maxOffset = Math.max(0, lines.size() - visibleRows);
+		if (agentTerminalLog.getScrollOffset() > maxOffset) {
+			agentTerminalLog.setScrollOffset(maxOffset, maxOffset);
+		}
+		int scrollOffset = agentTerminalLog.getScrollOffset();
+		int firstLine = Math.max(0, lines.size() - visibleRows - scrollOffset);
+		int lastLine = Math.min(lines.size(), firstLine + visibleRows);
+
+		DrawingArea.setDrawingArea(contentY + contentHeight, contentX, contentX + contentWidth, contentY);
+		for (int i = firstLine; i < lastLine; i++) {
+			AgentTerminalLog.RenderLine line = lines.get(i);
+			int lineY = contentY + 11 + (i - firstLine) * AGENT_TERMINAL_LINE_HEIGHT;
+			font.textLeft(0, line.text, lineY + 1, contentX + 2);
+			font.textLeft(line.color, line.text, lineY, contentX + 1);
+		}
+		DrawingArea.defaultDrawingAreaSize();
+
+		if (lines.size() > visibleRows) {
+			int totalHeight = Math.max(contentHeight + 1, lines.size() * AGENT_TERMINAL_LINE_HEIGHT);
+			int topScroll = Math.max(0, totalHeight - contentHeight - scrollOffset * AGENT_TERMINAL_LINE_HEIGHT);
+			drawScrollThumb(contentHeight, topScroll, contentY, scrollX, totalHeight);
+		} else {
+			DrawingArea.fillArea(contentHeight, contentY, 0x1c1812, 16, scrollX);
+			DrawingArea.fillPixels(contentY, contentHeight, 0x5d5447, scrollX, 16);
+		}
+		drawAgentTerminalInput(font);
+	}
+
+	private void drawAgentTerminalInput(TextDrawingArea font) {
+		int inputX = AGENT_TERMINAL_INPUT_X;
+		int inputY = AGENT_TERMINAL_INPUT_Y;
+		int inputWidth = AGENT_TERMINAL_INPUT_WIDTH;
+		DrawingArea.fillArea(AGENT_TERMINAL_INPUT_HEIGHT, inputY, 0x070604, inputWidth, inputX);
+		DrawingArea.fillPixels(inputY, AGENT_TERMINAL_INPUT_HEIGHT, agentTerminalInputFocused ? 0x7dff7d : 0x5d5447, inputX, inputWidth);
+		font.textLeft(0x7dff7d, ">", inputY + 13, inputX + 4);
+		String text = visibleAgentTerminalInput(font, inputWidth - 20);
+		if (text.length() == 0 && !agentTerminalInputFocused) {
+			text = "type here";
+			font.textLeft(0x5d5447, text, inputY + 13, inputX + 16);
+			return;
+		}
+		if (agentTerminalInputFocused && loopCycle % 40 < 20) {
+			text += "|";
+		}
+		font.textLeft(0xc6bda8, text, inputY + 13, inputX + 16);
+	}
+
+	private TextDrawingArea agentTerminalFont() {
+		return aTextDrawingArea_1270 != null ? aTextDrawingArea_1270 : chatTextDrawingArea;
+	}
+
+	private int agentTerminalVisibleRows() {
+		return Math.max(1, AGENT_TERMINAL_CONTENT_HEIGHT / AGENT_TERMINAL_LINE_HEIGHT);
+	}
+
+	private int agentTerminalMaxScrollOffset() {
+		if (agentTerminalLog == null) {
+			return 0;
+		}
+		List<AgentTerminalLog.RenderLine> lines = agentTerminalLog.renderLines(agentTerminalFont(), AGENT_TERMINAL_CONTENT_WIDTH - 2);
+		return Math.max(0, lines.size() - agentTerminalVisibleRows());
+	}
+
+	private String compactAgentTerminalText(String text, int maxLength) {
+		if (text == null) {
+			return "";
+		}
+		String trimmed = text.trim();
+		if (trimmed.length() > maxLength) {
+			trimmed = trimmed.substring(0, maxLength - 3) + "...";
+		}
+		return trimmed;
+	}
+
+	private String visibleAgentTerminalInput(TextDrawingArea font, int maxWidth) {
+		String text = agentTerminalInput == null ? "" : agentTerminalInput;
+		while (text.length() > 0 && font.method384(text) > maxWidth) {
+			text = text.substring(1);
+		}
+		return text;
+	}
+
+	private boolean isAgentTerminalInputActive() {
+		return isAgentTerminalTabSelected() && invOverlayInterfaceID == -1 && openInterfaceID == -1
+				&& inputDialogState == 0 && !messagePromptRaised && agentTerminalInputFocused;
+	}
+
+	private void handleAgentTerminalInputKey(int key) {
+		if (agentTerminalInput == null) {
+			agentTerminalInput = "";
+		}
+		if (key >= 32 && key <= 122 && agentTerminalInput.length() < 240) {
+			agentTerminalInput += (char) key;
+			inputTaken = true;
+			needDrawTabArea = true;
+			tabAreaAltered = true;
+			return;
+		}
+		if (key == 8 && agentTerminalInput.length() > 0) {
+			agentTerminalInput = agentTerminalInput.substring(0, agentTerminalInput.length() - 1);
+			inputTaken = true;
+			needDrawTabArea = true;
+			tabAreaAltered = true;
+			return;
+		}
+		if (key == 13 || key == 10) {
+			String command = agentTerminalInput.trim();
+			agentTerminalInput = "";
+			inputTaken = true;
+			needDrawTabArea = true;
+			tabAreaAltered = true;
+			if (command.length() > 0) {
+				agentTerminalLog.command(command);
+				handleAgentChatCommand(normalizeAgentTerminalCommand(command), false);
+			}
+		}
+	}
+
+	private String normalizeAgentTerminalCommand(String command) {
+		String trimmed = command == null ? "" : command.trim();
+		String lower = trimmed.toLowerCase();
+		if (lower.startsWith("/agent")) {
+			return trimmed;
+		}
+		if ("agent".equals(lower)) {
+			return "/agent";
+		}
+		if (lower.startsWith("agent ")) {
+			return "/" + trimmed;
+		}
+		return "/agent " + trimmed;
+	}
+
+	private boolean handleAgentTerminalClick() {
+		if (!isAgentTerminalTabSelected() || agentTerminalLog == null) {
+			return false;
+		}
+		int localX = super.saveClickX - 553;
+		int localY = super.saveClickY - 205;
+		int scrollX = AGENT_TERMINAL_PANEL_X + AGENT_TERMINAL_PANEL_WIDTH - 17;
+		int maxOffset = agentTerminalMaxScrollOffset();
+		boolean inputClicked = localX >= AGENT_TERMINAL_INPUT_X
+				&& localX < AGENT_TERMINAL_INPUT_X + AGENT_TERMINAL_INPUT_WIDTH
+				&& localY >= AGENT_TERMINAL_INPUT_Y
+				&& localY < AGENT_TERMINAL_INPUT_Y + AGENT_TERMINAL_INPUT_HEIGHT;
+		if (inputClicked) {
+			agentTerminalInputFocused = true;
+			needDrawTabArea = true;
+			tabAreaAltered = true;
+			return true;
+		}
+		if (agentTerminalInputFocused) {
+			agentTerminalInputFocused = false;
+			needDrawTabArea = true;
+			tabAreaAltered = true;
+		}
+		if (localX >= scrollX && localX < scrollX + 16
+				&& localY >= AGENT_TERMINAL_CONTENT_Y
+				&& localY < AGENT_TERMINAL_CONTENT_Y + AGENT_TERMINAL_CONTENT_HEIGHT) {
+			if (localY < AGENT_TERMINAL_CONTENT_Y + 16) {
+				agentTerminalLog.scrollBy(3, maxOffset);
+			} else if (localY >= AGENT_TERMINAL_CONTENT_Y + AGENT_TERMINAL_CONTENT_HEIGHT - 16) {
+				agentTerminalLog.scrollBy(-3, maxOffset);
+			} else if (localY < AGENT_TERMINAL_CONTENT_Y + AGENT_TERMINAL_CONTENT_HEIGHT / 2) {
+				agentTerminalLog.scrollBy(agentTerminalVisibleRows(), maxOffset);
+			} else {
+				agentTerminalLog.scrollBy(-agentTerminalVisibleRows(), maxOffset);
+			}
+			needDrawTabArea = true;
+			tabAreaAltered = true;
+			return true;
+		}
+		return false;
+	}
+
+	private void drawAgentTerminalIcon(int x, int y, boolean selected) {
+		int frame = selected ? 0xffff00 : 0xc6bda8;
+		int accent = selected ? 0x7dff7d : 0x9bd6ff;
+		int boxX = x + 5;
+		int boxY = y + 5;
+		drawRoundedTerminalIconBox(boxX, boxY, 18, 16, frame, 0x111111);
+		aTextDrawingArea_1271.textLeft(accent, ">", y + 17, x + 8);
+		DrawingArea.drawHorizontalLine(y + 18, accent, 7, x + 15);
+	}
+
+	private void drawRoundedTerminalIconBox(int x, int y, int width, int height, int borderColor, int fillColor) {
+		DrawingArea.fillArea(height - 4, y + 2, borderColor, width, x);
+		DrawingArea.fillArea(height - 2, y + 1, borderColor, width - 2, x + 1);
+		DrawingArea.fillArea(height, y, borderColor, width - 4, x + 2);
+		DrawingArea.fillArea(height - 6, y + 3, fillColor, width - 2, x + 1);
+		DrawingArea.fillArea(height - 4, y + 2, fillColor, width - 4, x + 2);
+		DrawingArea.fillArea(height - 2, y + 1, fillColor, width - 6, x + 3);
 	}
 
 	public void method37(int j) {
@@ -5000,6 +5240,8 @@ public class Game extends RSApplet {
 					inputDialogState = 0;
 					inputTaken = true;
 				}
+			} else if (isAgentTerminalInputActive()) {
+				handleAgentTerminalInputKey(j);
 			} else {
 				// typing characters
 				if (j >= 32 && j <= 122 && inputString.length() < maxInputStringLength()) {
@@ -5679,11 +5921,43 @@ public class Game extends RSApplet {
 	}
 
 	private void handleAgentChatCommand(String command) {
+		handleAgentChatCommand(command, true);
+	}
+
+	private void handleAgentChatCommand(String command, boolean echoCommand) {
 		if (agentController == null) {
-			pushMessage("[Agent] Agent controller is not ready.", 0, "");
+			if (agentTerminalLog != null) {
+				agentTerminalLog.error("Agent controller is not ready.");
+			}
 			return;
 		}
+		openAgentTerminalTab();
+		if (echoCommand && agentTerminalLog != null) {
+			agentTerminalLog.command(displayAgentCommand(command));
+		}
 		agentController.handleChatCommand(command);
+	}
+
+	private void openAgentTerminalTab() {
+		if (!ClientSettings.AGENT_ENABLED || tabInterfaceIDs[AGENT_TERMINAL_TAB] == -1) {
+			return;
+		}
+		tabID = AGENT_TERMINAL_TAB;
+		agentTerminalInputFocused = false;
+		needDrawTabArea = true;
+		tabAreaAltered = true;
+	}
+
+	private String displayAgentCommand(String command) {
+		String trimmed = command == null ? "" : command.trim();
+		String lower = trimmed.toLowerCase();
+		if (lower.startsWith("/agent")) {
+			trimmed = trimmed.length() > "/agent".length() ? trimmed.substring("/agent".length()).trim() : "status";
+		}
+		if (trimmed.length() == 0) {
+			return "status";
+		}
+		return trimmed;
 	}
 
 	private String agentSettingsStatus() {
@@ -5778,8 +6052,8 @@ public class Game extends RSApplet {
 				tabID = 6;
 				tabAreaAltered = true;
 			}
-			if (super.saveClickX >= 540 && super.saveClickX <= 574 && super.saveClickY >= 466 && super.saveClickY < 502 && tabInterfaceIDs[7] != -1 && ClientSettings.CUSTOM_SETTINGS_TAB) {
-				/* Unused tab bottom left */
+			if (super.saveClickX >= 540 && super.saveClickX <= 574 && super.saveClickY >= 466 && super.saveClickY < 502 && tabInterfaceIDs[7] != -1 && (ClientSettings.AGENT_ENABLED || ClientSettings.CUSTOM_SETTINGS_TAB)) {
+				/* Agent terminal or custom settings tab bottom left */
 				needDrawTabArea = true;
 				tabID = 7;
 				tabAreaAltered = true;
@@ -5816,8 +6090,11 @@ public class Game extends RSApplet {
 			}
 			if (invOverlayInterfaceID == -1) {
 				if (tabInterfaceIDs[tabID] != -1) {
+					if (tabID == 7 && ClientSettings.AGENT_ENABLED) {
+						handleAgentTerminalClick();
+					}
 					// Handle our custom tab
-					if (tabID == 7 && ClientSettings.CUSTOM_SETTINGS_TAB && super.saveClickX >= 575 && super.saveClickX <= 720 && super.saveClickY >= 210 && super.saveClickY <= 465) {
+					if (tabID == 7 && !ClientSettings.AGENT_ENABLED && ClientSettings.CUSTOM_SETTINGS_TAB && super.saveClickX >= 575 && super.saveClickX <= 720 && super.saveClickY >= 210 && super.saveClickY <= 465) {
 						int startY = 217 + 3;
 						if (super.saveClickY >= startY && super.saveClickY <= (startY + 30)) {
 							customSettingVisiblePlayerNames = !customSettingVisiblePlayerNames;
@@ -8109,7 +8386,7 @@ public class Game extends RSApplet {
 			backBase2.method361(0, 0);
 			if (invOverlayInterfaceID == -1) {
 				if (tabInterfaceIDs[tabID] != -1) {
-					if (tabID == 7 && ClientSettings.CUSTOM_SETTINGS_TAB) {
+					if (tabID == 7 && (ClientSettings.AGENT_ENABLED || ClientSettings.CUSTOM_SETTINGS_TAB)) {
 						redStone1_3.method361(42, 0);
 					}
 					if (tabID == 8) {
@@ -8131,8 +8408,12 @@ public class Game extends RSApplet {
 						redStone1_4.method361(229, 0);
 					}
 				}
-				if (tabInterfaceIDs[7] != -1 && (anInt1054 != 7 || loopCycle % 20 < 10) && ClientSettings.CUSTOM_SETTINGS_TAB) {
-					sideIcons[10].method361(47, 2);
+				if (tabInterfaceIDs[7] != -1 && (anInt1054 != 7 || loopCycle % 20 < 10) && (ClientSettings.AGENT_ENABLED || ClientSettings.CUSTOM_SETTINGS_TAB)) {
+					if (ClientSettings.AGENT_ENABLED) {
+						drawAgentTerminalIcon(47, 2, tabID == 7);
+					} else {
+						sideIcons[10].method361(47, 2);
+					}
 				}
 				if (tabInterfaceIDs[8] != -1 && (anInt1054 != 8 || loopCycle % 20 < 10)) {
 					sideIcons[7].method361(74, 2);
@@ -12094,7 +12375,16 @@ public class Game extends RSApplet {
 		unknownInt10 = -1;
 		menuOpen = false;
 		inputString = "";
-		agentController = new AgentClientController(this);
+		agentTerminalInput = "";
+		agentTerminalInputFocused = false;
+		agentTerminalLog = new AgentTerminalLog();
+		agentTerminalLog.setChangeListener(new Runnable() {
+			public void run() {
+				needDrawTabArea = true;
+				tabAreaAltered = true;
+			}
+		});
+		agentController = new AgentClientController(this, agentTerminalLog);
 		maxPlayers = 2048;
 		myPlayerIndex = 2047;
 		playerArray = new Player[maxPlayers];
@@ -12289,6 +12579,9 @@ public class Game extends RSApplet {
 	public boolean menuOpen;
 	public int anInt886;
 	public String inputString;
+	private String agentTerminalInput;
+	private boolean agentTerminalInputFocused;
+	private AgentTerminalLog agentTerminalLog;
 	private AgentClientController agentController;
 	private boolean agentAutoClaimSent;
 	private boolean agentAutoLoginAttempted;
@@ -12976,6 +13269,13 @@ public class Game extends RSApplet {
 
 	public final void mouseWheelMoved(MouseWheelEvent e) {
 		int notches = e.getWheelRotation();
+		if (isAgentTerminalTabSelected() && mouseX >= 553 && mouseX <= 743 && mouseY >= 205 && mouseY <= 466) {
+			int maxOffset = agentTerminalMaxScrollOffset();
+			agentTerminalLog.scrollBy(notches < 0 ? 3 : -3, maxOffset);
+			needDrawTabArea = true;
+			tabAreaAltered = true;
+			return;
+		}
 		if (ClientSettings.CONTROL_KEY_ZOOMING && !e.isControlDown()) {
 			return;
 		}

@@ -43,8 +43,8 @@ public class AgentKnowledgeBase {
         add(new Landmark("varrock", tile(3210, 3424, 0), varrockRoute()));
         add(new Landmark("varrock east mine", tile(3285, 3365, 0), varrockEastMineRoute()));
         add(new Landmark("iron mine", tile(3285, 3365, 0), varrockEastMineRoute()));
-        add(new Landmark("varrock east bank", tile(3253, 3420, 0), varrockEastBankRoute()));
-        add(new Landmark("east bank", tile(3253, 3420, 0), varrockEastBankRoute()));
+        add(new Landmark("varrock east bank", tile(3256, 3418, 0), varrockEastBankRoute()));
+        add(new Landmark("east bank", tile(3256, 3418, 0), varrockEastBankRoute()));
         add(new Landmark("varrock west bank", tile(3185, 3436, 0), varrockWestBankRoute()));
         add(new Landmark("west bank", tile(3185, 3436, 0), varrockWestBankRoute()));
         add(new Landmark("varrock guards", tile(3214, 3429, 0), varrockGuardsRoute()));
@@ -165,7 +165,7 @@ public class AgentKnowledgeBase {
                 tile(3237, 3284, 0), tile(3237, 3295, 0), tile(3240, 3302, 0),
                 tile(3261, 3322, 0), tile(3280, 3343, 0), tile(3285, 3365, 0),
                 tile(3289, 3388, 0), tile(3288, 3396, 0), tile(3278, 3408, 0), tile(3274, 3417, 0),
-                tile(3260, 3420, 0), tile(3253, 3420, 0));
+                tile(3260, 3420, 0), tile(3256, 3418, 0));
     }
 
     private static List<Tile> varrockWestBankRoute() {

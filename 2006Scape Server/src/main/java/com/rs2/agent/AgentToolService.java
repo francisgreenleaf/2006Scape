@@ -80,6 +80,9 @@ public class AgentToolService {
         if (!canAct(player)) {
             return failure("The player cannot act right now.");
         }
+        if ("set_run".equals(tool)) {
+            return setRun(player, arguments);
+        }
         if ("walk_to_tile".equals(tool)) {
             return walkToTile(player, arguments);
         }
@@ -262,6 +265,22 @@ public class AgentToolService {
         JsonObject result = success("Walking toward tile.");
         addPlayerState(result, player);
         result.add("target", tile(x, y, height));
+        return result;
+    }
+
+    private static JsonObject setRun(Player player, JsonObject arguments) {
+        boolean enabled = getBoolean(arguments, "enabled", true);
+        if (enabled && player.playerEnergy <= 0) {
+            JsonObject result = failure("Run energy is depleted.");
+            addPlayerState(result, player);
+            return result;
+        }
+        player.isRunning2 = enabled;
+        player.isRunning = player.isNewWalkCmdIsRunning() || player.isRunning2;
+        player.getPacketSender().sendConfig(504, player.isRunning2 ? 1 : 0);
+        player.getPacketSender().sendConfig(173, player.isRunning2 ? 1 : 0);
+        JsonObject result = success(player.isRunning2 ? "Run enabled." : "Run disabled.");
+        addPlayerState(result, player);
         return result;
     }
 
@@ -1056,6 +1075,12 @@ public class AgentToolService {
         if (ore.endsWith(" ore")) {
             ore = ore.substring(0, ore.length() - 4);
         }
+        if (player.isMining || player.miningRock) {
+            JsonObject result = success("Already mining; wait for the current mining action to finish.");
+            addMiningTarget(result, player);
+            addPlayerState(result, player);
+            return result;
+        }
         if (!hasUsablePickaxe(player)) {
             return failure("You need a usable pickaxe to mine rocks.");
         }
@@ -1087,6 +1112,7 @@ public class AgentToolService {
         mineRock(player, match.object);
         JsonObject result = success("Mining " + rock.name().toLowerCase(Locale.ENGLISH) + " ore.");
         result.add("object", objectJson(match.object, match.distance));
+        addMiningTickEstimate(result, player, rock);
         addPlayerState(result, player);
         return result;
     }
@@ -1095,6 +1121,12 @@ public class AgentToolService {
         String tree = normalize(getString(arguments, "tree", getString(arguments, "resource", "tree")));
         if (tree.isEmpty()) {
             tree = "tree";
+        }
+        if (player.isWoodcutting) {
+            JsonObject result = success("Already woodcutting; wait for the current chopping action to finish.");
+            addWoodcuttingTarget(result, player);
+            addPlayerState(result, player);
+            return result;
         }
         if (!Woodcutting.hasAxe(player)) {
             return failure("You need an axe to cut trees.");
@@ -1602,17 +1634,53 @@ public class AgentToolService {
     }
 
     private static boolean hasUsablePickaxe(Player player) {
+        return bestUsablePickaxeIndex(player) >= 0;
+    }
+
+    private static int bestUsablePickaxeIndex(Player player) {
         int miningLevel = player.playerLevel[Constants.MINING];
         int[][] pickSettings = player.getMining().Pick_Settings;
+        int best = -1;
         for (int i = 0; i < pickSettings.length; i++) {
             int itemId = pickSettings[i][0];
             int requiredLevel = pickSettings[i][1];
             if (requiredLevel <= miningLevel
                     && (player.getItemAssistant().playerHasItem(itemId) || player.playerEquipment[player.playerWeapon] == itemId)) {
-                return true;
+                best = i;
             }
         }
-        return false;
+        return best;
+    }
+
+    private static void addMiningTarget(JsonObject result, Player player) {
+        JsonObject mining = new JsonObject();
+        mining.addProperty("x", player.rockX);
+        mining.addProperty("y", player.rockY);
+        result.add("miningTarget", mining);
+    }
+
+    private static void addWoodcuttingTarget(JsonObject result, Player player) {
+        JsonObject woodcutting = new JsonObject();
+        woodcutting.addProperty("x", player.treeX);
+        woodcutting.addProperty("y", player.treeY);
+        result.add("woodcuttingTarget", woodcutting);
+    }
+
+    private static void addMiningTickEstimate(JsonObject result, Player player, Mining.rockData rock) {
+        int pick = bestUsablePickaxeIndex(player);
+        if (pick < 0) {
+            return;
+        }
+        int miningLevel = player.playerLevel[Constants.MINING];
+        int pickPower = player.getMining().Pick_Settings[pick][2];
+        result.addProperty("estimatedMineTicksMin", estimatedMiningTicks(rock, pickPower, miningLevel, 0));
+        result.addProperty("estimatedMineTicksMax", estimatedMiningTicks(rock, pickPower, miningLevel, 20));
+    }
+
+    private static int estimatedMiningTicks(Mining.rockData rock, int pickPower, int miningLevel, int randomRoll) {
+        double pickBonus = pickPower * (pickPower * 0.75);
+        double timer = (int) ((rock.getRequiredLevel() * 2) + 20 + randomRoll) - (pickBonus + miningLevel);
+        return timer < 2.0 ? 2 : (int) timer;
     }
 
     private static boolean isKnownVarrockMineResource(String resource) {
@@ -1765,10 +1833,19 @@ public class AgentToolService {
         playerJson.addProperty("hitpoints", player.playerLevel[Constants.HITPOINTS]);
         playerJson.addProperty("maxHitpoints", player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.HITPOINTS]));
         playerJson.addProperty("freeInventorySlots", player.getItemAssistant().freeSlots());
+        playerJson.addProperty("runEnergy", (int) Math.ceil(player.playerEnergy));
+        playerJson.addProperty("runEnabled", player.isRunning2);
         playerJson.addProperty("isDead", player.isDead);
         playerJson.addProperty("isMoving", player.isMoving);
+        playerJson.addProperty("isSkilling", SkillHandler.isSkilling(player));
         playerJson.addProperty("isMining", player.isMining);
         playerJson.addProperty("isWoodcutting", player.isWoodcutting);
+        playerJson.addProperty("isFishing", player.playerSkilling[Constants.FISHING] || player.playerIsFishing);
+        playerJson.addProperty("isCooking", player.playerIsCooking || player.playerSkilling[Constants.COOKING]);
+        playerJson.addProperty("isFletching", player.playerIsFletching || player.isFletching);
+        playerJson.addProperty("isCrafting", player.isCrafting || player.playerSkilling[Constants.CRAFTING]);
+        playerJson.addProperty("isFiremaking", player.isFiremaking);
+        playerJson.addProperty("isHerblore", player.isPotionMaking || player.playerSkilling[Constants.HERBLORE]);
         playerJson.addProperty("isSmelting", player.isSmelting);
         playerJson.addProperty("isSmithing", player.isSmithing || player.playerSkilling[Constants.SMITHING]);
         playerJson.addProperty("inBankArea", Boundary.isIn(player, Boundary.BANK_AREA));

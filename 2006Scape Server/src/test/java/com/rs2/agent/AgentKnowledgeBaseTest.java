@@ -24,8 +24,8 @@ public class AgentKnowledgeBaseTest {
         assertNotNull(AgentKnowledgeBase.findLandmark("rock crabs"));
         assertEquals(3285, AgentKnowledgeBase.findLandmark("iron mine").getTarget().x);
         assertEquals(3365, AgentKnowledgeBase.findLandmark("iron mine").getTarget().y);
-        assertEquals(3253, AgentKnowledgeBase.findLandmark("east bank").getTarget().x);
-        assertEquals(3420, AgentKnowledgeBase.findLandmark("east bank").getTarget().y);
+        assertEquals(3256, AgentKnowledgeBase.findLandmark("east bank").getTarget().x);
+        assertEquals(3418, AgentKnowledgeBase.findLandmark("east bank").getTarget().y);
         assertEquals(3275, AgentKnowledgeBase.findLandmark("kebab shop").getTarget().x);
         assertEquals(3180, AgentKnowledgeBase.findLandmark("kebab shop").getTarget().y);
         assertEquals(2666, AgentKnowledgeBase.findLandmark("rock crabs").getTarget().x);
