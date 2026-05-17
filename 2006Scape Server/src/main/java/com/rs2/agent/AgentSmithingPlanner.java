@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import org.apollo.cache.def.ItemDefinition;
+
 import com.rs2.game.content.skills.smithing.SmithingData;
 import com.rs2.game.items.DeprecatedItems;
 
@@ -11,7 +13,13 @@ public class AgentSmithingPlanner {
 
     public enum Strategy {
         XP_PER_BAR,
-        XP_PER_ACTION
+        XP_PER_ACTION,
+        MARGIN_PER_BAR,
+        MARGIN_PER_ACTION
+    }
+
+    public interface ItemValueProvider {
+        int value(int itemId);
     }
 
     public static SmithingChoice bestSmithableItem(int smithingLevel, int barItemId, int availableBars, Strategy strategy) {
@@ -20,6 +28,11 @@ public class AgentSmithingPlanner {
 
     public static SmithingChoice bestSmithableItem(int smithingLevel, int barItemId, int availableBars, Strategy strategy,
             String category) {
+        return bestSmithableItem(smithingLevel, barItemId, availableBars, strategy, category, defaultValueProvider());
+    }
+
+    public static SmithingChoice bestSmithableItem(int smithingLevel, int barItemId, int availableBars, Strategy strategy,
+            String category, ItemValueProvider valueProvider) {
         SmithingChoice best = null;
         for (SmithingData data : SmithingData.values()) {
             if (requiredBarForItem(data.getId()) != barItemId) {
@@ -32,7 +45,7 @@ public class AgentSmithingPlanner {
                 continue;
             }
             SmithingChoice choice = new SmithingChoice(data);
-            if (best == null || isBetter(choice, best, strategy)) {
+            if (best == null || isBetter(choice, best, strategy, valueProvider)) {
                 best = choice;
             }
         }
@@ -62,7 +75,34 @@ public class AgentSmithingPlanner {
         if ("xp per action".equals(normalized) || "action xp".equals(normalized) || "total xp".equals(normalized)) {
             return Strategy.XP_PER_ACTION;
         }
+        if ("margin per action".equals(normalized) || "profit per action".equals(normalized)
+                || "coins per action".equals(normalized) || "value per action".equals(normalized)) {
+            return Strategy.MARGIN_PER_ACTION;
+        }
+        if ("margin".equals(normalized) || "profit".equals(normalized) || "coins".equals(normalized)
+                || "coin".equals(normalized) || "gp".equals(normalized) || "value".equals(normalized)
+                || "margin per bar".equals(normalized) || "profit per bar".equals(normalized)
+                || "coins per bar".equals(normalized) || "value per bar".equals(normalized)) {
+            return Strategy.MARGIN_PER_BAR;
+        }
         return Strategy.XP_PER_BAR;
+    }
+
+    public static String strategyName(Strategy strategy) {
+        if (strategy == Strategy.XP_PER_ACTION) {
+            return "xp_per_action";
+        }
+        if (strategy == Strategy.MARGIN_PER_BAR) {
+            return "margin_per_bar";
+        }
+        if (strategy == Strategy.MARGIN_PER_ACTION) {
+            return "margin_per_action";
+        }
+        return "xp_per_bar";
+    }
+
+    public static boolean isMarginStrategy(Strategy strategy) {
+        return strategy == Strategy.MARGIN_PER_BAR || strategy == Strategy.MARGIN_PER_ACTION;
     }
 
     public static int barItemId(String name) {
@@ -149,9 +189,10 @@ public class AgentSmithingPlanner {
         return true;
     }
 
-    private static boolean isBetter(SmithingChoice candidate, SmithingChoice current, Strategy strategy) {
-        int candidatePrimary = strategy == Strategy.XP_PER_ACTION ? candidate.getXp() : candidate.getXpPerThousandBars();
-        int currentPrimary = strategy == Strategy.XP_PER_ACTION ? current.getXp() : current.getXpPerThousandBars();
+    private static boolean isBetter(SmithingChoice candidate, SmithingChoice current, Strategy strategy,
+            ItemValueProvider valueProvider) {
+        int candidatePrimary = score(candidate, strategy, valueProvider);
+        int currentPrimary = score(current, strategy, valueProvider);
         if (candidatePrimary != currentPrimary) {
             return candidatePrimary > currentPrimary;
         }
@@ -162,6 +203,36 @@ public class AgentSmithingPlanner {
             return candidate.getXp() > current.getXp();
         }
         return candidate.getBarsNeeded() > current.getBarsNeeded();
+    }
+
+    private static int score(SmithingChoice choice, Strategy strategy, ItemValueProvider valueProvider) {
+        if (strategy == Strategy.XP_PER_ACTION) {
+            return choice.getXp();
+        }
+        if (strategy == Strategy.MARGIN_PER_ACTION) {
+            return choice.getEstimatedSellValue(valueProvider);
+        }
+        if (strategy == Strategy.MARGIN_PER_BAR) {
+            return choice.getEstimatedSellValuePerThousandBars(valueProvider);
+        }
+        return choice.getXpPerThousandBars();
+    }
+
+    private static ItemValueProvider defaultValueProvider() {
+        return new ItemValueProvider() {
+            @Override
+            public int value(int itemId) {
+                return estimatedShopSellValue(itemId);
+            }
+        };
+    }
+
+    public static int estimatedShopSellValue(int itemId) {
+        ItemDefinition definition = ItemDefinition.lookup(itemId);
+        if (definition == null) {
+            return 0;
+        }
+        return Math.max(1, (int) Math.floor(definition.getValue() * 0.85D));
     }
 
     private static String normalize(String value) {
@@ -195,8 +266,33 @@ public class AgentSmithingPlanner {
             return data.getAmount();
         }
 
+        public int getProductAmount() {
+            String name = data.name();
+            if (name.contains("_DART")) {
+                return 10;
+            }
+            if (name.contains("_TIPS") || name.contains("_NAILS")) {
+                return 15;
+            }
+            if (name.contains("_KNIFE")) {
+                return 5;
+            }
+            return 1;
+        }
+
         public int getXpPerThousandBars() {
             return (data.getXp() * 1000) / Math.max(1, data.getAmount());
+        }
+
+        public int getEstimatedSellValue(ItemValueProvider valueProvider) {
+            if (valueProvider == null) {
+                return 0;
+            }
+            return Math.max(0, valueProvider.value(data.getId())) * getProductAmount();
+        }
+
+        public int getEstimatedSellValuePerThousandBars(ItemValueProvider valueProvider) {
+            return (getEstimatedSellValue(valueProvider) * 1000) / Math.max(1, data.getAmount());
         }
     }
 }

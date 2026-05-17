@@ -21,6 +21,7 @@ import com.rs2.game.content.consumables.Food;
 import com.rs2.game.content.consumables.Kebabs;
 import com.rs2.game.content.skills.SkillHandler;
 import com.rs2.game.content.skills.core.Mining;
+import com.rs2.agent.AgentSmithingPlanner.ItemValueProvider;
 import com.rs2.agent.AgentSmithingPlanner.SmithingChoice;
 import com.rs2.agent.AgentSmithingPlanner.Strategy;
 import com.rs2.game.content.skills.smithing.Smelting;
@@ -50,6 +51,22 @@ public class AgentToolService {
     private static final int DEFAULT_SCAN_DISTANCE = 30;
     private static final int DEFAULT_OBJECT_SCAN_DISTANCE = 60;
     private static final int COINS = AgentCombatPlanner.coinsItemId();
+    private static final int HAMMER = 2347;
+    private static final String SMITHING_BANK_LANDMARK = "varrock west bank";
+    private static final String SMITHING_FURNACE_LANDMARK = "al kharid furnace";
+    private static final String SMITHING_ANVIL_LANDMARK = "varrock west anvils";
+    private static final String SMITHING_SHOP_LANDMARK = "varrock general store";
+    private static final int SMITHING_TRAVEL_COINS = 20;
+    private static final int AL_KHARID_GATE_WEST_X = 3267;
+    private static final int AL_KHARID_GATE_EAST_X = 3268;
+    private static final int AL_KHARID_GATE_Y = 3227;
+    private static final int AL_KHARID_GATE_EXIT_X = 3260;
+    private static final int AL_KHARID_GATE_EXIT_Y = 3220;
+    private static final int VARROCK_ROUTE_JOIN_X = 3252;
+    private static final int VARROCK_ROUTE_JOIN_Y = 3236;
+    private static final int AL_KHARID_GATE_WEST_OBJECT = 2882;
+    private static final int AL_KHARID_GATE_EAST_OBJECT = 2883;
+    private static final int[] SMITHING_BAR_IDS = {2363, 2361, 2359, 2353, 2351, 2349};
     private static final String[] SKILL_NAMES = {"attack", "defence", "strength", "hitpoints", "ranged",
             "prayer", "magic", "cooking", "woodcutting", "fletching", "fishing", "firemaking", "crafting",
             "smithing", "mining", "herblore", "agility", "thieving", "slayer", "farming", "runecraft",
@@ -100,6 +117,9 @@ public class AgentToolService {
         }
         if ("train_combat".equals(tool)) {
             return trainCombat(player, arguments);
+        }
+        if ("train_smithing_profit".equals(tool)) {
+            return trainSmithingProfit(player, arguments);
         }
         if ("find_nearest_object".equals(tool)) {
             return findNearestObject(player, arguments);
@@ -536,6 +556,85 @@ public class AgentToolService {
         result.addProperty("trainingStyle", nextStyle);
         result.add("trainingPlan", trainingAreaJson(area));
         return result;
+    }
+
+    private static JsonObject trainSmithingProfit(Player player, JsonObject arguments) {
+        int targetCoins = Math.max(1, getInt(arguments, "targetCoins", 100000));
+        Strategy strategy = AgentSmithingPlanner.strategy(getString(arguments, "strategy", "margin"));
+        String category = getString(arguments, "category", "");
+        if (totalCoins(player) >= targetCoins) {
+            JsonObject result = success("Smithing profit target reached.");
+            result.addProperty("complete", true);
+            addSmithingProfitGoal(result, player, targetCoins, strategy, category);
+            addPlayerState(result, player);
+            return result;
+        }
+        if (player.isMoving || player.isSmelting || player.isSmithing || SkillHandler.isSkilling(player)) {
+            JsonObject result = success("Waiting for the current smithing profit action to finish.");
+            result.addProperty("action", "wait");
+            addSmithingProfitGoal(result, player, targetCoins, strategy, category);
+            addPlayerState(result, player);
+            return result;
+        }
+
+        if (countInventorySmithingProducts(player) > 0) {
+            return sellSmithingProductsForProfit(player, targetCoins, strategy, category);
+        }
+        if (!hasHammerAvailable(player)) {
+            return smithingProfitFailure(player, targetCoins, strategy, category,
+                    "A hammer is required for smithing, and no hammer was found in inventory or bank.");
+        }
+
+        SmeltingPlan inventorySmelting = bestSmeltingPlan(player, false, strategy, category);
+        if (inventorySmelting != null && inventorySmelting.inventoryActions(player) > 0) {
+            JsonObject tollCoins = prepareSmithingTravelCoins(player, inventorySmelting, targetCoins, strategy, category);
+            if (tollCoins != null) {
+                return tollCoins;
+            }
+            return smeltInventoryOresForProfit(player, inventorySmelting, targetCoins, strategy, category);
+        }
+
+        SmithingChoice inventoryChoice = bestInventorySmithingChoice(player, strategy, category);
+        if (inventoryChoice != null) {
+            return smithInventoryBarsForProfit(player, inventoryChoice, targetCoins, strategy, category);
+        }
+
+        if (!Boundary.isIn(player, Boundary.BANK_AREA)) {
+            return travelToBankForSmithingProfit(player, targetCoins, strategy, category);
+        }
+
+        int deposited = depositUnneededSmithingInventory(player);
+        if (deposited > 0) {
+            JsonObject result = success("Deposited non-smithing inventory items before restocking.");
+            result.addProperty("action", "bank");
+            result.addProperty("deposited", deposited);
+            addSmithingProfitGoal(result, player, targetCoins, strategy, category);
+            addPlayerState(result, player);
+            return result;
+        }
+
+        if (!hasHammerInInventory(player) && countBankItem(player, HAMMER) > 0) {
+            JsonObject withdrawArgs = new JsonObject();
+            withdrawArgs.addProperty("itemId", HAMMER);
+            withdrawArgs.addProperty("amount", 1);
+            JsonObject result = withdrawBankItems(player, withdrawArgs);
+            result.addProperty("action", "withdraw_hammer");
+            addSmithingProfitGoal(result, player, targetCoins, strategy, category);
+            return result;
+        }
+
+        BankBarPlan bankBars = bestBankBarPlan(player, strategy, category);
+        if (bankBars != null) {
+            return withdrawBarsForSmithingProfit(player, bankBars, targetCoins, strategy, category);
+        }
+
+        SmeltingPlan bankSmelting = bestSmeltingPlan(player, true, strategy, category);
+        if (bankSmelting != null) {
+            return withdrawOresForSmithingProfit(player, bankSmelting, targetCoins, strategy, category);
+        }
+
+        return smithingProfitFailure(player, targetCoins, strategy, category,
+                "No smithable bars or smeltable ores were found in inventory or bank.");
     }
 
     private static JsonObject findNearestObject(Player player, JsonObject arguments) {
@@ -1339,11 +1438,24 @@ public class AgentToolService {
         if (barType < 0) {
             return failure("Unknown bar type. Use bronze, iron, steel, silver, gold, mithril, adamant, or rune.");
         }
+        int[] smeltingRow = smeltingRowByType(barType);
+        if (smeltingRow == null) {
+            return failure("Unknown smelting recipe.");
+        }
+        if (player.playerLevel[Constants.SMITHING] < smeltingRow[1]) {
+            return failure("Smithing level " + smeltingRow[1] + " is required to smelt "
+                    + DeprecatedItems.getItemName(smeltingRow[6]).toLowerCase(Locale.ENGLISH) + ".");
+        }
+        int possible = possibleSmeltingActions(player, smeltingRow, false);
+        if (possible <= 0) {
+            return failure("Missing ores for " + DeprecatedItems.getItemName(smeltingRow[6]).toLowerCase(Locale.ENGLISH)
+                    + ": need " + smeltingRequirementText(smeltingRow) + ".");
+        }
         ObjectMatch furnace = findSmithingObject(player, "furnace", getInt(arguments, "maxDistance", 6));
         if (furnace == null) {
             return failure("No furnace is close enough to smelt bars with normal mechanics.");
         }
-        int amount = Math.max(1, Math.min(27, getInt(arguments, "amount", 1)));
+        int amount = Math.max(1, Math.min(Math.min(27, possible), getInt(arguments, "amount", 1)));
         player.stopMovement();
         player.endCurrentTask();
         player.getPlayerAssistant().resetFollow();
@@ -1367,6 +1479,14 @@ public class AgentToolService {
         SmithingData data = SmithingData.forId(itemId);
         if (data == null) {
             return failure("Unknown smithable item.");
+        }
+        if (player.playerLevel[Constants.SMITHING] < data.getLvl()) {
+            return failure("Smithing level " + data.getLvl() + " is required to smith "
+                    + DeprecatedItems.getItemName(itemId) + ".");
+        }
+        int barItemId = requiredBarForSmithingItem(itemId);
+        if (barItemId < 0 || countInventoryItem(player, barItemId) < data.getAmount()) {
+            return failure("Not enough bars are in inventory to smith " + DeprecatedItems.getItemName(itemId) + ".");
         }
         ObjectMatch anvil = findSmithingObject(player, "anvil", getInt(arguments, "maxDistance", 6));
         if (anvil == null) {
@@ -1408,7 +1528,7 @@ public class AgentToolService {
         Strategy strategy = AgentSmithingPlanner.strategy(getString(arguments, "strategy", "xp_per_bar"));
         String category = getString(arguments, "category", "");
         SmithingChoice choice = AgentSmithingPlanner.bestSmithableItem(player.playerLevel[Constants.SMITHING], barItemId,
-                availableBars, strategy, category);
+                availableBars, strategy, category, smithingValueProvider(player));
         if (choice == null) {
             return failure("No smithable item is available for the current Smithing level and bars.");
         }
@@ -1418,7 +1538,7 @@ public class AgentToolService {
         smithArgs.addProperty("itemId", choice.getItemId());
         smithArgs.addProperty("amount", amount);
         JsonObject result = smithItem(player, smithArgs);
-        result.addProperty("selectedBy", strategy == Strategy.XP_PER_ACTION ? "xp_per_action" : "xp_per_bar");
+        result.addProperty("selectedBy", AgentSmithingPlanner.strategyName(strategy));
         result.add("smithingChoice", smithingChoiceJson(player, choice, barItemId, amount));
         return result;
     }
@@ -1427,7 +1547,7 @@ public class AgentToolService {
         Strategy strategy = AgentSmithingPlanner.strategy(getString(arguments, "strategy", "xp_per_bar"));
         String category = getString(arguments, "category", "");
         JsonObject result = success("Planned smithing options.");
-        result.addProperty("strategy", strategy == Strategy.XP_PER_ACTION ? "xp_per_action" : "xp_per_bar");
+        result.addProperty("strategy", AgentSmithingPlanner.strategyName(strategy));
         result.addProperty("category", category.isEmpty() ? "any" : category);
         JsonArray bars = new JsonArray();
         int[] barIds = {2349, 2351, 2353, 2359, 2361, 2363};
@@ -1459,6 +1579,390 @@ public class AgentToolService {
         result.add("smelting", smeltingPlan(player));
         addPlayerState(result, player);
         return result;
+    }
+
+    private static JsonObject sellSmithingProductsForProfit(Player player, int targetCoins, Strategy strategy,
+            String category) {
+        if (player.isShopping && canCurrentShopBuyAnyItem(player)) {
+            JsonObject sellArgs = new JsonObject();
+            sellArgs.addProperty("category", "smithing_products");
+            sellArgs.addProperty("amount", countInventorySmithingProducts(player));
+            JsonObject result = sellInventoryItems(player, sellArgs);
+            result.addProperty("action", "sell_products");
+            result.addProperty("complete", totalCoins(player) >= targetCoins);
+            addSmithingProfitGoal(result, player, targetCoins, strategy, category);
+            return result;
+        }
+        if (player.isShopping) {
+            closeInterfaces(player);
+        }
+        JsonObject shopArgs = new JsonObject();
+        shopArgs.addProperty("name", "general");
+        shopArgs.addProperty("maxDistance", 10);
+        JsonObject opened = openNearestShop(player, shopArgs);
+        if (opened.has("success") && opened.get("success").getAsBoolean()) {
+            opened.addProperty("action", "open_shop");
+            addSmithingProfitGoal(opened, player, targetCoins, strategy, category);
+            return opened;
+        }
+        return travelToSmithingLandmarkOrBlock(player, SMITHING_SHOP_LANDMARK, "general store shopkeeper",
+                "Need to sell smithing products; moving toward Varrock General Store.", targetCoins, strategy, category);
+    }
+
+    private static JsonObject smithInventoryBarsForProfit(Player player, SmithingChoice choice, int targetCoins,
+            Strategy strategy, String category) {
+        if (!hasHammerInInventory(player)) {
+            if (Boundary.isIn(player, Boundary.BANK_AREA) && countBankItem(player, HAMMER) > 0) {
+                JsonObject withdrawArgs = new JsonObject();
+                withdrawArgs.addProperty("itemId", HAMMER);
+                withdrawArgs.addProperty("amount", 1);
+                JsonObject result = withdrawBankItems(player, withdrawArgs);
+                result.addProperty("action", "withdraw_hammer");
+                addSmithingProfitGoal(result, player, targetCoins, strategy, category);
+                return result;
+            }
+            if (countBankItem(player, HAMMER) > 0) {
+                return travelToBankForSmithingProfit(player, targetCoins, strategy, category);
+            }
+            return smithingProfitFailure(player, targetCoins, strategy, category,
+                    "A hammer is required for smithing, and no hammer was found in inventory or bank.");
+        }
+        ObjectMatch anvil = findSmithingObject(player, "anvil", 6);
+        if (anvil == null) {
+            return travelToSmithingLandmarkOrBlock(player, SMITHING_ANVIL_LANDMARK, "anvil",
+                    "Need to smith bars; moving toward the Varrock west anvils.", targetCoins, strategy, category);
+        }
+        int barItemId = AgentSmithingPlanner.requiredBarForItem(choice.getItemId());
+        int availableBars = countInventoryItem(player, barItemId);
+        int amount = availableBars / Math.max(1, choice.getBarsNeeded());
+        if (amount <= 0) {
+            return smithingProfitFailure(player, targetCoins, strategy, category,
+                    "No usable bars are in inventory for the selected smithing item.");
+        }
+        JsonObject smithArgs = new JsonObject();
+        smithArgs.addProperty("itemId", choice.getItemId());
+        smithArgs.addProperty("amount", amount);
+        JsonObject result = smithItem(player, smithArgs);
+        result.addProperty("action", "smith");
+        result.addProperty("selectedBy", AgentSmithingPlanner.strategyName(strategy));
+        result.add("smithingChoice", smithingChoiceJson(player, choice, barItemId, amount));
+        addSmithingProfitGoal(result, player, targetCoins, strategy, category);
+        return result;
+    }
+
+    private static JsonObject smeltInventoryOresForProfit(Player player, SmeltingPlan plan, int targetCoins,
+            Strategy strategy, String category) {
+        ObjectMatch furnace = findSmithingObject(player, "furnace", 6);
+        if (furnace == null) {
+            return travelToSmithingLandmarkOrBlock(player, SMITHING_FURNACE_LANDMARK, "furnace",
+                    "Need to smelt ores; moving toward the Al Kharid furnace.", targetCoins, strategy, category);
+        }
+        int amount = Math.max(1, Math.min(27, plan.inventoryActions(player)));
+        JsonObject smeltArgs = new JsonObject();
+        smeltArgs.addProperty("itemId", plan.barItemId);
+        smeltArgs.addProperty("amount", amount);
+        JsonObject result = smeltBar(player, smeltArgs);
+        result.addProperty("action", "smelt");
+        result.add("smeltingPlan", smeltingPlanJson(player, plan, amount));
+        addSmithingProfitGoal(result, player, targetCoins, strategy, category);
+        return result;
+    }
+
+    private static JsonObject travelToBankForSmithingProfit(Player player, int targetCoins, Strategy strategy,
+            String category) {
+        JsonObject gate = handleAlKharidGateForSmithingProfit(player, SMITHING_BANK_LANDMARK, targetCoins, strategy,
+                category);
+        if (gate != null) {
+            return gate;
+        }
+        AgentKnowledgeBase.Landmark bank = AgentKnowledgeBase.findLandmark(SMITHING_BANK_LANDMARK);
+        if (bank == null) {
+            return smithingProfitFailure(player, targetCoins, strategy, category,
+                    "No smithing bank route is known.");
+        }
+        int distance = AgentKnowledgeBase.distance(player.absX, player.absY, bank.getTarget().x, bank.getTarget().y);
+        if (distance <= 4 && !Boundary.isIn(player, Boundary.BANK_AREA)) {
+            return smithingProfitFailure(player, targetCoins, strategy, category,
+                    "Reached the expected bank area, but the bank state is not available.");
+        }
+        JsonObject travelArgs = new JsonObject();
+        travelArgs.addProperty("name", SMITHING_BANK_LANDMARK);
+        JsonObject result = travelToLandmark(player, travelArgs);
+        result.addProperty("message", "Need banking for smithing supplies; moving toward Varrock west bank.");
+        result.addProperty("action", "travel_bank");
+        addSmithingProfitGoal(result, player, targetCoins, strategy, category);
+        return result;
+    }
+
+    private static JsonObject travelToSmithingLandmarkOrBlock(Player player, String landmarkName, String missing,
+            String travelMessage, int targetCoins, Strategy strategy, String category) {
+        JsonObject gate = handleAlKharidGateForSmithingProfit(player, landmarkName, targetCoins, strategy, category);
+        if (gate != null) {
+            return gate;
+        }
+        AgentKnowledgeBase.Landmark landmark = AgentKnowledgeBase.findLandmark(landmarkName);
+        if (landmark == null) {
+            return smithingProfitFailure(player, targetCoins, strategy, category,
+                    "No route is known for " + landmarkName + ".");
+        }
+        int distance = AgentKnowledgeBase.distance(player.absX, player.absY, landmark.getTarget().x, landmark.getTarget().y);
+        if (distance <= 4) {
+            return smithingProfitFailure(player, targetCoins, strategy, category,
+                    "Reached " + landmark.getName() + ", but no reachable " + missing + " was found.");
+        }
+        JsonObject travelArgs = new JsonObject();
+        travelArgs.addProperty("name", landmarkName);
+        JsonObject result = travelToLandmark(player, travelArgs);
+        result.addProperty("message", travelMessage);
+        result.addProperty("action", "travel");
+        addSmithingProfitGoal(result, player, targetCoins, strategy, category);
+        return result;
+    }
+
+    private static JsonObject withdrawBarsForSmithingProfit(Player player, BankBarPlan plan, int targetCoins,
+            Strategy strategy, String category) {
+        int freeSlots = player.getItemAssistant().freeSlots();
+        if (freeSlots < plan.choice.getBarsNeeded()) {
+            return smithingProfitFailure(player, targetCoins, strategy, category,
+                    "Not enough inventory space to withdraw bars for the selected smithing item.");
+        }
+        int amount = Math.min(countBankItem(player, plan.barItemId), Math.min(freeSlots, 27));
+        if (amount <= 0) {
+            return smithingProfitFailure(player, targetCoins, strategy, category,
+                    "The selected bars are no longer available in the bank.");
+        }
+        JsonObject withdrawArgs = new JsonObject();
+        withdrawArgs.addProperty("itemId", plan.barItemId);
+        withdrawArgs.addProperty("amount", amount);
+        JsonObject result = withdrawBankItems(player, withdrawArgs);
+        result.addProperty("action", "withdraw_bars");
+        result.add("smithingChoice", smithingChoiceJson(player, plan.choice, plan.barItemId,
+                amount / Math.max(1, plan.choice.getBarsNeeded())));
+        addSmithingProfitGoal(result, player, targetCoins, strategy, category);
+        return result;
+    }
+
+    private static JsonObject withdrawOresForSmithingProfit(Player player, SmeltingPlan plan, int targetCoins,
+            Strategy strategy, String category) {
+        JsonObject tollCoins = prepareSmithingTravelCoins(player, plan, targetCoins, strategy, category);
+        if (tollCoins != null) {
+            return tollCoins;
+        }
+        int desiredActions = Math.min(plan.totalActions(player), Math.max(1, 27 / plan.oreSlotsPerAction()));
+        int primaryNeeded = Math.max(0, desiredActions - countInventoryItem(player, plan.primaryOreId));
+        if (primaryNeeded > 0) {
+            return withdrawSmeltingInput(player, plan.primaryOreId, primaryNeeded, "withdraw_primary_ore", plan,
+                    targetCoins, strategy, category);
+        }
+        if (plan.secondaryOreId > 0 && plan.secondaryOreAmount > 0) {
+            int secondaryTarget = desiredActions * plan.secondaryOreAmount;
+            int secondaryNeeded = Math.max(0, secondaryTarget - countInventoryItem(player, plan.secondaryOreId));
+            if (secondaryNeeded > 0) {
+                return withdrawSmeltingInput(player, plan.secondaryOreId, secondaryNeeded, "withdraw_secondary_ore",
+                        plan, targetCoins, strategy, category);
+            }
+        }
+        if (plan.inventoryActions(player) > 0) {
+            return smeltInventoryOresForProfit(player, plan, targetCoins, strategy, category);
+        }
+        return smithingProfitFailure(player, targetCoins, strategy, category,
+                "Not enough inventory space or banked ores to prepare a smelting batch.");
+    }
+
+    private static JsonObject withdrawSmeltingInput(Player player, int itemId, int needed, String action,
+            SmeltingPlan plan, int targetCoins, Strategy strategy, String category) {
+        int freeSlots = player.getItemAssistant().freeSlots();
+        if (freeSlots <= 0) {
+            return smithingProfitFailure(player, targetCoins, strategy, category,
+                    "No inventory space is available to withdraw ores for smelting.");
+        }
+        int amount = Math.min(Math.min(needed, freeSlots), countBankItem(player, itemId));
+        if (amount <= 0) {
+            return smithingProfitFailure(player, targetCoins, strategy, category,
+                    "Missing " + DeprecatedItems.getItemName(itemId).toLowerCase(Locale.ENGLISH)
+                            + " for the selected smelting plan.");
+        }
+        JsonObject withdrawArgs = new JsonObject();
+        withdrawArgs.addProperty("itemId", itemId);
+        withdrawArgs.addProperty("amount", amount);
+        JsonObject result = withdrawBankItems(player, withdrawArgs);
+        result.addProperty("action", action);
+        result.add("smeltingPlan", smeltingPlanJson(player, plan, plan.inventoryActions(player)));
+        addSmithingProfitGoal(result, player, targetCoins, strategy, category);
+        return result;
+    }
+
+    private static JsonObject prepareSmithingTravelCoins(Player player, SmeltingPlan plan, int targetCoins,
+            Strategy strategy, String category) {
+        if (!shouldPrepareAlKharidTollCoins(player) || countInventoryItem(player, COINS) >= SMITHING_TRAVEL_COINS) {
+            return null;
+        }
+        if (!Boundary.isIn(player, Boundary.BANK_AREA)) {
+            return travelToBankForSmithingProfit(player, targetCoins, strategy, category);
+        }
+        if (countBankItem(player, COINS) <= 0) {
+            return smithingProfitFailure(player, targetCoins, strategy, category,
+                    "Need coins for the Al Kharid gate toll, but no coins were found in the bank.");
+        }
+        if (player.getItemAssistant().freeSlots() <= 0) {
+            int oreSlot = firstInventorySlot(player, plan.primaryOreId);
+            if (oreSlot < 0) {
+                return smithingProfitFailure(player, targetCoins, strategy, category,
+                        "No inventory space is available to withdraw Al Kharid gate toll coins.");
+            }
+            player.stopMovement();
+            player.endCurrentTask();
+            player.getPlayerAssistant().resetFollow();
+            player.getCombatAssistant().resetPlayerAttack();
+            SkillHandler.resetSkills(player);
+            player.getPacketSender().openUpBank();
+            if (!player.getItemAssistant().bankItem(plan.primaryOreId, oreSlot, 1)) {
+                return smithingProfitFailure(player, targetCoins, strategy, category,
+                        "No inventory space is available to withdraw Al Kharid gate toll coins.");
+            }
+            JsonObject result = success("Deposited one ore to make room for Al Kharid gate toll coins.");
+            result.addProperty("action", "bank_toll_space");
+            result.addProperty("depositedItemId", plan.primaryOreId);
+            addSmithingProfitGoal(result, player, targetCoins, strategy, category);
+            addPlayerState(result, player);
+            return result;
+        }
+        int amount = Math.min(SMITHING_TRAVEL_COINS - countInventoryItem(player, COINS), countBankItem(player, COINS));
+        if (amount < 10) {
+            return smithingProfitFailure(player, targetCoins, strategy, category,
+                    "Need at least 10 coins for the Al Kharid gate toll.");
+        }
+        JsonObject withdrawArgs = new JsonObject();
+        withdrawArgs.addProperty("itemId", COINS);
+        withdrawArgs.addProperty("amount", amount);
+        JsonObject result = withdrawBankItems(player, withdrawArgs);
+        result.addProperty("action", "withdraw_toll_coins");
+        addSmithingProfitGoal(result, player, targetCoins, strategy, category);
+        return result;
+    }
+
+    private static JsonObject handleAlKharidGateForSmithingProfit(Player player, String landmarkName, int targetCoins,
+            Strategy strategy, String category) {
+        if (player.nextChat == 1026 || player.nextChat == 1027) {
+            JsonObject result = continueDialogue(player);
+            result.addProperty("action", "gate_dialogue");
+            addSmithingProfitGoal(result, player, targetCoins, strategy, category);
+            return result;
+        }
+        if ((player.dialogueAction == 502 && player.nextChat == 1020)
+                || (player.dialogueAction == 508 && player.nextChat == 1024)) {
+            JsonObject optionArgs = new JsonObject();
+            optionArgs.addProperty("option", 1);
+            JsonObject result = selectDialogueOption(player, optionArgs);
+            result.addProperty("action", "pay_gate_toll");
+            addSmithingProfitGoal(result, player, targetCoins, strategy, category);
+            return result;
+        }
+        if (isAlKharidGateDialogue(player.nextChat)) {
+            JsonObject result = continueDialogue(player);
+            result.addProperty("action", "gate_dialogue");
+            addSmithingProfitGoal(result, player, targetCoins, strategy, category);
+            return result;
+        }
+        JsonObject gateExit = handleAlKharidGateExitForSmithingProfit(player, landmarkName, targetCoins, strategy,
+                category);
+        if (gateExit != null) {
+            return gateExit;
+        }
+        if (!needsAlKharidGate(player, landmarkName)) {
+            return null;
+        }
+        if (countInventoryItem(player, COINS) < 10) {
+            return smithingProfitFailure(player, targetCoins, strategy, category,
+                    "Need 10 inventory coins to pass through the Al Kharid gate.");
+        }
+        int gateX = SMITHING_FURNACE_LANDMARK.equals(landmarkName) ? AL_KHARID_GATE_WEST_X : AL_KHARID_GATE_EAST_X;
+        if (player.absX != gateX || player.absY != AL_KHARID_GATE_Y) {
+            JsonObject walkArgs = new JsonObject();
+            walkArgs.addProperty("x", gateX);
+            walkArgs.addProperty("y", AL_KHARID_GATE_Y);
+            walkArgs.addProperty("height", player.heightLevel);
+            JsonObject result = walkToTile(player, walkArgs);
+            result.addProperty("message", "Need to pass through the Al Kharid gate.");
+            result.addProperty("action", "travel_gate");
+            addSmithingProfitGoal(result, player, targetCoins, strategy, category);
+            return result;
+        }
+        JsonObject objectArgs = new JsonObject();
+        objectArgs.addProperty("objectId", player.absY == AL_KHARID_GATE_Y + 1 ? AL_KHARID_GATE_EAST_OBJECT
+                : AL_KHARID_GATE_WEST_OBJECT);
+        objectArgs.addProperty("x", AL_KHARID_GATE_EAST_X);
+        objectArgs.addProperty("y", player.absY == AL_KHARID_GATE_Y + 1 ? AL_KHARID_GATE_Y + 1 : AL_KHARID_GATE_Y);
+        objectArgs.addProperty("option", "first");
+        JsonObject result = interactObject(player, objectArgs);
+        result.addProperty("action", "open_gate");
+        addSmithingProfitGoal(result, player, targetCoins, strategy, category);
+        return result;
+    }
+
+    private static JsonObject handleAlKharidGateExitForSmithingProfit(Player player, String landmarkName, int targetCoins,
+            Strategy strategy, String category) {
+        if (!isVarrockSmithingLandmark(landmarkName) || isEastOfAlKharidGate(player)) {
+            return null;
+        }
+        if (player.absX < VARROCK_ROUTE_JOIN_X || player.absX > AL_KHARID_GATE_EAST_X
+                || player.absY < AL_KHARID_GATE_EXIT_Y || player.absY > VARROCK_ROUTE_JOIN_Y) {
+            return null;
+        }
+        if (AgentKnowledgeBase.distance(player.absX, player.absY, VARROCK_ROUTE_JOIN_X, VARROCK_ROUTE_JOIN_Y) <= 4) {
+            return null;
+        }
+        if (AgentKnowledgeBase.distance(player.absX, player.absY, AL_KHARID_GATE_EXIT_X, AL_KHARID_GATE_EXIT_Y) > 2) {
+            return walkToSmithingProfitWaypoint(player, AL_KHARID_GATE_EXIT_X, AL_KHARID_GATE_EXIT_Y,
+                    "Leaving the Al Kharid gate area before resuming Varrock travel.", targetCoins, strategy,
+                    category);
+        }
+        if (AgentKnowledgeBase.distance(player.absX, player.absY, VARROCK_ROUTE_JOIN_X, VARROCK_ROUTE_JOIN_Y) > 4) {
+            return walkToSmithingProfitWaypoint(player, VARROCK_ROUTE_JOIN_X, VARROCK_ROUTE_JOIN_Y,
+                    "Rejoining the Varrock route after the Al Kharid gate.", targetCoins, strategy, category);
+        }
+        return null;
+    }
+
+    private static JsonObject walkToSmithingProfitWaypoint(Player player, int x, int y, String message, int targetCoins,
+            Strategy strategy, String category) {
+        JsonObject walkArgs = new JsonObject();
+        walkArgs.addProperty("x", x);
+        walkArgs.addProperty("y", y);
+        walkArgs.addProperty("height", player.heightLevel);
+        JsonObject result = walkToTile(player, walkArgs);
+        result.addProperty("message", message);
+        result.addProperty("action", "travel_gate_exit");
+        addSmithingProfitGoal(result, player, targetCoins, strategy, category);
+        return result;
+    }
+
+    private static JsonObject smithingProfitFailure(Player player, int targetCoins, Strategy strategy, String category,
+            String message) {
+        JsonObject result = failure(message);
+        result.addProperty("action", "blocked");
+        result.addProperty("complete", false);
+        addSmithingProfitGoal(result, player, targetCoins, strategy, category);
+        addPlayerState(result, player);
+        return result;
+    }
+
+    private static void addSmithingProfitGoal(JsonObject result, Player player, int targetCoins, Strategy strategy,
+            String category) {
+        JsonObject goal = new JsonObject();
+        goal.addProperty("targetCoins", targetCoins);
+        goal.addProperty("currentCoins", totalCoins(player));
+        goal.addProperty("inventoryCoins", countInventoryItem(player, COINS));
+        goal.addProperty("bankCoins", countBankItem(player, COINS));
+        goal.addProperty("coinsRemaining", Math.max(0, targetCoins - totalCoins(player)));
+        goal.addProperty("strategy", AgentSmithingPlanner.strategyName(strategy));
+        goal.addProperty("category", category == null || category.trim().isEmpty() ? "any" : category);
+        goal.addProperty("inventorySmithingProducts", countInventorySmithingProducts(player));
+        goal.addProperty("inventoryBars", countInventorySmithingBars(player));
+        goal.addProperty("bankBars", countBankSmithingBars(player));
+        goal.addProperty("hasHammerInInventory", hasHammerInInventory(player));
+        goal.addProperty("hasHammerInBank", countBankItem(player, HAMMER) > 0);
+        result.add("smithingProfit", goal);
     }
 
     private static JsonObject cancelCurrentAction(Player player) {
@@ -2327,6 +2831,263 @@ public class AgentToolService {
         return player.getPlayerAssistant().getLevelForXP(player.playerXP[skill]);
     }
 
+    private static boolean hasHammerAvailable(Player player) {
+        return hasHammerInInventory(player) || countBankItem(player, HAMMER) > 0;
+    }
+
+    private static boolean hasHammerInInventory(Player player) {
+        return countInventoryItem(player, HAMMER) > 0;
+    }
+
+    private static int totalCoins(Player player) {
+        return countInventoryItem(player, COINS) + countBankItem(player, COINS);
+    }
+
+    private static boolean canCurrentShopBuyAnyItem(Player player) {
+        return player.shopId >= 0 && player.shopId < ShopHandler.shopSModifier.length
+                && ShopHandler.shopSModifier[player.shopId] == 1;
+    }
+
+    private static int countInventorySmithingProducts(Player player) {
+        int count = 0;
+        for (int i = 0; i < player.playerItems.length; i++) {
+            int storedId = player.playerItems[i];
+            if (storedId > 0 && AgentSmithingPlanner.isSmithingProduct(storedId - 1)) {
+                count += Math.max(1, player.playerItemsN[i]);
+            }
+        }
+        return count;
+    }
+
+    private static int countInventorySmithingBars(Player player) {
+        int count = 0;
+        for (int barId : SMITHING_BAR_IDS) {
+            count += countInventoryItem(player, barId);
+        }
+        return count;
+    }
+
+    private static int countBankSmithingBars(Player player) {
+        int count = 0;
+        for (int barId : SMITHING_BAR_IDS) {
+            count += countBankItem(player, barId);
+        }
+        return count;
+    }
+
+    private static int depositUnneededSmithingInventory(Player player) {
+        player.stopMovement();
+        player.endCurrentTask();
+        player.getPlayerAssistant().resetFollow();
+        player.getCombatAssistant().resetPlayerAttack();
+        SkillHandler.resetSkills(player);
+        player.getPacketSender().openUpBank();
+
+        int deposited = 0;
+        for (int i = 0; i < player.playerItems.length; i++) {
+            int storedId = player.playerItems[i];
+            if (storedId <= 0) {
+                continue;
+            }
+            int itemId = storedId - 1;
+            if (itemId == COINS || itemId == HAMMER || AgentSmithingPlanner.isSmithingProduct(itemId)
+                    || isSmithingBar(itemId) || isSmeltingInputOre(itemId)) {
+                continue;
+            }
+            int amount = Math.max(1, player.playerItemsN[i]);
+            if (player.getItemAssistant().bankItem(itemId, i, amount)) {
+                deposited += amount;
+                i = -1;
+            }
+        }
+        return deposited;
+    }
+
+    private static boolean isSmithingBar(int itemId) {
+        for (int barId : SMITHING_BAR_IDS) {
+            if (itemId == barId) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isSmeltingInputOre(int itemId) {
+        for (int[] row : Smelting.data) {
+            if (itemId == row[3] || itemId == row[4]) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean shouldPrepareAlKharidTollCoins(Player player) {
+        return !isEastOfAlKharidGate(player) && countInventoryItem(player, COINS) < SMITHING_TRAVEL_COINS;
+    }
+
+    private static boolean needsAlKharidGate(Player player, String landmarkName) {
+        if (SMITHING_FURNACE_LANDMARK.equals(landmarkName)) {
+            return !isEastOfAlKharidGate(player) && player.absY <= AL_KHARID_GATE_Y + 8;
+        }
+        if (SMITHING_ANVIL_LANDMARK.equals(landmarkName) || SMITHING_BANK_LANDMARK.equals(landmarkName)
+                || SMITHING_SHOP_LANDMARK.equals(landmarkName)) {
+            return isEastOfAlKharidGate(player);
+        }
+        return false;
+    }
+
+    private static boolean isVarrockSmithingLandmark(String landmarkName) {
+        return SMITHING_ANVIL_LANDMARK.equals(landmarkName) || SMITHING_BANK_LANDMARK.equals(landmarkName)
+                || SMITHING_SHOP_LANDMARK.equals(landmarkName);
+    }
+
+    private static boolean isEastOfAlKharidGate(Player player) {
+        return player.absX >= AL_KHARID_GATE_EAST_X && player.absY <= AL_KHARID_GATE_Y + 8;
+    }
+
+    private static boolean isAlKharidGateDialogue(int nextChat) {
+        return nextChat == 1019 || nextChat == 1020 || nextChat == 1024 || nextChat == 1026 || nextChat == 1027;
+    }
+
+    private static int firstInventorySlot(Player player, int itemId) {
+        for (int i = 0; i < player.playerItems.length; i++) {
+            if (player.playerItems[i] == itemId + 1) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static SmithingChoice bestInventorySmithingChoice(Player player, Strategy strategy, String category) {
+        SmithingChoice best = null;
+        int bestBarItemId = -1;
+        ItemValueProvider valueProvider = smithingValueProvider(player);
+        for (int barId : SMITHING_BAR_IDS) {
+            int amount = countInventoryItem(player, barId);
+            if (amount <= 0) {
+                continue;
+            }
+            SmithingChoice choice = AgentSmithingPlanner.bestSmithableItem(player.playerLevel[Constants.SMITHING],
+                    barId, amount, strategy, category, valueProvider);
+            if (choice != null && isBetterSmithingChoice(choice, barId, best, bestBarItemId, strategy, valueProvider)) {
+                best = choice;
+                bestBarItemId = barId;
+            }
+        }
+        return best;
+    }
+
+    private static BankBarPlan bestBankBarPlan(Player player, Strategy strategy, String category) {
+        BankBarPlan best = null;
+        ItemValueProvider valueProvider = smithingValueProvider(player);
+        for (int barId : SMITHING_BAR_IDS) {
+            int amount = countInventoryItem(player, barId) + countBankItem(player, barId);
+            if (amount <= 0) {
+                continue;
+            }
+            SmithingChoice choice = AgentSmithingPlanner.bestSmithableItem(player.playerLevel[Constants.SMITHING],
+                    barId, amount, strategy, category, valueProvider);
+            if (choice == null) {
+                continue;
+            }
+            BankBarPlan candidate = new BankBarPlan(barId, choice, amount);
+            if (best == null || isBetterSmithingChoice(candidate.choice, candidate.barItemId, best.choice,
+                    best.barItemId, strategy, valueProvider)) {
+                best = candidate;
+            }
+        }
+        return best;
+    }
+
+    private static SmeltingPlan bestSmeltingPlan(Player player, boolean includeBank, Strategy strategy, String category) {
+        SmeltingPlan best = null;
+        ItemValueProvider valueProvider = smithingValueProvider(player);
+        for (int[] row : Smelting.data) {
+            int barItemId = row[6];
+            if (player.playerLevel[Constants.SMITHING] < row[1]) {
+                continue;
+            }
+            int possible = possibleSmeltingActions(player, row, includeBank);
+            if (possible <= 0) {
+                continue;
+            }
+            SmithingChoice choice = AgentSmithingPlanner.bestSmithableItem(player.playerLevel[Constants.SMITHING],
+                    barItemId, possible, strategy, category, valueProvider);
+            if (choice == null) {
+                continue;
+            }
+            SmeltingPlan candidate = new SmeltingPlan(row, choice, possible);
+            if (best == null || isBetterSmithingChoice(candidate.choice, candidate.barItemId, best.choice,
+                    best.barItemId, strategy, valueProvider)) {
+                best = candidate;
+            }
+        }
+        return best;
+    }
+
+    private static int possibleSmeltingActions(Player player, int[] row, boolean includeBank) {
+        int primary = countInventoryItem(player, row[3]);
+        if (includeBank) {
+            primary += countBankItem(player, row[3]);
+        }
+        int possible = primary;
+        if (row[4] > 0 && row[5] > 0) {
+            int secondary = countInventoryItem(player, row[4]);
+            if (includeBank) {
+                secondary += countBankItem(player, row[4]);
+            }
+            possible = Math.min(possible, secondary / row[5]);
+        }
+        return possible;
+    }
+
+    private static boolean isBetterSmithingChoice(SmithingChoice candidate, int candidateBarId,
+            SmithingChoice current, int currentBarId, Strategy strategy, ItemValueProvider valueProvider) {
+        if (current == null) {
+            return true;
+        }
+        int candidateScore = smithingChoiceScore(candidate, strategy, valueProvider);
+        int currentScore = smithingChoiceScore(current, strategy, valueProvider);
+        if (candidateScore != currentScore) {
+            return candidateScore > currentScore;
+        }
+        if (candidate.getRequiredLevel() != current.getRequiredLevel()) {
+            return candidate.getRequiredLevel() > current.getRequiredLevel();
+        }
+        if (candidate.getXp() != current.getXp()) {
+            return candidate.getXp() > current.getXp();
+        }
+        if (candidateBarId != currentBarId) {
+            return candidateBarId > currentBarId;
+        }
+        return candidate.getBarsNeeded() > current.getBarsNeeded();
+    }
+
+    private static int smithingChoiceScore(SmithingChoice choice, Strategy strategy, ItemValueProvider valueProvider) {
+        if (strategy == Strategy.XP_PER_ACTION) {
+            return choice.getXp();
+        }
+        if (strategy == Strategy.MARGIN_PER_ACTION) {
+            return choice.getEstimatedSellValue(valueProvider);
+        }
+        if (strategy == Strategy.MARGIN_PER_BAR) {
+            return choice.getEstimatedSellValuePerThousandBars(valueProvider);
+        }
+        return choice.getXpPerThousandBars();
+    }
+
+    private static ItemValueProvider smithingValueProvider(final Player player) {
+        return new ItemValueProvider() {
+            @Override
+            public int value(int itemId) {
+                if (player != null && player.isShopping) {
+                    return player.getShopAssistant().getItemShopValue(itemId, 0, true);
+                }
+                return AgentSmithingPlanner.estimatedShopSellValue(itemId);
+            }
+        };
+    }
+
     private static int countInventoryFood(Player player) {
         int count = 0;
         for (int i = 0; i < player.playerItems.length; i++) {
@@ -2490,11 +3251,38 @@ public class AgentToolService {
         json.addProperty("requiredLevel", choice.getRequiredLevel());
         json.addProperty("xp", choice.getXp());
         json.addProperty("xpPerThousandBars", choice.getXpPerThousandBars());
+        json.addProperty("productAmount", choice.getProductAmount());
+        json.addProperty("estimatedSellValuePerAction", choice.getEstimatedSellValue(smithingValueProvider(player)));
+        json.addProperty("estimatedSellValuePerThousandBars",
+                choice.getEstimatedSellValuePerThousandBars(smithingValueProvider(player)));
         json.addProperty("actions", Math.max(0, actions));
         json.addProperty("totalBars", Math.max(0, actions) * choice.getBarsNeeded());
         json.addProperty("totalXp", Math.max(0, actions) * choice.getXp());
         json.addProperty("estimatedSellValueEach", estimatedSellValue(player, choice.getItemId()));
-        json.addProperty("estimatedSellValueTotal", Math.max(0, actions) * estimatedSellValue(player, choice.getItemId()));
+        json.addProperty("estimatedSellValueTotal",
+                Math.max(0, actions) * choice.getEstimatedSellValue(smithingValueProvider(player)));
+        return json;
+    }
+
+    private static JsonObject smeltingPlanJson(Player player, SmeltingPlan plan, int actions) {
+        JsonObject json = new JsonObject();
+        json.addProperty("barType", plan.barType);
+        json.addProperty("barItemId", plan.barItemId);
+        json.addProperty("barName", DeprecatedItems.getItemName(plan.barItemId));
+        json.addProperty("requiredLevel", plan.requiredLevel);
+        json.addProperty("xp", plan.xp);
+        json.addProperty("primaryOreId", plan.primaryOreId);
+        json.addProperty("primaryOreName", DeprecatedItems.getItemName(plan.primaryOreId));
+        json.addProperty("inventoryActions", plan.inventoryActions(player));
+        json.addProperty("totalActions", plan.totalActions(player));
+        json.addProperty("plannedActions", Math.max(0, actions));
+        if (plan.secondaryOreId > 0) {
+            json.addProperty("secondaryOreId", plan.secondaryOreId);
+            json.addProperty("secondaryOreName", DeprecatedItems.getItemName(plan.secondaryOreId));
+            json.addProperty("secondaryOreAmount", plan.secondaryOreAmount);
+        }
+        json.add("smithingChoice", smithingChoiceJson(player, plan.choice, plan.barItemId,
+                Math.max(0, actions) / Math.max(1, plan.choice.getBarsNeeded())));
         return json;
     }
 
@@ -2532,10 +3320,7 @@ public class AgentToolService {
     }
 
     private static int estimatedSellValue(Player player, int itemId) {
-        if (player.isShopping) {
-            return player.getShopAssistant().getItemShopValue(itemId, 0, true);
-        }
-        return 0;
+        return smithingValueProvider(player).value(itemId);
     }
 
     private static int smeltingBarType(JsonObject arguments) {
@@ -2558,6 +3343,24 @@ public class AgentToolService {
             }
         }
         return -1;
+    }
+
+    private static int[] smeltingRowByType(int barType) {
+        for (int[] row : Smelting.data) {
+            if (row[0] == barType) {
+                return row;
+            }
+        }
+        return null;
+    }
+
+    private static String smeltingRequirementText(int[] row) {
+        String primary = "1 " + DeprecatedItems.getItemName(row[3]).toLowerCase(Locale.ENGLISH);
+        if (row[4] > 0 && row[5] > 0) {
+            return primary + " and " + row[5] + " "
+                    + DeprecatedItems.getItemName(row[4]).toLowerCase(Locale.ENGLISH);
+        }
+        return primary;
     }
 
     private static String smeltingBarName(int barType) {
@@ -2801,6 +3604,60 @@ public class AgentToolService {
             this.npc = npc;
             this.distance = distance;
             this.score = score;
+        }
+    }
+
+    private static class BankBarPlan {
+        private final int barItemId;
+        private final SmithingChoice choice;
+        private final int availableBars;
+
+        private BankBarPlan(int barItemId, SmithingChoice choice, int availableBars) {
+            this.barItemId = barItemId;
+            this.choice = choice;
+            this.availableBars = availableBars;
+        }
+    }
+
+    private static class SmeltingPlan {
+        private final int barType;
+        private final int requiredLevel;
+        private final int xp;
+        private final int primaryOreId;
+        private final int secondaryOreId;
+        private final int secondaryOreAmount;
+        private final int barItemId;
+        private final SmithingChoice choice;
+        private final int availableActions;
+
+        private SmeltingPlan(int[] row, SmithingChoice choice, int availableActions) {
+            this.barType = row[0];
+            this.requiredLevel = row[1];
+            this.xp = row[2];
+            this.primaryOreId = row[3];
+            this.secondaryOreId = row[4];
+            this.secondaryOreAmount = row[5];
+            this.barItemId = row[6];
+            this.choice = choice;
+            this.availableActions = availableActions;
+        }
+
+        private int inventoryActions(Player player) {
+            int possible = countInventoryItem(player, primaryOreId);
+            if (secondaryOreId > 0 && secondaryOreAmount > 0) {
+                possible = Math.min(possible, countInventoryItem(player, secondaryOreId) / secondaryOreAmount);
+            }
+            return possible;
+        }
+
+        private int totalActions(Player player) {
+            return Math.min(availableActions, possibleSmeltingActions(player,
+                    new int[] {barType, requiredLevel, xp, primaryOreId, secondaryOreId, secondaryOreAmount, barItemId},
+                    true));
+        }
+
+        private int oreSlotsPerAction() {
+            return 1 + (secondaryOreId > 0 && secondaryOreAmount > 0 ? secondaryOreAmount : 0);
         }
     }
 

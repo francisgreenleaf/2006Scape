@@ -34,12 +34,8 @@ public class AgentKnowledgeBase {
                 route(tile(3222, 3218, 0), tile(3218, 3230, 0), tile(3212, 3246, 0))));
         add(new Landmark("general store", tile(3212, 3246, 0),
                 route(tile(3222, 3218, 0), tile(3218, 3230, 0), tile(3212, 3246, 0))));
-        add(new Landmark("al kharid furnace", tile(3274, 3186, 0),
-                route(tile(3222, 3218, 0), tile(3239, 3218, 0), tile(3260, 3220, 0),
-                        tile(3274, 3195, 0), tile(3274, 3186, 0))));
-        add(new Landmark("furnace", tile(3274, 3186, 0),
-                route(tile(3222, 3218, 0), tile(3239, 3218, 0), tile(3260, 3220, 0),
-                        tile(3274, 3195, 0), tile(3274, 3186, 0))));
+        add(new Landmark("al kharid furnace", tile(3274, 3186, 0), alKharidFurnaceRoute()));
+        add(new Landmark("furnace", tile(3274, 3186, 0), alKharidFurnaceRoute()));
         add(new Landmark("varrock", tile(3210, 3424, 0), varrockRoute()));
         add(new Landmark("varrock east mine", tile(3285, 3365, 0), varrockEastMineRoute()));
         add(new Landmark("iron mine", tile(3285, 3365, 0), varrockEastMineRoute()));
@@ -50,6 +46,7 @@ public class AgentKnowledgeBase {
         add(new Landmark("varrock guards", tile(3214, 3429, 0), varrockGuardsRoute()));
         add(new Landmark("varrock west anvils", tile(3188, 3425, 0), varrockWestAnvilRoute()));
         add(new Landmark("anvils", tile(3188, 3425, 0), varrockWestAnvilRoute()));
+        add(new Landmark("varrock general store", tile(3216, 3415, 0), varrockGeneralStoreRoute()));
         add(new Landmark("varrock sword shop", tile(3206, 3399, 0), varrockSwordShopRoute()));
         add(new Landmark("sword shop", tile(3206, 3399, 0), varrockSwordShopRoute()));
         add(new Landmark("varrock armour shop", tile(3229, 3438, 0), varrockArmourShopRoute()));
@@ -147,16 +144,20 @@ public class AgentKnowledgeBase {
                 tile(3260, 3420, 0), tile(3238, 3420, 0), tile(3210, 3424, 0));
     }
 
+    private static List<Tile> alKharidFurnaceRoute() {
+        List<Tile> route = reverse(varrockRoute());
+        route.add(tile(3239, 3218, 0));
+        route.add(tile(3260, 3220, 0));
+        route.add(tile(3274, 3195, 0));
+        route.add(tile(3274, 3186, 0));
+        return route;
+    }
+
     private static List<Tile> varrockEastMineRoute() {
         return route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
                 tile(3252, 3266, 0), tile(3253, 3267, 0), tile(3250, 3275, 0),
                 tile(3237, 3284, 0), tile(3237, 3295, 0), tile(3240, 3302, 0),
-                tile(3261, 3322, 0), tile(3280, 3343, 0), tile(3285, 3365, 0),
-                tile(3289, 3388, 0), tile(3288, 3396, 0), tile(3278, 3408, 0),
-                tile(3274, 3417, 0), tile(3260, 3420, 0), tile(3238, 3420, 0),
-                tile(3210, 3424, 0), tile(3238, 3420, 0), tile(3260, 3420, 0),
-                tile(3274, 3417, 0), tile(3278, 3408, 0),
-                tile(3288, 3396, 0), tile(3289, 3388, 0), tile(3285, 3365, 0));
+                tile(3261, 3322, 0), tile(3280, 3343, 0), tile(3285, 3365, 0));
     }
 
     private static List<Tile> varrockEastBankRoute() {
@@ -195,6 +196,15 @@ public class AgentKnowledgeBase {
                 tile(3289, 3388, 0), tile(3288, 3396, 0), tile(3278, 3408, 0), tile(3274, 3417, 0),
                 tile(3260, 3420, 0), tile(3238, 3420, 0), tile(3210, 3424, 0),
                 tile(3196, 3428, 0), tile(3188, 3425, 0));
+    }
+
+    private static List<Tile> varrockGeneralStoreRoute() {
+        return route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
+                tile(3252, 3266, 0), tile(3253, 3267, 0), tile(3250, 3275, 0),
+                tile(3237, 3284, 0), tile(3237, 3295, 0), tile(3240, 3302, 0),
+                tile(3261, 3322, 0), tile(3280, 3343, 0), tile(3285, 3365, 0),
+                tile(3289, 3388, 0), tile(3288, 3396, 0), tile(3278, 3408, 0), tile(3274, 3417, 0),
+                tile(3260, 3420, 0), tile(3238, 3420, 0), tile(3216, 3415, 0));
     }
 
     private static List<Tile> varrockSwordShopRoute() {

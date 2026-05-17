@@ -444,6 +444,7 @@ public class CodexAppServerClient {
         tools.add(tool("find_training_npc", "Find the best nearby combat-training NPC by balancing high hitpoints, low max hit, combat level, reachability, and whether it is already under attack.", schema("name", "string", "npc", "string", "maxDistance", "number", "minHitpoints", "number", "maxNpcMaxHit", "number", "reachable", "boolean", "allowUnderAttack", "boolean")));
         tools.add(tool("attack_npc", "Attack a live NPC by npcIndex using normal combat mechanics, walking into melee range first when needed.", schema("npcIndex", "number")));
         tools.add(tool("train_combat", "Run one safe combat-training step: eat if HP is low, set the next melee style, continue current combat, attack a good nearby target, or travel to the recommended training area. Use style to temporarily force attack, strength, defence, or controlled.", schema("targetLevel", "number", "style", "string", "trainingStyle", "string", "eatAtHitpoints", "number", "retreatAtHitpoints", "number", "area", "string", "landmark", "string", "name", "string", "npc", "string", "maxDistance", "number", "minHitpoints", "number", "maxNpcMaxHit", "number")));
+        tools.add(tool("train_smithing_profit", "Run one high-level smithing profit step toward a coin target: sell smithing products, bank/restock, withdraw bars or ores, smelt, smith the best item by XP or margin, or report a concrete blocker.", schema("targetCoins", "number", "strategy", "string", "category", "string")));
         tools.add(tool("find_nearest_object", "Find the nearest object by name, objectIds, or resource such as iron.", schema("name", "string", "resource", "string", "maxDistance", "number")));
         tools.add(tool("find_nearest_rock", "Find the nearest mineable rock by ore/resource name such as copper, tin, or iron.", schema("ore", "string", "resource", "string", "maxDistance", "number")));
         tools.add(tool("find_nearest_tree", "Find the nearest choppable tree by tree/resource name such as tree, oak, willow, maple, yew, or magic.", schema("tree", "string", "resource", "string", "maxDistance", "number")));
@@ -540,7 +541,8 @@ public class CodexAppServerClient {
                 + "Avoid dark wizards and other aggressive high-level NPC areas while low level. "
                 + "For mining, use mine_ore_until_inventory_full for efficient inventory fills when staying at a mine, then bank ores when inventory is full; use single mine_ore calls only for setup or recovery. Switch to iron at level 15 if iron is reachable. "
                 + "For shops, travel to a store first, open_nearest_shop, then buy or sell only through shop tools. "
-                + "For smithing, use a hammer acquired through normal gameplay, withdraw ores/bars at a bank, smelt_bar only at furnaces, smith_item only at anvils, then wait_until_idle for the production batch to finish before banking, withdrawing, or equipping. "
+                + "For smithing profit, call plan_smithing, then use train_smithing_profit with targetCoins=100000 and strategy=margin in short loops; MrGem may already have iron ore, so let the tool withdraw ore, smelt iron bars, smith products, sell through general stores, and report blockers such as missing hammer, missing ores, no inventory space, or unreachable bank/furnace/anvil/shop. "
+                + "When train_smithing_profit starts smelting or smithing, use wait_until_idle for the production batch to finish before calling it again. Use smelt_bar and smith_item directly only for manual recovery or a specific requested item. "
                 + "For woodcutting, use chop_tree_until_inventory_full for efficient inventory fills, then bank logs if the user asked to keep them or drop logs only when explicitly asked to power-train. "
                 + "Do not attempt shell commands, file edits, web access, or non-game tools. "
                 + "If the task is blocked, report the concrete blocker in one short final answer.";
@@ -550,6 +552,7 @@ public class CodexAppServerClient {
         return "You are controlling a 2006Scape player through dynamic tools in namespace rs. "
                 + "All game actions must use those tools only. The environment is read-only and not for code editing. "
                 + "Prefer efficient observable loops: observe once, call a server-side batch or idle-wait tool when possible, then use the returned state before deciding the next action. Avoid repeated one-tick waits. "
+                + "For smithing profit requests, prefer plan_smithing plus train_smithing_profit loops over manually sequencing every bank, furnace, anvil, and shop step. "
                 + "Never use admin shortcuts, teleportation, item spawning, shell commands, or external services. "
                 + "Stop when the user task is complete or when a normal gameplay blocker is reached.";
     }
