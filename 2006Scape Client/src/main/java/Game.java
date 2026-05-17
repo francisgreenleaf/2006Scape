@@ -5983,7 +5983,14 @@ public class Game extends RSApplet {
 		if (agentAutoClaimSent || ClientSettings.AGENT_AUTO_CLAIM_NONCE == null || ClientSettings.AGENT_AUTO_CLAIM_NONCE.trim().isEmpty()) {
 			return;
 		}
-		agentAutoClaimSent = sendAgentBridgeClaimCommand(ClientSettings.AGENT_AUTO_CLAIM_NONCE);
+		if (agentAutoClaimAttempts > 0 && loopCycle - agentAutoClaimLastAttemptCycle < 25) {
+			return;
+		}
+		agentAutoClaimLastAttemptCycle = loopCycle;
+		if (sendAgentBridgeClaimCommand(ClientSettings.AGENT_AUTO_CLAIM_NONCE)) {
+			agentAutoClaimAttempts++;
+			agentAutoClaimSent = agentAutoClaimAttempts >= 20;
+		}
 	}
 	
 	public void processMinimapActions() {
@@ -12584,6 +12591,8 @@ public class Game extends RSApplet {
 	private AgentTerminalLog agentTerminalLog;
 	private AgentClientController agentController;
 	private boolean agentAutoClaimSent;
+	private int agentAutoClaimAttempts;
+	private int agentAutoClaimLastAttemptCycle;
 	private boolean agentAutoLoginAttempted;
 	public final int maxPlayers;
 	public final int myPlayerIndex;

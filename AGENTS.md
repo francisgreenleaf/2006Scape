@@ -154,6 +154,7 @@ Dynamic tools currently supported:
 - `rs.find_training_npc`
 - `rs.attack_npc`
 - `rs.train_combat`
+- `rs.train_smithing_profit`
 - `rs.find_nearest_object`
 - `rs.find_nearest_rock`
 - `rs.find_nearest_tree`
