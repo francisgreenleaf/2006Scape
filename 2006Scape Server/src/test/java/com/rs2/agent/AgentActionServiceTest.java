@@ -198,7 +198,12 @@ public class AgentActionServiceTest {
         assertTrue(AgentActionService.isGearMoneyItem(436)); // copper ore
         assertTrue(AgentActionService.isGearMoneyItem(438)); // tin ore
         assertTrue(AgentActionService.isGearMoneyItem(440)); // iron ore
+        assertTrue(AgentActionService.isGearMoneyItem(453)); // coal
         assertTrue(AgentActionService.isGearMoneyItem(2349)); // bronze bar
+        assertTrue(AgentActionService.isGearMoneyItem(2353)); // steel bar
+        assertTrue(AgentActionService.isGearMoneyProductItem(1422)); // bronze mace can be smithed for sale
+        assertFalse(AgentActionService.isGearMoneyProductItem(1351)); // starter axe/tool is preserved
+        assertFalse(AgentActionService.isGearMoneyProductItem(1279)); // combat gear is preserved
         assertFalse(AgentActionService.isGearMoneyItem(526)); // bones stay banked for the account
         assertFalse(AgentActionService.isGearMoneyItem(1739)); // cowhide stays banked for the account
     }
@@ -206,9 +211,11 @@ public class AgentActionServiceTest {
     @Test
     public void durableGoalBanksNonMiningClutterBeforeGearMoneyRuns() {
         assertFalse(AgentActionService.isGearMoneyClutterItemForBanking(1265)); // keep the pickaxe
+        assertFalse(AgentActionService.isGearMoneyClutterItemForBanking(2347)); // keep the hammer
         assertFalse(AgentActionService.isGearMoneyClutterItemForBanking(436)); // keep copper ore
         assertFalse(AgentActionService.isGearMoneyClutterItemForBanking(438)); // keep tin ore
         assertFalse(AgentActionService.isGearMoneyClutterItemForBanking(440)); // keep iron ore
+        assertFalse(AgentActionService.isGearMoneyClutterItemForBanking(1422)); // sell smithed mace for gear money
         assertTrue(AgentActionService.isGearMoneyClutterItemForBanking(2142)); // bank food during mining trips
         assertTrue(AgentActionService.isGearMoneyClutterItemForBanking(1277)); // bank old combat gear
         assertTrue(AgentActionService.isGearMoneyClutterItemForBanking(1623)); // bank gems for later
@@ -216,9 +223,10 @@ public class AgentActionServiceTest {
 
     @Test
     public void durableGoalMinesBronzeOresBeforeIronUnlocks() {
-        assertEquals("copper", AgentActionService.gearMoneyOreForMiningLevel(1, 0, 0));
-        assertEquals("tin", AgentActionService.gearMoneyOreForMiningLevel(1, 3, 1));
-        assertEquals("iron", AgentActionService.gearMoneyOreForMiningLevel(15, 100, 0));
+        assertEquals("copper", AgentActionService.gearMoneyOreForMiningLevel(1, 1, 0, 0));
+        assertEquals("tin", AgentActionService.gearMoneyOreForMiningLevel(1, 1, 3, 1));
+        assertEquals("copper", AgentActionService.gearMoneyOreForMiningLevel(15, 1, 100, 100));
+        assertEquals("iron", AgentActionService.gearMoneyOreForMiningLevel(15, 15, 100, 0));
     }
 
     @Test
@@ -228,6 +236,17 @@ public class AgentActionServiceTest {
         assertEquals(3, AgentActionService.estimatedGearMoneySellCoins(440)); // iron ore
         assertEquals(5, AgentActionService.estimatedGearMoneySellCoins(2349)); // bronze bar
         assertEquals(11, AgentActionService.estimatedGearMoneySellCoins(2351)); // iron bar
+        assertEquals(45, AgentActionService.estimatedGearMoneySellCoins(2353)); // steel bar
+        assertEquals(5, AgentActionService.estimatedGearMoneySellCoins(1422)); // bronze mace, one bronze bar
         assertEquals(0, AgentActionService.estimatedGearMoneySellCoins(526)); // bones are not sold for gear money
+    }
+
+    @Test
+    public void durableGoalKnowsPickaxeMiningRequirements() {
+        assertEquals(1, AgentActionService.requiredMiningLevelForPickaxe(1265)); // bronze pickaxe
+        assertEquals(6, AgentActionService.requiredMiningLevelForPickaxe(1269)); // steel pickaxe
+        assertEquals(21, AgentActionService.requiredMiningLevelForPickaxe(1273)); // mithril pickaxe
+        assertEquals(31, AgentActionService.requiredMiningLevelForPickaxe(1271)); // adamant pickaxe
+        assertEquals(41, AgentActionService.requiredMiningLevelForPickaxe(1275)); // rune pickaxe
     }
 }
