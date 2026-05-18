@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -30,6 +32,11 @@ public class AgentSessionLog {
 
     private static final Gson GSON = new Gson();
     private static final String LOG_DIR = "agent-sessions";
+    private static final Pattern[] SENSITIVE_VALUE_PATTERNS = {
+            Pattern.compile("(?i)\\bBearer\\s+[A-Za-z0-9._\\-+/=]+"),
+            Pattern.compile("(?i)\\b(api[_-]?key|token|session[_-]?token|auth[_-]?token|password|secret|cookie)\\s*[:=]\\s*[^\\s,;}]+"),
+            Pattern.compile("\\bsk-[A-Za-z0-9_\\-]{12,}\\b")
+    };
 
     private final Object lock = new Object();
     private File logDirectoryForTests;
@@ -62,19 +69,31 @@ public class AgentSessionLog {
     }
 
     public void toolCompleted(AgentSession session, String tool, JsonObject arguments, JsonObject result, long durationMs) {
-        JsonObject data = new JsonObject();
-        data.addProperty("tool", tool == null ? "" : tool);
-        data.addProperty("durationMs", durationMs);
-        data.add("arguments", sanitize(arguments == null ? new JsonObject() : arguments));
-        data.add("result", sanitize(result == null ? new JsonObject() : result));
-        record(session, "tool_completed", data);
+        toolEvent(session, "tool_completed", tool, arguments, result, durationMs);
+    }
+
+    public void toolFailed(AgentSession session, String tool, JsonObject arguments, JsonObject result, long durationMs) {
+        JsonObject safeResult = result == null ? new JsonObject() : result;
+        if (!safeResult.has("success")) {
+            safeResult.addProperty("success", false);
+        }
+        toolEvent(session, "tool_failed", tool, arguments, safeResult, durationMs);
     }
 
     public void toolFailed(AgentSession session, String tool, JsonObject arguments, String message, long durationMs) {
         JsonObject result = new JsonObject();
         result.addProperty("success", false);
         result.addProperty("message", message == null ? "Agent tool failed." : message);
-        toolCompleted(session, tool, arguments, result, durationMs);
+        toolFailed(session, tool, arguments, result, durationMs);
+    }
+
+    private void toolEvent(AgentSession session, String event, String tool, JsonObject arguments, JsonObject result, long durationMs) {
+        JsonObject data = new JsonObject();
+        data.addProperty("tool", tool == null ? "" : tool);
+        data.addProperty("durationMs", durationMs);
+        data.add("arguments", sanitize(arguments == null ? new JsonObject() : arguments));
+        data.add("result", sanitize(result == null ? new JsonObject() : result));
+        record(session, event, data);
     }
 
     void setLogDirectoryForTests(File directory) {
@@ -197,7 +216,7 @@ public class AgentSessionLog {
         builder.append("- Started: ").append(summary.startedAt == null ? "unknown" : summary.startedAt).append("\n");
         builder.append("- Last updated: ").append(summary.lastUpdatedAt == null ? timestamp(now) : summary.lastUpdatedAt).append("\n\n");
 
-        builder.append("## Task\n\n");
+        builder.append("## Task / User Goal\n\n");
         builder.append(summary.task == null ? "No task recorded yet." : summary.task).append("\n\n");
 
         builder.append("## What Was Built / Done\n\n");
@@ -206,11 +225,23 @@ public class AgentSessionLog {
         builder.append("## Obstacles Encountered\n\n");
         appendBullets(builder, summary.obstacles, "No obstacles recorded yet.");
 
-        builder.append("## Solution\n\n");
+        builder.append("## Solution / Result\n\n");
         builder.append(summary.solution()).append("\n\n");
 
         builder.append("## Logical Next Step\n\n");
         builder.append(summary.nextStep()).append("\n\n");
+
+        builder.append("## Observable Decision Trail\n\n");
+        appendBullets(builder, summary.decisionTrail, "No observable decision trail recorded yet.");
+
+        builder.append("## In-Game Failures / Blockers\n\n");
+        appendBullets(builder, summary.blockers, "No in-game failures or blockers recorded yet.");
+
+        builder.append("## Harness Reflection\n\n");
+        builder.append(summary.reflection()).append("\n\n");
+
+        builder.append("## Learning Over Time\n\n");
+        builder.append(summary.learning()).append("\n\n");
 
         builder.append("## Timeline\n\n");
         appendBullets(builder, summary.timeline, "No timeline events recorded yet.");
@@ -240,7 +271,7 @@ public class AgentSessionLog {
             if (primitive.isNumber()) {
                 return new JsonPrimitive(primitive.getAsNumber());
             }
-            return new JsonPrimitive(primitive.getAsString());
+            return new JsonPrimitive(redactSensitiveValue(primitive.getAsString()));
         }
         if (element.isJsonArray()) {
             JsonArray copy = new JsonArray();
@@ -265,8 +296,25 @@ public class AgentSessionLog {
         return lower.contains("token")
                 || lower.contains("password")
                 || lower.contains("secret")
+                || lower.contains("cookie")
+                || lower.equals("key")
+                || lower.endsWith("key")
+                || lower.contains("_key")
+                || lower.contains("-key")
                 || lower.contains("apikey")
                 || lower.contains("api_key");
+    }
+
+    private String redactSensitiveValue(String value) {
+        if (value == null || value.isEmpty()) {
+            return value;
+        }
+        String redacted = value;
+        for (Pattern pattern : SENSITIVE_VALUE_PATTERNS) {
+            Matcher matcher = pattern.matcher(redacted);
+            redacted = matcher.replaceAll("[redacted]");
+        }
+        return redacted;
     }
 
     private String normalizeEvent(String event) {
@@ -289,6 +337,8 @@ public class AgentSessionLog {
         private final String sessionId;
         private final List<String> actions = new ArrayList<String>();
         private final List<String> obstacles = new ArrayList<String>();
+        private final List<String> blockers = new ArrayList<String>();
+        private final List<String> decisionTrail = new ArrayList<String>();
         private final List<String> timeline = new ArrayList<String>();
         private String playerName;
         private int playerId = -1;
@@ -298,6 +348,7 @@ public class AgentSessionLog {
         private String latestSuccess;
         private String latestAssistantMessage;
         private String latestObstacle;
+        private String latestTool;
         private boolean turnCompleted;
         private boolean turnInterrupted;
 
@@ -326,17 +377,23 @@ public class AgentSessionLog {
                 timeline.add(label(time, "Session claimed by local client."));
             } else if ("turn_requested".equals(event)) {
                 task = string(data, "command", task);
+                decisionTrail.add("The user goal was captured as `" + fallback(task, "unknown task") + "`, so the harness had a concrete task to anchor the turn.");
                 timeline.add(label(time, "Task requested: " + fallback(task, "unknown task") + "."));
             } else if ("turn_started".equals(event)) {
                 task = string(data, "command", task);
                 turnCompleted = false;
                 turnInterrupted = false;
+                decisionTrail.add("Codex started a read-only turn connected to the claimed player session.");
                 timeline.add(label(time, "Codex turn started."));
             } else if ("assistant_message".equals(event)) {
                 latestAssistantMessage = string(data, "text", latestAssistantMessage);
+                if (latestAssistantMessage != null && !latestAssistantMessage.trim().isEmpty()) {
+                    decisionTrail.add("The assistant interpreted the tool evidence as: " + compact(latestAssistantMessage, 220));
+                }
                 timeline.add(label(time, "Assistant reported: " + compact(latestAssistantMessage, 180)));
             } else if ("turn_completed".equals(event)) {
                 turnCompleted = true;
+                decisionTrail.add("The turn reached a normal completion event.");
                 timeline.add(label(time, "Turn completed."));
             } else if ("turn_interrupted".equals(event)) {
                 turnInterrupted = true;
@@ -345,28 +402,89 @@ public class AgentSessionLog {
             } else if ("session_expired".equals(event) || "session_invalidated".equals(event)) {
                 addObstacle("Session ended: " + string(data, "reason", "unknown reason") + ".");
                 timeline.add(label(time, "Session ended."));
-            } else if ("tool_completed".equals(event)) {
-                consumeTool(time, data);
+            } else if ("goal_started".equals(event)) {
+                String detail = goalDetail(data, "Started durable goal");
+                latestSuccess = detail;
+                actions.add(detail);
+                decisionTrail.add("A durable goal was started so normal gameplay could continue outside a single Codex turn.");
+                timeline.add(label(time, detail));
+            } else if ("goal_progress".equals(event)) {
+                String detail = goalDetail(data, "Durable goal progressed");
+                latestSuccess = detail;
+                decisionTrail.add("Goal progress showed the server-side loop was still making normal gameplay attempts.");
+                timeline.add(label(time, detail));
+            } else if ("goal_completed".equals(event)) {
+                String detail = goalDetail(data, "Durable goal completed");
+                latestSuccess = detail;
+                actions.add(detail);
+                decisionTrail.add("The durable goal met its target and reported completion from server state.");
+                timeline.add(label(time, detail));
+            } else if ("goal_blocked".equals(event) || "goal_stopped".equals(event)) {
+                String detail = goalDetail(data, "Durable goal stopped");
+                addObstacle(detail);
+                timeline.add(label(time, detail));
+            } else if ("tool_completed".equals(event) || "tool_failed".equals(event)) {
+                consumeTool(time, event, data);
             } else {
                 timeline.add(label(time, "Recorded event: " + event + "."));
             }
         }
 
-        private void consumeTool(String time, JsonObject data) {
+        private String goalDetail(JsonObject data, String fallback) {
+            JsonObject goal = data.has("goal") && data.get("goal").isJsonObject()
+                    ? data.get("goal").getAsJsonObject()
+                    : new JsonObject();
+            String message = string(goal, "message", fallback);
+            int target = integer(goal, "targetLevel", 0);
+            int attack = integer(goal, "attackLevel", 0);
+            int strength = integer(goal, "strengthLevel", 0);
+            int defence = integer(goal, "defenceLevel", 0);
+            int actions = integer(goal, "actionsRun", 0);
+            int bankTrips = integer(goal, "bankTrips", 0);
+            int bankedItems = integer(goal, "bankedSupplyItems", 0);
+            int lootedItems = integer(goal, "lootedSupplyItems", 0);
+            int bankedAccountItems = integer(goal, "bankedAccountItems", 0);
+            int foodBankTrips = integer(goal, "foodBankTrips", 0);
+            int withdrawnFoodItems = integer(goal, "withdrawnFoodItems", 0);
+            int gearItemsBought = integer(goal, "gearItemsBought", 0);
+            int gearItemsEquipped = integer(goal, "gearItemsEquipped", 0);
+            int gearSuppliesSold = integer(goal, "gearSuppliesSold", 0);
+            int gearCoinsEarned = integer(goal, "gearCoinsEarned", 0);
+            int gearCoinsSpent = integer(goal, "gearCoinsSpent", 0);
+            int gearMoneyItemsSold = integer(goal, "gearMoneyItemsSold", 0);
+            int gearMoneyCoinsEarned = integer(goal, "gearMoneyCoinsEarned", 0);
+            return compact(message + " A/S/D " + attack + "/" + strength + "/" + defence
+                    + (target > 0 ? " toward " + target : "") + " after " + actions + " goal actions"
+                    + (lootedItems > 0 ? "; looted " + lootedItems + " supplies" : "")
+                    + (bankTrips > 0 ? "; banked " + bankedItems + " supplies across " + bankTrips + " trips" : "")
+                    + (bankedAccountItems > 0 ? "; stored " + bankedAccountItems + " starter/account items" : "")
+                    + (withdrawnFoodItems > 0 ? "; withdrew " + withdrawnFoodItems + " food across " + foodBankTrips + " trips" : "")
+                    + (gearSuppliesSold > 0 ? "; sold " + gearSuppliesSold + " surplus supplies for " + gearCoinsEarned + " coins" : "")
+                    + (gearMoneyItemsSold > 0 ? "; sold " + gearMoneyItemsSold + " mined money items for " + gearMoneyCoinsEarned + " coins" : "")
+                    + (gearItemsBought > 0 ? "; bought " + gearItemsBought + " gear item(s) for " + gearCoinsSpent + " coins" : "")
+                    + (gearItemsEquipped > 0 ? "; equipped " + gearItemsEquipped + " gear upgrade(s)" : "")
+                    + ".", 240);
+        }
+
+        private void consumeTool(String time, String event, JsonObject data) {
             String tool = string(data, "tool", "unknown_tool");
             long durationMs = longValue(data, "durationMs", 0L);
             JsonObject result = data.has("result") && data.get("result").isJsonObject()
                     ? data.get("result").getAsJsonObject()
                     : new JsonObject();
-            boolean success = bool(result, "success", false);
+            boolean success = "tool_completed".equals(event) && bool(result, "success", false);
             String message = string(result, "message", success ? "completed" : "failed");
             String detail = "`rs." + tool + "` - " + compact(message, 220) + " (" + durationMs + "ms).";
+            latestTool = "`rs." + tool + "`";
             if (success) {
                 latestSuccess = detail;
                 actions.add(detail);
+                decisionTrail.add("`rs." + tool + "` succeeded, so the agent could build on that observation/action result.");
                 timeline.add(label(time, "`rs." + tool + "` succeeded."));
             } else {
                 addObstacle("`rs." + tool + "` failed: " + compact(message, 220) + ".");
+                addBlocker(tool, message);
+                decisionTrail.add("`rs." + tool + "` returned a blocker, shifting the next step toward recovery or a clearer report.");
                 timeline.add(label(time, "`rs." + tool + "` failed."));
             }
         }
@@ -374,6 +492,14 @@ public class AgentSessionLog {
         private void addObstacle(String obstacle) {
             latestObstacle = obstacle;
             obstacles.add(obstacle);
+            if (isInGameBlocker(obstacle)) {
+                blockers.add(obstacle);
+            }
+        }
+
+        private void addBlocker(String tool, String message) {
+            String category = blockerCategory(message);
+            blockers.add(category + ": `rs." + tool + "` reported " + compact(message, 220) + ".");
         }
 
         private String solution() {
@@ -400,6 +526,60 @@ public class AgentSessionLog {
                 return "Continue monitoring this active task until it completes or reports a blocker.";
             }
             return "Start an `/agent <task>` command.";
+        }
+
+        private String reflection() {
+            if (latestObstacle != null) {
+                return "The harness had enough evidence to name a concrete blocker, which is useful friction rather than a silent failure.";
+            }
+            if (latestTool != null && latestSuccess != null) {
+                return "The session appears steady: tool feedback was recorded and the latest successful result gave the agent something concrete to trust.";
+            }
+            return "The session is still sparse; more tool events are needed before the harness can say much about confidence or friction.";
+        }
+
+        private String learning() {
+            if (!blockers.isEmpty()) {
+                return "Repeated blocker categories should feed future tool design: make missing requirements, inventory pressure, interfaces, reachability, and death states easier to detect before acting.";
+            }
+            if (!actions.isEmpty()) {
+                return "Successful tool/action pairs are accumulating into reusable patterns for normal gameplay loops.";
+            }
+            return "No repeated pattern is visible yet.";
+        }
+
+        private static String blockerCategory(String message) {
+            String lower = message == null ? "" : message.toLowerCase(Locale.ENGLISH);
+            if (lower.contains("dead") || lower.contains("death")) {
+                return "player death";
+            }
+            if (lower.contains("offline") || lower.contains("disconnected") || lower.contains("session")) {
+                return "invalid or expired session";
+            }
+            if (lower.contains("inventory") || lower.contains("space") || lower.contains("full")) {
+                return "inventory space";
+            }
+            if (lower.contains("required") || lower.contains("requires") || lower.contains("need ") || lower.contains("missing")) {
+                return "missing requirement or equipment";
+            }
+            if (lower.contains("level")) {
+                return "skill requirement";
+            }
+            if (lower.contains("nearby") || lower.contains("found") || lower.contains("reachable") || lower.contains("reach")) {
+                return "unreachable or unavailable target";
+            }
+            if (lower.contains("shop") || lower.contains("bank") || lower.contains("dialogue") || lower.contains("interface") || lower.contains("window")) {
+                return "closed or wrong interface";
+            }
+            if (lower.contains("cannot act") || lower.contains("online")) {
+                return "player state";
+            }
+            return "gameplay blocker";
+        }
+
+        private static boolean isInGameBlocker(String message) {
+            String category = blockerCategory(message);
+            return !"gameplay blocker".equals(category) || (message != null && !message.trim().isEmpty());
         }
 
         private static String string(JsonObject object, String name, String fallback) {

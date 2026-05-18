@@ -76,6 +76,26 @@ public class AgentKnowledgeBaseTest {
     }
 
     @Test
+    public void routesBackToLumbridgeCowsFromVarrockEastBank() {
+        AgentKnowledgeBase.Landmark cows = AgentKnowledgeBase.findLandmark("lumbridge cows");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3253, 3420, 0, cows);
+
+        assertFalse(step.isComplete());
+        assertEquals(3260, step.getTile().x);
+        assertEquals(3420, step.getTile().y);
+    }
+
+    @Test
+    public void stillRoutesToLumbridgeCowsFromLumbridgeStart() {
+        AgentKnowledgeBase.Landmark cows = AgentKnowledgeBase.findLandmark("lumbridge cows");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3222, 3218, 0, cows);
+
+        assertFalse(step.isComplete());
+        assertEquals(3234, step.getTile().x);
+        assertEquals(3230, step.getTile().y);
+    }
+
+    @Test
     public void choosesEasternApproachForVarrockEastMine() {
         AgentKnowledgeBase.Landmark mine = AgentKnowledgeBase.findLandmark("varrock east mine");
         AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3234, 3238, 0, mine);
@@ -132,4 +152,5 @@ public class AgentKnowledgeBaseTest {
         assertEquals(3158, step.getTile().x);
         assertEquals(3426, step.getTile().y);
     }
+
 }

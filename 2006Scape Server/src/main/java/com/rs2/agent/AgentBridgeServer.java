@@ -126,7 +126,12 @@ public class AgentBridgeServer {
             JsonObject response;
             try {
                 response = AgentActionService.INSTANCE.submitTool(session.getToken(), tool, arguments);
-                AgentSessionLog.INSTANCE.toolCompleted(session, tool, arguments, response, System.currentTimeMillis() - startedAt);
+                long durationMs = System.currentTimeMillis() - startedAt;
+                if (response.has("success") && response.get("success").getAsBoolean()) {
+                    AgentSessionLog.INSTANCE.toolCompleted(session, tool, arguments, response, durationMs);
+                } else {
+                    AgentSessionLog.INSTANCE.toolFailed(session, tool, arguments, response, durationMs);
+                }
             } catch (RuntimeException e) {
                 AgentSessionLog.INSTANCE.toolFailed(session, tool, arguments, e.getMessage(), System.currentTimeMillis() - startedAt);
                 throw e;

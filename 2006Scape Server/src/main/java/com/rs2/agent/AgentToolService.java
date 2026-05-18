@@ -17,11 +17,16 @@ import com.google.gson.JsonObject;
 import com.rs2.Constants;
 import com.rs2.GameEngine;
 import com.rs2.agent.AgentCombatPlanner.TrainingArea;
+import com.rs2.game.content.StaticObjectList;
 import com.rs2.game.content.consumables.Food;
 import com.rs2.game.content.consumables.Kebabs;
 import com.rs2.game.content.skills.SkillHandler;
+import com.rs2.game.content.skills.cooking.Cooking;
+import com.rs2.game.content.skills.core.Fishing;
 import com.rs2.game.content.skills.core.Mining;
 import com.rs2.agent.AgentSmithingPlanner.ItemValueProvider;
+import com.rs2.game.content.skills.firemaking.Firemaking;
+import com.rs2.game.content.skills.firemaking.LogData;
 import com.rs2.agent.AgentSmithingPlanner.SmithingChoice;
 import com.rs2.agent.AgentSmithingPlanner.Strategy;
 import com.rs2.game.content.skills.smithing.Smelting;
@@ -50,6 +55,9 @@ public class AgentToolService {
 
     private static final int DEFAULT_SCAN_DISTANCE = 30;
     private static final int DEFAULT_OBJECT_SCAN_DISTANCE = 60;
+    private static final int MAX_WALK_CHUNK_DISTANCE = 16;
+    private static final int MAP_REGION_SIZE = 104;
+    private static final int MAP_REGION_MARGIN = 2;
     private static final int COINS = AgentCombatPlanner.coinsItemId();
     private static final int HAMMER = 2347;
     private static final String SMITHING_BANK_LANDMARK = "varrock west bank";
@@ -67,6 +75,21 @@ public class AgentToolService {
     private static final int AL_KHARID_GATE_WEST_OBJECT = 2882;
     private static final int AL_KHARID_GATE_EAST_OBJECT = 2883;
     private static final int[] SMITHING_BAR_IDS = {2363, 2361, 2359, 2353, 2351, 2349};
+    private static final int SMALL_FISHING_NET = 303;
+    private static final int TINDERBOX = 590;
+    private static final int[] NET_FISHING_SPOT_IDS = {
+            316, 319, 323, 325, 326, 327, 329, 330, 333, 404
+    };
+    private static final int[] COOKING_FIRE_OBJECT_IDS = {
+            StaticObjectList.FIRE, 11404, 11405, 11406
+    };
+    private static final int[] RAW_COOKABLE_FOOD_IDS = {
+            377, 335, 331, 321, 317, 2132, 2138
+    };
+    private static final int[] COOKING_OBJECT_IDS = {
+            114, 2728, 2729, 2730, 2731, StaticObjectList.FIRE, 2859, 3039, 4172,
+            5275, 8750, 9682, 12102, 13539, 13540, 13541, 13542, 13543, 13544, 14919
+    };
     private static final String[] SKILL_NAMES = {"attack", "defence", "strength", "hitpoints", "ranged",
             "prayer", "magic", "cooking", "woodcutting", "fletching", "fishing", "firemaking", "crafting",
             "smithing", "mining", "herblore", "agility", "thieving", "slayer", "farming", "runecraft",
@@ -150,6 +173,15 @@ public class AgentToolService {
         }
         if ("pickup_ground_item".equals(tool)) {
             return pickupGroundItem(player, arguments);
+        }
+        if ("fish_food".equals(tool)) {
+            return fishFood(player, arguments);
+        }
+        if ("cook_food".equals(tool)) {
+            return cookFood(player, arguments);
+        }
+        if ("light_fire".equals(tool)) {
+            return lightFire(player, arguments);
         }
         if ("open_nearest_shop".equals(tool)) {
             return openNearestShop(player, arguments);
@@ -281,10 +313,14 @@ public class AgentToolService {
         player.getPacketSender().closeAllWindows();
         player.isBanking = false;
         player.isShopping = false;
-        player.getPlayerAssistant().playerWalk(x, y);
+        int[] walkTarget = boundedWalkTarget(player, x, y);
+        player.getPlayerAssistant().playerWalk(walkTarget[0], walkTarget[1]);
         JsonObject result = success("Walking toward tile.");
         addPlayerState(result, player);
         result.add("target", tile(x, y, height));
+        if (walkTarget[0] != x || walkTarget[1] != y) {
+            result.add("walkTarget", tile(walkTarget[0], walkTarget[1], height));
+        }
         return result;
     }
 
@@ -331,10 +367,48 @@ public class AgentToolService {
             player.getPacketSender().closeAllWindows();
             player.isBanking = false;
             player.isShopping = false;
-            player.getPlayerAssistant().playerWalk(step.getTile().x, step.getTile().y);
+            int[] walkTarget = boundedWalkTarget(player, step.getTile().x, step.getTile().y);
+            if (walkTarget[0] != step.getTile().x || walkTarget[1] != step.getTile().y) {
+                result.add("walkTarget", tile(walkTarget[0], walkTarget[1], step.getTile().height));
+            }
+            player.getPlayerAssistant().playerWalk(walkTarget[0], walkTarget[1]);
         }
         addPlayerState(result, player);
         return result;
+    }
+
+    private static int[] boundedWalkTarget(Player player, int targetX, int targetY) {
+        return boundedWalkTarget(player.absX, player.absY, player.getMapRegionX(), player.getMapRegionY(),
+                targetX, targetY);
+    }
+
+    static int[] boundedWalkTarget(int playerX, int playerY, int mapRegionX, int mapRegionY,
+            int targetX, int targetY) {
+        int walkX = targetX;
+        int walkY = targetY;
+        int dx = targetX - playerX;
+        int dy = targetY - playerY;
+        if (Math.max(Math.abs(dx), Math.abs(dy)) > MAX_WALK_CHUNK_DISTANCE) {
+            walkX = playerX + clamp(dx, -MAX_WALK_CHUNK_DISTANCE, MAX_WALK_CHUNK_DISTANCE);
+            walkY = playerY + clamp(dy, -MAX_WALK_CHUNK_DISTANCE, MAX_WALK_CHUNK_DISTANCE);
+        }
+        if (mapRegionX >= 0 && mapRegionY >= 0) {
+            int minX = mapRegionX * 8 + MAP_REGION_MARGIN;
+            int minY = mapRegionY * 8 + MAP_REGION_MARGIN;
+            int maxX = mapRegionX * 8 + MAP_REGION_SIZE - 1 - MAP_REGION_MARGIN;
+            int maxY = mapRegionY * 8 + MAP_REGION_SIZE - 1 - MAP_REGION_MARGIN;
+            walkX = clamp(walkX, minX, maxX);
+            walkY = clamp(walkY, minY, maxY);
+        }
+        if (walkX == playerX && walkY == playerY && (targetX != playerX || targetY != playerY)) {
+            walkX = playerX + Integer.signum(targetX - playerX);
+            walkY = playerY + Integer.signum(targetY - playerY);
+        }
+        return new int[] { walkX, walkY };
+    }
+
+    private static int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     private static JsonObject findNearestNpc(Player player, JsonObject arguments) {
@@ -501,12 +575,26 @@ public class AgentToolService {
         }
 
         Npc currentTarget = targetNpc(player);
+        if (currentTarget != null && isStaleCombatTargetDistance(
+                AgentKnowledgeBase.distance(player.absX, player.absY, currentTarget.absX, currentTarget.absY))) {
+            player.getPlayerAssistant().resetFollow();
+            player.getCombatAssistant().resetPlayerAttack();
+            currentTarget = null;
+        }
         if (currentTarget != null) {
             if (!player.goodDistance(player.getX(), player.getY(), currentTarget.getX(), currentTarget.getY(), 1)) {
                 JsonObject attackArgs = new JsonObject();
                 attackArgs.addProperty("npcIndex", currentTarget.npcId);
                 JsonObject result = attackNpc(player, attackArgs);
                 result.addProperty("message", "Repositioning to continue combat with " + currentTarget.name() + ".");
+                result.addProperty("trainingStyle", nextStyle);
+                return result;
+            }
+            if (!isActivelyTargeting(player, currentTarget) && player.attackTimer <= 0) {
+                JsonObject attackArgs = new JsonObject();
+                attackArgs.addProperty("npcIndex", currentTarget.npcId);
+                JsonObject result = attackNpc(player, attackArgs);
+                result.addProperty("message", "Reacquiring stalled combat target " + currentTarget.name() + ".");
                 result.addProperty("trainingStyle", nextStyle);
                 return result;
             }
@@ -943,6 +1031,156 @@ public class AgentToolService {
                 : failure("Unable to pick up " + DeprecatedItems.getItemName(itemId) + ".");
         result.addProperty("pickedUp", moved);
         result.add("groundItem", groundItemJson(itemId, moved > 0 ? moved : 1, x, y, player.heightLevel, distance, false));
+        addPlayerState(result, player);
+        return result;
+    }
+
+    private static JsonObject fishFood(Player player, JsonObject arguments) {
+        if (player.playerSkilling[Constants.FISHING]) {
+            JsonObject result = success("Continuing to fish for food.");
+            addPlayerState(result, player);
+            return result;
+        }
+        if (!player.getItemAssistant().playerHasItem(SMALL_FISHING_NET)) {
+            JsonObject result = failure("A small fishing net is required to net fish for food.");
+            addPlayerState(result, player);
+            return result;
+        }
+        if (player.getItemAssistant().freeSlots() < 1) {
+            JsonObject result = failure("Inventory is full. Cook or bank food before fishing more.");
+            addPlayerState(result, player);
+            return result;
+        }
+        int maxDistance = getInt(arguments, "maxDistance", DEFAULT_SCAN_DISTANCE);
+        Npc spot = findNearestNetFishingSpot(player, maxDistance);
+        if (spot == null) {
+            JsonObject travelArgs = new JsonObject();
+            travelArgs.addProperty("name", "lumbridge fishing spot");
+            JsonObject result = travelToLandmark(player, travelArgs);
+            result.addProperty("message", "No net fishing spot is nearby; moving toward Lumbridge fishing spot.");
+            return result;
+        }
+        int distance = AgentKnowledgeBase.distance(player.absX, player.absY, spot.absX, spot.absY);
+        player.endCurrentTask();
+        player.getCombatAssistant().resetPlayerAttack();
+        player.getPlayerAssistant().resetFollow();
+        if (!player.goodObjectDistance(player.absX, player.absY, spot.absX, spot.absY, 1)) {
+            SkillHandler.resetSkills(player);
+            player.getPlayerAssistant().playerWalk(spot.absX, spot.absY);
+            JsonObject result = success("Walking toward net fishing spot.");
+            result.add("npc", npcJson(spot, distance));
+            addPlayerState(result, player);
+            return result;
+        }
+        Fishing.fishingNPC(player, 1, spot.npcType);
+        JsonObject result = success("Started net fishing for food.");
+        result.add("npc", npcJson(spot, distance));
+        addPlayerState(result, player);
+        return result;
+    }
+
+    private static JsonObject cookFood(Player player, JsonObject arguments) {
+        if (player.playerIsCooking) {
+            JsonObject result = success("Continuing to cook food.");
+            addPlayerState(result, player);
+            return result;
+        }
+        int itemId = getInt(arguments, "itemId", -1);
+        if (itemId < 0) {
+            itemId = bestRawCookableFood(player);
+        }
+        if (itemId < 0 || !isRawCookableFood(itemId) || !player.getItemAssistant().playerHasItem(itemId)) {
+            JsonObject result = failure("No cookable raw food is in inventory.");
+            addPlayerState(result, player);
+            return result;
+        }
+        ObjectMatch cookingObject = findCookingObject(player, getInt(arguments, "maxDistance", 8),
+                getBoolean(arguments, "fireOnly", false));
+        if (cookingObject == null) {
+            if (getBoolean(arguments, "fireOnly", false)) {
+                JsonObject result = failure("No cooking fire is close enough to cook food.");
+                addPlayerState(result, player);
+                return result;
+            }
+            JsonObject travelArgs = new JsonObject();
+            travelArgs.addProperty("name", "lumbridge range");
+            JsonObject result = travelToLandmark(player, travelArgs);
+            result.addProperty("message", "No range or fire is close enough to cook food; moving toward Lumbridge range.");
+            return result;
+        }
+        if (!player.goodObjectDistance(player.absX, player.absY, cookingObject.object.objectX, cookingObject.object.objectY, 2)) {
+            player.endCurrentTask();
+            player.getCombatAssistant().resetPlayerAttack();
+            player.getPlayerAssistant().resetFollow();
+            SkillHandler.resetSkills(player);
+            player.getPlayerAssistant().playerWalk(cookingObject.object.objectX, cookingObject.object.objectY);
+            JsonObject result = success("Walking toward cooking object.");
+            result.add("object", objectJson(cookingObject.object, cookingObject.distance));
+            addPlayerState(result, player);
+            return result;
+        }
+        int amount = Math.max(1, Math.min(countInventoryItem(player, itemId), getInt(arguments, "amount", 28)));
+        player.stopMovement();
+        player.endCurrentTask();
+        player.getCombatAssistant().resetPlayerAttack();
+        player.getPlayerAssistant().resetFollow();
+        SkillHandler.resetSkills(player);
+        player.objectX = cookingObject.object.objectX;
+        player.objectY = cookingObject.object.objectY;
+        player.turnPlayerTo(cookingObject.object.objectX, cookingObject.object.objectY);
+        if (!Cooking.startCooking(player, itemId, cookingObject.object.objectId) && !player.playerIsCooking) {
+            JsonObject result = failure("Unable to start cooking " + DeprecatedItems.getItemName(itemId) + ".");
+            result.add("object", objectJson(cookingObject.object, cookingObject.distance));
+            addPlayerState(result, player);
+            return result;
+        }
+        Cooking.cookItem(player, itemId, amount, cookingObject.object.objectId);
+        JsonObject result = success("Started cooking " + DeprecatedItems.getItemName(itemId) + ".");
+        result.addProperty("itemId", itemId);
+        result.addProperty("amount", amount);
+        result.add("object", objectJson(cookingObject.object, cookingObject.distance));
+        addPlayerState(result, player);
+        return result;
+    }
+
+    private static JsonObject lightFire(Player player, JsonObject arguments) {
+        if (player.isFiremaking) {
+            JsonObject result = success("Continuing to light a fire.");
+            addPlayerState(result, player);
+            return result;
+        }
+        if (hasCookingFireNearby(player, 2)) {
+            JsonObject result = success("A cooking fire is already nearby.");
+            addPlayerState(result, player);
+            return result;
+        }
+        if (!player.getItemAssistant().playerHasItem(TINDERBOX)) {
+            JsonObject result = failure("A tinderbox is required to light a fire.");
+            addPlayerState(result, player);
+            return result;
+        }
+        int logId = getInt(arguments, "logId", -1);
+        if (logId < 0) {
+            logId = bestFiremakingLog(player);
+        }
+        if (logId < 0 || !isFiremakingLog(logId) || !player.getItemAssistant().playerHasItem(logId)) {
+            JsonObject result = failure("Logs are required to light a cooking fire.");
+            addPlayerState(result, player);
+            return result;
+        }
+        if (!canLightFireHere(player)) {
+            JsonObject result = failure("Cannot light a fire on the current tile.");
+            addPlayerState(result, player);
+            return result;
+        }
+        player.endCurrentTask();
+        player.getCombatAssistant().resetPlayerAttack();
+        player.getPlayerAssistant().resetFollow();
+        SkillHandler.resetSkills(player);
+        Firemaking.attemptFire(player, TINDERBOX, logId, player.absX, player.absY, false);
+        JsonObject result = player.isFiremaking ? success("Lighting a cooking fire.")
+                : failure("Unable to start lighting a cooking fire here.");
+        result.addProperty("logId", logId);
         addPlayerState(result, player);
         return result;
     }
@@ -1389,9 +1627,6 @@ public class AgentToolService {
     }
 
     private static JsonObject depositExcessCoins(Player player, JsonObject arguments) {
-        if (!Boundary.isIn(player, Boundary.BANK_AREA)) {
-            return failure("The player must be in a bank area before depositing excess coins.");
-        }
         int attackLevel = baseLevel(player, Constants.ATTACK);
         int defenceLevel = baseLevel(player, Constants.DEFENCE);
         int keepAmount = Math.max(0, getInt(arguments, "keepAmount",
@@ -1404,6 +1639,9 @@ public class AgentToolService {
             result.addProperty("depositedCoins", 0);
             addPlayerState(result, player);
             return result;
+        }
+        if (!Boundary.isIn(player, Boundary.BANK_AREA)) {
+            return failure("The player must be in a bank area before depositing excess coins.");
         }
         player.stopMovement();
         player.endCurrentTask();
@@ -2132,6 +2370,130 @@ public class AgentToolService {
         return nearest;
     }
 
+    private static Npc findNearestNetFishingSpot(Player player, int maxDistance) {
+        Npc nearest = null;
+        int nearestDistance = Integer.MAX_VALUE;
+        for (Npc npc : NpcHandler.npcs) {
+            if (!isNpcPresent(player, npc) || !isNetFishingSpot(npc.npcType)) {
+                continue;
+            }
+            int distance = AgentKnowledgeBase.distance(player.absX, player.absY, npc.absX, npc.absY);
+            if (distance <= maxDistance && distance < nearestDistance) {
+                nearest = npc;
+                nearestDistance = distance;
+            }
+        }
+        return nearest;
+    }
+
+    static boolean isNetFishingSpot(int npcType) {
+        for (int spotId : NET_FISHING_SPOT_IDS) {
+            if (npcType == spotId) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static ObjectMatch findCookingObject(Player player, int maxDistance, boolean fireOnly) {
+        ObjectMatch temporaryFire = findTemporaryCookingFire(player, maxDistance);
+        JsonObject objectArgs = new JsonObject();
+        JsonArray objectIds = new JsonArray();
+        int[] ids = fireOnly ? COOKING_FIRE_OBJECT_IDS : COOKING_OBJECT_IDS;
+        for (int objectId : ids) {
+            objectIds.add(objectId);
+        }
+        objectArgs.add("objectIds", objectIds);
+        ObjectMatch staticObject = findObject(player, objectArgs, maxDistance);
+        if (temporaryFire == null) {
+            return staticObject;
+        }
+        if (staticObject == null || temporaryFire.distance <= staticObject.distance) {
+            return temporaryFire;
+        }
+        return staticObject;
+    }
+
+    static boolean isCookingObject(int objectId) {
+        for (int cookingObjectId : COOKING_OBJECT_IDS) {
+            if (objectId == cookingObjectId) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static boolean isCookingFireObject(int objectId) {
+        for (int fireObjectId : COOKING_FIRE_OBJECT_IDS) {
+            if (objectId == fireObjectId) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static boolean hasCookingFireNearby(Player player, int maxDistance) {
+        return findTemporaryCookingFire(player, maxDistance) != null;
+    }
+
+    private static ObjectMatch findTemporaryCookingFire(Player player, int maxDistance) {
+        ObjectMatch nearest = null;
+        for (com.rs2.game.objects.Object object : GameEngine.objectManager.objects) {
+            if (object == null || object.height != player.heightLevel || !isCookingFireObject(object.objectId)) {
+                continue;
+            }
+            int distance = AgentKnowledgeBase.distance(player.absX, player.absY, object.objectX, object.objectY);
+            if (distance > maxDistance) {
+                continue;
+            }
+            Objects wrapped = new Objects(object.objectId, object.objectX, object.objectY, object.height,
+                    object.face, object.type, object.tick);
+            if (nearest == null || distance < nearest.distance) {
+                nearest = new ObjectMatch(wrapped, distance);
+            }
+        }
+        return nearest;
+    }
+
+    static boolean canLightFireHere(Player player) {
+        return !Boundary.isIn(player, Boundary.BANK_AREA)
+                && !Boundary.isIn(player, Boundary.LUMB_BUILDING)
+                && !Boundary.isIn(player, Boundary.DRAYNOR_BUILDING)
+                && !Boundary.isIn(player, Boundary.DWARF_NO_FIREMAKING)
+                && !GameEngine.objectManager.objectExists(player.absX, player.absY);
+    }
+
+    static boolean hasWoodcuttingAxe(Player player) {
+        return Woodcutting.hasAxe(player);
+    }
+
+    static boolean isFiremakingLog(int itemId) {
+        for (LogData log : LogData.values()) {
+            if (itemId == log.getLogId()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static int bestFiremakingLog(Player player) {
+        int bestLogId = -1;
+        int bestLevel = -1;
+        for (LogData log : LogData.values()) {
+            if (log.getLevel() > player.playerLevel[Constants.FIREMAKING]) {
+                continue;
+            }
+            if (countInventoryItem(player, log.getLogId()) <= 0) {
+                continue;
+            }
+            if (log.getLevel() > bestLevel) {
+                bestLogId = log.getLogId();
+                bestLevel = log.getLevel();
+            }
+        }
+        return bestLogId;
+    }
+
     private static boolean isTemporarilyReplaced(Objects object) {
         com.rs2.game.objects.Object temporary = GameEngine.objectManager.getObject(object.objectX, object.objectY, object.objectHeight);
         return temporary != null && temporary.objectId != object.objectId;
@@ -2310,6 +2672,10 @@ public class AgentToolService {
         return player.npcIndex > 0 || player.killingNpcIndex > 0 || player.underAttackBy > 0 || player.underAttackBy2 > 0;
     }
 
+    private static boolean isActivelyTargeting(Player player, Npc npc) {
+        return npc != null && (player.npcIndex == npc.npcId || player.followNpcId == npc.npcId);
+    }
+
     private static Npc targetNpc(Player player) {
         Npc npc = npcByIndex(player.npcIndex);
         if (npc == null) {
@@ -2319,6 +2685,10 @@ public class AgentToolService {
             npc = npcByIndex(player.underAttackBy2);
         }
         return npc != null && isNpcPresent(player, npc) && npc.HP > 0 ? npc : null;
+    }
+
+    static boolean isStaleCombatTargetDistance(int distance) {
+        return distance > DEFAULT_SCAN_DISTANCE;
     }
 
     private static Npc npcByIndex(int npcIndex) {
@@ -3088,7 +3458,7 @@ public class AgentToolService {
         };
     }
 
-    private static int countInventoryFood(Player player) {
+    static int countInventoryFood(Player player) {
         int count = 0;
         for (int i = 0; i < player.playerItems.length; i++) {
             int storedId = player.playerItems[i];
@@ -3110,7 +3480,7 @@ public class AgentToolService {
         return healing;
     }
 
-    private static int countBankFood(Player player) {
+    static int countBankFood(Player player) {
         int count = 0;
         for (int i = 0; i < player.bankItems.length; i++) {
             int storedId = player.bankItems[i];
@@ -3168,15 +3538,85 @@ public class AgentToolService {
         return best;
     }
 
-    private static boolean isAgentFood(int itemId) {
+    static boolean isAgentFood(int itemId) {
         return itemId == KEBAB || Food.isFood(itemId);
     }
 
-    private static int agentFoodHealAmount(int itemId) {
+    static int agentFoodHealAmount(int itemId) {
         if (itemId == KEBAB) {
             return 5;
         }
         return Food.getHealAmount(itemId);
+    }
+
+    static boolean isRawCookableFood(int itemId) {
+        for (int rawFoodId : RAW_COOKABLE_FOOD_IDS) {
+            if (itemId == rawFoodId) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static int countInventoryRawCookableFood(Player player) {
+        int count = 0;
+        for (int i = 0; i < player.playerItems.length; i++) {
+            int storedId = player.playerItems[i];
+            if (storedId > 0 && isRawCookableFood(storedId - 1)) {
+                count += Math.max(1, player.playerItemsN[i]);
+            }
+        }
+        return count;
+    }
+
+    static int countBankRawCookableFood(Player player) {
+        int count = 0;
+        for (int i = 0; i < player.bankItems.length; i++) {
+            int storedId = player.bankItems[i];
+            if (storedId > 0 && isRawCookableFood(storedId - 1)) {
+                count += Math.max(1, player.bankItemsN[i]);
+            }
+        }
+        return count;
+    }
+
+    static int bestRawCookableFood(Player player) {
+        for (int rawFoodId : RAW_COOKABLE_FOOD_IDS) {
+            if (countInventoryItem(player, rawFoodId) > 0) {
+                return rawFoodId;
+            }
+        }
+        return -1;
+    }
+
+    static int bestBankRawCookableFood(Player player) {
+        for (int rawFoodId : RAW_COOKABLE_FOOD_IDS) {
+            if (countBankItem(player, rawFoodId) > 0) {
+                return rawFoodId;
+            }
+        }
+        return -1;
+    }
+
+    static int bestBankFood(Player player) {
+        int bestItemId = -1;
+        int bestHeal = -1;
+        for (int i = 0; i < player.bankItems.length; i++) {
+            int storedId = player.bankItems[i];
+            if (storedId <= 0) {
+                continue;
+            }
+            int itemId = storedId - 1;
+            if (!isAgentFood(itemId)) {
+                continue;
+            }
+            int heal = agentFoodHealAmount(itemId);
+            if (heal > bestHeal) {
+                bestItemId = itemId;
+                bestHeal = heal;
+            }
+        }
+        return bestItemId;
     }
 
     private static void eatFood(Player player, int itemId, int slot) {
@@ -3206,7 +3646,7 @@ public class AgentToolService {
         return NpcHandler.getMaxHit(npc.npcId);
     }
 
-    private static int countInventoryItem(Player player, int itemId) {
+    static int countInventoryItem(Player player, int itemId) {
         int count = 0;
         for (int i = 0; i < player.playerItems.length; i++) {
             if (player.playerItems[i] == itemId + 1) {
@@ -3216,7 +3656,7 @@ public class AgentToolService {
         return count;
     }
 
-    private static int countBankItem(Player player, int itemId) {
+    static int countBankItem(Player player, int itemId) {
         int count = 0;
         for (int i = 0; i < player.bankItems.length; i++) {
             if (player.bankItems[i] == itemId + 1) {
@@ -3490,9 +3930,39 @@ public class AgentToolService {
         int meleeAttack = Math.max(bonuses[0], Math.max(bonuses[1], bonuses[2]));
         int meleeDefence = Math.max(bonuses[5], Math.max(bonuses[6], bonuses[7]));
         if (targetSlot == ItemConstants.WEAPON) {
-            return meleeAttack * 4 + bonuses[10] * 6;
+            return meleeAttack * 4 + bonuses[10] * 6 + weaponPreferenceBonus(itemId);
         }
         return meleeDefence * 4 + bonuses[10] * 2 + bonuses[9] + bonuses[8] + meleeAttack;
+    }
+
+    private static int weaponPreferenceBonus(int itemId) {
+        return weaponPreferenceBonus(DeprecatedItems.getItemName(itemId));
+    }
+
+    static int weaponPreferenceBonus(String itemName) {
+        String name = normalize(itemName);
+        if (name.contains("scimitar")) {
+            return 8;
+        }
+        if (name.contains("sword")) {
+            return 5;
+        }
+        if (name.contains("dagger")) {
+            return 3;
+        }
+        if (name.contains("mace")) {
+            return 2;
+        }
+        if (name.contains("battleaxe")) {
+            return 1;
+        }
+        if (name.contains("pickaxe")) {
+            return -10;
+        }
+        if (name.endsWith(" axe") || name.contains(" hatchet")) {
+            return -8;
+        }
+        return 0;
     }
 
     private static String equipmentSlotName(int slot) {

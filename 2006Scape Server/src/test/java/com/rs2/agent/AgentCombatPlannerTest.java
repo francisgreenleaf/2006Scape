@@ -9,6 +9,7 @@ public class AgentCombatPlannerTest {
 
     @Test
     public void prioritizesAttackUntilWeaponUnlocks() {
+        assertEquals("attack", AgentCombatPlanner.nextTrainingStyle(18, 12, 3, 60));
         assertEquals("attack", AgentCombatPlanner.nextTrainingStyle(29, 34, 30, 50));
         assertEquals("strength", AgentCombatPlanner.nextTrainingStyle(40, 36, 35, 50));
     }
