@@ -11,7 +11,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.rs2.Constants;
 import com.rs2.agent.AgentSmithingPlanner.SmithingChoice;
-import com.rs2.agent.AgentSmithingPlanner.Strategy;
 import com.rs2.game.content.skills.SkillHandler;
 import com.rs2.game.content.skills.smithing.SmithingData;
 import com.rs2.game.players.Player;
@@ -58,8 +57,8 @@ public class AgentActionService {
             BONES, 532, COWHIDE, RAW_BEEF, 2138, 314
     };
     private static final int[] COMBAT_GEAR_ITEM_IDS = {
-            1279, 1281, 1285, 1287, 1291,
-            1323, 1325, 1329, 1115, 1105, 1121, 1067, 1069, 1071, 1173, 1175, 1181
+            1277, 1279, 1281, 1285, 1287, 1291,
+            1323, 1325, 1329, 1115, 1105, 1121, 1067, 1069, 1071, 1171, 1173, 1175, 1181
     };
     private static final int[] ACCOUNT_STORAGE_ITEM_IDS = {
             303, 590, 841, 882, 1205, 1265, 1351, 1925, 1931, HAMMER,
@@ -842,6 +841,7 @@ public class AgentActionService {
 
         int smithableBar = bestSmithableGearMoneyBar(player);
         if (smithableBar > 0 && shouldSmithGearMoneyBars(player, smithableBar)) {
+            SmithingChoice smithingChoice = bestGearMoneySmithingChoice(player, smithableBar);
             JsonObject hammerPrep = prepareGearMoneyHammer(player, goal, target);
             if (hammerPrep != null) {
                 return hammerPrep;
@@ -851,7 +851,7 @@ public class AgentActionService {
                 travel.addProperty("message", "Earning gear money: walking to Varrock anvils to smith saleable gear.");
                 return travel;
             }
-            JsonObject result = AgentToolService.handle(player, "smith_best_item", smithBestArgs(smithableBar));
+            JsonObject result = AgentToolService.handle(player, "smith_item", smithItemArgs(smithingChoice.getItemId()));
             result.addProperty("message", "Earning gear money for " + target.itemName() + ": "
                     + getString(result, "message", "smithing the best available item."));
             return result;
@@ -1243,10 +1243,10 @@ public class AgentActionService {
         return arguments;
     }
 
-    private static JsonObject smithBestArgs(int barItemId) {
+    private static JsonObject smithItemArgs(int itemId) {
         JsonObject arguments = new JsonObject();
-        arguments.addProperty("barItemId", barItemId);
-        arguments.addProperty("strategy", "xp_per_action");
+        arguments.addProperty("itemId", itemId);
+        arguments.addProperty("amount", Integer.MAX_VALUE);
         return arguments;
     }
 
@@ -1262,7 +1262,9 @@ public class AgentActionService {
 
     private static void addSmithingProductItemIds(JsonArray itemIds) {
         for (SmithingData data : SmithingData.values()) {
-            itemIds.add(data.getId());
+            if (isGearMoneyProductItem(data.getId())) {
+                itemIds.add(data.getId());
+            }
         }
     }
 
@@ -1735,7 +1737,9 @@ public class AgentActionService {
     }
 
     static boolean isGearMoneyProductItem(int itemId) {
-        return AgentSmithingPlanner.isSmithingProduct(itemId);
+        return AgentSmithingPlanner.isSmithingProduct(itemId)
+                && !isAccountStorageItemForBanking(itemId)
+                && !isCombatGearItem(itemId);
     }
 
     static boolean isGearMoneyClutterItemForBanking(int itemId) {
@@ -1844,15 +1848,13 @@ public class AgentActionService {
     }
 
     private static int bestSmithableGearMoneyBar(Player player) {
-        int smithingLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.SMITHING]);
         int[] barIds = {RUNE_BAR, ADAMANT_BAR, MITHRIL_BAR, STEEL_BAR, IRON_BAR, BRONZE_BAR};
         for (int barId : barIds) {
             int availableBars = AgentToolService.countInventoryItem(player, barId);
             if (availableBars <= 0) {
                 continue;
             }
-            SmithingChoice choice = AgentSmithingPlanner.bestSmithableItem(smithingLevel, barId, availableBars,
-                    Strategy.XP_PER_ACTION, "");
+            SmithingChoice choice = bestGearMoneySmithingChoice(player, barId);
             if (choice != null) {
                 return barId;
             }
@@ -1865,15 +1867,43 @@ public class AgentActionService {
         if (bars <= 0) {
             return false;
         }
-        int smithingLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.SMITHING]);
-        SmithingChoice choice = AgentSmithingPlanner.bestSmithableItem(smithingLevel, barItemId, bars,
-                Strategy.XP_PER_ACTION, "");
+        SmithingChoice choice = bestGearMoneySmithingChoice(player, barItemId);
         if (choice == null) {
             return false;
         }
         return player.getItemAssistant().freeSlots() <= MIN_FREE_SLOTS_BEFORE_BANKING
                 || bars >= MIN_BARS_BEFORE_SMITHING
                 || bars >= choice.getBarsNeeded();
+    }
+
+    private static SmithingChoice bestGearMoneySmithingChoice(Player player, int barItemId) {
+        int smithingLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.SMITHING]);
+        int availableBars = AgentToolService.countInventoryItem(player, barItemId);
+        SmithingChoice best = null;
+        for (SmithingChoice choice : AgentSmithingPlanner.smithableItems(smithingLevel, barItemId, availableBars, "")) {
+            if (!isGearMoneyProductItem(choice.getItemId())) {
+                continue;
+            }
+            if (best == null || isBetterGearMoneySmithingChoice(choice, best)) {
+                best = choice;
+            }
+        }
+        return best;
+    }
+
+    private static boolean isBetterGearMoneySmithingChoice(SmithingChoice candidate, SmithingChoice current) {
+        int candidatePrimary = candidate.getXp();
+        int currentPrimary = current.getXp();
+        if (candidatePrimary != currentPrimary) {
+            return candidatePrimary > currentPrimary;
+        }
+        if (candidate.getRequiredLevel() != current.getRequiredLevel()) {
+            return candidate.getRequiredLevel() > current.getRequiredLevel();
+        }
+        if (candidate.getBarsNeeded() != current.getBarsNeeded()) {
+            return candidate.getBarsNeeded() > current.getBarsNeeded();
+        }
+        return candidate.getItemId() > current.getItemId();
     }
 
     private static int bestSmeltableGearMoneyBar(Player player) {
