@@ -69,6 +69,7 @@ public final class Main {
 					case"-auto-login":
 					case"-agent-auto-login":
 						ClientSettings.AGENT_AUTO_LOGIN = true;
+						ClientSettings.SHOW_JAVA_VERSION_WARNINGS = false;
 						break;
 				}
 				if (args[i].startsWith("-") && (i + 1) < args.length  && !args[i + 1].startsWith("-")) {
@@ -98,6 +99,10 @@ public final class Main {
 						case "-password":
 							game.myPassword = args[++i];
 							break;
+						case "-password-env":
+						case "-pass-env":
+							game.myPassword = readEnvironmentValue(args[++i], "password");
+							break;
 						case "-w":
 						case "-world":
 							ClientSettings.SERVER_WORLD = Integer.parseInt(args[++i]);
@@ -106,8 +111,22 @@ public final class Main {
 						case "-agent-claim-nonce":
 							ClientSettings.AGENT_AUTO_CLAIM_NONCE = args[++i];
 							break;
+						case "-agent-command":
+						case "-agent-auto-command":
+							ClientSettings.AGENT_AUTO_COMMAND = args[++i];
+							break;
 					}
 				}
+			}
+			if (ClientSettings.AGENT_AUTO_LOGIN || (ClientSettings.AGENT_AUTO_COMMAND != null
+					&& !ClientSettings.AGENT_AUTO_COMMAND.trim().isEmpty())) {
+				System.out.println("[AgentClient] startup autoLogin=" + ClientSettings.AGENT_AUTO_LOGIN
+						+ " usernameSet=" + (game.myUsername != null && !game.myUsername.trim().isEmpty())
+						+ " passwordLength=" + (game.myPassword == null ? 0 : game.myPassword.length())
+						+ " autoCommandSet=" + (ClientSettings.AGENT_AUTO_COMMAND != null
+								&& !ClientSettings.AGENT_AUTO_COMMAND.trim().isEmpty())
+						+ " server=" + ClientSettings.SERVER_IP + ":" + ((ClientSettings.SERVER_WORLD == 1) ? 43594
+								: 43596 + ClientSettings.SERVER_WORLD + Game.portOff));
 			}
 
 			Game.nodeID = 10;
@@ -120,5 +139,14 @@ public final class Main {
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
 		}
+	}
+
+	private static String readEnvironmentValue(String variableName, String label) {
+		String value = System.getenv(variableName);
+		if (value == null || value.length() == 0) {
+			System.out.println("[AgentClient] " + label + " environment variable was not set: " + variableName);
+			return "";
+		}
+		return value;
 	}
 }

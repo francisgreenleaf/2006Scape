@@ -2525,12 +2525,15 @@ public class Game extends RSApplet {
 					&& myPassword != null && !myPassword.trim().isEmpty()) {
 				agentAutoLoginAttempted = true;
 				loginFailures = 0;
+				System.out.println("[AgentClient] attempting auto-login username=" + myUsername
+						+ " passwordLength=" + myPassword.length());
 				login(myUsername, myPassword, false);
 			} else {
 				processLoginScreenInput();
 			}
 		} else {
 			maybeAutoClaimAgentBridge();
+			maybeRunAgentAutoCommand();
 			mainGameProcessor();
 		}
 		processOnDemandQueue();
@@ -5992,6 +5995,19 @@ public class Game extends RSApplet {
 			agentAutoClaimSent = agentAutoClaimAttempts >= 20;
 		}
 	}
+
+	private void maybeRunAgentAutoCommand() {
+		if (agentAutoCommandSent || ClientSettings.AGENT_AUTO_COMMAND == null
+				|| ClientSettings.AGENT_AUTO_COMMAND.trim().isEmpty()) {
+			return;
+		}
+		agentAutoCommandSent = true;
+		String command = ClientSettings.AGENT_AUTO_COMMAND.trim();
+		if (!command.toLowerCase().startsWith("/agent")) {
+			command = "/agent " + command;
+		}
+		handleAgentChatCommand(command);
+	}
 	
 	public void processMinimapActions() {
         int x = super.mouseX;
@@ -6415,6 +6431,7 @@ public class Game extends RSApplet {
 				socketStream.queueBytes(aStream_847.currentOffset, aStream_847.buffer);
 				k = socketStream.read();
 			}
+			System.out.println("[AgentClient] login response=" + k + " username=" + s);
 			if (k == 1) {
 				try {
 					Thread.sleep(2000L);
@@ -12594,6 +12611,7 @@ public class Game extends RSApplet {
 	private int agentAutoClaimAttempts;
 	private int agentAutoClaimLastAttemptCycle;
 	private boolean agentAutoLoginAttempted;
+	private boolean agentAutoCommandSent;
 	public final int maxPlayers;
 	public final int myPlayerIndex;
 	public Player[] playerArray;

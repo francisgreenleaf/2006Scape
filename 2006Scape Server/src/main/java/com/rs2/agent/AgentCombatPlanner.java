@@ -15,11 +15,11 @@ public class AgentCombatPlanner {
     private static final int COINS = 995;
 
     private static final int[][] WEAPON_TIERS = {
-            {1, 1323},   // iron scimitar
-            {5, 1325},   // steel scimitar
-            {20, 1329},  // mithril scimitar
-            {30, 1331},  // adamant scimitar
-            {40, 1333}   // rune scimitar
+            {1, 1279},   // iron sword
+            {5, 1281},   // steel sword
+            {20, 1285},  // mithril sword
+            {30, 1287},  // adamant sword
+            {40, 1291}   // rune sword
     };
 
     private static final int[][] ARMOUR_TIERS = {
@@ -44,8 +44,9 @@ public class AgentCombatPlanner {
             return "complete";
         }
         int nextWeaponUnlock = nextWeaponUnlock(attackLevel);
+        int levelsToWeaponUnlock = nextWeaponUnlock - attackLevel;
         if (attackLevel < targetLevel && nextWeaponUnlock < targetLevel
-                && attackLevel <= strengthLevel + 5) {
+                && (levelsToWeaponUnlock <= 2 || attackLevel <= strengthLevel + 5)) {
             return "attack";
         }
         if (strengthLevel < targetLevel && strengthLevel <= attackLevel + 3
