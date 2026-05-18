@@ -238,15 +238,6 @@ public class AgentKnowledgeBase {
                 tile(3196, 3428, 0), tile(3188, 3425, 0));
     }
 
-    private static List<Tile> varrockGeneralStoreRoute() {
-        return route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
-                tile(3252, 3266, 0), tile(3253, 3267, 0), tile(3250, 3275, 0),
-                tile(3237, 3284, 0), tile(3237, 3295, 0), tile(3240, 3302, 0),
-                tile(3261, 3322, 0), tile(3280, 3343, 0), tile(3285, 3365, 0),
-                tile(3289, 3388, 0), tile(3288, 3396, 0), tile(3278, 3408, 0), tile(3274, 3417, 0),
-                tile(3260, 3420, 0), tile(3238, 3420, 0), tile(3216, 3415, 0));
-    }
-
     private static List<Tile> varrockSwordShopRoute() {
         return route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
                 tile(3252, 3266, 0), tile(3253, 3267, 0), tile(3250, 3275, 0),
