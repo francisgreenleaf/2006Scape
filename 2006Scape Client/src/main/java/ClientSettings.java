@@ -98,6 +98,7 @@ public class ClientSettings {
     public static int AGENT_BRIDGE_PORT = 43610;
     public static String AGENT_WORKSPACE_DIR = "";
     public static String AGENT_AUTO_CLAIM_NONCE = "";
+    public static String AGENT_AUTO_COMMAND = "";
     public static boolean AGENT_AUTO_LOGIN = false;
     public static boolean SHOW_JAVA_VERSION_WARNINGS = true;
     /**

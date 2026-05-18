@@ -16,20 +16,19 @@ public class AgentKnowledgeBase {
     static {
         add(new Landmark("lumbridge", tile(3222, 3218, 0),
                 route(tile(3222, 3218, 0))));
-        add(new Landmark("lumbridge goblins", tile(3252, 3236, 0),
-                route(tile(3222, 3218, 0), tile(3234, 3230, 0), tile(3252, 3236, 0))));
-        add(new Landmark("goblins", tile(3252, 3236, 0),
-                route(tile(3222, 3218, 0), tile(3234, 3230, 0), tile(3252, 3236, 0))));
-        add(new Landmark("lumbridge cows", tile(3255, 3266, 0),
-                route(tile(3222, 3218, 0), tile(3234, 3230, 0), tile(3252, 3236, 0),
-                        tile(3255, 3266, 0))));
-        add(new Landmark("cows", tile(3255, 3266, 0),
-                route(tile(3222, 3218, 0), tile(3234, 3230, 0), tile(3252, 3236, 0),
-                        tile(3255, 3266, 0))));
+        add(new Landmark("lumbridge goblins", tile(3252, 3236, 0), lumbridgeGoblinsRoute()));
+        add(new Landmark("goblins", tile(3252, 3236, 0), lumbridgeGoblinsRoute()));
+        add(new Landmark("lumbridge cows", tile(3255, 3266, 0), lumbridgeCowsRoute()));
+        add(new Landmark("cows", tile(3255, 3266, 0), lumbridgeCowsRoute()));
         add(new Landmark("lumbridge trees", tile(3233, 3233, 0),
                 route(tile(3222, 3218, 0), tile(3233, 3229, 0), tile(3233, 3233, 0))));
         add(new Landmark("lumbridge oaks", tile(3209, 3243, 0),
                 route(tile(3222, 3218, 0), tile(3218, 3230, 0), tile(3209, 3243, 0))));
+        add(new Landmark("lumbridge range", tile(3209, 3215, 0), lumbridgeRangeRoute()));
+        add(new Landmark("range", tile(3209, 3215, 0), lumbridgeRangeRoute()));
+        add(new Landmark("lumbridge kitchen", tile(3209, 3215, 0), lumbridgeRangeRoute()));
+        add(new Landmark("lumbridge fishing spot", tile(3267, 3148, 0), lumbridgeFishingSpotRoute()));
+        add(new Landmark("fishing spot", tile(3267, 3148, 0), lumbridgeFishingSpotRoute()));
         add(new Landmark("lumbridge general store", tile(3212, 3246, 0),
                 route(tile(3222, 3218, 0), tile(3218, 3230, 0), tile(3212, 3246, 0))));
         add(new Landmark("general store", tile(3212, 3246, 0),
@@ -48,6 +47,7 @@ public class AgentKnowledgeBase {
         add(new Landmark("varrock west bank", tile(3185, 3436, 0), varrockWestBankRoute()));
         add(new Landmark("west bank", tile(3185, 3436, 0), varrockWestBankRoute()));
         add(new Landmark("varrock guards", tile(3214, 3429, 0), varrockGuardsRoute()));
+        add(new Landmark("varrock general store", tile(3216, 3415, 0), varrockGeneralStoreRoute()));
         add(new Landmark("varrock west anvils", tile(3188, 3425, 0), varrockWestAnvilRoute()));
         add(new Landmark("anvils", tile(3188, 3425, 0), varrockWestAnvilRoute()));
         add(new Landmark("varrock sword shop", tile(3206, 3399, 0), varrockSwordShopRoute()));
@@ -147,6 +147,38 @@ public class AgentKnowledgeBase {
                 tile(3260, 3420, 0), tile(3238, 3420, 0), tile(3210, 3424, 0));
     }
 
+    private static List<Tile> lumbridgeGoblinsRoute() {
+        List<Tile> route = reverse(varrockEastBankRoute());
+        route.add(tile(3234, 3230, 0));
+        route.add(tile(3252, 3236, 0));
+        return route;
+    }
+
+    private static List<Tile> lumbridgeCowsRoute() {
+        List<Tile> route = lumbridgeGoblinsRoute();
+        route.add(tile(3255, 3266, 0));
+        return route;
+    }
+
+    private static List<Tile> lumbridgeRangeRoute() {
+        List<Tile> route = reverse(varrockEastBankRoute());
+        route.add(tile(3234, 3230, 0));
+        route.add(tile(3222, 3218, 0));
+        route.add(tile(3209, 3215, 0));
+        return route;
+    }
+
+    private static List<Tile> lumbridgeFishingSpotRoute() {
+        List<Tile> route = reverse(varrockEastBankRoute());
+        route.add(tile(3234, 3230, 0));
+        route.add(tile(3222, 3218, 0));
+        route.add(tile(3239, 3218, 0));
+        route.add(tile(3260, 3220, 0));
+        route.add(tile(3274, 3195, 0));
+        route.add(tile(3267, 3148, 0));
+        return route;
+    }
+
     private static List<Tile> varrockEastMineRoute() {
         return route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
                 tile(3252, 3266, 0), tile(3253, 3267, 0), tile(3250, 3275, 0),
@@ -185,6 +217,15 @@ public class AgentKnowledgeBase {
                 tile(3261, 3322, 0), tile(3280, 3343, 0), tile(3285, 3365, 0),
                 tile(3289, 3388, 0), tile(3288, 3396, 0), tile(3278, 3408, 0), tile(3274, 3417, 0),
                 tile(3260, 3420, 0), tile(3238, 3420, 0), tile(3214, 3429, 0));
+    }
+
+    private static List<Tile> varrockGeneralStoreRoute() {
+        return route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
+                tile(3252, 3266, 0), tile(3253, 3267, 0), tile(3250, 3275, 0),
+                tile(3237, 3284, 0), tile(3237, 3295, 0), tile(3240, 3302, 0),
+                tile(3261, 3322, 0), tile(3280, 3343, 0), tile(3285, 3365, 0),
+                tile(3289, 3388, 0), tile(3288, 3396, 0), tile(3278, 3408, 0), tile(3274, 3417, 0),
+                tile(3260, 3420, 0), tile(3238, 3420, 0), tile(3216, 3415, 0));
     }
 
     private static List<Tile> varrockWestAnvilRoute() {

@@ -8,6 +8,8 @@ import java.security.SecureRandom;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class AgentClientController {
 
@@ -20,6 +22,8 @@ public class AgentClientController {
     private final AgentBridgeHttpClient bridgeHttpClient;
     private final CodexAppServerClient codexClient;
     private final SecureRandom secureRandom = new SecureRandom();
+    private static final Pattern COMBAT_GOAL_LEVEL_PATTERN = Pattern.compile("(?:base|level|to)\\s+(\\d{1,2})",
+            Pattern.CASE_INSENSITIVE);
 
     private volatile boolean taskRunning;
 
@@ -99,6 +103,7 @@ public class AgentClientController {
             codexClient.interruptCurrentTurn();
             if (bridgeHttpClient.hasSession()) {
                 try {
+                    bridgeHttpClient.callTool("stop_goal", new JsonObject());
                     bridgeHttpClient.callTool("cancel_current_action", new JsonObject());
                 } catch (IOException ignored) {
                 }
@@ -115,6 +120,10 @@ public class AgentClientController {
         }
         taskRunning = true;
         pushAgentMessage("Starting: " + command);
+        if (isLocalDurableCombatGoal(command)) {
+            executor.submit(() -> startLocalDurableCombatGoal(command));
+            return;
+        }
         executor.submit(() -> {
             try {
                 ensureReadyForTask();
@@ -125,6 +134,67 @@ public class AgentClientController {
                 pushAgentMessage(cleanMessage(e));
             }
         });
+    }
+
+    private boolean isLocalDurableCombatGoal(String command) {
+        String lower = command == null ? "" : command.toLowerCase();
+        return lower.contains("train combat") || lower.contains("combat to base")
+                || lower.contains("attack") && lower.contains("strength") && lower.contains("defence");
+    }
+
+    private void startLocalDurableCombatGoal(String command) {
+        try {
+            ensureBridgeSessionOnly();
+            JsonObject arguments = new JsonObject();
+            arguments.addProperty("targetLevel", parseCombatGoalTargetLevel(command));
+            arguments.addProperty("stepIntervalTicks", 4);
+            arguments.addProperty("maxActions", 250000);
+            JsonObject result = bridgeHttpClient.callTool("start_combat_goal", arguments);
+            if (isInvalidSession(result)) {
+                bridgeHttpClient.clearSession();
+                tryClaimGameSession();
+                result = bridgeHttpClient.callTool("start_combat_goal", arguments);
+            }
+            if (result.has("success") && result.get("success").getAsBoolean()) {
+                pushAgentMessage("Durable combat goal started. Keeping the client logged in while the server trains.");
+                return;
+            }
+            pushAgentMessage(result.has("message") ? result.get("message").getAsString()
+                    : "Unable to start durable combat goal.");
+        } catch (Exception e) {
+            pushAgentMessage(cleanMessage(e));
+        } finally {
+            taskRunning = false;
+        }
+    }
+
+    private void ensureBridgeSessionOnly() throws Exception {
+        if (!bridgeHttpClient.health()) {
+            throw new IOException("Local agent bridge is not running. Start the 2006Scape server first.");
+        }
+        if (!bridgeHttpClient.hasSession()) {
+            tryClaimGameSession();
+        }
+    }
+
+    private boolean isInvalidSession(JsonObject result) {
+        if (result == null || !result.has("success") || result.get("success").getAsBoolean()
+                || !result.has("message")) {
+            return false;
+        }
+        String message = result.get("message").getAsString().toLowerCase();
+        return message.contains("invalid") || message.contains("expired") || message.contains("session");
+    }
+
+    private int parseCombatGoalTargetLevel(String command) {
+        Matcher matcher = COMBAT_GOAL_LEVEL_PATTERN.matcher(command == null ? "" : command);
+        if (matcher.find()) {
+            try {
+                return Integer.parseInt(matcher.group(1));
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return 60;
     }
 
     private void ensureReadyForTask() throws Exception {

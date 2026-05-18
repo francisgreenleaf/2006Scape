@@ -115,6 +115,7 @@ Agent testing account:
 - When running agent sessions or acting inside the client for testing, use one shared player profile named `MrGem`.
 - Do not create or switch to alternate testing profiles for agent work unless the user explicitly asks for a different account.
 - When launching the local client for agent testing, prefer `-u "MrGem"` so the intended profile is prefilled.
+- Do not stack up multiple idle clients. Before launching an agent client, check for an existing `target/client-1.0-jar-with-dependencies.jar` process; reuse it if it is logged in, or terminate stale/no-login client and child `codex app-server --listen stdio://` processes before starting a fresh one.
 
 Runtime bridge:
 
@@ -136,6 +137,7 @@ Agent session logging:
 - Include a concise assessment of what the agent appears to be learning over time in the harness: which patterns are becoming easier, which failures repeated, and what would make the next session more capable.
 - Logs and summaries must explicitly capture in-game failures and blockers, including player death, missing required tools or equipment, insufficient inventory space, missing skill requirements, unreachable targets, unavailable objects/NPCs/items, closed or wrong interfaces, and any state that prevented normal gameplay execution.
 - Do not write session tokens, API keys, passwords, secrets, or other credentials to either log format; redact sensitive fields before logging.
+- Use `com.rs2.agent.AgentSessionReport` for rollups over existing JSONL logs. It writes short reports to `2006Scape Server/data/logs/agent-sessions/reports/<yyyy-MM-dd>/summary-<HHMMSS>Z.md` and keeps `2006Scape Server/data/logs/agent-sessions/reports/canonical-agent-log-index.md` as the canonical index. Reports should call out new or interesting behavior, top tools, repeated blockers, death/failure observations, connected multi-day sessions, and concrete harness improvements.
 
 Dynamic tools currently supported:
 
@@ -161,6 +163,9 @@ Dynamic tools currently supported:
 - `rs.eat_item`
 - `rs.eat_best_food`
 - `rs.pickup_ground_item`
+- `rs.fish_food`
+- `rs.cook_food`
+- `rs.light_fire`
 - `rs.open_nearest_shop`
 - `rs.buy_shop_item`
 - `rs.sell_inventory_item`
