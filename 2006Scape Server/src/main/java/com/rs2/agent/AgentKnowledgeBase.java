@@ -33,15 +33,18 @@ public class AgentKnowledgeBase {
                 route(tile(3222, 3218, 0), tile(3218, 3230, 0), tile(3212, 3246, 0))));
         add(new Landmark("general store", tile(3212, 3246, 0),
                 route(tile(3222, 3218, 0), tile(3218, 3230, 0), tile(3212, 3246, 0))));
-        add(new Landmark("al kharid furnace", tile(3274, 3186, 0),
-                route(tile(3222, 3218, 0), tile(3239, 3218, 0), tile(3260, 3220, 0),
-                        tile(3274, 3195, 0), tile(3274, 3186, 0))));
-        add(new Landmark("furnace", tile(3274, 3186, 0),
-                route(tile(3222, 3218, 0), tile(3239, 3218, 0), tile(3260, 3220, 0),
-                        tile(3274, 3195, 0), tile(3274, 3186, 0))));
+        add(new Landmark("lumbridge axe shop", tile(3231, 3203, 0), lumbridgeAxeShopRoute()));
+        add(new Landmark("bob axes", tile(3231, 3203, 0), lumbridgeAxeShopRoute()));
+        add(new Landmark("bob's axes", tile(3231, 3203, 0), lumbridgeAxeShopRoute()));
+        add(new Landmark("al kharid furnace", tile(3274, 3186, 0), alKharidFurnaceRoute()));
+        add(new Landmark("furnace", tile(3274, 3186, 0), alKharidFurnaceRoute()));
+        add(new Landmark("al kharid general store", tile(3313, 3183, 0), alKharidGeneralStoreRoute()));
+        add(new Landmark("al kharid store", tile(3313, 3183, 0), alKharidGeneralStoreRoute()));
         add(new Landmark("varrock", tile(3210, 3424, 0), varrockRoute()));
         add(new Landmark("varrock east mine", tile(3285, 3365, 0), varrockEastMineRoute()));
         add(new Landmark("iron mine", tile(3285, 3365, 0), varrockEastMineRoute()));
+        add(new Landmark("varrock east coal mine", tile(3302, 3317, 0), varrockEastCoalMineRoute()));
+        add(new Landmark("coal mine", tile(3302, 3317, 0), varrockEastCoalMineRoute()));
         add(new Landmark("varrock east bank", tile(3253, 3420, 0), varrockEastBankRoute()));
         add(new Landmark("east bank", tile(3253, 3420, 0), varrockEastBankRoute()));
         add(new Landmark("varrock west bank", tile(3185, 3436, 0), varrockWestBankRoute()));
@@ -54,9 +57,22 @@ public class AgentKnowledgeBase {
         add(new Landmark("sword shop", tile(3206, 3399, 0), varrockSwordShopRoute()));
         add(new Landmark("varrock armour shop", tile(3229, 3438, 0), varrockArmourShopRoute()));
         add(new Landmark("armour shop", tile(3229, 3438, 0), varrockArmourShopRoute()));
+        add(new Landmark("champions guild stairs", tile(3191, 3363, 0), championsGuildStairsRoute()));
+        add(new Landmark("champions guild rune store", tile(3192, 3358, 1), championsGuildRuneStoreRoute()));
+        add(new Landmark("scavvo rune store", tile(3192, 3358, 1), championsGuildRuneStoreRoute()));
+        add(new Landmark("scavvo", tile(3192, 3358, 1), championsGuildRuneStoreRoute()));
         add(new Landmark("barbarian village", tile(3081, 3429, 0), barbarianVillageRoute()));
         add(new Landmark("helmet shop", tile(3076, 3428, 0), barbarianVillageRoute()));
         add(new Landmark("barbarian pickaxe", tile(3081, 3429, 0), barbarianVillageRoute()));
+        add(new Landmark("dwarven mine ladder", tile(3024, 3450, 0), dwarvenMineLadderRoute()));
+        add(new Landmark("dwarven mine trapdoor", tile(3024, 3450, 0), dwarvenMineLadderRoute()));
+        add(new Landmark("dwarven mine north ladder underground", tile(3077, 9893, 0),
+                dwarvenMineNorthUndergroundLadderRoute()));
+        add(new Landmark("dwarven mine trapdoor underground", tile(3020, 9850, 0),
+                dwarvenMineTrapdoorUndergroundRoute()));
+        add(new Landmark("pickaxe shop", tile(2998, 9843, 0), nurmofPickaxeShopRoute()));
+        add(new Landmark("nurmof pickaxe shop", tile(2998, 9843, 0), nurmofPickaxeShopRoute()));
+        add(new Landmark("tati pickaxe shop", tile(2923, 10211, 0), route(tile(2923, 10211, 0))));
         add(new Landmark("edgeville monastery", tile(3052, 3484, 0), edgevilleMonasteryRoute()));
         add(new Landmark("monastery", tile(3052, 3484, 0), edgevilleMonasteryRoute()));
         add(new Landmark("al kharid legs shop", tile(3315, 3175, 0), alKharidLegsShopRoute()));
@@ -64,6 +80,10 @@ public class AgentKnowledgeBase {
         add(new Landmark("al kharid kebab shop", tile(3275, 3180, 0), alKharidKebabShopRoute()));
         add(new Landmark("kebab shop", tile(3275, 3180, 0), alKharidKebabShopRoute()));
         add(new Landmark("karim kebabs", tile(3275, 3180, 0), alKharidKebabShopRoute()));
+        add(new Landmark("nardah adventurer store", tile(3407, 2921, 0), nardahAdventurerStoreRoute()));
+        add(new Landmark("seddu adventurer store", tile(3407, 2921, 0), nardahAdventurerStoreRoute()));
+        add(new Landmark("oziach rune armour", tile(3069, 3517, 0), oziachRuneArmourRoute()));
+        add(new Landmark("oziach", tile(3069, 3517, 0), oziachRuneArmourRoute()));
         add(new Landmark("falador shield shop", tile(2974, 3383, 0), faladorShieldShopRoute()));
         add(new Landmark("falador white knights", tile(2977, 3343, 0), faladorWhiteKnightsRoute()));
         add(new Landmark("white knights", tile(2977, 3343, 0), faladorWhiteKnightsRoute()));
@@ -104,6 +124,50 @@ public class AgentKnowledgeBase {
         if (route.isEmpty()) {
             return TravelStep.walk(target, true);
         }
+        Tile alKharidGateApproach = alKharidGateApproachRecovery(x, y, height, route);
+        if (alKharidGateApproach != null) {
+            return TravelStep.walk(alKharidGateApproach, false);
+        }
+        Tile lumbridgeCowRecovery = lumbridgeCowRouteRecovery(x, y, height, route);
+        if (lumbridgeCowRecovery != null) {
+            return TravelStep.walk(lumbridgeCowRecovery, false);
+        }
+        Tile trapRecovery = alKharidNorthTrapRecovery(x, y, height, route);
+        if (trapRecovery != null) {
+            return TravelStep.walk(trapRecovery, false);
+        }
+        Tile alKharidSouthboundRoadRecovery = alKharidSouthboundRoadRecovery(x, y, height, route);
+        if (alKharidSouthboundRoadRecovery != null) {
+            return TravelStep.walk(alKharidSouthboundRoadRecovery, false);
+        }
+        Tile alKharidRoadRecovery = alKharidNorthRoadRecovery(x, y, height, route);
+        if (alKharidRoadRecovery != null) {
+            return TravelStep.walk(alKharidRoadRecovery, false);
+        }
+        Tile darkWizardRecovery = varrockSouthDarkWizardRecovery(x, y, height, route);
+        if (darkWizardRecovery != null) {
+            return TravelStep.walk(darkWizardRecovery, false);
+        }
+        Tile varrockEastMineBankRecovery = varrockEastMineToBankRecovery(x, y, height, route);
+        if (varrockEastMineBankRecovery != null) {
+            return TravelStep.walk(varrockEastMineBankRecovery, false);
+        }
+        Tile varrockCenterRecovery = varrockCenterToEastBankRecovery(x, y, height, route);
+        if (varrockCenterRecovery != null) {
+            return TravelStep.walk(varrockCenterRecovery, false);
+        }
+        Tile varrockToFurnaceRecovery = varrockToAlKharidFurnaceRecovery(x, y, height, route);
+        if (varrockToFurnaceRecovery != null) {
+            return TravelStep.walk(varrockToFurnaceRecovery, false);
+        }
+        Tile varrockSouthWestRoadRecovery = varrockSouthWestRoadRecovery(x, y, height, route);
+        if (varrockSouthWestRoadRecovery != null) {
+            return TravelStep.walk(varrockSouthWestRoadRecovery, false);
+        }
+        Tile varrockSouthRoadRecovery = varrockEastBankSouthRoadRecovery(x, y, height, route);
+        if (varrockSouthRoadRecovery != null) {
+            return TravelStep.walk(varrockSouthRoadRecovery, false);
+        }
         int closest = 0;
         int closestDistance = Integer.MAX_VALUE;
         for (int i = 0; i < route.size(); i++) {
@@ -138,17 +202,238 @@ public class AgentKnowledgeBase {
         return Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2));
     }
 
+    private static List<Tile> withAlKharidApproach(List<Tile> route) {
+        ArrayList<Tile> expanded = new ArrayList<Tile>();
+        expanded.add(tile(3274, 3186, 0));
+        expanded.add(tile(3274, 3195, 0));
+        expanded.add(tile(3267, 3216, 0));
+        expanded.add(tile(3267, 3227, 0));
+        expanded.add(tile(3252, 3236, 0));
+        expanded.add(tile(3252, 3266, 0));
+        for (Tile tile : route) {
+            expanded.add(tile);
+        }
+        return expanded;
+    }
+
+    private static List<Tile> withDwarvenMineSurfaceApproach(List<Tile> route) {
+        ArrayList<Tile> expanded = new ArrayList<Tile>(dwarvenMineSurfaceToVarrockRoute());
+        expanded.addAll(route);
+        return expanded;
+    }
+
+    private static List<Tile> dwarvenMineSurfaceToVarrockRoute() {
+        return route(tile(3065, 3492, 0), tile(3058, 3485, 0), tile(3050, 3474, 0),
+                tile(3050, 3464, 0), tile(3054, 3450, 0), tile(3060, 3440, 0),
+                tile(3070, 3436, 0), tile(3081, 3429, 0), tile(3100, 3429, 0),
+                tile(3100, 3421, 0), tile(3108, 3421, 0),
+                tile(3116, 3421, 0), tile(3124, 3418, 0), tile(3132, 3417, 0),
+                tile(3140, 3417, 0), tile(3148, 3417, 0), tile(3156, 3417, 0),
+                tile(3164, 3423, 0), tile(3172, 3425, 0), tile(3180, 3426, 0),
+                tile(3188, 3429, 0), tile(3196, 3429, 0), tile(3204, 3429, 0),
+                tile(3210, 3424, 0));
+    }
+
+    private static Tile lumbridgeCowRouteRecovery(int x, int y, int height, List<Tile> route) {
+        if (height != 0 || !routeContains(route, tile(3255, 3266, 0))) {
+            return null;
+        }
+        if (x >= 3258 && x <= 3280 && y >= 3190 && y <= 3226) {
+            return tile(3267, 3227, 0);
+        }
+        if (x >= 3260 && x <= 3280 && y >= 3227 && y <= 3245) {
+            return tile(3252, 3236, 0);
+        }
+        if (x >= 3244 && x <= 3260 && y >= 3230 && y < 3262) {
+            return tile(3252, 3266, 0);
+        }
+        return null;
+    }
+
+    private static Tile alKharidNorthTrapRecovery(int x, int y, int height, List<Tile> route) {
+        if (height != 0) {
+            return null;
+        }
+        Tile gateLine = tile(3267, 3227, 0);
+        if (!routeContains(route, gateLine) || !routeContains(route, tile(3252, 3236, 0))) {
+            return null;
+        }
+        if (routeContains(route, tile(3268, 3227, 0)) && routeContains(route, tile(3274, 3195, 0))) {
+            return null;
+        }
+        if (x >= 3266 && x <= 3272 && y >= 3220 && y <= 3227 && (x != gateLine.x || y != gateLine.y)) {
+            return gateLine;
+        }
+        return x >= 3260 && x <= 3276 && y >= 3228 && y <= 3255 ? gateLine : null;
+    }
+
+    private static Tile alKharidNorthRoadRecovery(int x, int y, int height, List<Tile> route) {
+        if (height != 0 || x < 3240 || x > 3276 || y < 3266 || y > 3315) {
+            return null;
+        }
+        Tile northRoad = tile(3261, 3322, 0);
+        return routeContains(route, northRoad) ? northRoad : null;
+    }
+
+    private static Tile alKharidSouthboundRoadRecovery(int x, int y, int height, List<Tile> route) {
+        if (height != 0 || !routeEndsSouthOfAlKharidGate(route)
+                || !routeContains(route, tile(3240, 3302, 0))) {
+            return null;
+        }
+        Tile southRoad = tile(3240, 3302, 0);
+        if (x == southRoad.x && y == southRoad.y) {
+            return null;
+        }
+        return x >= 3240 && x <= 3265 && y >= 3300 && y <= 3325 ? southRoad : null;
+    }
+
+    private static Tile alKharidGateApproachRecovery(int x, int y, int height, List<Tile> route) {
+        if (height != 0) {
+            return null;
+        }
+        Tile westGate = tile(3267, 3227, 0);
+        Tile eastGate = tile(3268, 3227, 0);
+        if (!routeContains(route, westGate) || !routeContains(route, eastGate)
+                || !routeContains(route, tile(3274, 3195, 0))) {
+            return null;
+        }
+        if (x >= 3258 && x <= westGate.x && y >= 3190 && y < westGate.y) {
+            return westGate;
+        }
+        return null;
+    }
+
+    private static Tile varrockSouthDarkWizardRecovery(int x, int y, int height, List<Tile> route) {
+        if (height != 0 || x < 3200 || x > 3240 || y < 3350 || y > 3392) {
+            return null;
+        }
+        Tile northernRoad = tile(3238, 3420, 0);
+        if (routeContains(route, northernRoad)) {
+            return northernRoad;
+        }
+        Tile easternRoad = tile(3260, 3420, 0);
+        return routeContains(route, easternRoad) && routeContains(route, tile(3253, 3420, 0)) ? easternRoad : null;
+    }
+
+    private static Tile varrockEastMineToBankRecovery(int x, int y, int height, List<Tile> route) {
+        if (height != 0 || !routeEndsAt(route, tile(3253, 3420, 0))) {
+            return null;
+        }
+        if (x >= 3285 && x <= 3310 && y >= 3265 && y < 3330) {
+            Tile scorpionRoad = tile(3301, 3325, 0);
+            if (x == scorpionRoad.x && y == scorpionRoad.y) {
+                Tile northRoad = tile(3280, 3343, 0);
+                return routeContains(route, northRoad) ? northRoad : null;
+            }
+            return scorpionRoad;
+        }
+        if (x >= 3288 && x <= 3310 && y >= 3330 && y < 3355) {
+            return tile(3285, 3365, 0);
+        }
+        if (x >= 3278 && x <= 3300 && y >= 3350 && y < 3380) {
+            return tile(3289, 3388, 0);
+        }
+        if (x >= 3278 && x <= 3300 && y >= 3380 && y < 3402) {
+            return tile(3278, 3408, 0);
+        }
+        if (x >= 3268 && x <= 3292 && y >= 3400 && y < 3418) {
+            return tile(3260, 3420, 0);
+        }
+        return null;
+    }
+
+    private static Tile varrockCenterToEastBankRecovery(int x, int y, int height, List<Tile> route) {
+        if (height != 0 || x < 3200 || x >= 3234 || y < 3410 || y > 3440) {
+            return null;
+        }
+        Tile northernRoad = tile(3238, 3420, 0);
+        return routeContains(route, tile(3260, 3420, 0)) && routeContains(route, tile(3253, 3420, 0))
+                ? northernRoad : null;
+    }
+
+    private static Tile varrockToAlKharidFurnaceRecovery(int x, int y, int height, List<Tile> route) {
+        if (height != 0 || !routeContains(route, tile(3274, 3186, 0))
+                || !routeContains(route, tile(3260, 3220, 0))) {
+            return null;
+        }
+        if (x >= 3270 && x <= 3280 && y >= 3421 && y <= 3430) {
+            return tile(3274, 3417, 0);
+        }
+        if (x >= 3245 && x <= 3270 && y >= 3392 && y <= 3402) {
+            return tile(3255, 3404, 0);
+        }
+        if (x >= 3245 && x <= 3270 && y >= 3360 && y <= 3402) {
+            return tile(3289, 3388, 0);
+        }
+        return null;
+    }
+
+    private static Tile varrockSouthWestRoadRecovery(int x, int y, int height, List<Tile> route) {
+        if (height != 0 || x < 3245 || x > 3270 || y < 3360 || y >= 3420) {
+            return null;
+        }
+        if (!routeContains(route, tile(3260, 3420, 0)) || !routeContains(route, tile(3274, 3417, 0))) {
+            return null;
+        }
+        if (y < 3404) {
+            return tile(3255, Math.min(3404, y + 16), 0);
+        }
+        return tile(3260, 3420, 0);
+    }
+
+    private static Tile varrockEastBankSouthRoadRecovery(int x, int y, int height, List<Tile> route) {
+        if (height != 0 || x < 3270 || x > 3280 || y < 3416 || y > 3430) {
+            return null;
+        }
+        Tile eastBankRoad = tile(3260, 3420, 0);
+        if (routeContains(route, eastBankRoad) && !routeContains(route, tile(3274, 3417, 0))) {
+            return eastBankRoad;
+        }
+        if (y <= 3420) {
+            return null;
+        }
+        Tile southRoad = tile(3274, 3417, 0);
+        return routeContains(route, southRoad)
+                && routeContains(route, tile(3278, 3408, 0))
+                && routeContains(route, tile(3252, 3266, 0)) ? southRoad : null;
+    }
+
+    private static boolean routeContains(List<Tile> route, Tile candidate) {
+        for (Tile tile : route) {
+            if (tile.x == candidate.x && tile.y == candidate.y && tile.height == candidate.height) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean routeEndsAt(List<Tile> route, Tile candidate) {
+        if (route.isEmpty()) {
+            return false;
+        }
+        Tile last = route.get(route.size() - 1);
+        return last.x == candidate.x && last.y == candidate.y && last.height == candidate.height;
+    }
+
+    private static boolean routeEndsSouthOfAlKharidGate(List<Tile> route) {
+        if (route.isEmpty()) {
+            return false;
+        }
+        Tile last = route.get(route.size() - 1);
+        return last.height == 0 && last.y <= 3220;
+    }
+
     private static List<Tile> varrockRoute() {
-        return route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
+        return withDwarvenMineSurfaceApproach(withAlKharidApproach(route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
                 tile(3252, 3266, 0), tile(3253, 3267, 0), tile(3250, 3275, 0),
                 tile(3237, 3284, 0), tile(3237, 3295, 0), tile(3240, 3302, 0),
                 tile(3261, 3322, 0), tile(3280, 3343, 0), tile(3285, 3365, 0),
                 tile(3289, 3388, 0), tile(3288, 3396, 0), tile(3278, 3408, 0), tile(3274, 3417, 0),
-                tile(3260, 3420, 0), tile(3238, 3420, 0), tile(3210, 3424, 0));
+                tile(3260, 3420, 0), tile(3238, 3420, 0), tile(3210, 3424, 0))));
     }
 
     private static List<Tile> lumbridgeGoblinsRoute() {
-        List<Tile> route = reverse(varrockEastBankRoute());
+        List<Tile> route = varrockEastBankToLumbridgeRoute();
         route.add(tile(3234, 3230, 0));
         route.add(tile(3252, 3236, 0));
         return route;
@@ -161,26 +446,36 @@ public class AgentKnowledgeBase {
     }
 
     private static List<Tile> lumbridgeRangeRoute() {
-        List<Tile> route = reverse(varrockEastBankRoute());
-        route.add(tile(3234, 3230, 0));
-        route.add(tile(3222, 3218, 0));
+        List<Tile> route = varrockEastBankToLumbridgeRoute();
         route.add(tile(3209, 3215, 0));
         return route;
     }
 
     private static List<Tile> lumbridgeFishingSpotRoute() {
-        List<Tile> route = reverse(varrockEastBankRoute());
-        route.add(tile(3234, 3230, 0));
-        route.add(tile(3222, 3218, 0));
+        List<Tile> route = varrockEastBankToLumbridgeRoute();
         route.add(tile(3239, 3218, 0));
         route.add(tile(3260, 3220, 0));
         route.add(tile(3274, 3195, 0));
+        route.add(tile(3274, 3190, 0));
+        route.add(tile(3274, 3179, 0));
+        route.add(tile(3268, 3164, 0));
         route.add(tile(3267, 3148, 0));
         return route;
     }
 
+    private static List<Tile> alKharidFurnaceRoute() {
+        return route(tile(3253, 3420, 0), tile(3260, 3420, 0), tile(3274, 3417, 0),
+                tile(3278, 3408, 0), tile(3288, 3396, 0), tile(3289, 3388, 0),
+                tile(3285, 3365, 0), tile(3280, 3343, 0), tile(3261, 3322, 0),
+                tile(3240, 3302, 0), tile(3237, 3295, 0), tile(3237, 3284, 0),
+                tile(3250, 3275, 0), tile(3253, 3267, 0), tile(3252, 3266, 0),
+                tile(3252, 3236, 0), tile(3260, 3220, 0),
+                tile(3267, 3227, 0), tile(3268, 3227, 0),
+                tile(3274, 3195, 0), tile(3274, 3186, 0));
+    }
+
     private static List<Tile> varrockEastMineRoute() {
-        return route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
+        return withDwarvenMineSurfaceApproach(withAlKharidApproach(route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
                 tile(3252, 3266, 0), tile(3253, 3267, 0), tile(3250, 3275, 0),
                 tile(3237, 3284, 0), tile(3237, 3295, 0), tile(3240, 3302, 0),
                 tile(3261, 3322, 0), tile(3280, 3343, 0), tile(3285, 3365, 0),
@@ -188,10 +483,23 @@ public class AgentKnowledgeBase {
                 tile(3274, 3417, 0), tile(3260, 3420, 0), tile(3238, 3420, 0),
                 tile(3210, 3424, 0), tile(3238, 3420, 0), tile(3260, 3420, 0),
                 tile(3274, 3417, 0), tile(3278, 3408, 0),
-                tile(3288, 3396, 0), tile(3289, 3388, 0), tile(3285, 3365, 0));
+                tile(3288, 3396, 0), tile(3289, 3388, 0), tile(3285, 3365, 0))));
+    }
+
+    private static List<Tile> varrockEastCoalMineRoute() {
+        List<Tile> route = new ArrayList<Tile>(varrockEastMineRoute());
+        route.add(tile(3291, 3351, 0));
+        route.add(tile(3295, 3338, 0));
+        route.add(tile(3301, 3325, 0));
+        route.add(tile(3302, 3317, 0));
+        return route;
     }
 
     private static List<Tile> varrockEastBankRoute() {
+        return withDwarvenMineSurfaceApproach(withAlKharidApproach(lumbridgeToVarrockEastBankRoute()));
+    }
+
+    private static List<Tile> lumbridgeToVarrockEastBankRoute() {
         return route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
                 tile(3252, 3266, 0), tile(3253, 3267, 0), tile(3250, 3275, 0),
                 tile(3237, 3284, 0), tile(3237, 3295, 0), tile(3240, 3302, 0),
@@ -200,65 +508,96 @@ public class AgentKnowledgeBase {
                 tile(3260, 3420, 0), tile(3253, 3420, 0));
     }
 
+    private static List<Tile> varrockEastBankToLumbridgeRoute() {
+        return route(tile(3253, 3420, 0), tile(3260, 3420, 0), tile(3274, 3417, 0),
+                tile(3278, 3408, 0), tile(3288, 3396, 0), tile(3289, 3388, 0),
+                tile(3285, 3365, 0), tile(3280, 3343, 0), tile(3261, 3322, 0),
+                tile(3240, 3302, 0), tile(3237, 3295, 0), tile(3237, 3284, 0),
+                tile(3250, 3275, 0), tile(3253, 3267, 0), tile(3252, 3266, 0),
+                tile(3252, 3236, 0), tile(3234, 3230, 0), tile(3222, 3218, 0));
+    }
+
+    private static List<Tile> lumbridgeAxeShopRoute() {
+        List<Tile> route = varrockEastBankToLumbridgeRoute();
+        route.add(tile(3231, 3203, 0));
+        return route;
+    }
+
     private static List<Tile> varrockWestBankRoute() {
-        return route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
+        return withDwarvenMineSurfaceApproach(withAlKharidApproach(route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
                 tile(3252, 3266, 0), tile(3253, 3267, 0), tile(3250, 3275, 0),
                 tile(3237, 3284, 0), tile(3237, 3295, 0), tile(3240, 3302, 0),
                 tile(3261, 3322, 0), tile(3280, 3343, 0), tile(3285, 3365, 0),
                 tile(3289, 3388, 0), tile(3288, 3396, 0), tile(3278, 3408, 0), tile(3274, 3417, 0),
                 tile(3260, 3420, 0), tile(3238, 3420, 0), tile(3210, 3424, 0),
-                tile(3194, 3430, 0), tile(3185, 3436, 0));
+                tile(3194, 3430, 0), tile(3185, 3436, 0))));
     }
 
     private static List<Tile> varrockGuardsRoute() {
-        return route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
+        return withAlKharidApproach(route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
                 tile(3252, 3266, 0), tile(3253, 3267, 0), tile(3250, 3275, 0),
                 tile(3237, 3284, 0), tile(3237, 3295, 0), tile(3240, 3302, 0),
                 tile(3261, 3322, 0), tile(3280, 3343, 0), tile(3285, 3365, 0),
                 tile(3289, 3388, 0), tile(3288, 3396, 0), tile(3278, 3408, 0), tile(3274, 3417, 0),
-                tile(3260, 3420, 0), tile(3238, 3420, 0), tile(3214, 3429, 0));
+                tile(3260, 3420, 0), tile(3238, 3420, 0), tile(3214, 3429, 0)));
     }
 
     private static List<Tile> varrockGeneralStoreRoute() {
-        return route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
+        return withDwarvenMineSurfaceApproach(withAlKharidApproach(route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
                 tile(3252, 3266, 0), tile(3253, 3267, 0), tile(3250, 3275, 0),
                 tile(3237, 3284, 0), tile(3237, 3295, 0), tile(3240, 3302, 0),
                 tile(3261, 3322, 0), tile(3280, 3343, 0), tile(3285, 3365, 0),
                 tile(3289, 3388, 0), tile(3288, 3396, 0), tile(3278, 3408, 0), tile(3274, 3417, 0),
-                tile(3260, 3420, 0), tile(3238, 3420, 0), tile(3216, 3415, 0));
+                tile(3260, 3420, 0), tile(3238, 3420, 0), tile(3216, 3415, 0))));
     }
 
     private static List<Tile> varrockWestAnvilRoute() {
-        return route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
+        return withDwarvenMineSurfaceApproach(withAlKharidApproach(route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
                 tile(3252, 3266, 0), tile(3253, 3267, 0), tile(3250, 3275, 0),
                 tile(3237, 3284, 0), tile(3237, 3295, 0), tile(3240, 3302, 0),
                 tile(3261, 3322, 0), tile(3280, 3343, 0), tile(3285, 3365, 0),
                 tile(3289, 3388, 0), tile(3288, 3396, 0), tile(3278, 3408, 0), tile(3274, 3417, 0),
                 tile(3260, 3420, 0), tile(3238, 3420, 0), tile(3210, 3424, 0),
-                tile(3196, 3428, 0), tile(3188, 3425, 0));
+                tile(3196, 3428, 0), tile(3188, 3425, 0))));
     }
 
     private static List<Tile> varrockSwordShopRoute() {
-        return route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
+        return withDwarvenMineSurfaceApproach(withAlKharidApproach(route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
                 tile(3252, 3266, 0), tile(3253, 3267, 0), tile(3250, 3275, 0),
                 tile(3237, 3284, 0), tile(3237, 3295, 0), tile(3240, 3302, 0),
                 tile(3261, 3322, 0), tile(3280, 3343, 0), tile(3285, 3365, 0),
                 tile(3289, 3388, 0), tile(3288, 3396, 0), tile(3278, 3408, 0), tile(3274, 3417, 0),
                 tile(3260, 3420, 0), tile(3238, 3420, 0), tile(3210, 3424, 0),
-                tile(3206, 3399, 0));
+                tile(3206, 3399, 0))));
     }
 
     private static List<Tile> varrockArmourShopRoute() {
-        return route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
+        return withDwarvenMineSurfaceApproach(withAlKharidApproach(route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
                 tile(3252, 3266, 0), tile(3253, 3267, 0), tile(3250, 3275, 0),
                 tile(3237, 3284, 0), tile(3237, 3295, 0), tile(3240, 3302, 0),
                 tile(3261, 3322, 0), tile(3280, 3343, 0), tile(3285, 3365, 0),
                 tile(3289, 3388, 0), tile(3288, 3396, 0), tile(3278, 3408, 0), tile(3274, 3417, 0),
-                tile(3260, 3420, 0), tile(3238, 3420, 0), tile(3229, 3438, 0));
+                tile(3260, 3420, 0), tile(3238, 3420, 0), tile(3229, 3438, 0))));
+    }
+
+    private static List<Tile> championsGuildStairsRoute() {
+        return withDwarvenMineSurfaceApproach(withAlKharidApproach(route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
+                tile(3252, 3266, 0), tile(3253, 3267, 0), tile(3250, 3275, 0),
+                tile(3237, 3284, 0), tile(3237, 3295, 0), tile(3240, 3302, 0),
+                tile(3261, 3322, 0), tile(3280, 3343, 0), tile(3285, 3365, 0),
+                tile(3289, 3388, 0), tile(3288, 3396, 0), tile(3278, 3408, 0), tile(3274, 3417, 0),
+                tile(3260, 3420, 0), tile(3238, 3420, 0), tile(3210, 3424, 0),
+                tile(3206, 3399, 0), tile(3198, 3384, 0), tile(3191, 3363, 0))));
+    }
+
+    private static List<Tile> championsGuildRuneStoreRoute() {
+        List<Tile> route = championsGuildStairsRoute();
+        route.add(tile(3192, 3358, 1));
+        return route;
     }
 
     private static List<Tile> barbarianVillageRoute() {
-        return route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
+        return withAlKharidApproach(route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
                 tile(3252, 3266, 0), tile(3253, 3267, 0), tile(3250, 3275, 0),
                 tile(3237, 3284, 0), tile(3237, 3295, 0), tile(3240, 3302, 0),
                 tile(3261, 3322, 0), tile(3280, 3343, 0), tile(3285, 3365, 0),
@@ -270,7 +609,7 @@ public class AgentKnowledgeBase {
                 tile(3158, 3426, 0), tile(3154, 3426, 0), tile(3148, 3429, 0),
                 tile(3140, 3429, 0), tile(3132, 3429, 0), tile(3124, 3429, 0),
                 tile(3116, 3429, 0), tile(3110, 3422, 0), tile(3100, 3424, 0),
-                tile(3092, 3429, 0), tile(3081, 3429, 0));
+                tile(3092, 3429, 0), tile(3081, 3429, 0)));
     }
 
     private static List<Tile> edgevilleMonasteryRoute() {
@@ -283,26 +622,55 @@ public class AgentKnowledgeBase {
     }
 
     private static List<Tile> alKharidLegsShopRoute() {
-        return route(tile(3222, 3218, 0), tile(3239, 3218, 0), tile(3260, 3220, 0),
-                tile(3274, 3195, 0), tile(3289, 3189, 0), tile(3315, 3175, 0));
+        List<Tile> route = alKharidFurnaceRoute();
+        route.add(tile(3289, 3189, 0));
+        route.add(tile(3315, 3175, 0));
+        return route;
     }
 
     private static List<Tile> alKharidScimitarShopRoute() {
         return route(tile(3222, 3218, 0), tile(3239, 3218, 0), tile(3260, 3220, 0),
+                tile(3267, 3227, 0), tile(3268, 3227, 0),
                 tile(3274, 3195, 0), tile(3289, 3189, 0));
+    }
+
+    private static List<Tile> alKharidGeneralStoreRoute() {
+        return route(tile(3222, 3218, 0), tile(3239, 3218, 0), tile(3260, 3220, 0),
+                tile(3267, 3227, 0), tile(3268, 3227, 0),
+                tile(3274, 3195, 0), tile(3289, 3189, 0), tile(3305, 3186, 0),
+                tile(3313, 3183, 0));
     }
 
     private static List<Tile> alKharidKebabShopRoute() {
         List<Tile> route = reverse(barbarianVillageRoute());
         route.add(tile(3239, 3218, 0));
         route.add(tile(3260, 3220, 0));
+        route.add(tile(3267, 3227, 0));
+        route.add(tile(3268, 3227, 0));
         route.add(tile(3274, 3195, 0));
         route.add(tile(3275, 3180, 0));
         return route;
     }
 
+    private static List<Tile> nardahAdventurerStoreRoute() {
+        return route(tile(3222, 3218, 0), tile(3239, 3218, 0), tile(3260, 3220, 0),
+                tile(3267, 3227, 0), tile(3268, 3227, 0),
+                tile(3274, 3195, 0), tile(3315, 3175, 0), tile(3328, 3150, 0),
+                tile(3340, 3120, 0), tile(3360, 3090, 0), tile(3372, 3060, 0),
+                tile(3380, 3030, 0), tile(3388, 3000, 0), tile(3395, 2970, 0),
+                tile(3402, 2940, 0), tile(3407, 2921, 0));
+    }
+
+    private static List<Tile> oziachRuneArmourRoute() {
+        List<Tile> route = new ArrayList<Tile>(edgevilleMonasteryRoute());
+        route.add(tile(3058, 3494, 0));
+        route.add(tile(3064, 3504, 0));
+        route.add(tile(3069, 3517, 0));
+        return route;
+    }
+
     private static List<Tile> faladorShieldShopRoute() {
-        return route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
+        return withAlKharidApproach(route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
                 tile(3252, 3266, 0), tile(3253, 3267, 0), tile(3250, 3275, 0),
                 tile(3237, 3284, 0), tile(3237, 3295, 0), tile(3240, 3302, 0),
                 tile(3261, 3322, 0), tile(3280, 3343, 0), tile(3285, 3365, 0),
@@ -315,8 +683,9 @@ public class AgentKnowledgeBase {
                 tile(3140, 3429, 0), tile(3132, 3429, 0), tile(3124, 3429, 0),
                 tile(3116, 3429, 0), tile(3110, 3422, 0), tile(3100, 3424, 0),
                 tile(3092, 3429, 0),
-                tile(3076, 3428, 0), tile(3040, 3428, 0), tile(3005, 3404, 0),
-                tile(2974, 3383, 0));
+                tile(3076, 3428, 0), tile(3040, 3428, 0), tile(3023, 3420, 0),
+                tile(3005, 3404, 0),
+                tile(2974, 3383, 0)));
     }
 
     private static List<Tile> faladorWhiteKnightsRoute() {
@@ -324,6 +693,51 @@ public class AgentKnowledgeBase {
         route.add(tile(2974, 3365, 0));
         route.add(tile(2977, 3343, 0));
         return route;
+    }
+
+    private static List<Tile> pickaxeShopRoute() {
+        return nurmofPickaxeShopRoute();
+    }
+
+    private static List<Tile> dwarvenMineLadderRoute() {
+        List<Tile> route = new ArrayList<Tile>(barbarianVillageRoute());
+        route.add(tile(3076, 3428, 0));
+        route.add(tile(3040, 3428, 0));
+        route.add(tile(3023, 3420, 0));
+        route.add(tile(3024, 3450, 0));
+        return route;
+    }
+
+    private static List<Tile> nurmofPickaxeShopRoute() {
+        List<Tile> route = new ArrayList<Tile>();
+        route.add(tile(3046, 9757, 0));
+        route.add(tile(3039, 9765, 0));
+        route.add(tile(3041, 9773, 0));
+        route.add(tile(3042, 9781, 0));
+        route.add(tile(3042, 9789, 0));
+        route.add(tile(3042, 9797, 0));
+        route.add(tile(3043, 9805, 0));
+        route.add(tile(3041, 9813, 0));
+        route.add(tile(3039, 9821, 0));
+        route.add(tile(3038, 9829, 0));
+        route.add(tile(3032, 9830, 0));
+        route.add(tile(3024, 9822, 0));
+        route.add(tile(3018, 9817, 0));
+        route.add(tile(3013, 9813, 0));
+        route.add(tile(3005, 9814, 0));
+        route.add(tile(2999, 9819, 0));
+        route.add(tile(2999, 9827, 0));
+        route.add(tile(2999, 9835, 0));
+        route.add(tile(2998, 9843, 0));
+        return route;
+    }
+
+    private static List<Tile> dwarvenMineNorthUndergroundLadderRoute() {
+        return route(tile(3077, 9887, 0), tile(3077, 9893, 0));
+    }
+
+    private static List<Tile> dwarvenMineTrapdoorUndergroundRoute() {
+        return route(tile(3020, 9850, 0));
     }
 
     private static List<Tile> rockCrabsRoute() {
