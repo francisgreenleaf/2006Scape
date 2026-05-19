@@ -1,3 +1,4 @@
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import javax.swing.JPasswordField;
@@ -53,6 +54,11 @@ public class AgentClientController {
         }
         if ("stop".equalsIgnoreCase(command)) {
             stopAgent();
+            return;
+        }
+        if ("goal".equalsIgnoreCase(command) || "observe goal".equalsIgnoreCase(command)
+                || "observe_goal".equalsIgnoreCase(command)) {
+            observeGoal();
             return;
         }
         runTask(command);
@@ -117,6 +123,18 @@ public class AgentClientController {
             }
             taskRunning = false;
             terminalLog.warn("Stopped.");
+        });
+    }
+
+    private void observeGoal() {
+        executor.submit(() -> {
+            try {
+                ensureBridgeSessionOnly();
+                JsonObject result = bridgeHttpClient.callTool("observe_goal", new JsonObject());
+                pushAgentMessage(formatGoalStatus(result));
+            } catch (Exception e) {
+                pushAgentMessage("Goal observe failed: " + cleanMessage(e));
+            }
         });
     }
 
@@ -254,6 +272,66 @@ public class AgentClientController {
             bridgeHttpClient.recordSessionEvent("turn_requested", event);
         } catch (IOException ignored) {
         }
+    }
+
+    private String formatGoalStatus(JsonObject result) {
+        if (result == null) {
+            return "Goal: no response.";
+        }
+        if (!result.has("success") || !result.get("success").getAsBoolean()) {
+            return "Goal: " + stringField(result, "message", "not available.");
+        }
+
+        JsonObject goal = objectField(result, "goal");
+        JsonObject state = objectField(result, "state");
+        JsonObject player = objectField(state, "player");
+        JsonObject money = objectField(state, "money");
+
+        int attack = intField(goal, "attackLevel");
+        int strength = intField(goal, "strengthLevel");
+        int defence = intField(goal, "defenceLevel");
+        int target = intField(goal, "targetLevel");
+        int actions = intField(goal, "actionsRun");
+        int x = intField(player, "x");
+        int y = intField(player, "y");
+        int coins = intField(money, "inventoryCoins") + intField(money, "bankCoins");
+        String status = stringField(goal, "status", "unknown");
+        String message = stringField(result, "message", stringField(goal, "message", "observed"));
+        return "Goal " + status + " A/S/D " + attack + "/" + strength + "/" + defence
+                + " -> " + target + ", actions " + actions + ", coins " + coins
+                + ", pos " + x + "," + y + ": " + message;
+    }
+
+    private static JsonObject objectField(JsonObject object, String name) {
+        return object != null && object.has(name) && object.get(name).isJsonObject()
+                ? object.getAsJsonObject(name) : new JsonObject();
+    }
+
+    private static int intField(JsonObject object, String name) {
+        return object != null && object.has(name) && object.get(name).isJsonPrimitive()
+                ? object.get(name).getAsInt() : 0;
+    }
+
+    private static String stringField(JsonObject object, String name, String fallback) {
+        return object != null && object.has(name) && object.get(name).isJsonPrimitive()
+                ? object.get(name).getAsString() : fallback;
+    }
+
+    private static int sumItemAmount(JsonObject object, String arrayName, int itemId) {
+        if (object == null || !object.has(arrayName) || !object.get(arrayName).isJsonArray()) {
+            return 0;
+        }
+        int total = 0;
+        for (JsonElement element : object.getAsJsonArray(arrayName)) {
+            if (!element.isJsonObject()) {
+                continue;
+            }
+            JsonObject item = element.getAsJsonObject();
+            if (intField(item, "id") == itemId) {
+                total += intField(item, "amount");
+            }
+        }
+        return total;
     }
 
     private String nonce() {

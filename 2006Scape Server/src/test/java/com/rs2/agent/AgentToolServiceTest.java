@@ -1,6 +1,7 @@
 package com.rs2.agent;
 
 import com.rs2.game.content.StaticObjectList;
+import com.rs2.game.objects.Objects;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -50,5 +51,36 @@ public class AgentToolServiceTest {
 
         assertEquals(3252, target[0]);
         assertEquals(3245, target[1]);
+    }
+
+    @Test
+    public void objectInteractionTargetsAdjacentTileInsteadOfObjectTile() {
+        Objects rock = new Objects(2090, 3296, 3314, 0, 0, 10, 0);
+
+        assertFalse(AgentToolService.isWithinObjectInteractionRange(3294, 3314, rock));
+
+        int[] target = AgentToolService.objectInteractionWalkTarget(3294, 3314, -1, -1, rock);
+
+        assertEquals(3295, target[0]);
+        assertEquals(3314, target[1]);
+        assertTrue(AgentToolService.isWithinObjectInteractionRange(target[0], target[1], rock));
+    }
+
+    @Test
+    public void nearbyMineableRockFallbackIsLimitedToVisibleRocks() {
+        Objects coal = new Objects(2096, 3302, 3317, 0, 2, 10, 0);
+        Objects notRock = new Objects(100, 3302, 3317, 0, 0, 10, 0);
+
+        assertTrue(AgentToolService.isNearbyMineableRock(3304, 3317, coal));
+        assertFalse(AgentToolService.isNearbyMineableRock(3305, 3317, coal));
+        assertFalse(AgentToolService.isNearbyMineableRock(3304, 3317, notRock));
+    }
+
+    @Test
+    public void travelRecognizesAlKharidGateCrossingSteps() {
+        assertTrue(AgentToolService.isAlKharidGateCrossingStep(3268, 3227, 3252, 3236));
+        assertTrue(AgentToolService.isAlKharidGateCrossingStep(3267, 3227, 3274, 3195));
+        assertFalse(AgentToolService.isAlKharidGateCrossingStep(3268, 3227, 3274, 3195));
+        assertFalse(AgentToolService.isAlKharidGateCrossingStep(3268, 3233, 3252, 3236));
     }
 }
