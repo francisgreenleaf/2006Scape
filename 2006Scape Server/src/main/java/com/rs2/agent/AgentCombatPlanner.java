@@ -18,8 +18,8 @@ public class AgentCombatPlanner {
             {1, 1279},   // iron sword
             {5, 1281},   // steel sword
             {20, 1285},  // mithril sword
-            {30, 1287},  // adamant sword
-            {40, 1291}   // rune sword
+            {30, 1301},  // adamant longsword
+            {40, 1289}   // rune sword
     };
 
     private static final int[][] ARMOUR_TIERS = {
@@ -43,14 +43,16 @@ public class AgentCombatPlanner {
         if (attackLevel >= targetLevel && strengthLevel >= targetLevel && defenceLevel >= targetLevel) {
             return "complete";
         }
-        int nextWeaponUnlock = nextWeaponUnlock(attackLevel);
-        int levelsToWeaponUnlock = nextWeaponUnlock - attackLevel;
-        if (attackLevel < targetLevel && nextWeaponUnlock < targetLevel
-                && (levelsToWeaponUnlock <= 2 || attackLevel <= strengthLevel + 5)) {
+        if (attackLevel < targetLevel && shouldTrainAttackForWeaponTier(attackLevel, strengthLevel)) {
             return "attack";
         }
-        if (strengthLevel < targetLevel && strengthLevel <= attackLevel + 3
-                && strengthLevel <= defenceLevel + 8) {
+        if (defenceLevel < targetLevel && shouldTrainDefenceForSurvivability(attackLevel, strengthLevel, defenceLevel)) {
+            return "defence";
+        }
+        if (strengthLevel < targetLevel && shouldTrainStrengthForDamage(attackLevel, strengthLevel)) {
+            return "strength";
+        }
+        if (strengthLevel < targetLevel && strengthLevel < attackLevel) {
             return "strength";
         }
         if (defenceLevel < targetLevel && defenceLevel + 5 < Math.min(attackLevel, strengthLevel)) {
@@ -74,6 +76,62 @@ public class AgentCombatPlanner {
         return "attack";
     }
 
+    private static boolean shouldTrainStrengthForDamage(int attackLevel, int strengthLevel) {
+        int weaponTier = currentWeaponTier(attackLevel);
+        if (weaponTier >= 40) {
+            return strengthLevel + 3 < attackLevel;
+        }
+        if (weaponTier >= 20) {
+            return strengthLevel + 8 < attackLevel;
+        }
+        return weaponTier >= 5 && strengthLevel + 10 < attackLevel;
+    }
+
+    private static boolean shouldTrainDefenceForSurvivability(int attackLevel, int strengthLevel, int defenceLevel) {
+        int combatPower = Math.min(attackLevel, strengthLevel);
+        if (defenceLevel < 5) {
+            return true;
+        }
+        if (combatPower >= 20 && defenceLevel < 20) {
+            return true;
+        }
+        if (combatPower >= 30 && defenceLevel < 30) {
+            return true;
+        }
+        if (combatPower >= 40 && defenceLevel < 40) {
+            return true;
+        }
+        return defenceLevel + 10 < combatPower;
+    }
+
+    private static boolean shouldTrainAttackForWeaponTier(int attackLevel, int strengthLevel) {
+        int nextTier = nextWeaponTier(attackLevel);
+        if (nextTier < 0) {
+            return strengthLevel + 3 >= attackLevel;
+        }
+        int levelsToTier = nextTier - attackLevel;
+        return levelsToTier <= 2 || attackLevel <= strengthLevel + 5;
+    }
+
+    private static int currentWeaponTier(int attackLevel) {
+        int tier = 1;
+        for (int i = 0; i < WEAPON_TIERS.length; i++) {
+            if (attackLevel >= WEAPON_TIERS[i][0]) {
+                tier = WEAPON_TIERS[i][0];
+            }
+        }
+        return tier;
+    }
+
+    private static int nextWeaponTier(int attackLevel) {
+        for (int i = 0; i < WEAPON_TIERS.length; i++) {
+            if (attackLevel < WEAPON_TIERS[i][0]) {
+                return WEAPON_TIERS[i][0];
+            }
+        }
+        return -1;
+    }
+
     public static TrainingArea recommendedArea(int attackLevel, int strengthLevel, int defenceLevel, int hitpointsLevel,
             int foodCount) {
         int meleeAverage = (attackLevel + strengthLevel + defenceLevel) / 3;
@@ -83,7 +141,7 @@ public class AgentCombatPlanner {
         if (meleeAverage >= 35 && hitpointsLevel >= 35 && foodCount >= 8) {
             return findArea("falador white knights");
         }
-        if (meleeAverage >= 22 && foodCount >= 4) {
+        if (meleeAverage >= 22 && defenceLevel >= 20 && hitpointsLevel >= 30 && foodCount >= 6) {
             return findArea("varrock guards");
         }
         if (meleeAverage >= 12) {

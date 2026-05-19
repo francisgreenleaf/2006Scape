@@ -41,6 +41,7 @@ import com.rs2.game.npcs.Npc;
 import com.rs2.game.npcs.NpcHandler;
 import com.rs2.game.objects.Objects;
 import com.rs2.game.objects.impl.Climbing;
+import com.rs2.game.objects.impl.OtherObjects;
 import com.rs2.game.players.Player;
 import com.rs2.game.dialogues.DialogueOptions;
 import com.rs2.game.shops.ShopHandler;
@@ -359,6 +360,10 @@ public class AgentToolService {
         result.add("target", tile(landmark.getTarget().x, landmark.getTarget().y, landmark.getTarget().height));
         result.add("nextWaypoint", tile(step.getTile().x, step.getTile().y, step.getTile().height));
         result.addProperty("finalWaypoint", step.isFinalTarget());
+        JsonObject gateResult = maybeUseAlKharidGate(player, landmark, step);
+        if (gateResult != null) {
+            return gateResult;
+        }
         if (!step.isComplete()) {
             player.getPlayerAssistant().resetFollow();
             player.getCombatAssistant().resetPlayerAttack();
@@ -377,9 +382,156 @@ public class AgentToolService {
         return result;
     }
 
+    private static JsonObject maybeUseAlKharidGate(Player player, AgentKnowledgeBase.Landmark landmark,
+            AgentKnowledgeBase.TravelStep step) {
+        if (step.isComplete() || !isAlKharidGateCrossingStep(player.absX, player.absY, step.getTile().x,
+                step.getTile().y)) {
+            return null;
+        }
+        int coins = countInventoryItem(player, COINS);
+        if (coins < 10) {
+            JsonObject result = failure("Al Kharid gate crossing needs 10 carried coins.");
+            result.addProperty("complete", false);
+            result.addProperty("landmark", landmark.getName());
+            result.add("target", tile(landmark.getTarget().x, landmark.getTarget().y, landmark.getTarget().height));
+            result.add("nextWaypoint", tile(step.getTile().x, step.getTile().y, step.getTile().height));
+            addPlayerState(result, player);
+            return result;
+        }
+
+        int beforeX = player.absX;
+        int beforeY = player.absY;
+        int beforeCoins = coins;
+        player.getPlayerAssistant().resetFollow();
+        player.getCombatAssistant().resetPlayerAttack();
+        player.endCurrentTask();
+        SkillHandler.resetSkills(player);
+        player.getPacketSender().closeAllWindows();
+        player.isBanking = false;
+        player.isShopping = false;
+        player.objectId = player.getY() == 3228 ? 2883 : 2882;
+        player.objectX = player.absX == 3268 ? 3267 : 3268;
+        player.objectY = player.absY;
+        OtherObjects.initKharid(player, player.objectId);
+
+        boolean movedNow = player.absX != beforeX || player.absY != beforeY;
+        boolean queuedMove = (player.teleportToX != -1 || player.teleportToY != -1)
+                && (player.teleportToX != beforeX || player.teleportToY != beforeY);
+        JsonObject result = movedNow || queuedMove
+                ? success("Paid the Al Kharid gate toll and passed through.")
+                : failure("Tried to pay the Al Kharid gate toll, but the gate did not move the player.");
+        result.addProperty("complete", false);
+        result.addProperty("landmark", landmark.getName());
+        result.add("target", tile(landmark.getTarget().x, landmark.getTarget().y, landmark.getTarget().height));
+        result.add("nextWaypoint", tile(step.getTile().x, step.getTile().y, step.getTile().height));
+        result.addProperty("coinsSpent", Math.max(0, beforeCoins - countInventoryItem(player, COINS)));
+        result.add("previousTile", tile(beforeX, beforeY, player.heightLevel));
+        addPlayerState(result, player);
+        return result;
+    }
+
+    static boolean isAlKharidGateCrossingStep(int playerX, int playerY, int targetX, int targetY) {
+        if (!isAlKharidGateLine(playerX, playerY)) {
+            return false;
+        }
+        return playerX >= 3268 && targetX <= 3267 || playerX <= 3267 && targetX >= 3268;
+    }
+
+    private static boolean isAlKharidGateLine(int x, int y) {
+        return (x == 3267 || x == 3268) && (y == 3227 || y == 3228);
+    }
+
     private static int[] boundedWalkTarget(Player player, int targetX, int targetY) {
         return boundedWalkTarget(player.absX, player.absY, player.getMapRegionX(), player.getMapRegionY(),
                 targetX, targetY);
+    }
+
+    static boolean isWithinObjectInteractionRange(int playerX, int playerY, Objects object) {
+        int[] size = objectSize(object);
+        int xMin = object.objectX - 1;
+        int xMax = object.objectX + size[0];
+        int yMin = object.objectY - 1;
+        int yMax = object.objectY + size[1];
+        return playerX >= xMin && playerX <= xMax && playerY >= yMin && playerY <= yMax;
+    }
+
+    static int[] objectInteractionWalkTarget(int playerX, int playerY, int mapRegionX, int mapRegionY,
+            Objects object) {
+        return objectInteractionWalkTarget(playerX, playerY, mapRegionX, mapRegionY, -1, object, false);
+    }
+
+    private static int[] objectInteractionWalkTarget(Player player, Objects object) {
+        return objectInteractionWalkTarget(player.absX, player.absY, player.getMapRegionX(), player.getMapRegionY(),
+                player.heightLevel, object, true);
+    }
+
+    private static boolean isObjectInteractionReachable(Player player, Objects object) {
+        if (isWithinObjectInteractionRange(player.absX, player.absY, object)) {
+            return true;
+        }
+        return objectInteractionWalkTarget(player.absX, player.absY, player.getMapRegionX(), player.getMapRegionY(),
+                player.heightLevel, object, true) != null;
+    }
+
+    private static int[] objectInteractionWalkTarget(int playerX, int playerY, int mapRegionX, int mapRegionY,
+            int height, Objects object, boolean requireReachable) {
+        int[] size = objectSize(object);
+        int bestX = object.objectX;
+        int bestY = object.objectY;
+        int bestDistance = Integer.MAX_VALUE;
+        int bestAxisPenalty = Integer.MAX_VALUE;
+        boolean found = false;
+        int xMin = object.objectX - 1;
+        int xMax = object.objectX + size[0];
+        int yMin = object.objectY - 1;
+        int yMax = object.objectY + size[1];
+        for (int x = xMin; x <= xMax; x++) {
+            for (int y = yMin; y <= yMax; y++) {
+                boolean insideObject = x >= object.objectX && x < object.objectX + size[0]
+                        && y >= object.objectY && y < object.objectY + size[1];
+                if (insideObject) {
+                    continue;
+                }
+                if (requireReachable && !isReachableTile(playerX, playerY, height, x, y)) {
+                    continue;
+                }
+                int distance = AgentKnowledgeBase.distance(playerX, playerY, x, y);
+                int axisPenalty = (x == object.objectX || y == object.objectY) ? 0 : 1;
+                if (distance < bestDistance || (distance == bestDistance && axisPenalty < bestAxisPenalty)) {
+                    bestX = x;
+                    bestY = y;
+                    bestDistance = distance;
+                    bestAxisPenalty = axisPenalty;
+                    found = true;
+                }
+            }
+        }
+        if (!found) {
+            return requireReachable ? null : boundedWalkTarget(playerX, playerY, mapRegionX, mapRegionY, bestX, bestY);
+        }
+        return boundedWalkTarget(playerX, playerY, mapRegionX, mapRegionY, bestX, bestY);
+    }
+
+    private static int[] objectSize(Objects object) {
+        try {
+            return object.getObjectSize();
+        } catch (RuntimeException ignored) {
+            return new int[] {1, 1};
+        }
+    }
+
+    private static boolean isReachableTile(int playerX, int playerY, int height, int x, int y) {
+        if (height < 0) {
+            return true;
+        }
+        if (playerX == x && playerY == y) {
+            return true;
+        }
+        try {
+            return PathFinder.getPathFinder().accessible(playerX, playerY, height, x, y);
+        } catch (RuntimeException ignored) {
+            return false;
+        }
     }
 
     static int[] boundedWalkTarget(int playerX, int playerY, int mapRegionX, int mapRegionY,
@@ -1432,9 +1584,11 @@ public class AgentToolService {
         if (match == null) {
             if (isKnownVarrockMineResource(ore)) {
                 JsonObject travelArgs = new JsonObject();
-                travelArgs.addProperty("name", "varrock east mine");
+                String landmark = "coal".equals(ore) ? "varrock east coal mine" : "varrock east mine";
+                travelArgs.addProperty("name", landmark);
                 JsonObject result = travelToLandmark(player, travelArgs);
-                result.addProperty("message", "No " + (ore.isEmpty() ? "mineable" : ore) + " rock is nearby; moving toward Varrock east mine.");
+                result.addProperty("message", "No " + (ore.isEmpty() ? "mineable" : ore)
+                        + " rock is nearby; moving toward " + landmark + ".");
                 return result;
             }
             return failure("No " + ore + " rock found nearby.");
@@ -1446,8 +1600,24 @@ public class AgentToolService {
         if (rock.getRequiredLevel() > player.playerLevel[Constants.MINING]) {
             return failure("Mining level " + rock.getRequiredLevel() + " is required for that rock.");
         }
+        boolean inRange = isWithinObjectInteractionRange(player.absX, player.absY, match.object);
+        int[] walkTarget = inRange ? null : objectInteractionWalkTarget(player, match.object);
         mineRock(player, match.object);
-        JsonObject result = success("Mining " + rock.name().toLowerCase(Locale.ENGLISH) + " ore.");
+        String rockName = rock.name().toLowerCase(Locale.ENGLISH);
+        String message;
+        if (!inRange) {
+            message = "Walking into range to mine " + rockName + " ore.";
+        } else if (player.isMining) {
+            message = "Mining " + rockName + " ore.";
+        } else {
+            message = "Starting to mine " + rockName + " ore.";
+        }
+        JsonObject result = success(message);
+        result.addProperty("approaching", !inRange);
+        result.addProperty("startedMining", player.isMining);
+        if (walkTarget != null) {
+            result.add("walkTarget", tile(walkTarget[0], walkTarget[1], player.heightLevel));
+        }
         result.add("object", objectJson(match.object, match.distance));
         addMiningTickEstimate(result, player, rock);
         addPlayerState(result, player);
@@ -2250,6 +2420,10 @@ public class AgentToolService {
     }
 
     private static void startObjectAction(Player player, int objectId, int x, int y, int option, Consumer<Player> action) {
+        Objects object = Region.getObject(objectId, x, y, player.heightLevel);
+        if (object == null) {
+            object = new Objects(objectId, x, y, player.heightLevel, 0, 10, 0);
+        }
         player.clickObjectType = option;
         player.objectId = objectId;
         player.objectX = x;
@@ -2258,9 +2432,26 @@ public class AgentToolService {
         player.getCombatAssistant().resetPlayerAttack();
         player.getPlayerAssistant().requestUpdates();
         player.endCurrentTask();
-        player.getPlayerAssistant().playerWalk(x, y);
+        if (!isWithinObjectInteractionRange(player.absX, player.absY, object)) {
+            int[] walkTarget = objectInteractionWalkTarget(player, object);
+            if (walkTarget == null && isNearbyMineableRock(player.absX, player.absY, object)) {
+                action.accept(player);
+                return;
+            }
+            if (walkTarget == null) {
+                walkTarget = objectInteractionWalkTarget(player.absX, player.absY, player.getMapRegionX(),
+                        player.getMapRegionY(), object);
+            }
+            player.getPlayerAssistant().playerWalk(walkTarget[0], walkTarget[1]);
+        }
         ClickObject clickObject = new ClickObject();
         clickObject.onObjectReached(player, action);
+    }
+
+    static boolean isNearbyMineableRock(int playerX, int playerY, Objects object) {
+        return object != null
+                && Mining.rockData.getRock(object.objectId) != null
+                && AgentKnowledgeBase.distance(playerX, playerY, object.objectX, object.objectY) <= 2;
     }
 
     private static ObjectMatch findObject(Player player, JsonObject arguments, int maxDistance) {
@@ -2309,6 +2500,7 @@ public class AgentToolService {
         }
         List<Integer> objectIds = getIntList(arguments, "objectIds");
         ObjectMatch nearest = null;
+        boolean nearestReachable = false;
         for (Objects object : Region.getObjectsInRadius(player.absX, player.absY, player.heightLevel, maxDistance)) {
             if (object.objectId < 0) {
                 continue;
@@ -2330,8 +2522,11 @@ public class AgentToolService {
                 continue;
             }
             int distance = AgentKnowledgeBase.distance(player.absX, player.absY, object.objectX, object.objectY);
-            if (nearest == null || distance < nearest.distance) {
+            boolean reachable = isObjectInteractionReachable(player, object);
+            if (nearest == null || (reachable && !nearestReachable)
+                    || (reachable == nearestReachable && distance < nearest.distance)) {
                 nearest = new ObjectMatch(object, distance);
+                nearestReachable = reachable;
             }
         }
         return nearest;
@@ -2551,7 +2746,7 @@ public class AgentToolService {
 
     private static boolean isKnownVarrockMineResource(String resource) {
         return resource.isEmpty() || "clay".equals(resource) || "copper".equals(resource)
-                || "tin".equals(resource) || "iron".equals(resource);
+                || "tin".equals(resource) || "iron".equals(resource) || "coal".equals(resource);
     }
 
     private static JsonArray nearbyNpcs(Player player, int maxDistance, int limit) {

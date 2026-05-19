@@ -79,6 +79,12 @@ public final class Main {
 						case "-ip":
 							ClientSettings.SERVER_IP = args[++i];
 							break;
+						case "-agent-command":
+						case "-agent-auto-command":
+							ClientSettings.AGENT_AUTO_COMMAND = args[++i];
+							ClientSettings.AGENT_AUTO_LOGIN = true;
+							ClientSettings.SHOW_JAVA_VERSION_WARNINGS = false;
+							break;
 					}
 				}
 			}

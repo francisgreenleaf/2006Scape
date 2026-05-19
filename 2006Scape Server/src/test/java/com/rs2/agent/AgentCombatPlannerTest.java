@@ -11,7 +11,30 @@ public class AgentCombatPlannerTest {
     public void prioritizesAttackUntilWeaponUnlocks() {
         assertEquals("attack", AgentCombatPlanner.nextTrainingStyle(18, 12, 3, 60));
         assertEquals("attack", AgentCombatPlanner.nextTrainingStyle(29, 34, 30, 50));
+    }
+
+    @Test
+    public void catchesStrengthUpAfterWeaponUnlocksForFasterKills() {
         assertEquals("strength", AgentCombatPlanner.nextTrainingStyle(40, 36, 35, 50));
+        assertEquals("strength", AgentCombatPlanner.nextTrainingStyle(50, 36, 35, 50));
+    }
+
+    @Test
+    public void catchesDefenceUpWhenArmorAndDamageIntakeLag() {
+        assertEquals("defence", AgentCombatPlanner.nextTrainingStyle(20, 12, 3, 60));
+        assertEquals("defence", AgentCombatPlanner.nextTrainingStyle(30, 12, 3, 60));
+        assertEquals("defence", AgentCombatPlanner.nextTrainingStyle(41, 22, 3, 60));
+        assertEquals("strength", AgentCombatPlanner.nextTrainingStyle(41, 22, 20, 60));
+        assertEquals("defence", AgentCombatPlanner.nextTrainingStyle(41, 30, 20, 60));
+    }
+
+    @Test
+    public void avoidsGuardsUntilDefenceAndFoodAreReady() {
+        AgentCombatPlanner.TrainingArea lowDefenceArea = AgentCombatPlanner.recommendedArea(41, 22, 3, 31, 10);
+        AgentCombatPlanner.TrainingArea readyArea = AgentCombatPlanner.recommendedArea(41, 22, 20, 31, 10);
+
+        assertEquals("barbarian village", lowDefenceArea.getName());
+        assertEquals("varrock guards", readyArea.getName());
     }
 
     @Test
@@ -35,5 +58,11 @@ public class AgentCombatPlannerTest {
         int budget = AgentCombatPlanner.recommendedCoinBudget(20, 20, 10);
 
         assertTrue(budget < 15000);
+    }
+
+    @Test
+    public void recommendsRealMeleeWeaponsAtHigherAttackLevels() {
+        assertEquals(1301, AgentCombatPlanner.recommendedWeaponId(30)); // adamant longsword
+        assertEquals(1289, AgentCombatPlanner.recommendedWeaponId(40)); // rune sword
     }
 }

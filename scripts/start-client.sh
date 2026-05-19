@@ -14,6 +14,25 @@ if [[ ! -f "$CLIENT_JAR" ]]; then
     "$SCRIPT_DIR/build-local.sh"
 fi
 
+if [[ "${CLIENT_SINGLE_INSTANCE:-1}" != "0" ]] && command -v pgrep >/dev/null 2>&1; then
+    CLIENT_JAR_PATTERN="[$(printf '%s' "${CLIENT_JAR:0:1}")]${CLIENT_JAR:1}"
+    EXISTING_CLIENT_PIDS="$(pgrep -f "$CLIENT_JAR_PATTERN" || true)"
+
+    if [[ -n "$EXISTING_CLIENT_PIDS" ]]; then
+        if [[ "${CLIENT_REPLACE_EXISTING:-0}" == "1" ]]; then
+            echo "Stopping existing 2006Scape client process(es): $EXISTING_CLIENT_PIDS"
+            while IFS= read -r pid; do
+                [[ -n "$pid" ]] && kill "$pid" >/dev/null 2>&1 || true
+            done <<< "$EXISTING_CLIENT_PIDS"
+            sleep 2
+        else
+            echo "A 2006Scape client is already running for this checkout: $EXISTING_CLIENT_PIDS" >&2
+            echo "Set CLIENT_REPLACE_EXISTING=1 to stop it first, or CLIENT_SINGLE_INSTANCE=0 to allow another client." >&2
+            exit 1
+        fi
+    fi
+fi
+
 cd "$CLIENT_DIR"
 echo "Launching 2006Scape client against localhost..."
 exec "$JAVA_BIN" -jar "$CLIENT_JAR" -local -s localhost "$@"
