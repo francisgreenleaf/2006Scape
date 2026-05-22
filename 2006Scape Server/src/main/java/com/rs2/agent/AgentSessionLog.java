@@ -153,6 +153,7 @@ public class AgentSessionLog {
             } catch (IOException e) {
                 System.err.println("Unable to write agent session summary: " + e.getMessage());
             }
+            AgentProfileMemory.INSTANCE.record(resolveLogDirectory(), entry);
         }
     }
 

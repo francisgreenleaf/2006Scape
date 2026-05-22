@@ -45,5 +45,11 @@ public class AgentSessionReportTest {
         String index = new String(Files.readAllBytes(result.indexFile.toPath()), StandardCharsets.UTF_8);
         assertTrue(index.contains("abc123"));
         assertTrue(index.contains("2026-05-17, 2026-05-18"));
+
+        File profileMemory = AgentProfileMemory.INSTANCE.personalityFile(base, "MrGem");
+        assertTrue(profileMemory.exists());
+        String profile = new String(Files.readAllBytes(profileMemory.toPath()), StandardCharsets.UTF_8);
+        assertTrue(profile.contains("# Agent Personality - MrGem"));
+        assertTrue(profile.contains("inventory pressure"));
     }
 }

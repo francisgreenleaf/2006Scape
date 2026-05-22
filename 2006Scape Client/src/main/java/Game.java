@@ -39,6 +39,7 @@ import java.util.zip.CRC32;
 public class Game extends RSApplet {
 	
 	private boolean graphicsEnabled = true;
+	private static final long AGENT_AUTO_LOGIN_RETRY_DELAY_MS = 30000L;
 	private static final int AGENT_TERMINAL_TAB = 7;
 	private static final int AGENT_TERMINAL_PANEL_X = 5;
 	private static final int AGENT_TERMINAL_PANEL_Y = 6;
@@ -2514,20 +2515,19 @@ public class Game extends RSApplet {
 		stream.finishBitAccess();
 	}
 
-	public void processGameLoop() {
-		if (rsAlreadyLoaded || loadingError || genericLoadingError) {
-			return;
-		}
-		loopCycle++;
-		if (!loggedIn) {
-			if (ClientSettings.AGENT_AUTO_LOGIN && !agentAutoLoginAttempted
-					&& myUsername != null && !myUsername.trim().isEmpty()
-					&& myPassword != null && !myPassword.trim().isEmpty()) {
-				agentAutoLoginAttempted = true;
-				loginFailures = 0;
-				System.out.println("[AgentClient] attempting auto-login username=" + myUsername
-						+ " passwordLength=" + myPassword.length());
-				login(myUsername, myPassword, false);
+		public void processGameLoop() {
+			if (rsAlreadyLoaded || loadingError || genericLoadingError) {
+				return;
+			}
+			loopCycle++;
+			if (!loggedIn) {
+				if (shouldAttemptAgentAutoLogin()) {
+					agentAutoLoginAttempted = true;
+					agentNextAutoLoginAttemptAt = System.currentTimeMillis() + AGENT_AUTO_LOGIN_RETRY_DELAY_MS;
+					loginFailures = 0;
+					System.out.println("[AgentClient] attempting auto-login username=" + myUsername
+							+ " passwordLength=" + myPassword.length());
+					login(myUsername, myPassword, false);
 			} else {
 				processLoginScreenInput();
 			}
@@ -2536,9 +2536,18 @@ public class Game extends RSApplet {
 			maybeRunAgentAutoCommand();
 			mainGameProcessor();
 		}
-		processOnDemandQueue();
-		method49();
-	}
+			processOnDemandQueue();
+			method49();
+		}
+
+		private boolean shouldAttemptAgentAutoLogin() {
+			if (!ClientSettings.AGENT_AUTO_LOGIN
+					|| myUsername == null || myUsername.trim().isEmpty()
+					|| myPassword == null || myPassword.trim().isEmpty()) {
+				return false;
+			}
+			return !agentAutoLoginAttempted || System.currentTimeMillis() >= agentNextAutoLoginAttemptAt;
+		}
 
 	public void method47(boolean flag) {
 		if (myPlayer.x >> 7 == destX && myPlayer.y >> 7 == destY) {
@@ -6447,11 +6456,15 @@ public class Game extends RSApplet {
 				anInt1022 = 0;
 				mouseDetection.coordsIndex = 0;
 				super.awtFocus = true;
-				aBoolean954 = true;
-				loggedIn = true;
-				stream.currentOffset = 0;
-				inStream.currentOffset = 0;
-				pktType = -1;
+					aBoolean954 = true;
+					loggedIn = true;
+					agentAutoLoginAttempted = false;
+					agentNextAutoLoginAttemptAt = 0L;
+					agentAutoClaimSent = false;
+					agentAutoCommandSent = false;
+					stream.currentOffset = 0;
+					inStream.currentOffset = 0;
+					pktType = -1;
 				anInt841 = -1;
 				prevPktType = -1;
 				prevPktType2 = -1;
@@ -12612,6 +12625,7 @@ public class Game extends RSApplet {
 	private int agentAutoClaimLastAttemptCycle;
 	private boolean agentAutoLoginAttempted;
 	private boolean agentAutoCommandSent;
+	private long agentNextAutoLoginAttemptAt;
 	public final int maxPlayers;
 	public final int myPlayerIndex;
 	public Player[] playerArray;

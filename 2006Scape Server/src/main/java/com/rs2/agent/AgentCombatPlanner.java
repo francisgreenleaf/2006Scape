@@ -29,6 +29,13 @@ public class AgentCombatPlanner {
             {30, 1123, 1073, 1183},  // adamant chainbody, platelegs, sq shield
             {40, 1113, 1079, 1185}   // rune chainbody, platelegs, sq shield
     };
+    private static final int[][] HELM_TIERS = {
+            {1, 1153},   // iron full helm
+            {5, 1157},   // steel full helm
+            {20, 1159},  // mithril full helm
+            {30, 1161},  // adamant full helm
+            {40, 1163}   // rune full helm
+    };
 
     private static final TrainingArea[] TRAINING_AREAS = {
             new TrainingArea("lumbridge cows", "lumbridge cows", "Cow", 1, 8, 1, 1, 12),
@@ -107,7 +114,7 @@ public class AgentCombatPlanner {
     private static boolean shouldTrainAttackForWeaponTier(int attackLevel, int strengthLevel) {
         int nextTier = nextWeaponTier(attackLevel);
         if (nextTier < 0) {
-            return strengthLevel + 3 >= attackLevel;
+            return false;
         }
         int levelsToTier = nextTier - attackLevel;
         return levelsToTier <= 2 || attackLevel <= strengthLevel + 5;
@@ -135,10 +142,7 @@ public class AgentCombatPlanner {
     public static TrainingArea recommendedArea(int attackLevel, int strengthLevel, int defenceLevel, int hitpointsLevel,
             int foodCount) {
         int meleeAverage = (attackLevel + strengthLevel + defenceLevel) / 3;
-        if (meleeAverage >= 30 && hitpointsLevel >= 35 && foodCount >= 8) {
-            return findArea("rock crabs");
-        }
-        if (meleeAverage >= 35 && hitpointsLevel >= 35 && foodCount >= 8) {
+        if (meleeAverage >= 38 && defenceLevel >= 35 && hitpointsLevel >= 35 && foodCount >= 10) {
             return findArea("falador white knights");
         }
         if (meleeAverage >= 22 && defenceLevel >= 20 && hitpointsLevel >= 30 && foodCount >= 6) {
@@ -255,6 +259,10 @@ public class AgentCombatPlanner {
         return bestTierItem(ARMOUR_TIERS, defenceLevel, 1);
     }
 
+    public static int recommendedHelmId(int defenceLevel) {
+        return bestTierItem(HELM_TIERS, defenceLevel, 1);
+    }
+
     public static int recommendedLegsId(int defenceLevel) {
         return bestTierItem(ARMOUR_TIERS, defenceLevel, 2);
     }
@@ -283,6 +291,8 @@ public class AgentCombatPlanner {
 
     private static boolean isKnownBadTrainingTarget(String normalizedName) {
         return normalizedName.contains("dark wizard")
+                || normalizedName.contains("black knight")
+                || normalizedName.contains("fortress guard")
                 || normalizedName.contains("khazard guard")
                 || normalizedName.contains("dagannoth")
                 || normalizedName.contains("cave slime")

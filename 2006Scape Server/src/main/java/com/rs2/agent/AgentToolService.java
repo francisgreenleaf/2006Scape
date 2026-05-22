@@ -7,6 +7,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
 
 import org.apollo.cache.def.ObjectDefinition;
@@ -55,10 +57,12 @@ import com.rs2.world.clip.Region;
 public class AgentToolService {
 
     private static final int DEFAULT_SCAN_DISTANCE = 30;
+    private static final int LOCAL_COMBAT_ENGAGE_DISTANCE = 12;
     private static final int DEFAULT_OBJECT_SCAN_DISTANCE = 60;
     private static final int MAX_WALK_CHUNK_DISTANCE = 16;
     private static final int MAP_REGION_SIZE = 104;
     private static final int MAP_REGION_MARGIN = 2;
+    private static final long MINING_RECLICK_COOLDOWN_MS = 1800L;
     private static final int COINS = AgentCombatPlanner.coinsItemId();
     private static final int HAMMER = 2347;
     private static final String SMITHING_BANK_LANDMARK = "varrock west bank";
@@ -87,6 +91,8 @@ public class AgentToolService {
     private static final int[] RAW_COOKABLE_FOOD_IDS = {
             377, 335, 331, 321, 317, 2132, 2138
     };
+    private static final ConcurrentMap<Integer, Long> MINING_CLICK_COOLDOWN_UNTIL =
+            new ConcurrentHashMap<Integer, Long>();
     private static final int[] COOKING_OBJECT_IDS = {
             114, 2728, 2729, 2730, 2731, StaticObjectList.FIRE, 2859, 3039, 4172,
             5275, 8750, 9682, 12102, 13539, 13540, 13541, 13542, 13543, 13544, 14919
@@ -235,6 +241,7 @@ public class AgentToolService {
     public static JsonObject observeState(Player player) {
         JsonObject result = success("Observed current game state.");
         addPlayerState(result, player);
+        result.add("agentPersonality", AgentProfileMemory.INSTANCE.readForPlayer(player.playerName));
         result.add("nearbyNpcs", nearbyNpcs(player, DEFAULT_SCAN_DISTANCE, 12));
         result.add("nearbyObjects", nearbyObjects(player, 20, 16));
         result.add("nearbyGroundItems", nearbyGroundItems(player, 20, 16));
@@ -726,12 +733,49 @@ public class AgentToolService {
             setCombatStyle(player, styleArgs);
         }
 
+        TrainingArea area = AgentCombatPlanner.recommendedArea(attackLevel, strengthLevel, defenceLevel, maxHitpoints,
+                countInventoryFood(player));
+        String requestedArea = getString(arguments, "area", getString(arguments, "landmark", ""));
+        if (!requestedArea.trim().isEmpty()) {
+            area = AgentCombatPlanner.findArea(requestedArea);
+        }
+        String requestedNpc = getString(arguments, "name", getString(arguments, "npc", ""));
+        String plannedNpcName = requestedNpc.trim().isEmpty() ? area.getNpcName() : requestedNpc;
+
         Npc currentTarget = targetNpc(player);
         if (currentTarget != null && isStaleCombatTargetDistance(
                 AgentKnowledgeBase.distance(player.absX, player.absY, currentTarget.absX, currentTarget.absY))) {
             player.getPlayerAssistant().resetFollow();
             player.getCombatAssistant().resetPlayerAttack();
             currentTarget = null;
+        }
+        if (currentTarget != null && shouldReachTrainingAreaBeforeCombat(player.absX, player.absY, player.heightLevel,
+                area.getLandmark(), AgentKnowledgeBase.distance(player.absX, player.absY,
+                        currentTarget.absX, currentTarget.absY))) {
+            player.getPlayerAssistant().resetFollow();
+            player.getCombatAssistant().resetPlayerAttack();
+            JsonObject travelArgs = new JsonObject();
+            travelArgs.addProperty("name", area.getLandmark());
+            JsonObject result = travelToLandmark(player, travelArgs);
+            result.addProperty("message", "Skipping distant " + currentTarget.name()
+                    + " until reaching " + area.getName() + ".");
+            result.addProperty("trainingStyle", nextStyle);
+            result.add("ignoredNpc", npcJson(currentTarget,
+                    AgentKnowledgeBase.distance(player.absX, player.absY, currentTarget.absX, currentTarget.absY)));
+            result.add("trainingPlan", trainingAreaJson(area));
+            return result;
+        }
+        if (currentTarget != null && !matchesPlannedTrainingTarget(currentTarget.name(), plannedNpcName)) {
+            JsonObject travelArgs = new JsonObject();
+            travelArgs.addProperty("name", area.getLandmark());
+            JsonObject result = travelToLandmark(player, travelArgs);
+            result.addProperty("message", "Ignoring incidental combat with " + currentTarget.name()
+                    + "; moving toward " + area.getName() + ".");
+            result.addProperty("trainingStyle", nextStyle);
+            result.add("ignoredNpc", npcJson(currentTarget,
+                    AgentKnowledgeBase.distance(player.absX, player.absY, currentTarget.absX, currentTarget.absY)));
+            result.add("trainingPlan", trainingAreaJson(area));
+            return result;
         }
         if (currentTarget != null) {
             if (!player.goodDistance(player.getX(), player.getY(), currentTarget.getX(), currentTarget.getY(), 1)) {
@@ -750,7 +794,8 @@ public class AgentToolService {
                 result.addProperty("trainingStyle", nextStyle);
                 return result;
             }
-            if (!currentTarget.underAttack && currentTarget.killedBy != player.playerId && player.attackTimer <= 0) {
+            if (shouldReacquireUnclaimedCombatTarget(isActivelyTargeting(player, currentTarget),
+                    currentTarget.underAttack, currentTarget.killedBy, player.playerId, player.attackTimer)) {
                 JsonObject attackArgs = new JsonObject();
                 attackArgs.addProperty("npcIndex", currentTarget.npcId);
                 JsonObject result = attackNpc(player, attackArgs);
@@ -765,22 +810,28 @@ public class AgentToolService {
             return result;
         }
 
-        TrainingArea area = AgentCombatPlanner.recommendedArea(attackLevel, strengthLevel, defenceLevel, maxHitpoints,
-                countInventoryFood(player));
-        String requestedArea = getString(arguments, "area", getString(arguments, "landmark", ""));
-        if (!requestedArea.trim().isEmpty()) {
-            area = AgentCombatPlanner.findArea(requestedArea);
-        }
-
         JsonObject findArgs = new JsonObject();
-        String requestedNpc = getString(arguments, "name", getString(arguments, "npc", ""));
-        findArgs.addProperty("name", requestedNpc.trim().isEmpty() ? area.getNpcName() : requestedNpc);
+        findArgs.addProperty("name", plannedNpcName);
         findArgs.addProperty("maxDistance", getInt(arguments, "maxDistance", DEFAULT_SCAN_DISTANCE));
         findArgs.addProperty("minHitpoints", getInt(arguments, "minHitpoints", Math.max(1, area.getTypicalHitpoints())));
         findArgs.addProperty("maxNpcMaxHit", getInt(arguments, "maxNpcMaxHit", Math.max(2, Math.max(area.getMaxHit(), maxHitpoints / 4))));
         JsonObject found = findTrainingNpc(player, findArgs);
         if (found.has("success") && found.get("success").getAsBoolean() && found.has("npc")) {
             JsonObject npc = found.get("npc").getAsJsonObject();
+            int npcDistance = getInt(npc, "distance", 0);
+            if (shouldReachTrainingAreaBeforeCombat(player.absX, player.absY, player.heightLevel,
+                    area.getLandmark(), npcDistance)) {
+                JsonObject travelArgs = new JsonObject();
+                travelArgs.addProperty("name", area.getLandmark());
+                JsonObject result = travelToLandmark(player, travelArgs);
+                result.addProperty("message", "Visible " + area.getNpcName()
+                        + " is too distant for a clean local engage; moving toward "
+                        + area.getName() + " first.");
+                result.addProperty("trainingStyle", nextStyle);
+                result.add("ignoredNpc", npc);
+                result.add("trainingPlan", trainingAreaJson(area));
+                return result;
+            }
             JsonObject attackArgs = new JsonObject();
             attackArgs.addProperty("npcIndex", npc.get("npcIndex").getAsInt());
             JsonObject result = attackNpc(player, attackArgs);
@@ -792,7 +843,14 @@ public class AgentToolService {
         JsonObject travelArgs = new JsonObject();
         travelArgs.addProperty("name", area.getLandmark());
         JsonObject result = travelToLandmark(player, travelArgs);
-        result.addProperty("message", "No suitable " + area.getNpcName() + " is nearby; moving toward " + area.getName() + ".");
+        if (result.has("success") && !result.get("success").getAsBoolean()) {
+            result.addProperty("message", "No suitable " + area.getNpcName() + " is nearby, and travel toward "
+                    + area.getName() + " is blocked: "
+                    + getString(result, "message", "travel failed."));
+        } else {
+            result.addProperty("message", "No suitable " + area.getNpcName() + " is nearby; moving toward "
+                    + area.getName() + ".");
+        }
         result.addProperty("trainingStyle", nextStyle);
         result.add("trainingPlan", trainingAreaJson(area));
         return result;
@@ -1576,11 +1634,31 @@ public class AgentToolService {
         if (player.getItemAssistant().freeSlots() < 1) {
             return failure("Inventory is full. Drop ores or bank them before mining more rocks.");
         }
+        if (player.isMining || player.miningRock) {
+            JsonObject result = success("Continuing to mine ore; waiting for the current swing to resolve.");
+            result.addProperty("startedMining", true);
+            result.addProperty("cooldownTicks", miningCooldownTicks());
+            addPlayerState(result, player);
+            return result;
+        }
+        JsonObject cooldown = miningCooldownResult(player, System.currentTimeMillis());
+        if (cooldown != null) {
+            return cooldown;
+        }
         int maxDistance = Math.min(getInt(arguments, "maxDistance", DEFAULT_SCAN_DISTANCE), DEFAULT_SCAN_DISTANCE);
         JsonObject objectArgs = new JsonObject();
         objectArgs.addProperty("resource", ore);
         objectArgs.addProperty("maxDistance", maxDistance);
+        boolean waitForLocalRespawn = getBoolean(arguments, "waitForLocalRespawn", false);
         ObjectMatch match = findRock(player, objectArgs, maxDistance);
+        if (shouldWaitLocallyForMiningRespawn(waitForLocalRespawn, match != null)) {
+            JsonObject result = success("No nearby " + (ore.isEmpty() ? "mineable" : ore)
+                    + " rock is ready; waiting a couple ticks for the local cluster instead of switching rocks.");
+            result.addProperty("waitingForLocalRespawn", true);
+            result.addProperty("cooldownTicks", miningCooldownTicks());
+            addPlayerState(result, player);
+            return result;
+        }
         if (match == null) {
             if (isKnownVarrockMineResource(ore)) {
                 JsonObject travelArgs = new JsonObject();
@@ -1603,9 +1681,13 @@ public class AgentToolService {
         boolean inRange = isWithinObjectInteractionRange(player.absX, player.absY, match.object);
         int[] walkTarget = inRange ? null : objectInteractionWalkTarget(player, match.object);
         mineRock(player, match.object);
+        rememberMiningClick(player, System.currentTimeMillis());
         String rockName = rock.name().toLowerCase(Locale.ENGLISH);
         String message;
-        if (!inRange) {
+        boolean startedFromNearbyFallback = !inRange && player.isMining;
+        if (startedFromNearbyFallback) {
+            message = "Mining " + rockName + " ore from the nearest reachable edge.";
+        } else if (!inRange) {
             message = "Walking into range to mine " + rockName + " ore.";
         } else if (player.isMining) {
             message = "Mining " + rockName + " ore.";
@@ -1613,8 +1695,10 @@ public class AgentToolService {
             message = "Starting to mine " + rockName + " ore.";
         }
         JsonObject result = success(message);
-        result.addProperty("approaching", !inRange);
+        result.addProperty("approaching", !inRange && !player.isMining);
         result.addProperty("startedMining", player.isMining);
+        result.addProperty("nearbyMiningFallback", startedFromNearbyFallback);
+        result.addProperty("cooldownTicks", miningCooldownTicks());
         if (walkTarget != null) {
             result.add("walkTarget", tile(walkTarget[0], walkTarget[1], player.heightLevel));
         }
@@ -1622,6 +1706,40 @@ public class AgentToolService {
         addMiningTickEstimate(result, player, rock);
         addPlayerState(result, player);
         return result;
+    }
+
+    static boolean shouldWaitLocallyForMiningRespawn(boolean waitForLocalRespawn, boolean foundLocalRock) {
+        return waitForLocalRespawn && !foundLocalRock;
+    }
+
+    private static JsonObject miningCooldownResult(Player player, long nowMs) {
+        int key = miningCooldownKey(player);
+        Long cooldownUntil = MINING_CLICK_COOLDOWN_UNTIL.get(key);
+        if (!shouldWaitAfterMiningClick(nowMs, cooldownUntil == null ? 0L : cooldownUntil.longValue(),
+                player.isMining, player.miningRock)) {
+            return null;
+        }
+        JsonObject result = success("Waiting a couple ticks for the previous mining click to start.");
+        result.addProperty("miningClickCooldownMs", cooldownUntil.longValue() - nowMs);
+        result.addProperty("cooldownTicks", miningCooldownTicks());
+        addPlayerState(result, player);
+        return result;
+    }
+
+    private static void rememberMiningClick(Player player, long nowMs) {
+        MINING_CLICK_COOLDOWN_UNTIL.put(miningCooldownKey(player), nowMs + MINING_RECLICK_COOLDOWN_MS);
+    }
+
+    private static int miningCooldownKey(Player player) {
+        return player.playerId >= 0 ? player.playerId : System.identityHashCode(player);
+    }
+
+    static boolean shouldWaitAfterMiningClick(long nowMs, long cooldownUntilMs, boolean isMining, boolean miningRock) {
+        return !isMining && !miningRock && cooldownUntilMs > nowMs;
+    }
+
+    static int miningCooldownTicks() {
+        return (int) Math.max(1L, (MINING_RECLICK_COOLDOWN_MS + 599L) / 600L);
     }
 
     private static JsonObject chopTree(Player player, JsonObject arguments) {
@@ -1711,11 +1829,16 @@ public class AgentToolService {
         if (requestedId >= 0) {
             itemIds.add(requestedId);
         }
+        int keepFoodCount = getInt(arguments, "keepFoodCount", -1);
+        if (keepFoodCount >= 0) {
+            return depositInventoryItemsKeepingFood(player, itemIds, name, keepFoodCount);
+        }
         int deposited = 0;
         int depositedAmount = 0;
         for (int i = 0; i < player.playerItems.length; i++) {
             int storedId = player.playerItems[i];
-            if (storedId <= 0) {
+            int amount = player.playerItemsN[i];
+            if (storedId <= 0 || amount <= 0) {
                 continue;
             }
             int itemId = storedId - 1;
@@ -1729,11 +1852,49 @@ public class AgentToolService {
             if (itemIds.isEmpty() && name.isEmpty()) {
                 continue;
             }
-            int amount = Math.max(1, player.playerItemsN[i]);
             if (player.getItemAssistant().bankItem(itemId, i, amount)) {
                 deposited++;
                 depositedAmount += amount;
                 i = -1;
+            }
+        }
+        JsonObject result = success("Deposited " + deposited + " inventory item" + (deposited == 1 ? "." : "s."));
+        result.addProperty("deposited", deposited);
+        result.addProperty("depositedAmount", depositedAmount);
+        addPlayerState(result, player);
+        return result;
+    }
+
+    private static JsonObject depositInventoryItemsKeepingFood(Player player, List<Integer> itemIds, String name,
+            int keepFoodCount) {
+        int deposited = 0;
+        int depositedAmount = 0;
+        int keptFood = 0;
+        for (int i = player.playerItems.length - 1; i >= 0; i--) {
+            int storedId = player.playerItems[i];
+            int amount = player.playerItemsN[i];
+            if (storedId <= 0 || amount <= 0) {
+                continue;
+            }
+            int itemId = storedId - 1;
+            if (!matchesItem(itemId, name, itemIds)) {
+                continue;
+            }
+            if (isAgentFood(itemId)) {
+                int roomToKeep = Math.max(0, keepFoodCount - keptFood);
+                if (roomToKeep >= amount) {
+                    keptFood += amount;
+                    continue;
+                }
+                amount -= roomToKeep;
+                keptFood = keepFoodCount;
+            }
+            if (amount <= 0) {
+                continue;
+            }
+            if (player.getItemAssistant().bankItem(itemId, i, amount)) {
+                deposited++;
+                depositedAmount += amount;
             }
         }
         JsonObject result = success("Deposited " + deposited + " inventory item" + (deposited == 1 ? "." : "s."));
@@ -1765,7 +1926,7 @@ public class AgentToolService {
         int withdrawnAmount = 0;
         for (int i = 0; i < player.bankItems.length; i++) {
             int storedId = player.bankItems[i];
-            if (storedId <= 0) {
+            if (!hasPositiveStoredItem(storedId, player.bankItemsN[i])) {
                 continue;
             }
             int itemId = storedId - 1;
@@ -1794,6 +1955,10 @@ public class AgentToolService {
         result.addProperty("withdrawnAmount", withdrawnAmount);
         addPlayerState(result, player);
         return result;
+    }
+
+    static boolean hasPositiveStoredItem(int storedId, int amount) {
+        return storedId > 0 && amount > 0;
     }
 
     private static JsonObject depositExcessCoins(Player player, JsonObject arguments) {
@@ -2443,9 +2608,36 @@ public class AgentToolService {
                         player.getMapRegionY(), object);
             }
             player.getPlayerAssistant().playerWalk(walkTarget[0], walkTarget[1]);
+            if (!hasQueuedMovementAwayFromCurrent(player) && isNearbyMineableRock(player.absX, player.absY, object)) {
+                action.accept(player);
+                return;
+            }
         }
         ClickObject clickObject = new ClickObject();
         clickObject.onObjectReached(player, action);
+    }
+
+    private static boolean hasQueuedMovementAwayFromCurrent(Player player) {
+        return hasQueuedMovementAwayFromCurrent(player.currentX, player.currentY, player.wQueueReadPtr,
+                player.wQueueWritePtr, player.walkingQueueSize, player.walkingQueueX, player.walkingQueueY);
+    }
+
+    static boolean hasQueuedMovementAwayFromCurrent(int currentX, int currentY, int readPtr, int writePtr,
+            int queueSize, int[] queueX, int[] queueY) {
+        if (queueX == null || queueY == null || queueSize <= 0) {
+            return false;
+        }
+        int index = readPtr;
+        int checked = 0;
+        while (index != writePtr && checked < queueSize) {
+            if (index >= 0 && index < queueX.length && index < queueY.length
+                    && (queueX[index] != currentX || queueY[index] != currentY)) {
+                return true;
+            }
+            index = (index + 1) % queueSize;
+            checked++;
+        }
+        return false;
     }
 
     static boolean isNearbyMineableRock(int playerX, int playerY, Objects object) {
@@ -2864,11 +3056,24 @@ public class AgentToolService {
     }
 
     private static boolean isInCombat(Player player) {
-        return player.npcIndex > 0 || player.killingNpcIndex > 0 || player.underAttackBy > 0 || player.underAttackBy2 > 0;
+        if (player.npcIndex > 0 || player.underAttackBy > 0 || player.underAttackBy2 > 0) {
+            return true;
+        }
+        Npc targetNpc = targetNpc(player);
+        if (targetNpc == null) {
+            return false;
+        }
+        int distance = AgentKnowledgeBase.distance(player.absX, player.absY, targetNpc.absX, targetNpc.absY);
+        return isObservedCombatSignalActive(false, true, distance);
     }
 
     private static boolean isActivelyTargeting(Player player, Npc npc) {
         return npc != null && (player.npcIndex == npc.npcId || player.followNpcId == npc.npcId);
+    }
+
+    static boolean shouldReacquireUnclaimedCombatTarget(boolean activelyTargeting, boolean npcUnderAttack,
+            int killedBy, int playerId, int attackTimer) {
+        return !activelyTargeting && !npcUnderAttack && killedBy != playerId && attackTimer <= 0;
     }
 
     private static Npc targetNpc(Player player) {
@@ -2884,6 +3089,43 @@ public class AgentToolService {
 
     static boolean isStaleCombatTargetDistance(int distance) {
         return distance > DEFAULT_SCAN_DISTANCE;
+    }
+
+    static boolean shouldReachTrainingAreaBeforeCombat(int playerX, int playerY, int height,
+            String landmarkName, int npcDistance) {
+        if (npcDistance <= LOCAL_COMBAT_ENGAGE_DISTANCE) {
+            return false;
+        }
+        AgentKnowledgeBase.Landmark landmark = AgentKnowledgeBase.findLandmark(landmarkName);
+        if (landmark == null) {
+            return false;
+        }
+        AgentKnowledgeBase.Tile target = landmark.getTarget();
+        if (target.height != height) {
+            return true;
+        }
+        return AgentKnowledgeBase.distance(playerX, playerY, target.x, target.y) > landmark.getArrivalRadius();
+    }
+
+    static boolean isObservedCombatSignalActive(boolean hasDirectThreat, boolean hasKillingTarget,
+            int killingTargetDistance) {
+        if (hasDirectThreat) {
+            return true;
+        }
+        return hasKillingTarget && !isStaleCombatTargetDistance(killingTargetDistance);
+    }
+
+    static boolean matchesPlannedTrainingTarget(String npcName, String plannedNpcName) {
+        String normalizedNpcName = normalize(npcName);
+        String normalizedPlannedName = normalize(plannedNpcName);
+        if (normalizedNpcName.isEmpty() || normalizedPlannedName.isEmpty()) {
+            return false;
+        }
+        if ("guard".equals(normalizedPlannedName)) {
+            return "guard".equals(normalizedNpcName);
+        }
+        return normalizedNpcName.contains(normalizedPlannedName)
+                || normalizedPlannedName.contains(normalizedNpcName);
     }
 
     private static Npc npcByIndex(int npcIndex) {
@@ -2933,8 +3175,10 @@ public class AgentToolService {
         playerJson.addProperty("isInCombat", isInCombat(player));
         Npc targetNpc = targetNpc(player);
         if (targetNpc != null) {
-            playerJson.add("targetNpc", npcJson(targetNpc,
-                    AgentKnowledgeBase.distance(player.absX, player.absY, targetNpc.absX, targetNpc.absY)));
+            int targetDistance = AgentKnowledgeBase.distance(player.absX, player.absY, targetNpc.absX, targetNpc.absY);
+            if (!isStaleCombatTargetDistance(targetDistance)) {
+                playerJson.add("targetNpc", npcJson(targetNpc, targetDistance));
+            }
         }
         playerJson.add("skills", skills(player));
         playerJson.add("inventory", inventory(player));
@@ -3006,6 +3250,8 @@ public class AgentToolService {
         JsonObject json = new JsonObject();
         json.add("weapon", recommendedGearJson(player, "weapon", AgentCombatPlanner.recommendedWeaponId(
                 baseLevel(player, Constants.ATTACK)), ItemConstants.WEAPON));
+        json.add("helm", recommendedGearJson(player, "helm", AgentCombatPlanner.recommendedHelmId(
+                baseLevel(player, Constants.DEFENCE)), ItemConstants.HAT));
         json.add("body", recommendedGearJson(player, "body", AgentCombatPlanner.recommendedBodyId(
                 baseLevel(player, Constants.DEFENCE)), ItemConstants.CHEST));
         json.add("legs", recommendedGearJson(player, "legs", AgentCombatPlanner.recommendedLegsId(
@@ -3844,8 +4090,8 @@ public class AgentToolService {
     static int countInventoryItem(Player player, int itemId) {
         int count = 0;
         for (int i = 0; i < player.playerItems.length; i++) {
-            if (player.playerItems[i] == itemId + 1) {
-                count += Math.max(1, player.playerItemsN[i]);
+            if (player.playerItems[i] == itemId + 1 && player.playerItemsN[i] > 0) {
+                count += player.playerItemsN[i];
             }
         }
         return count;
@@ -3854,8 +4100,8 @@ public class AgentToolService {
     static int countBankItem(Player player, int itemId) {
         int count = 0;
         for (int i = 0; i < player.bankItems.length; i++) {
-            if (player.bankItems[i] == itemId + 1) {
-                count += Math.max(1, player.bankItemsN[i]);
+            if (player.bankItems[i] == itemId + 1 && player.bankItemsN[i] > 0) {
+                count += player.bankItemsN[i];
             }
         }
         return count;

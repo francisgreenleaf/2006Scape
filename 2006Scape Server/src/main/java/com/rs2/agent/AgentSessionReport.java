@@ -47,6 +47,7 @@ public class AgentSessionReport {
         if (baseDirectory == null) {
             baseDirectory = defaultLogDirectory();
         }
+        AgentProfileMemory.INSTANCE.rebuildFromLogs(baseDirectory);
         Map<String, SessionAggregate> sessions = loadSessions(baseDirectory);
         long now = System.currentTimeMillis();
         File reportsRoot = new File(baseDirectory, "reports");

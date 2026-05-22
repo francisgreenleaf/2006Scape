@@ -15,7 +15,8 @@ public class AgentSmithingPlanner {
         XP_PER_BAR,
         XP_PER_ACTION,
         MARGIN_PER_BAR,
-        MARGIN_PER_ACTION
+        MARGIN_PER_ACTION,
+        HIGHEST_QUALITY
     }
 
     public interface ItemValueProvider {
@@ -85,6 +86,10 @@ public class AgentSmithingPlanner {
                 || "coins per bar".equals(normalized) || "value per bar".equals(normalized)) {
             return Strategy.MARGIN_PER_BAR;
         }
+        if ("highest quality".equals(normalized) || "highest level".equals(normalized)
+                || "best quality".equals(normalized) || "quality".equals(normalized)) {
+            return Strategy.HIGHEST_QUALITY;
+        }
         return Strategy.XP_PER_BAR;
     }
 
@@ -97,6 +102,9 @@ public class AgentSmithingPlanner {
         }
         if (strategy == Strategy.MARGIN_PER_ACTION) {
             return "margin_per_action";
+        }
+        if (strategy == Strategy.HIGHEST_QUALITY) {
+            return "highest_quality";
         }
         return "xp_per_bar";
     }
@@ -191,6 +199,14 @@ public class AgentSmithingPlanner {
 
     private static boolean isBetter(SmithingChoice candidate, SmithingChoice current, Strategy strategy,
             ItemValueProvider valueProvider) {
+        if (strategy == Strategy.HIGHEST_QUALITY) {
+            if (candidate.getRequiredLevel() != current.getRequiredLevel()) {
+                return candidate.getRequiredLevel() > current.getRequiredLevel();
+            }
+            if (candidate.getBarsNeeded() != current.getBarsNeeded()) {
+                return candidate.getBarsNeeded() > current.getBarsNeeded();
+            }
+        }
         int candidatePrimary = score(candidate, strategy, valueProvider);
         int currentPrimary = score(current, strategy, valueProvider);
         if (candidatePrimary != currentPrimary) {
@@ -214,6 +230,9 @@ public class AgentSmithingPlanner {
         }
         if (strategy == Strategy.MARGIN_PER_BAR) {
             return choice.getEstimatedSellValuePerThousandBars(valueProvider);
+        }
+        if (strategy == Strategy.HIGHEST_QUALITY) {
+            return choice.getRequiredLevel();
         }
         return choice.getXpPerThousandBars();
     }

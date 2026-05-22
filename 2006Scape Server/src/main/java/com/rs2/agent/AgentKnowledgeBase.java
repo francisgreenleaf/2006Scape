@@ -11,6 +11,8 @@ import com.rs2.game.players.Player;
 
 public class AgentKnowledgeBase {
 
+    private static final int DEFAULT_ARRIVAL_RADIUS = 4;
+    private static final int BANK_ARRIVAL_RADIUS = 1;
     private static final Map<String, Landmark> LANDMARKS = new LinkedHashMap<String, Landmark>();
 
     static {
@@ -38,6 +40,7 @@ public class AgentKnowledgeBase {
         add(new Landmark("bob's axes", tile(3231, 3203, 0), lumbridgeAxeShopRoute()));
         add(new Landmark("al kharid furnace", tile(3274, 3186, 0), alKharidFurnaceRoute()));
         add(new Landmark("furnace", tile(3274, 3186, 0), alKharidFurnaceRoute()));
+        add(new Landmark("al kharid bank", tile(3269, 3167, 0), alKharidBankRoute(), BANK_ARRIVAL_RADIUS));
         add(new Landmark("al kharid general store", tile(3313, 3183, 0), alKharidGeneralStoreRoute()));
         add(new Landmark("al kharid store", tile(3313, 3183, 0), alKharidGeneralStoreRoute()));
         add(new Landmark("varrock", tile(3210, 3424, 0), varrockRoute()));
@@ -45,11 +48,11 @@ public class AgentKnowledgeBase {
         add(new Landmark("iron mine", tile(3285, 3365, 0), varrockEastMineRoute()));
         add(new Landmark("varrock east coal mine", tile(3302, 3317, 0), varrockEastCoalMineRoute()));
         add(new Landmark("coal mine", tile(3302, 3317, 0), varrockEastCoalMineRoute()));
-        add(new Landmark("varrock east bank", tile(3253, 3420, 0), varrockEastBankRoute()));
-        add(new Landmark("east bank", tile(3253, 3420, 0), varrockEastBankRoute()));
-        add(new Landmark("varrock west bank", tile(3185, 3436, 0), varrockWestBankRoute()));
-        add(new Landmark("west bank", tile(3185, 3436, 0), varrockWestBankRoute()));
-        add(new Landmark("varrock guards", tile(3214, 3429, 0), varrockGuardsRoute()));
+        add(new Landmark("varrock east bank", tile(3253, 3420, 0), varrockEastBankRoute(), BANK_ARRIVAL_RADIUS));
+        add(new Landmark("east bank", tile(3253, 3420, 0), varrockEastBankRoute(), BANK_ARRIVAL_RADIUS));
+        add(new Landmark("varrock west bank", tile(3185, 3436, 0), varrockWestBankRoute(), BANK_ARRIVAL_RADIUS));
+        add(new Landmark("west bank", tile(3185, 3436, 0), varrockWestBankRoute(), BANK_ARRIVAL_RADIUS));
+        add(new Landmark("varrock guards", tile(3210, 3424, 0), varrockGuardsRoute()));
         add(new Landmark("varrock general store", tile(3216, 3415, 0), varrockGeneralStoreRoute()));
         add(new Landmark("varrock west anvils", tile(3188, 3425, 0), varrockWestAnvilRoute()));
         add(new Landmark("anvils", tile(3188, 3425, 0), varrockWestAnvilRoute()));
@@ -80,6 +83,9 @@ public class AgentKnowledgeBase {
         add(new Landmark("al kharid kebab shop", tile(3275, 3180, 0), alKharidKebabShopRoute()));
         add(new Landmark("kebab shop", tile(3275, 3180, 0), alKharidKebabShopRoute()));
         add(new Landmark("karim kebabs", tile(3275, 3180, 0), alKharidKebabShopRoute()));
+        add(new Landmark("shantay pass", tile(3303, 3124, 0), shantayPassRoute()));
+        add(new Landmark("shantay gate north", tile(3304, 3117, 0), shantayGateNorthRoute()));
+        add(new Landmark("shantay rug merchant", tile(3311, 3109, 0), shantayRugMerchantRoute()));
         add(new Landmark("nardah adventurer store", tile(3407, 2921, 0), nardahAdventurerStoreRoute()));
         add(new Landmark("seddu adventurer store", tile(3407, 2921, 0), nardahAdventurerStoreRoute()));
         add(new Landmark("oziach rune armour", tile(3069, 3517, 0), oziachRuneArmourRoute()));
@@ -117,7 +123,7 @@ public class AgentKnowledgeBase {
 
     public static TravelStep nextTravelStep(int x, int y, int height, Landmark landmark) {
         Tile target = landmark.getTarget();
-        if (distance(x, y, target.x, target.y) <= 4 && height == target.height) {
+        if (distance(x, y, target.x, target.y) <= landmark.getArrivalRadius() && height == target.height) {
             return TravelStep.complete(target);
         }
         List<Tile> route = landmark.getRoute();
@@ -127,6 +133,10 @@ public class AgentKnowledgeBase {
         Tile alKharidGateApproach = alKharidGateApproachRecovery(x, y, height, route);
         if (alKharidGateApproach != null) {
             return TravelStep.walk(alKharidGateApproach, false);
+        }
+        Tile alKharidGateReturn = alKharidGateReturnRecovery(x, y, height, route);
+        if (alKharidGateReturn != null) {
+            return TravelStep.walk(alKharidGateReturn, false);
         }
         Tile lumbridgeCowRecovery = lumbridgeCowRouteRecovery(x, y, height, route);
         if (lumbridgeCowRecovery != null) {
@@ -140,6 +150,10 @@ public class AgentKnowledgeBase {
         if (alKharidSouthboundRoadRecovery != null) {
             return TravelStep.walk(alKharidSouthboundRoadRecovery, false);
         }
+        Tile alKharidNorthConnectorRecovery = alKharidNorthConnectorRecovery(x, y, height, route);
+        if (alKharidNorthConnectorRecovery != null) {
+            return TravelStep.walk(alKharidNorthConnectorRecovery, false);
+        }
         Tile alKharidRoadRecovery = alKharidNorthRoadRecovery(x, y, height, route);
         if (alKharidRoadRecovery != null) {
             return TravelStep.walk(alKharidRoadRecovery, false);
@@ -147,6 +161,26 @@ public class AgentKnowledgeBase {
         Tile darkWizardRecovery = varrockSouthDarkWizardRecovery(x, y, height, route);
         if (darkWizardRecovery != null) {
             return TravelStep.walk(darkWizardRecovery, false);
+        }
+        Tile blackKnightFortressRecovery = rockCrabsBlackKnightFortressRecovery(x, y, height, route);
+        if (blackKnightFortressRecovery != null) {
+            return TravelStep.walk(blackKnightFortressRecovery, false);
+        }
+        Tile goblinVillageRockCrabsRecovery = rockCrabsGoblinVillageRecovery(x, y, height, route);
+        if (goblinVillageRockCrabsRecovery != null) {
+            return TravelStep.walk(goblinVillageRockCrabsRecovery, false);
+        }
+        Tile westernSurfaceReturnRecovery = westernSurfaceRoadReturnRecovery(x, y, height, route);
+        if (westernSurfaceReturnRecovery != null) {
+            return TravelStep.walk(westernSurfaceReturnRecovery, false);
+        }
+        Tile westernSurfaceRecovery = westernSurfaceRoadRecovery(x, y, height, route);
+        if (westernSurfaceRecovery != null) {
+            return TravelStep.walk(westernSurfaceRecovery, false);
+        }
+        Tile varrockEastBankApproachRecovery = varrockEastBankApproachRecovery(x, y, height, route);
+        if (varrockEastBankApproachRecovery != null) {
+            return TravelStep.walk(varrockEastBankApproachRecovery, false);
         }
         Tile varrockEastMineBankRecovery = varrockEastMineToBankRecovery(x, y, height, route);
         if (varrockEastMineBankRecovery != null) {
@@ -168,6 +202,14 @@ public class AgentKnowledgeBase {
         if (varrockSouthRoadRecovery != null) {
             return TravelStep.walk(varrockSouthRoadRecovery, false);
         }
+        Tile shantayRouteRecovery = shantayRouteRecovery(x, y, height, route);
+        if (shantayRouteRecovery != null) {
+            return TravelStep.walk(shantayRouteRecovery, false);
+        }
+        Tile shantayReturnRecovery = shantayToAlKharidRecovery(x, y, height, route);
+        if (shantayReturnRecovery != null) {
+            return TravelStep.walk(shantayReturnRecovery, false);
+        }
         int closest = 0;
         int closestDistance = Integer.MAX_VALUE;
         for (int i = 0; i < route.size(); i++) {
@@ -184,7 +226,7 @@ public class AgentKnowledgeBase {
         }
         Tile next = route.get(nextIndex);
         boolean finalTarget = nextIndex == route.size() - 1;
-        if (finalTarget && distance(x, y, next.x, next.y) <= 4 && height == next.height) {
+        if (finalTarget && distance(x, y, next.x, next.y) <= landmark.getArrivalRadius() && height == next.height) {
             return TravelStep.complete(next);
         }
         return TravelStep.walk(next, finalTarget);
@@ -206,7 +248,7 @@ public class AgentKnowledgeBase {
         ArrayList<Tile> expanded = new ArrayList<Tile>();
         expanded.add(tile(3274, 3186, 0));
         expanded.add(tile(3274, 3195, 0));
-        expanded.add(tile(3267, 3216, 0));
+        expanded.add(tile(3268, 3227, 0));
         expanded.add(tile(3267, 3227, 0));
         expanded.add(tile(3252, 3236, 0));
         expanded.add(tile(3252, 3266, 0));
@@ -258,7 +300,9 @@ public class AgentKnowledgeBase {
         if (!routeContains(route, gateLine) || !routeContains(route, tile(3252, 3236, 0))) {
             return null;
         }
-        if (routeContains(route, tile(3268, 3227, 0)) && routeContains(route, tile(3274, 3195, 0))) {
+        if (routeEndsSouthOfAlKharidGate(route)
+                && routeContains(route, tile(3268, 3227, 0))
+                && routeContains(route, tile(3274, 3195, 0))) {
             return null;
         }
         if (x >= 3266 && x <= 3272 && y >= 3220 && y <= 3227 && (x != gateLine.x || y != gateLine.y)) {
@@ -269,6 +313,12 @@ public class AgentKnowledgeBase {
 
     private static Tile alKharidNorthRoadRecovery(int x, int y, int height, List<Tile> route) {
         if (height != 0 || x < 3240 || x > 3276 || y < 3266 || y > 3315) {
+            return null;
+        }
+        if (routeEndsSouthOfAlKharidGate(route) && routeContains(route, tile(3240, 3302, 0))) {
+            return null;
+        }
+        if (x < 3258 && y <= 3278 && routeContains(route, tile(3250, 3275, 0))) {
             return null;
         }
         Tile northRoad = tile(3261, 3322, 0);
@@ -287,18 +337,182 @@ public class AgentKnowledgeBase {
         return x >= 3240 && x <= 3265 && y >= 3300 && y <= 3325 ? southRoad : null;
     }
 
+    private static Tile alKharidNorthConnectorRecovery(int x, int y, int height, List<Tile> route) {
+        if (height != 0 || !routeEndsSouthOfAlKharidGate(route)) {
+            return null;
+        }
+        Tile gateLine = tile(3267, 3227, 0);
+        if (!routeContains(route, gateLine) || x == gateLine.x && y == gateLine.y) {
+            return null;
+        }
+        return x >= 3260 && x <= 3276 && y >= 3256 && y <= 3315 ? gateLine : null;
+    }
+
     private static Tile alKharidGateApproachRecovery(int x, int y, int height, List<Tile> route) {
         if (height != 0) {
             return null;
         }
         Tile westGate = tile(3267, 3227, 0);
         Tile eastGate = tile(3268, 3227, 0);
+        Tile alKharidRoad = tile(3274, 3195, 0);
+        if (!routeEndsSouthOfAlKharidGate(route) || !routeContains(route, westGate)
+                || !routeContains(route, eastGate) || !routeContains(route, alKharidRoad)) {
+            return null;
+        }
+        if (x == westGate.x && y == westGate.y) {
+            return null;
+        }
+        if (x == eastGate.x && y == eastGate.y) {
+            return alKharidRoad;
+        }
+        if (isAlKharidSouthwestCityPocket(x, y) && routeContains(route, alKharidRoad)) {
+            return null;
+        }
+        if (distance(x, y, alKharidRoad.x, alKharidRoad.y) <= 4) {
+            return null;
+        }
+        if (x >= eastGate.x && x <= 3280 && y >= 3190 && y < westGate.y) {
+            return alKharidRoad;
+        }
+        if (x >= 3258 && x <= westGate.x && y >= 3190 && y < westGate.y) {
+            return westGate;
+        }
+        if (x >= 3260 && x <= 3276 && y >= westGate.y && y <= 3255) {
+            return westGate;
+        }
+        return null;
+    }
+
+    private static boolean isAlKharidSouthwestCityPocket(int x, int y) {
+        return x >= 3258 && x <= 3264 && y >= 3160 && y <= 3198;
+    }
+
+    private static Tile rockCrabsBlackKnightFortressRecovery(int x, int y, int height, List<Tile> route) {
+        if (height != 0 || !routeContains(route, tile(2666, 3716, 0))
+                || !routeContains(route, tile(3012, 3484, 0))) {
+            return null;
+        }
+        if (x >= 3014 && x <= 3042 && y >= 3494 && y <= 3520) {
+            return tile(3012, 3484, 0);
+        }
+        return null;
+    }
+
+    private static Tile rockCrabsGoblinVillageRecovery(int x, int y, int height, List<Tile> route) {
+        if (height != 0 || !routeContains(route, tile(2666, 3716, 0))
+                || !routeContains(route, tile(2948, 3492, 0))) {
+            return null;
+        }
+        if (x >= 2958 && x <= 2970 && y >= 3488 && y <= 3498) {
+            return tile(2948, 3492, 0);
+        }
+        if (x >= 2936 && x <= 2944 && y >= 3491 && y <= 3500) {
+            return tile(2939, 3490, 0);
+        }
+        return null;
+    }
+
+    private static Tile westernSurfaceRoadRecovery(int x, int y, int height, List<Tile> route) {
+        if (height != 0 || !usesWesternSurfaceRoadRecovery(route)) {
+            return null;
+        }
+        if (x >= 2930 && x <= 2965 && y >= 3440 && y <= 3515) {
+            return distance(x, y, 2954, 3440) > 4 ? tile(2954, 3440, 0) : tile(2990, 3429, 0);
+        }
+        if (x >= 2960 && x <= 3005 && y >= 3420 && y <= 3450) {
+            return distance(x, y, 2990, 3429) > 4 ? tile(2990, 3429, 0) : tile(3022, 3429, 0);
+        }
+        if (x >= 2990 && x <= 3035 && y >= 3380 && y < 3415) {
+            return distance(x, y, 3005, 3404) > 4 ? tile(3005, 3404, 0) : tile(3023, 3420, 0);
+        }
+        if (x >= 2990 && x <= 3035 && y >= 3415 && y <= 3440) {
+            if (x > 3026) {
+                return tile(3040, 3428, 0);
+            }
+            return distance(x, y, 3022, 3429) > 4 ? tile(3022, 3429, 0) : tile(3040, 3428, 0);
+        }
+        if (x >= 3030 && x <= 3085 && y >= 3418 && y <= 3440) {
+            if (x > 3080) {
+                return tile(3092, 3429, 0);
+            }
+            return distance(x, y, 3076, 3428) > 4 ? tile(3076, 3428, 0) : tile(3092, 3429, 0);
+        }
+        if (x >= 3070 && x < 3100 && y >= 3420 && y <= 3435) {
+            if (x > 3096) {
+                return tile(3124, 3429, 0);
+            }
+            return distance(x, y, 3092, 3429) > 4 ? tile(3092, 3429, 0) : tile(3124, 3429, 0);
+        }
+        if (x >= 3100 && x < 3148 && y >= 3420 && y <= 3435) {
+            if (x > 3128) {
+                return tile(3154, 3426, 0);
+            }
+            return distance(x, y, 3124, 3429) > 4 ? tile(3124, 3429, 0) : tile(3154, 3426, 0);
+        }
+        if (x >= 3148 && x <= 3205 && y >= 3420 && y <= 3435) {
+            if (x > 3198) {
+                return tile(3210, 3424, 0);
+            }
+            return distance(x, y, 3194, 3430) > 4 ? tile(3194, 3430, 0) : tile(3210, 3424, 0);
+        }
+        return null;
+    }
+
+    private static boolean usesWesternSurfaceRoadRecovery(List<Tile> route) {
+        if (routeContains(route, tile(2666, 3716, 0))
+                || routeContains(route, tile(3024, 3450, 0))
+                || routeContains(route, tile(3275, 3180, 0))) {
+            return false;
+        }
+        if (route.isEmpty() || route.get(route.size() - 1).x < 3210) {
+            return false;
+        }
+        return routeContains(route, tile(2974, 3383, 0))
+                || routeContains(route, tile(3210, 3424, 0));
+    }
+
+    private static Tile westernSurfaceRoadReturnRecovery(int x, int y, int height, List<Tile> route) {
+        if (height != 0 || !usesWesternSurfaceRoadReturnRecovery(route)) {
+            return null;
+        }
+        if (x >= 3030 && x <= 3085 && y >= 3418 && y <= 3440) {
+            if (x < 3044) {
+                return tile(3023, 3420, 0);
+            }
+            return distance(x, y, 3040, 3428) > 4 ? tile(3040, 3428, 0) : tile(3023, 3420, 0);
+        }
+        if (x >= 2990 && x < 3035 && y >= 3415 && y <= 3440) {
+            return distance(x, y, 3023, 3420) > 4 ? tile(3023, 3420, 0) : tile(3005, 3404, 0);
+        }
+        return null;
+    }
+
+    private static boolean usesWesternSurfaceRoadReturnRecovery(List<Tile> route) {
+        return routeContains(route, tile(3005, 3404, 0))
+                && routeContains(route, tile(3023, 3420, 0))
+                && routeContains(route, tile(3040, 3428, 0))
+                && !routeContains(route, tile(2666, 3716, 0));
+    }
+
+    private static Tile alKharidGateReturnRecovery(int x, int y, int height, List<Tile> route) {
+        if (height != 0 || routeEndsSouthOfAlKharidGate(route)) {
+            return null;
+        }
+        Tile westGate = tile(3267, 3227, 0);
+        Tile eastGate = tile(3268, 3227, 0);
+        Tile alKharidRoad = tile(3274, 3195, 0);
         if (!routeContains(route, westGate) || !routeContains(route, eastGate)
-                || !routeContains(route, tile(3274, 3195, 0))) {
+                || !routeContains(route, alKharidRoad)) {
+            return null;
+        }
+        if (x == westGate.x && y == westGate.y || x == eastGate.x && y == eastGate.y) {
             return null;
         }
         if (x >= 3258 && x <= westGate.x && y >= 3190 && y < westGate.y) {
             return westGate;
+        }
+        if (x >= eastGate.x && x <= 3280 && y >= 3190 && y < westGate.y) {
+            return eastGate;
         }
         return null;
     }
@@ -318,6 +532,13 @@ public class AgentKnowledgeBase {
     private static Tile varrockEastMineToBankRecovery(int x, int y, int height, List<Tile> route) {
         if (height != 0 || !routeEndsAt(route, tile(3253, 3420, 0))) {
             return null;
+        }
+        if (x >= 3298 && x <= 3310 && y >= 3310 && y < 3324) {
+            return tile(3295, 3317, 0);
+        }
+        if (x >= 3288 && x < 3298 && y >= 3310 && y < 3330) {
+            Tile northRoad = tile(3280, 3343, 0);
+            return routeContains(route, northRoad) ? northRoad : null;
         }
         if (x >= 3285 && x <= 3310 && y >= 3265 && y < 3330) {
             Tile scorpionRoad = tile(3301, 3325, 0);
@@ -342,6 +563,17 @@ public class AgentKnowledgeBase {
         return null;
     }
 
+    private static Tile varrockEastBankApproachRecovery(int x, int y, int height, List<Tile> route) {
+        if (height != 0 || !routeEndsAt(route, tile(3253, 3420, 0))
+                || !routeContains(route, tile(3260, 3420, 0))) {
+            return null;
+        }
+        if (x >= 3261 && x <= 3280 && y >= 3414 && y <= 3430) {
+            return tile(3260, 3420, 0);
+        }
+        return null;
+    }
+
     private static Tile varrockCenterToEastBankRecovery(int x, int y, int height, List<Tile> route) {
         if (height != 0 || x < 3200 || x >= 3234 || y < 3410 || y > 3440) {
             return null;
@@ -355,6 +587,18 @@ public class AgentKnowledgeBase {
         if (height != 0 || !routeContains(route, tile(3274, 3186, 0))
                 || !routeContains(route, tile(3260, 3220, 0))) {
             return null;
+        }
+        if (x >= 3298 && x <= 3310 && y >= 3310 && y <= 3323) {
+            return tile(3295, 3317, 0);
+        }
+        if (x >= 3288 && x < 3298 && y >= 3310 && y <= 3323) {
+            return tile(3261, 3322, 0);
+        }
+        if (x >= 3297 && x <= 3306 && y >= 3324 && y <= 3332) {
+            return tile(3295, 3338, 0);
+        }
+        if (x >= 3290 && x <= 3302 && y >= 3333 && y <= 3345) {
+            return tile(3280, 3343, 0);
         }
         if (x >= 3270 && x <= 3280 && y >= 3421 && y <= 3430) {
             return tile(3274, 3417, 0);
@@ -396,6 +640,46 @@ public class AgentKnowledgeBase {
         return routeContains(route, southRoad)
                 && routeContains(route, tile(3278, 3408, 0))
                 && routeContains(route, tile(3252, 3266, 0)) ? southRoad : null;
+    }
+
+    private static Tile shantayRouteRecovery(int x, int y, int height, List<Tile> route) {
+        if (height != 0 || !routeContains(route, tile(3303, 3124, 0))) {
+            return null;
+        }
+        Tile desertBend = tile(3328, 3150, 0);
+        if (x >= 3320 && x <= 3345 && y >= 3135 && y <= 3160) {
+            return distance(x, y, desertBend.x, desertBend.y) <= 4 ? tile(3303, 3124, 0) : desertBend;
+        }
+        if (routeContains(route, tile(3304, 3117, 0))
+                && x >= 3298 && x <= 3310 && y >= 3118 && y <= 3130) {
+            return tile(3304, 3117, 0);
+        }
+        if (x >= 3300 && x <= 3335 && y >= 3120 && y < 3135) {
+            return tile(3303, 3124, 0);
+        }
+        return null;
+    }
+
+    private static Tile shantayToAlKharidRecovery(int x, int y, int height, List<Tile> route) {
+        if (height != 0 || !routeContains(route, tile(3274, 3186, 0))
+                || routeContains(route, tile(3303, 3124, 0))) {
+            return null;
+        }
+        if (routeContains(route, tile(3305, 3186, 0)) || routeContains(route, tile(3313, 3183, 0))) {
+            return null;
+        }
+        Tile desertBend = tile(3328, 3150, 0);
+        if (x >= 3320 && x <= 3345 && y >= 3135 && y <= 3160) {
+            return distance(x, y, desertBend.x, desertBend.y) <= 4 ? tile(3315, 3175, 0) : desertBend;
+        }
+        Tile alKharidBend = tile(3315, 3175, 0);
+        if (x >= 3310 && x <= 3335 && y >= 3148 && y <= 3182) {
+            return distance(x, y, alKharidBend.x, alKharidBend.y) <= 4 ? tile(3289, 3189, 0) : alKharidBend;
+        }
+        if (x >= 3300 && x <= 3320 && y >= 3168 && y <= 3192) {
+            return tile(3289, 3189, 0);
+        }
+        return null;
     }
 
     private static boolean routeContains(List<Tile> route, Tile candidate) {
@@ -483,6 +767,13 @@ public class AgentKnowledgeBase {
                 tile(3274, 3195, 0), tile(3274, 3186, 0));
     }
 
+    private static List<Tile> alKharidBankRoute() {
+        List<Tile> route = new ArrayList<Tile>(alKharidFurnaceRoute());
+        route.add(tile(3274, 3179, 0));
+        route.add(tile(3269, 3167, 0));
+        return route;
+    }
+
     private static List<Tile> varrockEastMineRoute() {
         return withDwarvenMineSurfaceApproach(withAlKharidApproach(route(tile(3222, 3218, 0), tile(3234, 3238, 0), tile(3252, 3236, 0),
                 tile(3252, 3266, 0), tile(3253, 3267, 0), tile(3250, 3275, 0),
@@ -548,7 +839,7 @@ public class AgentKnowledgeBase {
                 tile(3237, 3284, 0), tile(3237, 3295, 0), tile(3240, 3302, 0),
                 tile(3261, 3322, 0), tile(3280, 3343, 0), tile(3285, 3365, 0),
                 tile(3289, 3388, 0), tile(3288, 3396, 0), tile(3278, 3408, 0), tile(3274, 3417, 0),
-                tile(3260, 3420, 0), tile(3238, 3420, 0), tile(3214, 3429, 0)));
+                tile(3260, 3420, 0), tile(3238, 3420, 0), tile(3210, 3424, 0)));
     }
 
     private static List<Tile> varrockGeneralStoreRoute() {
@@ -633,6 +924,8 @@ public class AgentKnowledgeBase {
     private static List<Tile> alKharidLegsShopRoute() {
         List<Tile> route = alKharidFurnaceRoute();
         route.add(tile(3289, 3189, 0));
+        route.add(tile(3305, 3186, 0));
+        route.add(tile(3313, 3183, 0));
         route.add(tile(3315, 3175, 0));
         return route;
     }
@@ -661,13 +954,33 @@ public class AgentKnowledgeBase {
         return route;
     }
 
+    private static List<Tile> shantayPassRoute() {
+        List<Tile> route = new ArrayList<Tile>(alKharidFurnaceRoute());
+        route.add(tile(3289, 3189, 0));
+        route.add(tile(3315, 3175, 0));
+        route.add(tile(3328, 3150, 0));
+        route.add(tile(3303, 3124, 0));
+        return route;
+    }
+
+    private static List<Tile> shantayGateNorthRoute() {
+        List<Tile> route = new ArrayList<Tile>(shantayPassRoute());
+        route.add(tile(3304, 3117, 0));
+        return route;
+    }
+
+    private static List<Tile> shantayRugMerchantRoute() {
+        List<Tile> route = new ArrayList<Tile>(shantayGateNorthRoute());
+        route.add(tile(3304, 3115, 0));
+        route.add(tile(3311, 3109, 0));
+        return route;
+    }
+
     private static List<Tile> nardahAdventurerStoreRoute() {
-        return route(tile(3222, 3218, 0), tile(3239, 3218, 0), tile(3260, 3220, 0),
-                tile(3267, 3227, 0), tile(3268, 3227, 0),
-                tile(3274, 3195, 0), tile(3315, 3175, 0), tile(3328, 3150, 0),
-                tile(3340, 3120, 0), tile(3360, 3090, 0), tile(3372, 3060, 0),
-                tile(3380, 3030, 0), tile(3388, 3000, 0), tile(3395, 2970, 0),
-                tile(3402, 2940, 0), tile(3407, 2921, 0));
+        List<Tile> route = new ArrayList<Tile>(shantayRugMerchantRoute());
+        route.add(tile(3401, 2915, 0));
+        route.add(tile(3407, 2921, 0));
+        return route;
     }
 
     private static List<Tile> oziachRuneArmourRoute() {
@@ -751,11 +1064,53 @@ public class AgentKnowledgeBase {
 
     private static List<Tile> rockCrabsRoute() {
         List<Tile> route = new ArrayList<Tile>(edgevilleMonasteryRoute());
-        route.add(tile(3038, 3489, 0));
-        route.add(tile(3018, 3510, 0));
-        route.add(tile(3005, 3512, 0));
+        route.add(tile(3038, 3484, 0));
+        route.add(tile(3012, 3484, 0));
+        route.add(tile(2990, 3488, 0));
         route.add(tile(2980, 3505, 0));
         route.add(tile(2948, 3492, 0));
+        route.add(tile(2939, 3490, 0));
+        route.add(tile(2939, 3484, 0));
+        route.add(tile(2939, 3480, 0));
+        route.add(tile(2944, 3470, 0));
+        route.add(tile(2944, 3460, 0));
+        route.add(tile(2938, 3452, 0));
+        route.add(tile(2936, 3451, 0));
+        route.add(tile(2935, 3451, 0));
+        route.add(tile(2934, 3451, 0));
+        route.add(tile(2933, 3451, 0));
+        route.add(tile(2932, 3451, 0));
+        route.add(tile(2931, 3451, 0));
+        route.add(tile(2930, 3451, 0));
+        route.add(tile(2929, 3451, 0));
+        route.add(tile(2928, 3451, 0));
+        route.add(tile(2927, 3451, 0));
+        route.add(tile(2926, 3451, 0));
+        route.add(tile(2925, 3451, 0));
+        route.add(tile(2924, 3451, 0));
+        route.add(tile(2923, 3451, 0));
+        route.add(tile(2922, 3451, 0));
+        route.add(tile(2921, 3451, 0));
+        route.add(tile(2920, 3451, 0));
+        route.add(tile(2920, 3453, 0));
+        route.add(tile(2920, 3455, 0));
+        route.add(tile(2920, 3457, 0));
+        route.add(tile(2918, 3459, 0));
+        route.add(tile(2917, 3461, 0));
+        route.add(tile(2918, 3463, 0));
+        route.add(tile(2919, 3465, 0));
+        route.add(tile(2919, 3467, 0));
+        route.add(tile(2919, 3469, 0));
+        route.add(tile(2919, 3471, 0));
+        route.add(tile(2919, 3473, 0));
+        route.add(tile(2917, 3475, 0));
+        route.add(tile(2915, 3477, 0));
+        route.add(tile(2913, 3479, 0));
+        route.add(tile(2911, 3481, 0));
+        route.add(tile(2909, 3483, 0));
+        route.add(tile(2907, 3485, 0));
+        route.add(tile(2905, 3487, 0));
+        route.add(tile(2903, 3489, 0));
         route.add(tile(2902, 3490, 0));
         route.add(tile(2848, 3490, 0));
         route.add(tile(2806, 3434, 0));
@@ -787,11 +1142,17 @@ public class AgentKnowledgeBase {
         private final String name;
         private final Tile target;
         private final List<Tile> route;
+        private final int arrivalRadius;
 
         public Landmark(String name, Tile target, List<Tile> route) {
+            this(name, target, route, DEFAULT_ARRIVAL_RADIUS);
+        }
+
+        public Landmark(String name, Tile target, List<Tile> route, int arrivalRadius) {
             this.name = name;
             this.target = target;
             this.route = route;
+            this.arrivalRadius = Math.max(0, arrivalRadius);
         }
 
         public String getName() {
@@ -804,6 +1165,10 @@ public class AgentKnowledgeBase {
 
         public List<Tile> getRoute() {
             return route;
+        }
+
+        public int getArrivalRadius() {
+            return arrivalRadius;
         }
     }
 
