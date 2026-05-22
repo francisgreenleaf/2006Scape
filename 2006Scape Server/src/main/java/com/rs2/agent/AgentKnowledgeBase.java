@@ -521,11 +521,14 @@ public class AgentKnowledgeBase {
         if (height != 0 || x < 3200 || x > 3240 || y < 3350 || y > 3392) {
             return null;
         }
+        Tile easternRoad = tile(3260, 3420, 0);
+        if (routeEndsAt(route, tile(3253, 3420, 0)) && routeContains(route, easternRoad)) {
+            return easternRoad;
+        }
         Tile northernRoad = tile(3238, 3420, 0);
         if (routeContains(route, northernRoad)) {
             return northernRoad;
         }
-        Tile easternRoad = tile(3260, 3420, 0);
         return routeContains(route, easternRoad) && routeContains(route, tile(3253, 3420, 0)) ? easternRoad : null;
     }
 
@@ -716,15 +719,6 @@ public class AgentKnowledgeBase {
                 tile(3260, 3420, 0), tile(3238, 3420, 0), tile(3210, 3424, 0))));
     }
 
-    private static List<Tile> alKharidFurnaceRoute() {
-        List<Tile> route = reverse(varrockRoute());
-        route.add(tile(3239, 3218, 0));
-        route.add(tile(3260, 3220, 0));
-        route.add(tile(3274, 3195, 0));
-        route.add(tile(3274, 3186, 0));
-        return route;
-    }
-
     private static List<Tile> lumbridgeGoblinsRoute() {
         List<Tile> route = varrockEastBankToLumbridgeRoute();
         route.add(tile(3234, 3230, 0));
@@ -805,7 +799,7 @@ public class AgentKnowledgeBase {
                 tile(3237, 3284, 0), tile(3237, 3295, 0), tile(3240, 3302, 0),
                 tile(3261, 3322, 0), tile(3280, 3343, 0), tile(3285, 3365, 0),
                 tile(3289, 3388, 0), tile(3288, 3396, 0), tile(3278, 3408, 0), tile(3274, 3417, 0),
-                tile(3260, 3420, 0), tile(3256, 3418, 0));
+                tile(3260, 3420, 0), tile(3253, 3420, 0));
     }
 
     private static List<Tile> varrockEastBankToLumbridgeRoute() {
