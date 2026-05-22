@@ -26,6 +26,43 @@ public class AgentToolServiceTest {
     }
 
     @Test
+    public void observedCombatIgnoresStaleKillingTargetOnlySignals() {
+        assertTrue(AgentToolService.isObservedCombatSignalActive(true, false, 200));
+        assertTrue(AgentToolService.isObservedCombatSignalActive(false, true, 30));
+        assertFalse(AgentToolService.isObservedCombatSignalActive(false, true, 31));
+        assertFalse(AgentToolService.isObservedCombatSignalActive(false, false, 0));
+    }
+
+    @Test
+    public void distantTrainingNpcDoesNotInterruptAreaTravel() {
+        assertTrue(AgentToolService.shouldReachTrainingAreaBeforeCombat(
+                2974, 3369, 0, "falador white knights", 29));
+        assertFalse(AgentToolService.shouldReachTrainingAreaBeforeCombat(
+                2977, 3343, 0, "falador white knights", 29));
+        assertFalse(AgentToolService.shouldReachTrainingAreaBeforeCombat(
+                2974, 3369, 0, "falador white knights", 8));
+    }
+
+    @Test
+    public void combatReacquireDoesNotResetAlreadyTargetedNpc() {
+        assertFalse(AgentToolService.shouldReacquireUnclaimedCombatTarget(true, false, 0, 1, 0));
+        assertFalse(AgentToolService.shouldReacquireUnclaimedCombatTarget(false, true, 0, 1, 0));
+        assertFalse(AgentToolService.shouldReacquireUnclaimedCombatTarget(false, false, 1, 1, 0));
+        assertFalse(AgentToolService.shouldReacquireUnclaimedCombatTarget(false, false, 0, 1, 2));
+        assertTrue(AgentToolService.shouldReacquireUnclaimedCombatTarget(false, false, 0, 1, 0));
+    }
+
+    @Test
+    public void plannedTrainingTargetRejectsRouteDistractions() {
+        assertTrue(AgentToolService.matchesPlannedTrainingTarget("Rock Crab", "Rock Crab"));
+        assertTrue(AgentToolService.matchesPlannedTrainingTarget("White Knight", "White Knight"));
+        assertTrue(AgentToolService.matchesPlannedTrainingTarget("Guard", "Guard"));
+        assertFalse(AgentToolService.matchesPlannedTrainingTarget("Bear", "Rock Crab"));
+        assertFalse(AgentToolService.matchesPlannedTrainingTarget("Black Knight", "Rock Crab"));
+        assertFalse(AgentToolService.matchesPlannedTrainingTarget("Fortress Guard", "Guard"));
+    }
+
+    @Test
     public void foodToolsRecognizeNormalFishingAndCookingResources() {
         assertTrue(AgentToolService.isNetFishingSpot(316));
         assertFalse(AgentToolService.isNetFishingSpot(309));
@@ -74,6 +111,38 @@ public class AgentToolServiceTest {
         assertTrue(AgentToolService.isNearbyMineableRock(3304, 3317, coal));
         assertFalse(AgentToolService.isNearbyMineableRock(3305, 3317, coal));
         assertFalse(AgentToolService.isNearbyMineableRock(3304, 3317, notRock));
+    }
+
+    @Test
+    public void miningToolWaitsAfterClickBeforeReclicking() {
+        assertTrue(AgentToolService.shouldWaitAfterMiningClick(1_000L, 1_500L, false, false));
+        assertFalse(AgentToolService.shouldWaitAfterMiningClick(1_600L, 1_500L, false, false));
+        assertFalse(AgentToolService.shouldWaitAfterMiningClick(1_000L, 1_500L, true, false));
+        assertFalse(AgentToolService.shouldWaitAfterMiningClick(1_000L, 1_500L, false, true));
+        assertEquals(3, AgentToolService.miningCooldownTicks());
+    }
+
+    @Test
+    public void miningToolWaitsLocallyInsteadOfSwitchingDistantClusters() {
+        assertTrue(AgentToolService.shouldWaitLocallyForMiningRespawn(true, false));
+        assertFalse(AgentToolService.shouldWaitLocallyForMiningRespawn(true, true));
+        assertFalse(AgentToolService.shouldWaitLocallyForMiningRespawn(false, false));
+    }
+
+    @Test
+    public void queuedMovementIgnoresNoOpCurrentTileSteps() {
+        int[] queueX = new int[] {42, 42, 41, 0};
+        int[] queueY = new int[] {17, 17, 17, 0};
+
+        assertFalse(AgentToolService.hasQueuedMovementAwayFromCurrent(42, 17, 0, 2, 4, queueX, queueY));
+        assertTrue(AgentToolService.hasQueuedMovementAwayFromCurrent(42, 17, 0, 3, 4, queueX, queueY));
+    }
+
+    @Test
+    public void bankWithdrawalsIgnoreRetainedEmptySlots() {
+        assertFalse(AgentToolService.hasPositiveStoredItem(2352, 0));
+        assertFalse(AgentToolService.hasPositiveStoredItem(0, 3));
+        assertTrue(AgentToolService.hasPositiveStoredItem(2352, 2));
     }
 
     @Test

@@ -1,5 +1,10 @@
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
 
 public final class Main {
 
@@ -109,6 +114,10 @@ public final class Main {
 						case "-pass-env":
 							game.myPassword = readEnvironmentValue(args[++i], "password");
 							break;
+						case "-password-save":
+						case "-password-character-save":
+							game.myPassword = readCharacterSavePassword(args[++i]);
+							break;
 						case "-w":
 						case "-world":
 							ClientSettings.SERVER_WORLD = Integer.parseInt(args[++i]);
@@ -154,5 +163,21 @@ public final class Main {
 			return "";
 		}
 		return value;
+	}
+
+	private static String readCharacterSavePassword(String fileName) {
+		Path path = Paths.get(fileName);
+		try {
+			List<String> lines = Files.readAllLines(path);
+			for (String line : lines) {
+				if (line.startsWith("character-password =")) {
+					return line.substring(line.indexOf('=') + 1).trim();
+				}
+			}
+			System.out.println("[AgentClient] password field was not found in character save: " + fileName);
+		} catch (IOException e) {
+			System.out.println("[AgentClient] could not read password from character save: " + fileName);
+		}
+		return "";
 	}
 }

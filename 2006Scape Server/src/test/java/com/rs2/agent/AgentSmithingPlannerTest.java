@@ -73,4 +73,13 @@ public class AgentSmithingPlannerTest {
         assertEquals(Strategy.MARGIN_PER_ACTION, AgentSmithingPlanner.strategy("coins per action"));
         assertEquals("margin_per_bar", AgentSmithingPlanner.strategyName(Strategy.MARGIN_PER_BAR));
     }
+
+    @Test
+    public void canChooseHighestQualityUnlockedProduct() {
+        SmithingChoice choice = AgentSmithingPlanner.bestSmithableItem(25, 2351, 10, Strategy.HIGHEST_QUALITY);
+
+        assertNotNull(choice);
+        assertEquals(1363, choice.getItemId());
+        assertEquals(3, choice.getBarsNeeded());
+    }
 }
