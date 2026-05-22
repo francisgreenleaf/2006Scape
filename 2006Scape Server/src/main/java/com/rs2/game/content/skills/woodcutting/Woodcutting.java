@@ -14,6 +14,8 @@ import com.rs2.game.players.Player;
 import com.rs2.game.players.PlayerHandler;
 import com.rs2.util.Misc;
 
+import java.util.Locale;
+
 public class Woodcutting {
 	
 	public final static int[][] Axe_Settings = {
@@ -94,6 +96,30 @@ public class Woodcutting {
 			return null;
 		}
 		
+	}
+
+	public static boolean isChoppableTree(int objectId) {
+		return treeData.getTree(objectId) != null;
+	}
+
+	public static String getTreeResourceName(int objectId) {
+		treeData tree = treeData.getTree(objectId);
+		return tree == null ? null : tree.name().toLowerCase(Locale.ENGLISH).replace('_', ' ');
+	}
+
+	public static int getTreeLevelRequirement(int objectId) {
+		treeData tree = treeData.getTree(objectId);
+		return tree == null ? -1 : tree.getLevelReq();
+	}
+
+	public static int getTreeLogId(int objectId) {
+		treeData tree = treeData.getTree(objectId);
+		return tree == null ? -1 : tree.getLogRecieved();
+	}
+
+	public static int getTreeExperience(int objectId) {
+		treeData tree = treeData.getTree(objectId);
+		return tree == null ? -1 : tree.getXpReceived();
 	}
 
 	public static int[][] FIX_AXE = { { 492, 508, 1351 }, { 492, 510, 1349 },

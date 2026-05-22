@@ -14,6 +14,8 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.google.common.base.Stopwatch;
+import com.rs2.agent.AgentActionService;
+import com.rs2.agent.AgentBridgeServer;
 import com.rs2.game.npcs.Npc;
 import com.rs2.game.npcs.NpcList;
 import com.rs2.gui.ControlPanel;
@@ -221,6 +223,7 @@ public class GameEngine {
 		 * Load Plugins
 		 */
 		Player.getPluginService().load();
+		AgentBridgeServer.start();
 
 		/**
 		 * Server Successfully Loaded
@@ -257,6 +260,12 @@ public class GameEngine {
 				try {
 					if (GameEngine.shutdownServer) {
 						scheduler.shutdown();
+					}
+					try {
+						AgentActionService.INSTANCE.processPendingActions();
+					} catch (Throwable agentEx) {
+						System.err.println("AgentActionService failed during tick; continuing server loop.");
+						agentEx.printStackTrace();
 					}
 					long startItemHandler = System.currentTimeMillis();
 					itemHandler.process();
@@ -355,25 +364,25 @@ public class GameEngine {
 								", [Durations: i: " + durationItemHandler + " ms, p: " + durationPlayerHandler + " ms, n: " + durationNpcHandler + " ms, s: " + durationShopHandler +
 								" ms, oh: " + durationObjectHandler + " ms, om: " + durationObjectManager + " ms], Memory: " + (totalMem - freeMem) / 1024 / 1024 + "MB/" +
 								totalMem / 1024 / 1024 + "MB. Max: " + maxMem / 1024 / 1024 + "MB, Threads: " + Thread.activeCount() + ".");
+						}
+					} catch (Throwable ex) {
+						ex.printStackTrace();
+						System.err.println("A fatal exception has been thrown in the GameEngine cycle! Saving all players.");
+						for (Player p : PlayerHandler.players) {
+							if (p == null) {
+								continue;
+							}
+							if (p.inTrade) {
+								((Client) p).getTrading().declineTrade();
+							}
+							if (p.duelStatus == 6) {
+								((Client) p).getDueling().claimStakedItems();
+							}
+							PlayerSave.saveGame((Client) p);
+							System.out.println("Saved game for " + p.playerName + ".");
+						}
+						scheduler.shutdown(); // Kills the tickloop thread if Throwable is thrown.
 					}
-				} catch (Exception ex) {
-					ex.printStackTrace();
-					System.err.println("A fatal exception has been thrown in the GameEngine cycle! Saving all players.");
-					for (Player p : PlayerHandler.players) {
-						if (p == null) {
-							continue;
-						}
-						if (p.inTrade) {
-							((Client) p).getTrading().declineTrade();
-						}
-						if (p.duelStatus == 6) {
-							((Client) p).getDueling().claimStakedItems();
-						}
-						PlayerSave.saveGame((Client) p);
-						System.out.println("Saved game for " + p.playerName + ".");
-					}
-					scheduler.shutdown(); // Kills the tickloop thread if Exception is thrown.
-				}
 			}
 		}, 0, Constants.CYCLE_TIME, TimeUnit.MILLISECONDS);
 
