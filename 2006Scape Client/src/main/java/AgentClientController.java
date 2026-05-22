@@ -131,9 +131,9 @@ public class AgentClientController {
             try {
                 ensureBridgeSessionOnly();
                 JsonObject result = bridgeHttpClient.callTool("observe_goal", new JsonObject());
-                pushAgentMessage(formatGoalStatus(result));
+                terminalLog.system(formatGoalStatus(result));
             } catch (Exception e) {
-                pushAgentMessage("Goal observe failed: " + cleanMessage(e));
+                terminalLog.error("Goal observe failed: " + cleanMessage(e));
             }
         });
     }
