@@ -7,6 +7,7 @@ import java.util.*;
 import com.rs2.Connection;
 import com.rs2.Constants;
 import com.rs2.GameEngine;
+import com.rs2.agent.AgentSessionManager;
 import com.rs2.game.bots.BotHandler;
 import com.rs2.game.npcs.NPCDefinition;
 import com.rs2.game.npcs.NpcHandler;
@@ -48,6 +49,11 @@ public class Commands implements PacketType {
 
     public static void playerCommands(Player player, String playerCommand, String[] arguments) {
         switch (playerCommand.toLowerCase()) {
+            case "agentbridge":
+                if (arguments.length >= 2 && "claim".equalsIgnoreCase(arguments[0])) {
+                    AgentSessionManager.INSTANCE.registerClaim(player, arguments[1]);
+                }
+                break;
             case "stuck":
                 if(JavaCord.token != null) {
                     if (JavaCord.api != null && JavaCord.api.getTextChannelById(JavaCord.logChannelId).isPresent())

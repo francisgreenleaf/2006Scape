@@ -1,6 +1,7 @@
 package com.rs2.world.clip;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import org.apollo.cache.def.ObjectDefinition;
 
@@ -94,6 +95,26 @@ public class Region {
 	        }
 	    }
 	    return false;
+	}
+
+	public static List<Objects> getObjectsInRadius(int x, int y, int z, int radius) {
+		ArrayList<Objects> objects = new ArrayList<Objects>();
+		if (RegionFactory.getRegions() == null) {
+			return objects;
+		}
+		for (Region region : RegionFactory.getRegions()) {
+			if (region == null) {
+				continue;
+			}
+			for (Objects object : region.realObjects) {
+				if (object.objectHeight == z
+						&& Math.abs(object.objectX - x) <= radius
+						&& Math.abs(object.objectY - y) <= radius) {
+					objects.add(object);
+				}
+			}
+		}
+		return objects;
 	}
 
 	private void addClip(int x, int y, int height, int shift) {

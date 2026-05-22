@@ -774,7 +774,7 @@ public class Climbing {
 
 			case 12265:
 				if (client.objectX == 3076 && client.objectY == 9893) {
-					client.getPlayerAssistant().movePlayer(3078, 3493, 0);
+					client.getPlayerAssistant().movePlayer(3076, 3492, 0);
 					client.startAnimation(828);
 					client.resetWalkingQueue();
 					client.getPacketSender().sendMessage("You climb up.");

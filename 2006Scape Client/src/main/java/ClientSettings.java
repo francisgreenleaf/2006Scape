@@ -93,6 +93,14 @@ public class ClientSettings {
      * Enables A Custom Tab With Various QoL Changes
      */
     public static boolean CUSTOM_SETTINGS_TAB = false;
+
+    public static boolean AGENT_ENABLED = true;
+    public static int AGENT_BRIDGE_PORT = 43610;
+    public static String AGENT_WORKSPACE_DIR = "";
+    public static String AGENT_AUTO_CLAIM_NONCE = "";
+    public static String AGENT_AUTO_COMMAND = "";
+    public static boolean AGENT_AUTO_LOGIN = false;
+    public static boolean SHOW_JAVA_VERSION_WARNINGS = true;
     /**
      * @QoL
      * Enables Bilinear Minimap Filtering Which Smooths Out Lines And Sprites On The Minimap

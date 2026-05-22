@@ -37,6 +37,8 @@ public class GlobalDropsHandler {
      */
     private static final int TIME_TO_RESPAWN = 20;
 
+    private static final int RESPAWN_EVENT_ID = "globalDropsRespawnEvent".hashCode();
+
     /**
      * holds all the objects
      */
@@ -44,11 +46,25 @@ public class GlobalDropsHandler {
 
     private static final Set<GlobalDrop> spawnedDrops = new HashSet<>();
 
+    private static boolean initialized = false;
+
 
     /**
      * loads the items
      */
     public static void initialize() {
+        ensureInitialized();
+        for (Player player : PlayerHandler.players) {
+            if (player instanceof Client) {
+                registerRespawnEvent((Client) player);
+            }
+        }
+    }
+
+    private static void ensureInitialized() {
+        if (initialized) {
+            return;
+        }
         Gson           gson = new Gson();
         try {
             Type collectionType = new TypeToken<GlobalDropData[]>() {
@@ -65,35 +81,34 @@ public class GlobalDropsHandler {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        initialized = true;
         System.out.println("Loaded " + globalDrops.size() + " global drops.");
+    }
 
-        for (Player player : PlayerHandler.players) {
-            Client player2 = (Client) player;
-            if (player2 != null) {
-                CycleEventHandler.getSingleton().addEvent(player, new CycleEvent() {
-                    @Override
-                    public void execute(CycleEventContainer container) {
-                        for (GlobalDrop drop : globalDrops) {
-                            if (drop.isTaken() && drop.isSpawned()) {
-                                if (System.currentTimeMillis() - drop.getTakenAt() >= TIME_TO_RESPAWN * 1000) {
-                                    drop.setTaken(false);
-                                    if (player2.distanceToPoint(drop.getX(), drop.getY()) <= 60) {
-                                        player2.getPacketSender().createGroundItem(drop.getId(), drop.getX(), drop.getY(), drop.getAmount(), drop.getHeight());
-                                        spawnedDrops.add(drop);
-                                    }
-
-                                }
+    private static void registerRespawnEvent(final Client player) {
+        CycleEventHandler.getSingleton().stopEvents(player, RESPAWN_EVENT_ID);
+        CycleEventHandler.getSingleton().addEvent(RESPAWN_EVENT_ID, player, new CycleEvent() {
+            @Override
+            public void execute(CycleEventContainer container) {
+                for (GlobalDrop drop : globalDrops) {
+                    if (drop.isTaken() && drop.isSpawned()) {
+                        if (System.currentTimeMillis() - drop.getTakenAt() >= TIME_TO_RESPAWN * 1000) {
+                            drop.setTaken(false);
+                            if (player.distanceToPoint(drop.getX(), drop.getY()) <= 60) {
+                                player.getPacketSender().createGroundItem(drop.getId(), drop.getX(), drop.getY(), drop.getAmount(), drop.getHeight());
+                                spawnedDrops.add(drop);
                             }
+
                         }
                     }
-
-                    @Override
-                    public void stop() {
-
-                    }
-                }, 1);
+                }
             }
-        }
+
+            @Override
+            public void stop() {
+
+            }
+        }, 1);
     }
 
     public static void writeGlobalDropsDump() {
@@ -149,6 +164,7 @@ public class GlobalDropsHandler {
     }
 
     public static boolean itemExists(int itemID, int itemX, int itemY, boolean yes) {
+        ensureInitialized();
         for (GlobalDrop drop : spawnedDrops) {
             if (drop.getId() == itemID && drop.getX() == itemX && drop.getY() == itemY) {
                 return true;
@@ -166,6 +182,7 @@ public class GlobalDropsHandler {
      * @param itemY       cord y
      */
     public static void pickup(Player player, int itemID, int itemX, int itemY) {
+        ensureInitialized();
         GlobalDrop drop = itemExists(itemID, itemX, itemY);
         if (drop == null) {
             return;
@@ -197,6 +214,8 @@ public class GlobalDropsHandler {
      * @param player the Player
      */
     public static void load(Client player) {
+        ensureInitialized();
+        registerRespawnEvent(player);
         for (GlobalDrop drop : globalDrops) {
             if (!drop.isTaken() && !drop.isSpawned() && !itemExists(drop.getId(), drop.getX(), drop.getY(), true) && player.distanceToPoint(drop.getX(), drop.getY()) <= 60) {
                 player.getPacketSender().createGroundItem(drop.getId(), drop.getX(), drop.getY(), drop.getAmount(), drop.getHeight());
@@ -207,14 +226,19 @@ public class GlobalDropsHandler {
     }
 
     public static void reset(Player c) {
+        ensureInitialized();
+        if (c instanceof Client) {
+            registerRespawnEvent((Client) c);
+        }
         for (GlobalDrop drop : globalDrops) {
             if (c.distanceToPoint(drop.getX(), drop.getY()) <= 60) {
                 c.getPacketSender().removeGroundItem(drop.getId(), drop.getX(), drop.getY(), drop.getAmount());
+                if (!drop.isTaken()) {
+                    spawnedDrops.remove(drop);
+                    drop.setSpawned(false);
+                }
             }
         }
-        spawnedDrops.clear();
-        globalDrops.clear();
-        initialize();
         for (GlobalDrop drop : globalDrops) {
             if (!drop.isTaken() && !drop.isSpawned() && !itemExists(drop.getId(), drop.getX(), drop.getY(), true) && c.distanceToPoint(drop.getX(), drop.getY()) <= 60) {
                 c.getPacketSender().createGroundItem(drop.getId(), drop.getX(), drop.getY(), drop.getAmount(), drop.getHeight());
