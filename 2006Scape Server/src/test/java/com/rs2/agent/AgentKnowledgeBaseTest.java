@@ -20,10 +20,13 @@ public class AgentKnowledgeBaseTest {
         assertNotNull(AgentKnowledgeBase.findLandmark("lumbridge cows"));
         assertNotNull(AgentKnowledgeBase.findLandmark("varrock guards"));
         assertNotNull(AgentKnowledgeBase.findLandmark("kebab shop"));
+        assertNotNull(AgentKnowledgeBase.findLandmark("al kharid bank"));
         assertNotNull(AgentKnowledgeBase.findLandmark("al kharid general store"));
         assertNotNull(AgentKnowledgeBase.findLandmark("falador white knights"));
         assertNotNull(AgentKnowledgeBase.findLandmark("rock crabs"));
         assertNotNull(AgentKnowledgeBase.findLandmark("pickaxe shop"));
+        assertNotNull(AgentKnowledgeBase.findLandmark("shantay pass"));
+        assertNotNull(AgentKnowledgeBase.findLandmark("shantay rug merchant"));
         assertNotNull(AgentKnowledgeBase.findLandmark("lumbridge axe shop"));
         assertNotNull(AgentKnowledgeBase.findLandmark("nardah adventurer store"));
         assertNotNull(AgentKnowledgeBase.findLandmark("champions guild rune store"));
@@ -34,6 +37,8 @@ public class AgentKnowledgeBaseTest {
         assertEquals(3420, AgentKnowledgeBase.findLandmark("east bank").getTarget().y);
         assertEquals(3275, AgentKnowledgeBase.findLandmark("kebab shop").getTarget().x);
         assertEquals(3180, AgentKnowledgeBase.findLandmark("kebab shop").getTarget().y);
+        assertEquals(3269, AgentKnowledgeBase.findLandmark("al kharid bank").getTarget().x);
+        assertEquals(3167, AgentKnowledgeBase.findLandmark("al kharid bank").getTarget().y);
         assertEquals(3313, AgentKnowledgeBase.findLandmark("al kharid general store").getTarget().x);
         assertEquals(3183, AgentKnowledgeBase.findLandmark("al kharid general store").getTarget().y);
         assertEquals(2666, AgentKnowledgeBase.findLandmark("rock crabs").getTarget().x);
@@ -148,7 +153,7 @@ public class AgentKnowledgeBaseTest {
 
         assertFalse(step.isComplete());
         assertEquals(3267, step.getTile().x);
-        assertEquals(3216, step.getTile().y);
+        assertEquals(3227, step.getTile().y);
     }
 
     @Test
@@ -288,6 +293,48 @@ public class AgentKnowledgeBaseTest {
     }
 
     @Test
+    public void routesFromAlKharidFurnaceToAlKharidBank() {
+        AgentKnowledgeBase.Landmark bank = AgentKnowledgeBase.findLandmark("al kharid bank");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3274, 3186, 0, bank);
+
+        assertFalse(step.isComplete());
+        assertEquals(3274, step.getTile().x);
+        assertEquals(3179, step.getTile().y);
+
+        step = AgentKnowledgeBase.nextTravelStep(3274, 3179, 0, bank);
+
+        assertFalse(step.isComplete());
+        assertEquals(3269, step.getTile().x);
+        assertEquals(3167, step.getTile().y);
+    }
+
+    @Test
+    public void routesFromAlKharidCityToAlKharidBankWithoutGateDetour() {
+        AgentKnowledgeBase.Landmark bank = AgentKnowledgeBase.findLandmark("al kharid bank");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3264, 3194, 0, bank);
+
+        assertFalse(step.isComplete());
+        assertTrue(step.getTile().y < 3220);
+        assertFalse(step.getTile().x == 3267 && step.getTile().y == 3227);
+    }
+
+    @Test
+    public void routesFromLiveGateDriftBackToAlKharidBank() {
+        AgentKnowledgeBase.Landmark bank = AgentKnowledgeBase.findLandmark("al kharid bank");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3259, 3229, 0, bank);
+
+        assertFalse(step.isComplete());
+        assertEquals(3260, step.getTile().x);
+        assertEquals(3220, step.getTile().y);
+
+        step = AgentKnowledgeBase.nextTravelStep(3260, 3220, 0, bank);
+
+        assertFalse(step.isComplete());
+        assertEquals(3267, step.getTile().x);
+        assertEquals(3227, step.getTile().y);
+    }
+
+    @Test
     public void routesFromVarrockEastBankTowardAlKharidFurnace() {
         AgentKnowledgeBase.Landmark furnace = AgentKnowledgeBase.findLandmark("al kharid furnace");
         AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3253, 3420, 0, furnace);
@@ -305,6 +352,116 @@ public class AgentKnowledgeBaseTest {
         assertFalse(step.isComplete());
         assertEquals(3289, step.getTile().x);
         assertEquals(3388, step.getTile().y);
+    }
+
+    @Test
+    public void recoversFromLiveFurnaceConnectorNoMovePosition() {
+        AgentKnowledgeBase.Landmark furnace = AgentKnowledgeBase.findLandmark("al kharid furnace");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3266, 3267, 0, furnace);
+
+        assertFalse(step.isComplete());
+        assertEquals(3267, step.getTile().x);
+        assertEquals(3227, step.getTile().y);
+    }
+
+    @Test
+    public void recoversFromVarrockCoalMineTowardAlKharidFurnace() {
+        AgentKnowledgeBase.Landmark furnace = AgentKnowledgeBase.findLandmark("al kharid furnace");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3301, 3317, 0, furnace);
+
+        assertFalse(step.isComplete());
+        assertEquals(3295, step.getTile().x);
+        assertEquals(3317, step.getTile().y);
+    }
+
+    @Test
+    public void rejoinsFurnaceRoadFromCoalMineWestExit() {
+        AgentKnowledgeBase.Landmark furnace = AgentKnowledgeBase.findLandmark("al kharid furnace");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3295, 3317, 0, furnace);
+
+        assertFalse(step.isComplete());
+        assertEquals(3261, step.getTile().x);
+        assertEquals(3322, step.getTile().y);
+    }
+
+    @Test
+    public void continuesFromCoalMineExitTowardFurnaceRoad() {
+        AgentKnowledgeBase.Landmark furnace = AgentKnowledgeBase.findLandmark("al kharid furnace");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3301, 3325, 0, furnace);
+
+        assertFalse(step.isComplete());
+        assertEquals(3295, step.getTile().x);
+        assertEquals(3338, step.getTile().y);
+    }
+
+    @Test
+    public void rejoinsFurnaceRoadAfterCoalMineExit() {
+        AgentKnowledgeBase.Landmark furnace = AgentKnowledgeBase.findLandmark("al kharid furnace");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3295, 3338, 0, furnace);
+
+        assertFalse(step.isComplete());
+        assertEquals(3280, step.getTile().x);
+        assertEquals(3343, step.getTile().y);
+    }
+
+    @Test
+    public void routesFromGateLineTowardAlKharidFurnaceConnector() {
+        AgentKnowledgeBase.Landmark furnace = AgentKnowledgeBase.findLandmark("al kharid furnace");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3267, 3227, 0, furnace);
+
+        assertFalse(step.isComplete());
+        assertEquals(3268, step.getTile().x);
+        assertEquals(3227, step.getTile().y);
+    }
+
+    @Test
+    public void routesFromAlKharidConnectorTowardFurnace() {
+        AgentKnowledgeBase.Landmark furnace = AgentKnowledgeBase.findLandmark("al kharid furnace");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3267, 3216, 0, furnace);
+
+        assertFalse(step.isComplete());
+        assertEquals(3267, step.getTile().x);
+        assertEquals(3227, step.getTile().y);
+    }
+
+    @Test
+    public void treatsNearAlKharidConnectorAsReachedTowardFurnace() {
+        AgentKnowledgeBase.Landmark furnace = AgentKnowledgeBase.findLandmark("al kharid furnace");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3266, 3217, 0, furnace);
+
+        assertFalse(step.isComplete());
+        assertEquals(3267, step.getTile().x);
+        assertEquals(3227, step.getTile().y);
+    }
+
+    @Test
+    public void recoversNearGateBounceTowardAlKharidConnector() {
+        AgentKnowledgeBase.Landmark furnace = AgentKnowledgeBase.findLandmark("al kharid furnace");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3264, 3224, 0, furnace);
+
+        assertFalse(step.isComplete());
+        assertEquals(3267, step.getTile().x);
+        assertEquals(3227, step.getTile().y);
+    }
+
+    @Test
+    public void routesFromLiveSouthConnectorDriftTowardAlKharidRoad() {
+        AgentKnowledgeBase.Landmark furnace = AgentKnowledgeBase.findLandmark("al kharid furnace");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3266, 3212, 0, furnace);
+
+        assertFalse(step.isComplete());
+        assertEquals(3267, step.getTile().x);
+        assertEquals(3227, step.getTile().y);
+    }
+
+    @Test
+    public void routesFromSouthGateRoadTowardFurnace() {
+        AgentKnowledgeBase.Landmark furnace = AgentKnowledgeBase.findLandmark("al kharid furnace");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3267, 3207, 0, furnace);
+
+        assertFalse(step.isComplete());
+        assertEquals(3267, step.getTile().x);
+        assertEquals(3227, step.getTile().y);
     }
 
     @Test
@@ -348,6 +505,26 @@ public class AgentKnowledgeBaseTest {
     }
 
     @Test
+    public void advancesFromSouthboundRoadRecoveryLandingTowardAlKharidLegsShop() {
+        AgentKnowledgeBase.Landmark legsShop = AgentKnowledgeBase.findLandmark("al kharid legs shop");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3240, 3302, 0, legsShop);
+
+        assertFalse(step.isComplete());
+        assertEquals(3237, step.getTile().x);
+        assertEquals(3295, step.getTile().y);
+    }
+
+    @Test
+    public void followsNearbyRoadWaypointsWhenReturningFromAlKharidToBarbarianVillage() {
+        AgentKnowledgeBase.Landmark village = AgentKnowledgeBase.findLandmark("barbarian village");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3252, 3267, 0, village);
+
+        assertFalse(step.isComplete());
+        assertEquals(3250, step.getTile().x);
+        assertEquals(3275, step.getTile().y);
+    }
+
+    @Test
     public void doesNotSkipUnreachedVarrockFurnaceRoadWaypoint() {
         AgentKnowledgeBase.Landmark furnace = AgentKnowledgeBase.findLandmark("al kharid furnace");
         AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3275, 3425, 0, furnace);
@@ -378,6 +555,28 @@ public class AgentKnowledgeBaseTest {
     }
 
     @Test
+    public void routesAcrossAlKharidShopLaneToLegsShop() {
+        AgentKnowledgeBase.Landmark legsShop = AgentKnowledgeBase.findLandmark("al kharid legs shop");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3289, 3189, 0, legsShop);
+
+        assertFalse(step.isComplete());
+        assertEquals(3305, step.getTile().x);
+        assertEquals(3186, step.getTile().y);
+
+        step = AgentKnowledgeBase.nextTravelStep(3293, 3189, 0, legsShop);
+
+        assertFalse(step.isComplete());
+        assertEquals(3305, step.getTile().x);
+        assertEquals(3186, step.getTile().y);
+
+        step = AgentKnowledgeBase.nextTravelStep(3305, 3185, 0, legsShop);
+
+        assertFalse(step.isComplete());
+        assertEquals(3313, step.getTile().x);
+        assertEquals(3183, step.getTile().y);
+    }
+
+    @Test
     public void rejoinsNorthRoadAfterAlKharidConnector() {
         AgentKnowledgeBase.Landmark bank = AgentKnowledgeBase.findLandmark("varrock east bank");
         AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3252, 3236, 0, bank);
@@ -385,6 +584,20 @@ public class AgentKnowledgeBaseTest {
         assertFalse(step.isComplete());
         assertEquals(3252, step.getTile().x);
         assertEquals(3266, step.getTile().y);
+    }
+
+    @Test
+    public void bankLandmarksRequirePreciseArrivalInsideTheBank() {
+        AgentKnowledgeBase.Landmark bank = AgentKnowledgeBase.findLandmark("varrock east bank");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3253, 3424, 0, bank);
+
+        assertFalse(step.isComplete());
+        assertEquals(3253, step.getTile().x);
+        assertEquals(3420, step.getTile().y);
+
+        step = AgentKnowledgeBase.nextTravelStep(3253, 3421, 0, bank);
+
+        assertTrue(step.isComplete());
     }
 
     @Test
@@ -504,13 +717,65 @@ public class AgentKnowledgeBaseTest {
     }
 
     @Test
+    public void recoversFromLiveFaladorBankingStallTowardVarrockEastBank() {
+        AgentKnowledgeBase.Landmark bank = AgentKnowledgeBase.findLandmark("varrock east bank");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3013, 3390, 0, bank);
+
+        assertFalse(step.isComplete());
+        assertEquals(3005, step.getTile().x);
+        assertEquals(3404, step.getTile().y);
+    }
+
+    @Test
+    public void westernRoadRecoveryKeepsEastboundBankingProgress() {
+        AgentKnowledgeBase.Landmark bank = AgentKnowledgeBase.findLandmark("varrock east bank");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3030, 3428, 0, bank);
+
+        assertFalse(step.isComplete());
+        assertEquals(3040, step.getTile().x);
+        assertEquals(3428, step.getTile().y);
+
+        step = AgentKnowledgeBase.nextTravelStep(3134, 3423, 0, bank);
+
+        assertFalse(step.isComplete());
+        assertEquals(3154, step.getTile().x);
+        assertEquals(3426, step.getTile().y);
+
+        step = AgentKnowledgeBase.nextTravelStep(3140, 3425, 0, bank);
+
+        assertFalse(step.isComplete());
+        assertEquals(3154, step.getTile().x);
+        assertEquals(3426, step.getTile().y);
+    }
+
+    @Test
+    public void westboundFaladorRecoveryAvoidsSouthwestCornerCut() {
+        AgentKnowledgeBase.Landmark whiteKnights = AgentKnowledgeBase.findLandmark("falador white knights");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3028, 3425, 0, whiteKnights);
+
+        assertFalse(step.isComplete());
+        assertEquals(3023, step.getTile().x);
+        assertEquals(3420, step.getTile().y);
+    }
+
+    @Test
     public void routesFromCoalMineTowardVarrockEastBankWithoutScorpionDetour() {
         AgentKnowledgeBase.Landmark bank = AgentKnowledgeBase.findLandmark("varrock east bank");
         AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3302, 3317, 0, bank);
 
         assertFalse(step.isComplete());
-        assertEquals(3301, step.getTile().x);
-        assertEquals(3325, step.getTile().y);
+        assertEquals(3295, step.getTile().x);
+        assertEquals(3317, step.getTile().y);
+    }
+
+    @Test
+    public void rejoinsBankRoadFromCoalMineWestExit() {
+        AgentKnowledgeBase.Landmark bank = AgentKnowledgeBase.findLandmark("varrock east bank");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3295, 3317, 0, bank);
+
+        assertFalse(step.isComplete());
+        assertEquals(3280, step.getTile().x);
+        assertEquals(3343, step.getTile().y);
     }
 
     @Test
@@ -541,6 +806,38 @@ public class AgentKnowledgeBaseTest {
         assertFalse(step.isComplete());
         assertEquals(3238, step.getTile().x);
         assertEquals(3420, step.getTile().y);
+    }
+
+    @Test
+    public void recoversFromVarrockEastBankApproachBounce() {
+        AgentKnowledgeBase.Landmark bank = AgentKnowledgeBase.findLandmark("varrock east bank");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3270, 3426, 0, bank);
+
+        assertFalse(step.isComplete());
+        assertEquals(3260, step.getTile().x);
+        assertEquals(3420, step.getTile().y);
+
+        step = AgentKnowledgeBase.nextTravelStep(3276, 3419, 0, bank);
+
+        assertFalse(step.isComplete());
+        assertEquals(3260, step.getTile().x);
+        assertEquals(3420, step.getTile().y);
+    }
+
+    @Test
+    public void routesFromVarrockCenterToWestBankWithoutBouncingBack() {
+        AgentKnowledgeBase.Landmark bank = AgentKnowledgeBase.findLandmark("varrock west bank");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3210, 3424, 0, bank);
+
+        assertFalse(step.isComplete());
+        assertEquals(3194, step.getTile().x);
+        assertEquals(3430, step.getTile().y);
+
+        step = AgentKnowledgeBase.nextTravelStep(3194, 3430, 0, bank);
+
+        assertFalse(step.isComplete());
+        assertEquals(3185, step.getTile().x);
+        assertEquals(3436, step.getTile().y);
     }
 
     @Test
@@ -582,6 +879,114 @@ public class AgentKnowledgeBaseTest {
     }
 
     @Test
+    public void routesRockCrabsAroundBlackKnightFortress() {
+        AgentKnowledgeBase.Landmark crabs = AgentKnowledgeBase.findLandmark("rock crabs");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3038, 3489, 0, crabs);
+
+        assertFalse(step.isComplete());
+        assertEquals(3012, step.getTile().x);
+        assertEquals(3484, step.getTile().y);
+
+        step = AgentKnowledgeBase.nextTravelStep(3023, 3499, 0, crabs);
+
+        assertFalse(step.isComplete());
+        assertEquals(3012, step.getTile().x);
+        assertEquals(3484, step.getTile().y);
+    }
+
+    @Test
+    public void stagesRockCrabsThroughLiveGoblinVillageTrap() {
+        AgentKnowledgeBase.Landmark crabs = AgentKnowledgeBase.findLandmark("rock crabs");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(2964, 3492, 0, crabs);
+
+        assertFalse(step.isComplete());
+        assertEquals(2948, step.getTile().x);
+        assertEquals(3492, step.getTile().y);
+
+        step = AgentKnowledgeBase.nextTravelStep(2938, 3494, 0, crabs);
+
+        assertFalse(step.isComplete());
+        assertEquals(2939, step.getTile().x);
+        assertEquals(3490, step.getTile().y);
+
+        step = AgentKnowledgeBase.nextTravelStep(2939, 3490, 0, crabs);
+
+        assertFalse(step.isComplete());
+        assertEquals(2939, step.getTile().x);
+        assertEquals(3484, step.getTile().y);
+
+        step = AgentKnowledgeBase.nextTravelStep(2939, 3484, 0, crabs);
+
+        assertFalse(step.isComplete());
+        assertEquals(2939, step.getTile().x);
+        assertEquals(3480, step.getTile().y);
+
+        step = AgentKnowledgeBase.nextTravelStep(2939, 3480, 0, crabs);
+
+        assertFalse(step.isComplete());
+        assertEquals(2944, step.getTile().x);
+        assertEquals(3470, step.getTile().y);
+
+        step = AgentKnowledgeBase.nextTravelStep(2920, 3451, 0, crabs);
+
+        assertFalse(step.isComplete());
+        assertEquals(2920, step.getTile().x);
+        assertEquals(3453, step.getTile().y);
+
+        step = AgentKnowledgeBase.nextTravelStep(2936, 3451, 0, crabs);
+
+        assertFalse(step.isComplete());
+        assertEquals(2935, step.getTile().x);
+        assertEquals(3451, step.getTile().y);
+
+        step = AgentKnowledgeBase.nextTravelStep(2909, 3483, 0, crabs);
+
+        assertFalse(step.isComplete());
+        assertEquals(2907, step.getTile().x);
+        assertEquals(3485, step.getTile().y);
+    }
+
+    @Test
+    public void recoversFromTaverleyTrapTowardVarrockRoad() {
+        AgentKnowledgeBase.Landmark guards = AgentKnowledgeBase.findLandmark("varrock guards");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(2938, 3494, 0, guards);
+
+        assertFalse(step.isComplete());
+        assertEquals(2954, step.getTile().x);
+        assertEquals(3440, step.getTile().y);
+
+        step = AgentKnowledgeBase.nextTravelStep(2954, 3440, 0, guards);
+
+        assertFalse(step.isComplete());
+        assertEquals(2990, step.getTile().x);
+        assertEquals(3429, step.getTile().y);
+
+        step = AgentKnowledgeBase.nextTravelStep(2990, 3429, 0, guards);
+
+        assertFalse(step.isComplete());
+        assertEquals(3022, step.getTile().x);
+        assertEquals(3429, step.getTile().y);
+
+        step = AgentKnowledgeBase.nextTravelStep(3022, 3429, 0, guards);
+
+        assertFalse(step.isComplete());
+        assertEquals(3040, step.getTile().x);
+        assertEquals(3428, step.getTile().y);
+
+        step = AgentKnowledgeBase.nextTravelStep(3076, 3428, 0, guards);
+
+        assertFalse(step.isComplete());
+        assertEquals(3092, step.getTile().x);
+        assertEquals(3429, step.getTile().y);
+
+        step = AgentKnowledgeBase.nextTravelStep(3105, 3430, 0, guards);
+
+        assertFalse(step.isComplete());
+        assertEquals(3124, step.getTile().x);
+        assertEquals(3429, step.getTile().y);
+    }
+
+    @Test
     public void routesFromVarrockSideTowardKebabShop() {
         AgentKnowledgeBase.Landmark kebabs = AgentKnowledgeBase.findLandmark("kebab shop");
         AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3154, 3426, 0, kebabs);
@@ -606,11 +1011,17 @@ public class AgentKnowledgeBaseTest {
         assertEquals(3268, step.getTile().x);
         assertEquals(3227, step.getTile().y);
 
-        step = AgentKnowledgeBase.nextTravelStep(3268, 3227, 0, kebabs);
+        step = AgentKnowledgeBase.nextTravelStep(3267, 3216, 0, kebabs);
 
         assertFalse(step.isComplete());
-        assertEquals(3274, step.getTile().x);
-        assertEquals(3195, step.getTile().y);
+        assertEquals(3267, step.getTile().x);
+        assertEquals(3227, step.getTile().y);
+
+        step = AgentKnowledgeBase.nextTravelStep(3267, 3207, 0, kebabs);
+
+        assertFalse(step.isComplete());
+        assertEquals(3267, step.getTile().x);
+        assertEquals(3227, step.getTile().y);
     }
 
     @Test
@@ -701,6 +1112,71 @@ public class AgentKnowledgeBaseTest {
         assertFalse(step.isComplete());
         assertEquals(3328, step.getTile().x);
         assertEquals(3150, step.getTile().y);
+    }
+
+    @Test
+    public void recoversFromLiveShantayStallTowardNardahRoute() {
+        AgentKnowledgeBase.Landmark store = AgentKnowledgeBase.findLandmark("nardah adventurer store");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3330, 3141, 0, store);
+
+        assertFalse(step.isComplete());
+        assertEquals(3328, step.getTile().x);
+        assertEquals(3150, step.getTile().y);
+
+        step = AgentKnowledgeBase.nextTravelStep(3328, 3150, 0, store);
+
+        assertFalse(step.isComplete());
+        assertEquals(3303, step.getTile().x);
+        assertEquals(3124, step.getTile().y);
+    }
+
+    @Test
+    public void stepsFromShantayPassToGateWhenTransitRequiresGate() {
+        AgentKnowledgeBase.Landmark gate = AgentKnowledgeBase.findLandmark("shantay gate north");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3303, 3124, 0, gate);
+
+        assertFalse(step.isComplete());
+        assertEquals(3304, step.getTile().x);
+        assertEquals(3117, step.getTile().y);
+
+        AgentKnowledgeBase.Landmark store = AgentKnowledgeBase.findLandmark("nardah adventurer store");
+        step = AgentKnowledgeBase.nextTravelStep(3303, 3124, 0, store);
+
+        assertFalse(step.isComplete());
+        assertEquals(3304, step.getTile().x);
+        assertEquals(3117, step.getTile().y);
+    }
+
+    @Test
+    public void backsOutFromLiveShantayStallTowardVarrockEastBank() {
+        AgentKnowledgeBase.Landmark bank = AgentKnowledgeBase.findLandmark("varrock east bank");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3330, 3141, 0, bank);
+
+        assertFalse(step.isComplete());
+        assertEquals(3328, step.getTile().x);
+        assertEquals(3150, step.getTile().y);
+
+        step = AgentKnowledgeBase.nextTravelStep(3328, 3150, 0, bank);
+
+        assertFalse(step.isComplete());
+        assertEquals(3315, step.getTile().x);
+        assertEquals(3175, step.getTile().y);
+
+        step = AgentKnowledgeBase.nextTravelStep(3315, 3175, 0, bank);
+
+        assertFalse(step.isComplete());
+        assertEquals(3289, step.getTile().x);
+        assertEquals(3189, step.getTile().y);
+    }
+
+    @Test
+    public void routesFromVarrockSouthRoadTowardNardahAdventurerStore() {
+        AgentKnowledgeBase.Landmark store = AgentKnowledgeBase.findLandmark("nardah adventurer store");
+        AgentKnowledgeBase.TravelStep step = AgentKnowledgeBase.nextTravelStep(3249, 3386, 0, store);
+
+        assertFalse(step.isComplete());
+        assertEquals(3289, step.getTile().x);
+        assertEquals(3388, step.getTile().y);
     }
 
 }

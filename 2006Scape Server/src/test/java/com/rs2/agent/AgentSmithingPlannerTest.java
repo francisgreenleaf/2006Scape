@@ -44,4 +44,13 @@ public class AgentSmithingPlannerTest {
         assertEquals(1139, choice.getItemId());
         assertEquals(1, choice.getBarsNeeded());
     }
+
+    @Test
+    public void canChooseHighestQualityUnlockedProduct() {
+        SmithingChoice choice = AgentSmithingPlanner.bestSmithableItem(25, 2351, 10, Strategy.HIGHEST_QUALITY);
+
+        assertNotNull(choice);
+        assertEquals(1363, choice.getItemId());
+        assertEquals(3, choice.getBarsNeeded());
+    }
 }

@@ -261,7 +261,12 @@ public class GameEngine {
 					if (GameEngine.shutdownServer) {
 						scheduler.shutdown();
 					}
-					AgentActionService.INSTANCE.processPendingActions();
+					try {
+						AgentActionService.INSTANCE.processPendingActions();
+					} catch (Throwable agentEx) {
+						System.err.println("AgentActionService failed during tick; continuing server loop.");
+						agentEx.printStackTrace();
+					}
 					long startItemHandler = System.currentTimeMillis();
 					itemHandler.process();
 					long durationItemHandler = System.currentTimeMillis() - startItemHandler;

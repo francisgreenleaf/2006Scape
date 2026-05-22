@@ -103,6 +103,15 @@ public class AgentSessionLogTest {
         assertFalse(summary.contains(token));
         assertFalse(summary.contains("should-not-be-written"));
         assertFalse(summary.contains("sk-raw-sensitive-api-key"));
+
+        File profileMemory = AgentProfileMemory.INSTANCE.personalityFile(logDirectory, "logger_tester");
+        assertTrue(profileMemory.exists());
+        String profile = new String(Files.readAllBytes(profileMemory.toPath()), StandardCharsets.UTF_8);
+        assertTrue(profile.contains("# Agent Personality - logger_tester"));
+        assertTrue(profile.contains("## Character Memory"));
+        assertTrue(profile.contains("## Self-Talk Log"));
+        assertFalse(profile.contains(token));
+        assertFalse(profile.contains("sk-raw-sensitive-api-key"));
     }
 
     private File findSessionFile(File directory, String sessionId, String extension) {

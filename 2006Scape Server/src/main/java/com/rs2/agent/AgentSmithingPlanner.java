@@ -11,7 +11,8 @@ public class AgentSmithingPlanner {
 
     public enum Strategy {
         XP_PER_BAR,
-        XP_PER_ACTION
+        XP_PER_ACTION,
+        HIGHEST_QUALITY
     }
 
     public static SmithingChoice bestSmithableItem(int smithingLevel, int barItemId, int availableBars, Strategy strategy) {
@@ -61,6 +62,10 @@ public class AgentSmithingPlanner {
         String normalized = normalize(value);
         if ("xp per action".equals(normalized) || "action xp".equals(normalized) || "total xp".equals(normalized)) {
             return Strategy.XP_PER_ACTION;
+        }
+        if ("highest quality".equals(normalized) || "highest level".equals(normalized)
+                || "best quality".equals(normalized) || "quality".equals(normalized)) {
+            return Strategy.HIGHEST_QUALITY;
         }
         return Strategy.XP_PER_BAR;
     }
@@ -150,6 +155,14 @@ public class AgentSmithingPlanner {
     }
 
     private static boolean isBetter(SmithingChoice candidate, SmithingChoice current, Strategy strategy) {
+        if (strategy == Strategy.HIGHEST_QUALITY) {
+            if (candidate.getRequiredLevel() != current.getRequiredLevel()) {
+                return candidate.getRequiredLevel() > current.getRequiredLevel();
+            }
+            if (candidate.getBarsNeeded() != current.getBarsNeeded()) {
+                return candidate.getBarsNeeded() > current.getBarsNeeded();
+            }
+        }
         int candidatePrimary = strategy == Strategy.XP_PER_ACTION ? candidate.getXp() : candidate.getXpPerThousandBars();
         int currentPrimary = strategy == Strategy.XP_PER_ACTION ? current.getXp() : current.getXpPerThousandBars();
         if (candidatePrimary != currentPrimary) {

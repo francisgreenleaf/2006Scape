@@ -163,6 +163,7 @@ public class AgentClientController {
     private void startLocalDurableCombatGoal(String command) {
         try {
             ensureBridgeSessionOnly();
+            recordTurnRequested(command);
             JsonObject arguments = new JsonObject();
             arguments.addProperty("targetLevel", parseCombatGoalTargetLevel(command));
             arguments.addProperty("stepIntervalTicks", 4);

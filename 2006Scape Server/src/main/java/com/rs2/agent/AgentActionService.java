@@ -10,8 +10,15 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.rs2.Constants;
 import com.rs2.agent.AgentSmithingPlanner.SmithingChoice;
+import com.rs2.game.content.quests.QuestAssistant;
 import com.rs2.game.content.skills.smithing.SmithingData;
+import com.rs2.game.content.traveling.CarpetTravel;
+import com.rs2.game.npcs.Npc;
+import com.rs2.game.npcs.NpcHandler;
+import com.rs2.game.objects.impl.OtherObjects;
 import com.rs2.game.players.Player;
+import com.rs2.game.players.PlayerHandler;
+import com.rs2.game.players.PlayerSave;
 import com.rs2.game.shops.ShopHandler;
 import com.rs2.world.Boundary;
 import org.apollo.cache.def.ItemDefinition;
@@ -37,6 +44,7 @@ public class AgentActionService {
     private static final int BURNT_CHICKEN = 2144;
     private static final int BURNT_MEAT = 2146;
     private static final int HAMMER = 2347;
+    private static final int SHANTAY_PASS = 1854;
     private static final int BRONZE_PICKAXE = 1265;
     private static final int IRON_PICKAXE = 1267;
     private static final int STEEL_PICKAXE = 1269;
@@ -65,6 +73,7 @@ public class AgentActionService {
     private static final int SCAVVO_X = 3192;
     private static final int SCAVVO_Y = 3358;
     private static final int SCAVVO_RADIUS = 16;
+    private static final int CHAMPIONS_GUILD_QUEST_POINTS = Math.min(32, QuestAssistant.MAXIMUM_QUESTPOINTS);
     private static final int COPPER_ORE = 436;
     private static final int TIN_ORE = 438;
     private static final int IRON_ORE = 440;
@@ -83,6 +92,7 @@ public class AgentActionService {
     };
     private static final int[] COMBAT_GEAR_ITEM_IDS = {
             1277, 1279, 1281, 1285, 1287, 1289, 1291, 1301, 1303,
+            1153, 1157, 1159, 1161, 1163,
             1323, 1325, 1329, 1115, 1105, 1121, 1123, 1113, 1127,
             1067, 1069, 1071, 1073, 1079, 1171, 1173, 1175, 1177, 1181, 1183, 1185,
             1193, 1201
@@ -95,6 +105,8 @@ public class AgentActionService {
             SMALL_FISHING_NET
     };
     private static final int MIN_FREE_SLOTS_BEFORE_BANKING = 4;
+    private static final int MIN_FREE_LOOT_SLOTS_BEFORE_SUPPLY_BANKING = 2;
+    private static final int MIN_FREE_SLOTS_AFTER_TARGET_ACQUISITION = 8;
     private static final int SUPPLY_COUNT_BEFORE_BANKING = 18;
     private static final int ACCOUNT_STORAGE_COUNT_BEFORE_BANKING = 1;
     private static final int MIN_FOOD_BEFORE_RESTOCK = 3;
@@ -104,20 +116,45 @@ public class AgentActionService {
     private static final int GEAR_CHECK_INTERVAL_ACTIONS = 80;
     private static final int GOAL_PROGRESS_LOG_INTERVAL_ACTIONS = 20;
     private static final int MAX_MOVING_WAIT_STEPS = 20;
+    private static final int MAX_STATIONARY_MOVING_WAIT_STEPS = 4;
+    private static final int MAX_ROUTE_OSCILLATION_REVERSALS = 2;
+    private static final int MAX_ROUTE_STALE_STEPS = 4;
     private static final int MAX_PICKAXE_ROUTE_NO_MOVE_ATTEMPTS = 8;
     private static final int PICKAXE_ROUTE_DEFER_ACTIONS = 200;
     private static final int MIN_GEAR_MONEY_ITEMS_BEFORE_SELLING = 27;
+    private static final int MIN_STACKED_GEAR_MONEY_PRODUCTS_BEFORE_SALE = 8;
+    private static final int MIN_PROCESSED_BARS_BEFORE_SELLING = 4;
     private static final int MIN_BARS_BEFORE_SMITHING = 8;
     private static final int MIN_ORE_SETS_BEFORE_SMELTING = 24;
+    private static final int MAX_GEAR_MONEY_TARGET_BATCH_BARS = 10000;
+    private static final int GEAR_MONEY_LOCAL_MINING_SCAN_DISTANCE = 8;
+    private static final int MAX_LOCAL_MINING_RESPAWN_WAITS = 3;
     private static final int COAL_ROUTE_MIN_FOOD = MIN_FOOD_BEFORE_RESTOCK + 1;
+    private static final int GEAR_MONEY_FOOD_BUFFER = COAL_ROUTE_MIN_FOOD;
     private static final int IRON_SMELTING_SMITHING_LEVEL = 15;
     private static final int STEEL_SMELTING_SMITHING_LEVEL = 20;
     private static final int STEEL_COAL_PER_BAR = 2;
     private static final int EXPENSIVE_WEAPON_UPGRADE_PRICE = 5000;
     private static final int STRONG_ENOUGH_WEAPON_TIER = 4;
+    private static final int MIN_STRENGTH_BEFORE_RUNE_WEAPON_SAVINGS = 31;
     private static final int AL_KHARID_GATE_TOLL = 10;
+    private static final int SHANTAY_NPC = 836;
+    private static final int SHANTAY_GATE_OBJECT = 4031;
+    private static final int SHANTAY_PASS_PRICE = 5;
+    private static final int NARDAH_CARPET_FARE = 200;
+    private static final int NARDAH_TRANSIT_COST = SHANTAY_PASS_PRICE + NARDAH_CARPET_FARE;
+    private static final int NARDAH_RUG_X = 3401;
+    private static final int NARDAH_RUG_Y = 2915;
+    private static final int POLLNIVNEACH_RUG_X = 3347;
+    private static final int POLLNIVNEACH_RUG_Y = 2944;
+    private static final int SHANTAY_RUG_RETURN_X = 3308;
+    private static final int SHANTAY_RUG_RETURN_Y = 3108;
+    private static final int SHANTAY_GATE_SOUTH_X = 3304;
+    private static final int SHANTAY_GATE_SOUTH_Y = 3115;
     private static final int AL_KHARID_HAMMER_AND_GATE_COIN_BUFFER = 25;
+    private static final int KEBAB_SHOP_PRICE = 3;
     private static final int KEBAB_RESTOCK_COIN_FLOAT = 120;
+    private static final String SHOP_FOOD_MONEY_TARGET_NAME = "target-sized kebab restock";
     private static final int VARROCK_COAL_DANGER_MIN_X = 3292;
     private static final int VARROCK_COAL_DANGER_MAX_X = 3308;
     private static final int VARROCK_COAL_DANGER_MIN_Y = 3275;
@@ -148,6 +185,12 @@ public class AgentActionService {
             COPPER_ORE, TIN_ORE, IRON_ORE, COAL, BRONZE_BAR, IRON_BAR,
             STEEL_BAR, MITHRIL_BAR, ADAMANT_BAR, RUNE_BAR
     };
+    private static final int[] GEAR_MONEY_RAW_MATERIAL_ITEM_IDS = {
+            COPPER_ORE, TIN_ORE, IRON_ORE, COAL
+    };
+    private static final int[] TARGET_ACQUISITION_RAW_LIQUIDATION_ITEM_IDS = {
+            KEBAB
+    };
     private static final PickaxeTarget[] PICKAXE_TARGETS = {
             new PickaxeTarget(BRONZE_PICKAXE, 1, 1, 1, "lumbridge axe shop", "axes"),
             new PickaxeTarget(IRON_PICKAXE, 1, 2, 140),
@@ -169,6 +212,13 @@ public class AgentActionService {
             new GearTarget(1121, 20, 3, "varrock armour shop", "armour", 5200),
             new GearTarget(1113, 40, 5, "nardah adventurer store", "adventurer", 50000),
             new GearTarget(1127, 40, 6, "oziach rune armour", "oziach", 65000)
+    };
+    private static final GearTarget[] HELM_GEAR_TARGETS = {
+            new GearTarget(1153, 1, 1, "helmet shop", "helmet", 154),
+            new GearTarget(1157, 5, 2, "helmet shop", "helmet", 550),
+            new GearTarget(1159, 20, 3, "helmet shop", "helmet", 1430),
+            new GearTarget(1161, 30, 4, "helmet shop", "helmet", 3520),
+            new GearTarget(1163, 40, 5, "oziach rune armour", "oziach", 35200)
     };
     private static final GearTarget[] LEGS_GEAR_TARGETS = {
             new GearTarget(1067, 1, 1, "varrock armour shop", "armour", 280),
@@ -324,76 +374,175 @@ public class AgentActionService {
 
     private void processCombatGoals() {
         for (CombatGoal goal : combatGoals.values()) {
-            if (goal.isTerminal()) {
-                continue;
-            }
-            AgentSession session = AgentSessionManager.INSTANCE.getSession(goal.token);
-            Player player = session == null ? null : session.getPlayer();
-            if (session == null || player == null) {
-                goal.block("Agent session ended or player went offline.");
-                continue;
-            }
-            if (player.isDead) {
-                goal.block("Player death stopped the combat goal.");
-                logGoalEvent(session, "goal_blocked", goal, null);
-                continue;
-            }
-            goal.ticksElapsed++;
-            if (goal.ticksElapsed - goal.lastStepTick < goal.stepIntervalTicks) {
-                continue;
-            }
-            goal.lastStepTick = goal.ticksElapsed;
-            if (player.isMoving) {
-                if (goal.shouldKeepWaitingForMovement(player)) {
-                    continue;
-                }
-                player.resetWalkingQueue();
-                player.isMoving = false;
-                goal.recoverFromMovementStall(player);
-            }
-            if (goal.actionsRun >= goal.maxActions) {
-                goal.block("Combat goal reached its max action limit before completion.");
-                logGoalEvent(session, "goal_blocked", goal, null);
-                continue;
-            }
-
-            JsonObject actionArguments = new JsonObject();
-            actionArguments.addProperty("targetLevel", goal.targetLevel);
-            goal.refreshPlannerDisplay(player);
-            if (goal.fixedArea && !goal.area.isEmpty()) {
-                actionArguments.addProperty("area", goal.area);
-            }
-            if (goal.fixedArea && !goal.npc.isEmpty()) {
-                actionArguments.addProperty("npc", goal.npc);
-            }
-            if (goal.fixedStyle && !goal.style.isEmpty()) {
-                actionArguments.addProperty("style", goal.style);
-            }
-
-            JsonObject result;
-            result = runCombatGoalStep(player, goal, actionArguments);
-            goal.actionsRun++;
-            goal.lastResult = result;
-            goal.updateLevels(player);
-            goal.rememberPlanFromResult(result);
-
-            if (goal.targetReached()) {
-                goal.complete("Attack, strength, and defence reached base " + goal.targetLevel + ".");
-                logGoalEvent(session, "goal_completed", goal, result);
-            } else if (result == null || !result.has("success") || !result.get("success").getAsBoolean()) {
-                String message = result == null ? "Combat goal step failed." : getString(result, "message", "Combat goal step failed.");
-                if (isRecoverableGoalFailure(message)) {
-                    if (goal.shouldLogProgress()) {
-                        logGoalEvent(session, "goal_progress", goal, result);
-                    }
-                } else {
-                    goal.block(message);
-                    logGoalEvent(session, "goal_blocked", goal, result);
-                }
-            } else if (goal.shouldLogProgress()) {
-                logGoalEvent(session, "goal_progress", goal, result);
+            try {
+                processCombatGoal(goal);
+            } catch (Throwable ex) {
+                blockCombatGoalForException(goal, ex);
             }
         }
+    }
+
+    private void processCombatGoal(CombatGoal goal) {
+        if (goal.isTerminal()) {
+            return;
+        }
+        AgentSession session = AgentSessionManager.INSTANCE.getSession(goal.token);
+        Player player = session == null ? findOnlineGoalPlayer(goal) : session.getPlayer();
+        if (player == null) {
+            goal.block("Agent session ended or player went offline.");
+            logGoalEvent(goalLogSession(goal, session, null), "goal_blocked", goal, null);
+            return;
+        }
+        session = goalLogSession(goal, session, player);
+        if (player.isDead) {
+            goal.block("Player death stopped the combat goal.");
+            logGoalEvent(session, "goal_blocked", goal, null);
+            return;
+        }
+        goal.ticksElapsed++;
+        if (goal.shouldWaitForMiningClick()) {
+            return;
+        }
+        if (goal.ticksElapsed - goal.lastStepTick < goal.stepIntervalTicks) {
+            return;
+        }
+        goal.lastStepTick = goal.ticksElapsed;
+        if (player.isMoving) {
+            if (goal.shouldKeepWaitingForMovement(player)) {
+                return;
+            }
+            player.resetWalkingQueue();
+            player.isMoving = false;
+            goal.recoverFromMovementStall(player);
+        }
+        if (goal.actionsRun >= goal.maxActions) {
+            goal.block("Combat goal reached its max action limit before completion.");
+            logGoalEventAndAutosave(player, session, "goal_blocked", goal, null);
+            return;
+        }
+
+        JsonObject actionArguments = new JsonObject();
+        actionArguments.addProperty("targetLevel", goal.targetLevel);
+        goal.refreshPlannerDisplay(player);
+        if (goal.fixedArea && !goal.area.isEmpty()) {
+            actionArguments.addProperty("area", goal.area);
+        }
+        if (goal.fixedArea && !goal.npc.isEmpty()) {
+            actionArguments.addProperty("npc", goal.npc);
+        }
+        if (goal.fixedStyle && !goal.style.isEmpty()) {
+            actionArguments.addProperty("style", goal.style);
+        }
+
+        JsonObject result = runCombatGoalStep(player, goal, actionArguments);
+        goal.actionsRun++;
+        goal.lastResult = result;
+        goal.updateLevels(player);
+        goal.rememberPlanFromResult(result);
+        goal.rememberMiningClickWait(result);
+        goal.rememberLocalMiningRespawnWait(result);
+
+        if (goal.targetReached()) {
+            goal.complete("Attack, strength, and defence reached base " + goal.targetLevel + ".");
+            logGoalEventAndAutosave(player, session, "goal_completed", goal, result);
+        } else if (goal.recordRouteProgressAndShouldBlock(result)) {
+            logGoalEventAndAutosave(player, session, "goal_blocked", goal, result);
+        } else if (result == null || !result.has("success") || !result.get("success").getAsBoolean()) {
+            String message = result == null ? "Combat goal step failed." : getString(result, "message", "Combat goal step failed.");
+            if (isRecoverableGoalFailure(message)) {
+                if (goal.shouldLogProgress()) {
+                    logGoalEventAndAutosave(player, session, "goal_progress", goal, result);
+                }
+            } else {
+                goal.block(message);
+                logGoalEventAndAutosave(player, session, "goal_blocked", goal, result);
+            }
+        } else if (goal.shouldLogProgress()) {
+            logGoalEventAndAutosave(player, session, "goal_progress", goal, result);
+        }
+    }
+
+    private static Player findOnlineGoalPlayer(CombatGoal goal) {
+        if (goal == null) {
+            return null;
+        }
+        if (isValidPlayerIndex(goal.playerId)) {
+            Player player = PlayerHandler.players[goal.playerId];
+            if (isGoalPlayer(player, goal.playerId, goal.playerName)) {
+                return player;
+            }
+        }
+        for (int i = 0; i < PlayerHandler.players.length; i++) {
+            Player player = PlayerHandler.players[i];
+            if (isGoalPlayer(player, i, goal.playerName)) {
+                return player;
+            }
+        }
+        return null;
+    }
+
+    static boolean isGoalPlayer(Player player, int expectedPlayerId, String expectedPlayerName) {
+        return player != null
+                && !player.disconnected
+                && player.isActive
+                && expectedPlayerId >= 0
+                && player.playerId == expectedPlayerId
+                && expectedPlayerName != null
+                && player.playerName != null
+                && player.playerName.equalsIgnoreCase(expectedPlayerName);
+    }
+
+    private static boolean isValidPlayerIndex(int playerId) {
+        return playerId >= 0 && playerId < PlayerHandler.players.length;
+    }
+
+    private static AgentSession goalLogSession(CombatGoal goal, AgentSession session, Player player) {
+        if (session != null) {
+            return session;
+        }
+        if (goal == null) {
+            return null;
+        }
+        int playerId = player == null ? goal.playerId : player.playerId;
+        String playerName = player == null ? goal.playerName : player.playerName;
+        return new AgentSession(goal.token, goal.sessionId, playerId, playerName, goal.startedAt);
+    }
+
+    private void blockCombatGoalForException(CombatGoal goal, Throwable ex) {
+        if (goal == null || goal.isTerminal()) {
+            return;
+        }
+        String message = "Combat goal step crashed: " + ex.getClass().getSimpleName();
+        if (ex.getMessage() != null && !ex.getMessage().trim().isEmpty()) {
+            message += ": " + ex.getMessage().trim();
+        }
+        System.err.println(message);
+        ex.printStackTrace();
+        goal.block(message);
+        AgentSession session = AgentSessionManager.INSTANCE.getSession(goal.token);
+        Player player = session == null ? null : session.getPlayer();
+        if (session != null) {
+            JsonObject result = AgentToolService.failure(message);
+            logGoalEventAndAutosave(player, session, "goal_blocked", goal, result);
+        }
+    }
+
+    private void logGoalEventAndAutosave(Player player, AgentSession session, String event, CombatGoal goal, JsonObject result) {
+        logGoalEvent(session, event, goal, result);
+        autosaveGoalEvent(player, event);
+    }
+
+    private static void autosaveGoalEvent(Player player, String event) {
+        if (player == null || !shouldAutosaveGoalEvent(event)) {
+            return;
+        }
+        PlayerSave.saveGame(player);
+    }
+
+    static boolean shouldAutosaveGoalEvent(String event) {
+        return "goal_progress".equals(event)
+                || "goal_completed".equals(event)
+                || "goal_blocked".equals(event);
     }
 
     private JsonObject runCombatGoalStep(Player player, CombatGoal goal, JsonObject actionArguments) {
@@ -413,7 +562,7 @@ public class AgentActionService {
             return junkDrop;
         }
 
-        if (goal.bankingSupplies || shouldBankCombatSupplies(player) || shouldStoreAccountItems(player, goal)) {
+        if (goal.bankingSupplies || shouldBankCombatSupplies(player, goal) || shouldStoreAccountItems(player, goal)) {
             goal.bankingSupplies = true;
             return bankCombatSuppliesStep(player, goal);
         }
@@ -421,6 +570,10 @@ public class AgentActionService {
         if (goal.gearingUp || shouldAcquireCombatGear(player, goal)) {
             goal.gearingUp = true;
             return acquireCombatGearStep(player, goal);
+        }
+
+        if (shouldAcquirePickaxeUpgrade(player, goal)) {
+            return acquirePickaxeUpgradeStep(player, goal, nextPickaxeUpgrade(player));
         }
 
         if (goal.earningGearMoney || shouldEarnGearMoney(player, goal)) {
@@ -431,6 +584,24 @@ public class AgentActionService {
         if (goal.restockingFood || shouldRestockFood(player, goal)) {
             goal.restockingFood = true;
             return restockFoodStep(player, goal);
+        }
+
+        JsonObject desertReturn = prepareDesertReturnTransit(player, goal.area);
+        if (desertReturn != null) {
+            String message = getString(desertReturn, "message", "returning from the desert.");
+            desertReturn.addProperty("message", "Returning from desert before combat training: " + message);
+            return desertReturn;
+        }
+        JsonObject gateToll = prepareAlKharidGateTollForCombat(player, goal);
+        if (gateToll != null) {
+            return gateToll;
+        }
+
+        if (shouldBankGearMoneyCarryoverBeforeCombat(countInventoryGearMoneyItems(player),
+                goal.earningGearMoney, goal.gearingUp,
+                shouldPrepareAlKharidGateTollForCombat(player.absX, player.absY,
+                        AgentToolService.countInventoryItem(player, COINS), goal.area))) {
+            return bankGearMoneyCarryoverBeforeCombatStep(player, goal);
         }
 
         if (player.getItemAssistant().freeSlots() > 0) {
@@ -450,7 +621,7 @@ public class AgentActionService {
             }
         }
 
-        if (goal.actionsRun % 60 == 0) {
+        if (shouldCheckCarriedCombatGear(goal.actionsRun, countInventoryCombatGearItems(player))) {
             return AgentToolService.handle(player, "equip_best_items", new JsonObject());
         }
         return AgentToolService.handle(player, "train_combat", actionArguments);
@@ -458,23 +629,22 @@ public class AgentActionService {
 
     private JsonObject bankCombatSuppliesStep(Player player, CombatGoal goal) {
         if (!Boundary.isIn(player, Boundary.BANK_AREA)) {
-            JsonObject travelArgs = new JsonObject();
-            travelArgs.addProperty("name", supplyBankLandmark(player, goal));
-            JsonObject result = AgentToolService.handle(player, "travel_to_landmark", travelArgs);
+            JsonObject result = travelTo(player, supplyBankLandmark(player, goal));
             String message = getString(result, "message", "Walking toward bank.");
             result.addProperty("message", "Banking combat supplies: " + message);
             return result;
         }
 
-        int supplyCount = countInventoryCombatSupplies(player);
+        int supplyCount = countInventoryCombatSupplies(player, goal);
         if (supplyCount > 0) {
-            JsonObject result = AgentToolService.handle(player, "deposit_inventory_items", combatSupplyArgs(0));
-            int depositedAmount = getInt(result, "depositedAmount", 0);
+            JsonObject result = AgentToolService.handle(player, "deposit_inventory_items",
+                    combatSupplyArgs(0, player, goal));
+            int depositedItems = depositedInventoryItems(result);
             if (result != null && result.has("success") && result.get("success").getAsBoolean()) {
                 goal.bankingSupplies = shouldStoreAccountItems(player, goal);
-                if (depositedAmount > 0) {
+                if (depositedItems > 0) {
                     goal.bankTrips++;
-                    goal.bankedSupplyItems += depositedAmount;
+                    goal.bankedSupplyItems += depositedItems;
                 }
                 String message = getString(result, "message", "Deposited combat supplies.");
                 result.addProperty("message", "Banked combat supplies for later account progression: " + message);
@@ -502,6 +672,87 @@ public class AgentActionService {
         return AgentToolService.success("No bankable combat supplies are currently in inventory.");
     }
 
+    private JsonObject bankGearMoneyCarryoverBeforeCombatStep(Player player, CombatGoal goal) {
+        if (!Boundary.isIn(player, Boundary.BANK_AREA)) {
+            JsonObject result = travelTo(player, supplyBankLandmark(player, goal));
+            result.addProperty("message", "Banking leftover mining materials before combat: "
+                    + getString(result, "message", "Walking toward bank."));
+            return result;
+        }
+
+        JsonObject result = AgentToolService.handle(player, "deposit_inventory_items", gearMoneyBatchBankArgs(player, goal));
+        int depositedAmount = getInt(result, "depositedAmount", 0);
+        if (result != null && result.has("success") && result.get("success").getAsBoolean()
+                && depositedAmount > 0) {
+            goal.accountStorageBankTrips++;
+            goal.bankedAccountItems += depositedAmount;
+        }
+        result.addProperty("message", "Banked leftover mining materials before combat: "
+                + getString(result, "message", "Deposited money-making materials."));
+        return result;
+    }
+
+    private JsonObject prepareGearMoneySteelSmeltingInputs(Player player, GearTarget target, CombatGoal goal,
+            boolean liquidatingForCombat, boolean processingBatchReady, boolean processingStarted) {
+        if (!liquidatingForCombat && !processingBatchReady && !processingStarted) {
+            return null;
+        }
+        int smithingLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.SMITHING]);
+        int carriedIronOre = AgentToolService.countInventoryItem(player, IRON_ORE);
+        int carriedCoal = AgentToolService.countInventoryItem(player, COAL);
+        int bankedIronOre = AgentToolService.countBankItem(player, IRON_ORE);
+        int bankedCoal = AgentToolService.countBankItem(player, COAL);
+        if (!shouldPrepareSteelSmeltingInputs(smithingLevel, carriedIronOre, carriedCoal, bankedIronOre,
+                bankedCoal, player.getItemAssistant().freeSlots(), countInventoryProcessedGearMoneyBars(player),
+                countInventoryGearMoneyProducts(player, goal), liquidatingForCombat, player.absX, player.absY,
+                processingStarted)) {
+            return null;
+        }
+
+        if (!Boundary.isIn(player, Boundary.BANK_AREA)) {
+            JsonObject result = travelTo(player, gearMoneyClutterBankLandmark(player.absX, player.absY));
+            result.addProperty("message", "Earning gear money for " + target.itemName()
+                    + ": returning to bank to pair iron ore with coal for higher-value steel.");
+            return result;
+        }
+
+        int coalNeededForCarriedIron = steelCoalNeededForIron(carriedIronOre, carriedCoal);
+        if (carriedIronOre > 0 && coalNeededForCarriedIron > 0
+                && bankedCoal >= coalNeededForCarriedIron
+                && player.getItemAssistant().freeSlots() >= coalNeededForCarriedIron) {
+            JsonObject result = AgentToolService.handle(player, "withdraw_bank_items",
+                    itemAmountArgs(COAL, coalNeededForCarriedIron));
+            result.addProperty("message", "Earning gear money: withdrew coal to smelt carried iron ore into steel.");
+            return result;
+        }
+
+        if (carriedIronOre > 0 || carriedCoal > 0) {
+            JsonObject result = AgentToolService.handle(player, "deposit_inventory_items", gearMoneyBatchBankArgs(player, goal));
+            result.addProperty("message", "Earning gear money for " + target.itemName()
+                    + ": rebanking unbalanced iron/coal before withdrawing a steel smelting batch.");
+            return result;
+        }
+
+        int targetSteelBars = targetSteelSmeltingBars(player.getItemAssistant().freeSlots(), bankedIronOre, bankedCoal);
+        if (targetSteelBars <= 0) {
+            return null;
+        }
+        if (carriedIronOre < targetSteelBars) {
+            JsonObject result = AgentToolService.handle(player, "withdraw_bank_items",
+                    itemAmountArgs(IRON_ORE, targetSteelBars - carriedIronOre));
+            result.addProperty("message", "Earning gear money: withdrew iron ore for a balanced steel smelting batch.");
+            return result;
+        }
+        int targetCoal = targetSteelBars * STEEL_COAL_PER_BAR;
+        if (carriedCoal < targetCoal) {
+            JsonObject result = AgentToolService.handle(player, "withdraw_bank_items",
+                    itemAmountArgs(COAL, targetCoal - carriedCoal));
+            result.addProperty("message", "Earning gear money: withdrew coal for a balanced steel smelting batch.");
+            return result;
+        }
+        return null;
+    }
+
     private JsonObject acquireCombatGearStep(Player player, CombatGoal goal) {
         GearTarget target = goal.gearTargetItemId > 0 ? gearTargetByItemId(goal.gearTargetItemId)
                 : nextGearTarget(player);
@@ -509,6 +760,13 @@ public class AgentActionService {
         if (target == null) {
             goal.clearGearTarget();
             return AgentToolService.success("Combat gear is already appropriate for the current levels.");
+        }
+        if (!isGearTargetAvailable(player, target)) {
+            goal.clearGearTarget();
+            return AgentToolService.success("Gearing up: " + target.itemName()
+                    + " is not legitimately available yet; Champions' Guild gear needs "
+                    + CHAMPIONS_GUILD_QUEST_POINTS + " quest points and this account has "
+                    + player.questPoints + ". Resuming combat with current gear.");
         }
         goal.rememberGearTarget(target);
 
@@ -541,22 +799,37 @@ public class AgentActionService {
             return result;
         }
 
+        PickaxeTarget fundedPickaxeUpgrade = nextPickaxeUpgrade(player);
+        if (goal.isPickaxeUpgradeDeferred(fundedPickaxeUpgrade)) {
+            fundedPickaxeUpgrade = null;
+        }
+        if (fundedPickaxeUpgrade != null
+                && shouldPrioritizePickaxeUpgradeOverGear(target.itemId, fundedPickaxeUpgrade.itemId)) {
+            JsonObject result = acquirePickaxeUpgradeStep(player, goal, fundedPickaxeUpgrade);
+            String message = getString(result, "message", "upgrading the mining pickaxe.");
+            result.addProperty("message", "Gearing up: prioritizing " + fundedPickaxeUpgrade.itemName()
+                    + " before " + target.itemName() + " so the next mining batch funds gear faster. "
+                    + message);
+            return result;
+        }
+
         int inventoryCoins = AgentToolService.countInventoryItem(player, COINS);
         int bankCoins = AgentToolService.countBankItem(player, COINS);
-        if (inventoryCoins < target.estimatedPrice && bankCoins > 0
-                && inventoryCoins + bankCoins < target.estimatedPrice) {
+        int targetCost = estimatedGearAcquisitionCost(target, player);
+        if (inventoryCoins < targetCost && bankCoins > 0
+                && inventoryCoins + bankCoins < targetCost) {
             goal.beginGearMoney(target);
             return AgentToolService.success("Gearing up: saved " + (inventoryCoins + bankCoins)
                     + " spendable coins toward " + target.itemName() + ", estimated around "
-                    + target.estimatedPrice + "; switching to normal Varrock mining money-making.");
+                    + targetCost + "; switching to normal Varrock mining money-making.");
         }
-        if (inventoryCoins < target.estimatedPrice && bankCoins > 0) {
+        if (inventoryCoins < targetCost && bankCoins > 0) {
             if (!Boundary.isIn(player, Boundary.BANK_AREA)) {
                 JsonObject result = travelTo(player, "varrock east bank");
                 result.addProperty("message", "Gearing up: returning to the bank for coins.");
                 return result;
             }
-            int amount = Math.min(Math.max(target.estimatedPrice * 2, 1), bankCoins);
+            int amount = Math.min(Math.max(targetCost * 2, 1), bankCoins);
             JsonObject result = AgentToolService.handle(player, "withdraw_bank_items", itemAmountArgs(COINS, amount));
             String message = getString(result, "message", "Withdrew coins.");
             result.addProperty("message", "Gearing up: withdrew coins for " + target.itemName() + ": " + message);
@@ -568,15 +841,30 @@ public class AgentActionService {
             goal.beginGearMoney(target);
             return AgentToolService.success("Gearing up: no spendable coins are available yet; switching to normal Varrock mining money-making.");
         }
-        if (inventoryCoins < target.estimatedPrice) {
+        if (inventoryCoins < targetCost) {
             goal.beginGearMoney(target);
             return AgentToolService.success("Gearing up: saved " + inventoryCoins + " coins, but " + target.itemName()
-                    + " is estimated around " + target.estimatedPrice
+                    + " is estimated around " + targetCost
                     + "; switching to normal Varrock mining money-making.");
         }
 
+        JsonObject nardahTransit = prepareNardahTransit(player, target);
+        if (nardahTransit != null) {
+            return nardahTransit;
+        }
+
+        if (!currentShopNameContains(player, target.shopName)
+                && isNearLandmarkTarget(target.landmark, player.absX, player.absY, player.heightLevel, 12)) {
+            JsonObject result = openShop(player, target.shopName);
+            if (result != null && result.has("success") && result.get("success").getAsBoolean()) {
+                String message = getString(result, "message", "Opened shop.");
+                result.addProperty("message", "Gearing up: " + message);
+                return result;
+            }
+        }
+
         JsonObject travel = travelTo(player, target.landmark);
-        if (!getBoolean(travel, "complete", false)) {
+        if (!getBoolean(travel, "complete", false) && !currentShopNameContains(player, target.shopName)) {
             travel.addProperty("message", "Gearing up: walking toward " + target.landmark + " for "
                     + target.itemName() + ".");
             return travel;
@@ -608,18 +896,199 @@ public class AgentActionService {
                 + "); resuming combat until more coins or supplies are available.");
     }
 
-    private JsonObject earnGearMoneyStep(Player player, CombatGoal goal) {
-        GearTarget target = goal.gearMoneyTargetItemId > 0 ? gearTargetByItemId(goal.gearMoneyTargetItemId)
-                : nextDesiredGearTarget(player);
-        if (target == null) {
-            goal.clearGearMoney();
-            return AgentToolService.success("Gear money-making is not needed; no unlocked gear upgrade is pending.");
+    private JsonObject prepareNardahTransit(Player player, GearTarget target) {
+        if (!isNardahGearTarget(target) || isNardahTransitComplete(player)) {
+            return null;
         }
-        goal.beginGearMoney(target);
+        if (isNearShantayRugMerchant(player)) {
+            CarpetTravel.carpetTravel(player, 3401, 2915);
+            JsonObject result = AgentToolService.success(
+                    "Gearing up: paid the Shantay rug merchant for a normal carpet ride toward Nardah.");
+            result.add("state", AgentToolService.observeState(player));
+            return result;
+        }
+        if (isSouthOfShantayGate(player)) {
+            JsonObject result = travelTo(player, "shantay rug merchant");
+            result.addProperty("message",
+                    "Gearing up: walking from Shantay gate to the rug merchant for Nardah.");
+            return result;
+        }
+        if (AgentToolService.countInventoryItem(player, SHANTAY_PASS) <= 0) {
+            if (isNearShantayPass(player)) {
+                Npc shantay = nearestNpc(player, SHANTAY_NPC, 6);
+                if (shantay != null && AgentKnowledgeBase.distance(player.absX, player.absY,
+                        shantay.absX, shantay.absY) <= 2) {
+                    return buyShantayPass(player, shantay);
+                }
+            }
+            JsonObject result = travelTo(player, "shantay pass");
+            result.addProperty("message", "Gearing up: walking to Shantay to buy a pass for Nardah travel.");
+            return result;
+        }
+        if (isAtShantayGateNorth(player)) {
+            player.stopMovement();
+            player.endCurrentTask();
+            player.getPlayerAssistant().resetFollow();
+            player.getCombatAssistant().resetPlayerAttack();
+            player.objectX = player.absX;
+            player.objectY = player.absY - 1;
+            OtherObjects.initShantay(player, SHANTAY_GATE_OBJECT);
+            JsonObject result = AgentToolService.success(
+                    "Gearing up: used a Shantay pass to pass through the gate.");
+            result.add("state", AgentToolService.observeState(player));
+            return result;
+        }
+        if (isNearShantayGateNorth(player)) {
+            JsonObject walkArgs = new JsonObject();
+            walkArgs.addProperty("x", 3304);
+            walkArgs.addProperty("y", 3117);
+            walkArgs.addProperty("height", 0);
+            JsonObject result = AgentToolService.handle(player, "walk_to_tile", walkArgs);
+            result.addProperty("message", "Gearing up: stepping exactly to the Shantay gate before using the pass.");
+            return result;
+        }
+        JsonObject result = travelTo(player, "shantay gate north");
+        result.addProperty("message", "Gearing up: walking to the Shantay gate for Nardah travel.");
+        return result;
+    }
+
+    private JsonObject buyShantayPass(Player player, Npc shantay) {
+        int beforePasses = AgentToolService.countInventoryItem(player, SHANTAY_PASS);
+        int beforeCoins = AgentToolService.countInventoryItem(player, COINS);
+        if (beforeCoins < SHANTAY_PASS_PRICE) {
+            JsonObject result = AgentToolService.failure("Gearing up: need 5 coins to buy a Shantay pass.");
+            result.add("state", AgentToolService.observeState(player));
+            return result;
+        }
+
+        if (currentShopNameContains(player, "shantay pass")) {
+            return buyShantayPassFromOpenShop(player, beforePasses, beforeCoins);
+        }
+        if (shouldSelectShantayPassShopOption(player.nextChat, player.dialogueAction, player.talkingNpc)) {
+            JsonObject result = AgentToolService.handle(player, "select_dialogue_option", optionArgs(1));
+            result.addProperty("message", "Gearing up: selected Shantay's pass shop dialogue option.");
+            return result;
+        }
+        if (shouldContinueShantayPassDialogue(player.nextChat, player.dialogueAction, player.talkingNpc)) {
+            JsonObject result = AgentToolService.handle(player, "continue_dialogue", new JsonObject());
+            result.addProperty("message", "Gearing up: continued Shantay's pass shop dialogue.");
+            return result;
+        }
+
+        prepareNpcInteraction(player, shantay);
+        player.getNpcs().thirdClickNpc(shantay.npcType);
+        if (shantayPassPurchaseSucceeded(beforePasses, AgentToolService.countInventoryItem(player, SHANTAY_PASS),
+                beforeCoins, AgentToolService.countInventoryItem(player, COINS))) {
+            JsonObject result = AgentToolService.success(
+                    "Gearing up: bought a Shantay pass from Shantay using the normal quick-buy interaction.");
+            result.add("state", AgentToolService.observeState(player));
+            return result;
+        }
+
+        JsonObject opened = openShop(player, "shantay pass");
+        if (opened == null || !getBoolean(opened, "success", false)) {
+            JsonObject result = AgentToolService.failure("Gearing up: Shantay quick-buy did not produce a pass, and the Shantay pass shop could not be opened.");
+            result.add("state", AgentToolService.observeState(player));
+            return result;
+        }
+
+        beforePasses = AgentToolService.countInventoryItem(player, SHANTAY_PASS);
+        beforeCoins = AgentToolService.countInventoryItem(player, COINS);
+        JsonObject bought = buyShantayPassFromOpenShop(player, beforePasses, beforeCoins);
+        if (bought != null && getBoolean(bought, "success", false)) {
+            return bought;
+        }
+
+        String failure = getString(bought, "message", "pass purchase did not change inventory");
+        JsonObject result = AgentToolService.failure("Gearing up: Shantay pass purchase failed after normal NPC and shop attempts ("
+                + failure + ").");
+        result.add("state", AgentToolService.observeState(player));
+        return result;
+    }
+
+    private JsonObject buyShantayPassFromOpenShop(Player player, int beforePasses, int beforeCoins) {
+        JsonObject bought = AgentToolService.handle(player, "buy_shop_item", itemAmountArgs(SHANTAY_PASS, 1));
+        if (bought != null && getBoolean(bought, "success", false)
+                && shantayPassPurchaseSucceeded(beforePasses, AgentToolService.countInventoryItem(player, SHANTAY_PASS),
+                beforeCoins, AgentToolService.countInventoryItem(player, COINS))) {
+            JsonObject result = AgentToolService.success(
+                    "Gearing up: bought a Shantay pass from the Shantay Pass Shop.");
+            result.add("state", AgentToolService.observeState(player));
+            return result;
+        }
+        return bought;
+    }
+
+    private static void prepareNpcInteraction(Player player, Npc npc) {
+        player.stopMovement();
+        player.endCurrentTask();
+        player.getPlayerAssistant().resetFollow();
+        player.getCombatAssistant().resetPlayerAttack();
+        player.npcClickIndex = npc.npcId;
+        player.npcType = npc.npcType;
+        player.talkingNpc = npc.npcType;
+        player.turnPlayerTo(npc.absX, npc.absY);
+        npc.facePlayer(player);
+    }
+
+    static boolean shantayPassPurchaseSucceeded(int beforePasses, int afterPasses, int beforeCoins, int afterCoins) {
+        return afterPasses > beforePasses && afterCoins < beforeCoins;
+    }
+
+    static boolean shouldContinueShantayPassDialogue(int nextChat, int dialogueAction, int talkingNpc) {
+        return talkingNpc == SHANTAY_NPC && dialogueAction != 146 && (nextChat == 1323 || nextChat == 1326);
+    }
+
+    static boolean shouldSelectShantayPassShopOption(int nextChat, int dialogueAction, int talkingNpc) {
+        return talkingNpc == SHANTAY_NPC && dialogueAction == 146;
+    }
+
+    private JsonObject earnGearMoneyStep(Player player, CombatGoal goal) {
+        boolean shopFoodMoneyTarget = isShopFoodMoneyTarget(goal);
+        GearTarget gearTarget = shopFoodMoneyTarget ? shopFoodMoneyTarget(goal.gearMoneyTargetCoins)
+                : goal.gearMoneyTargetItemId > 0 ? gearTargetByItemId(goal.gearMoneyTargetItemId)
+                        : nextDesiredGearMoneyTarget(player, goal);
+        PickaxeTarget pickaxeMoneyTarget = shopFoodMoneyTarget ? null
+                : goal.gearMoneyPickaxeTargetItemId > 0
+                        ? pickaxeTargetByItemId(goal.gearMoneyPickaxeTargetItemId) : null;
+        if (!shopFoodMoneyTarget && gearTarget == null && pickaxeMoneyTarget == null) {
+            pickaxeMoneyTarget = nextDesiredPickaxeMoneyTarget(player, goal);
+        }
+        if (gearTarget == null && pickaxeMoneyTarget == null) {
+            goal.clearGearMoney();
+            return AgentToolService.success("Gear money-making is not needed; no unlocked gear or pickaxe upgrade is pending.");
+        }
+        if (!shopFoodMoneyTarget && gearTarget != null && !isGearTargetAvailable(player, gearTarget)) {
+            goal.clearGearMoney();
+            return AgentToolService.success("Gear money-making paused: " + gearTarget.itemName()
+                    + " is not legitimately available yet; Champions' Guild gear needs "
+                    + CHAMPIONS_GUILD_QUEST_POINTS + " quest points and this account has "
+                    + player.questPoints + ".");
+        }
+        GearTarget target = gearTarget == null ? pickaxeMoneyGearTarget(pickaxeMoneyTarget) : gearTarget;
+        if (shopFoodMoneyTarget) {
+            goal.beginTargetMoney(KEBAB, SHOP_FOOD_MONEY_TARGET_NAME, target.estimatedPrice);
+        } else if (gearTarget == null) {
+            goal.beginPickaxeMoney(pickaxeMoneyTarget);
+        } else {
+            goal.beginGearMoney(gearTarget);
+        }
 
         int spendableCoins = AgentToolService.countInventoryItem(player, COINS) + AgentToolService.countBankItem(player, COINS);
+        int targetCost = shopFoodMoneyTarget ? Math.max(1, target.estimatedPrice)
+                : gearTarget == null ? pickaxeMoneyTarget.estimatedPrice
+                : estimatedGearAcquisitionCost(gearTarget, player);
+        boolean targetAcquisitionRawLiquidation = shouldLiquidateStagedGearMoneyItems(goal);
         GearTarget affordableUpgrade = nextGearTarget(player);
-        if (shouldInterruptGearMoneyForAffordableUpgrade(affordableUpgrade, target)) {
+        if (!shopFoodMoneyTarget && gearTarget == null && affordableUpgrade != null) {
+            goal.clearGearMoney();
+            goal.rememberGearTarget(affordableUpgrade);
+            goal.gearingUp = true;
+            return AgentToolService.success("Saved while working toward " + pickaxeMoneyTarget.itemName()
+                    + ", but a combat upgrade is now ready; buying " + affordableUpgrade.itemName() + " first.");
+        }
+        if (!shopFoodMoneyTarget && gearTarget != null
+                && shouldInterruptGearMoneyForAffordableUpgrade(affordableUpgrade, gearTarget)) {
             goal.clearGearMoney();
             goal.rememberGearTarget(affordableUpgrade);
             goal.gearingUp = true;
@@ -630,27 +1099,42 @@ public class AgentActionService {
                 return result;
             }
             return AgentToolService.success("Saved enough coins for " + affordableUpgrade.itemName()
-                    + " while working toward " + target.itemName() + "; buying the intermediate upgrade first.");
+                    + " while working toward " + gearTarget.itemName() + "; buying the intermediate upgrade first.");
         }
-        if (spendableCoins >= target.estimatedPrice) {
+        if (spendableCoins >= targetCost) {
             goal.clearGearMoney();
+            if (shopFoodMoneyTarget) {
+                goal.restockingFood = true;
+                if (player.isShopping || player.isBanking) {
+                    JsonObject result = AgentToolService.handle(player, "close_interfaces", new JsonObject());
+                    result.addProperty("message",
+                            "Funded the target-sized kebab restock; closing interfaces before buying food.");
+                    return result;
+                }
+                return AgentToolService.success(
+                        "Funded the target-sized kebab restock; buying the food batch next.");
+            }
+            if (gearTarget == null) {
+                return acquirePickaxeUpgradeStep(player, goal, pickaxeMoneyTarget);
+            }
             goal.gearingUp = true;
             if (player.isShopping || player.isBanking) {
                 JsonObject result = AgentToolService.handle(player, "close_interfaces", new JsonObject());
-                result.addProperty("message", "Earned enough coins for " + target.itemName()
+                result.addProperty("message", "Earned enough coins for " + gearTarget.itemName()
                         + "; closing interfaces before buying the upgrade.");
                 return result;
             }
-            return AgentToolService.success("Earned enough coins for " + target.itemName()
+            return AgentToolService.success("Earned enough coins for " + gearTarget.itemName()
                     + "; resuming the gear upgrade step.");
         }
 
-        int carriedGearMoneyItems = countInventoryGearMoneyItems(player) + countInventoryGearMoneyProducts(player);
+        int carriedGearMoneyItems = countInventoryGearMoneyItems(player) + countInventoryGearMoneyProducts(player, goal);
         int attackLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.ATTACK]);
         int strengthLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.STRENGTH]);
-        boolean liquidatingForCombat = shouldDeferExpensiveWeaponUpgradeForCombat(
+        boolean liquidatingForCombat = !shopFoodMoneyTarget && gearTarget != null
+                && shouldDeferExpensiveWeaponUpgradeForCombat(
                 attackLevel, strengthLevel, goal.targetLevel, spendableCoins,
-                bestEquippedGearTier(player, WEAPON_GEAR_TARGETS), target);
+                bestEquippedGearTier(player, WEAPON_GEAR_TARGETS), gearTarget);
         if (carriedGearMoneyItems == 0 && liquidatingForCombat) {
             goal.clearGearMoney();
             goal.lastGearAttemptAction = goal.actionsRun;
@@ -661,9 +1145,27 @@ public class AgentActionService {
         if (isPlayerInCombat(player)) {
             return escapeCombatForNonCombatWork(player, "Earning gear money", "varrock east bank");
         }
-        JsonObject foodPrep = prepareGearMoneyFood(player, goal);
-        if (foodPrep != null) {
-            return foodPrep;
+        if (!shopFoodMoneyTarget) {
+            JsonObject foodPrep = prepareGearMoneyFood(player, goal);
+            if (foodPrep != null) {
+                return foodPrep;
+            }
+        }
+        boolean targetAcquisitionSaleBatchReady = shouldSellGearMoneyBatch(spendableCoins,
+                estimatedInventoryGearMoneyCoins(player, goal), estimatedBankGearMoneyCoins(player, goal),
+                targetCost);
+        if (shouldStopMiningForFundedTargetAcquisitionSale(player.isMining, targetAcquisitionRawLiquidation,
+                targetAcquisitionSaleBatchReady)) {
+            JsonObject result = AgentToolService.handle(player, "cancel_current_action", new JsonObject());
+            result.addProperty("message",
+                    "Earning gear money: stopping mining because the target acquisition sale batch is funded.");
+            return result;
+        }
+        if (shouldStopMiningForFundedGearMoneyProcessing(player.isMining, goal.gearMoneyProcessingStarted)) {
+            JsonObject result = AgentToolService.handle(player, "cancel_current_action", new JsonObject());
+            result.addProperty("message",
+                    "Earning gear money: stopping mining because the funded ore/bar batch is ready to process.");
+            return result;
         }
         if (player.isMining) {
             JsonObject result = AgentToolService.success("Earning gear money: continuing to mine ore.");
@@ -675,21 +1177,48 @@ public class AgentActionService {
             result.add("state", AgentToolService.observeState(player));
             return result;
         }
+        if (shouldBankCarriedBatchAfterProcessingStarted(goal.gearMoneyProcessingStarted,
+                countInventoryRawGearMoneyMaterials(player), goal.gearMoneyRawMaterialsBankedAfterProcessingStarted)) {
+            return bankGearMoneyRawMaterialsStep(player, goal, target,
+                    "banking carried ore before continuing the funded bar/product processing batch");
+        }
 
-        if (countInventoryGearMoneyProducts(player) > 0) {
-            return sellGearMoneyItemsStep(player, goal, target);
+        int gearMoneyProducts = countInventoryGearMoneyProducts(player, goal);
+        int inventoryMoneyItems = countInventoryGearMoneyItems(player);
+        int carriedMoneyItems = inventoryMoneyItems + gearMoneyProducts;
+        int carriedGearMoneyValue = estimatedInventoryGearMoneyCoins(player, goal);
+        int bankedGearMoneyValue = estimatedBankGearMoneyCoins(player, goal);
+        int potentialGearMoneyCoins = spendableCoins + carriedGearMoneyValue + bankedGearMoneyValue;
+        PickaxeTarget fundedPickaxeUpgrade = shopFoodMoneyTarget ? null
+                : nextPickaxeUpgrade(player, potentialGearMoneyCoins);
+        if (goal.isPickaxeUpgradeDeferred(fundedPickaxeUpgrade)) {
+            fundedPickaxeUpgrade = null;
+        }
+        int liquidityTargetCost = gearMoneyLiquidityTargetCost(targetCost,
+                fundedPickaxeUpgrade == null ? -1 : fundedPickaxeUpgrade.estimatedPrice);
+        boolean gearMoneyBatchReady = shouldSellGearMoneyBatch(spendableCoins, carriedGearMoneyValue,
+                bankedGearMoneyValue, liquidityTargetCost);
+        int gearMoneyProductValue = estimatedGearMoneyProductCoins(player, goal);
+        int processedGearMoneyPotential = estimatedProcessedGearMoneyPotentialCoins(player, spendableCoins, goal);
+        boolean preferredGearMoneyBatchStaged = isPreferredGearMoneyBatchStaged(player, spendableCoins,
+                liquidityTargetCost, gearMoneyProductValue);
+        boolean gearMoneyProcessingBatchReady = processedGearMoneyPotential >= liquidityTargetCost
+                && preferredGearMoneyBatchStaged;
+        if (gearMoneyProcessingBatchReady) {
+            goal.rememberGearMoneyProcessingStarted();
         }
 
         PickaxeTarget pickaxeUpgrade = nextPickaxeUpgrade(player);
         if (goal.isPickaxeUpgradeDeferred(pickaxeUpgrade)) {
             pickaxeUpgrade = null;
         }
-        if (pickaxeUpgrade != null && countInventoryGearMoneyItems(player) == 0) {
+        if (!shopFoodMoneyTarget && pickaxeUpgrade != null && inventoryMoneyItems == 0 && gearMoneyProducts == 0) {
             return acquirePickaxeUpgradeStep(player, goal, pickaxeUpgrade);
         }
 
-        if (Boundary.isIn(player, Boundary.BANK_AREA) && countInventoryGearMoneyClutterItems(player) > 0) {
-            JsonObject result = AgentToolService.handle(player, "deposit_inventory_items", gearMoneyClutterArgs(player));
+        int gearMoneyClutterItems = countInventoryGearMoneyClutterItems(player, goal);
+        if (Boundary.isIn(player, Boundary.BANK_AREA) && gearMoneyClutterItems > 0) {
+            JsonObject result = AgentToolService.handle(player, "deposit_inventory_items", gearMoneyClutterArgs(player, goal));
             int depositedAmount = getInt(result, "depositedAmount", 0);
             if (result != null && result.has("success") && result.get("success").getAsBoolean()) {
                 if (depositedAmount > 0) {
@@ -701,26 +1230,92 @@ public class AgentActionService {
             }
             return result;
         }
+        if (shouldBankGearMoneyClutterBeforeProcessing(gearMoneyClutterItems, player.absX, player.absY)) {
+            String bankLandmark = gearMoneyClutterBankLandmark(player.absX, player.absY);
+            JsonObject result = travelTo(player, bankLandmark);
+            result.addProperty("message", "Earning gear money: banking mining byproducts before processing ore.");
+            return result;
+        }
 
         JsonObject travelCoinPrep = prepareGearMoneyTravelCoins(player);
         if (travelCoinPrep != null) {
             return travelCoinPrep;
         }
 
-        int inventoryMoneyItems = countInventoryGearMoneyItems(player);
-        if (inventoryMoneyItems > 0
-                && spendableCoins + estimatedInventoryGearMoneyCoins(player) >= target.estimatedPrice) {
-            return sellGearMoneyItemsStep(player, goal, target);
+        JsonObject steelPrep = prepareGearMoneySteelSmeltingInputs(player, target, goal, liquidatingForCombat,
+                gearMoneyProcessingBatchReady, goal.gearMoneyProcessingStarted);
+        if (steelPrep != null) {
+            return steelPrep;
         }
 
+        boolean bankHasSmeltableGearMoneyOres = hasBankedSmeltableGearMoneyOres(player);
+        int bankedProcessableGearMoneyItems = countBankProcessableGearMoneyItems(player);
+        boolean bankHasProcessableGearMoneyMaterials = hasProcessableGearMoneyMaterials(
+                bankHasSmeltableGearMoneyOres, bankedProcessableGearMoneyItems);
         int smeltableBar = bestSmeltableGearMoneyBar(player);
+        boolean shouldProcessGearMoneyBatch = shouldProcessGearMoneyBatch(gearMoneyProcessingBatchReady,
+                liquidatingForCombat, goal.gearMoneyProcessingStarted);
         boolean canSmeltOres = smeltableBar > 0
-                && shouldSmeltGearMoneyOres(player, smeltableBar, liquidatingForCombat);
+                && shouldProcessGearMoneyBatch
+                && shouldSmeltGearMoneyOres(player, smeltableBar, liquidatingForCombat,
+                        goal.gearMoneyProcessingStarted);
         int smithableBar = bestSmithableGearMoneyBar(player);
-        boolean canSmithBars = smithableBar > 0 && shouldSmithGearMoneyBars(player, smithableBar, liquidatingForCombat);
+        boolean canSmithBars = smithableBar > 0
+                && shouldProcessGearMoneyBatch
+                && (shouldSmithGearMoneyBars(player, smithableBar, liquidatingForCombat)
+                        || gearMoneyProcessingBatchReady);
+        boolean carryingBalancedSteelSmeltingBatch = shouldUseSteelForGearMoney(
+                player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.SMITHING]))
+                && isBalancedSteelSmeltingBatch(AgentToolService.countInventoryItem(player, IRON_ORE),
+                        AgentToolService.countInventoryItem(player, COAL));
         int productionAction = gearMoneyProductionAction(canSmeltOres, canSmithBars);
-        if (shouldSellCarriedGearMoneyAfterFurnaceStall(goal.movingStallRecoveries, inventoryMoneyItems,
+        if (shouldSmithCarriedBarsBeforeResidualSmelting(productionAction, canSmithBars,
+                countInventoryProcessedGearMoneyBars(player), countInventoryRawGearMoneyMaterials(player),
+                player.getItemAssistant().freeSlots(), goal.gearMoneyProcessingStarted)) {
+            productionAction = GEAR_MONEY_PRODUCTION_SMITH;
+        }
+        if (shouldDelayGearMoneyProductionForFullerLoad(productionAction, carriedMoneyItems,
+                player.getItemAssistant().freeSlots(), gearMoneyBatchReady, gearMoneyProcessingBatchReady,
+                liquidatingForCombat, carryingBalancedSteelSmeltingBatch, player.absX, player.absY,
+                goal.gearMoneyProcessingStarted)) {
+            productionAction = GEAR_MONEY_PRODUCTION_NONE;
+        }
+        if (shouldSellReadyGearMoneyBatchBeforeProcessing(gearMoneyProducts, gearMoneyBatchReady, productionAction,
+                goal.gearMoneyProcessingStarted, bankHasProcessableGearMoneyMaterials)) {
+            return sellGearMoneyItemsStep(player, goal, target);
+        }
+        if (shouldBankGearMoneyMaterialsBeforeProcessing(productionAction, carriedMoneyItems, gearMoneyBatchReady,
+                        gearMoneyProcessingBatchReady, liquidatingForCombat, player.getItemAssistant().freeSlots(),
+                        carryingBalancedSteelSmeltingBatch)) {
+            return bankGearMoneyBatchStep(player, goal, target,
+                    "banking mined materials until enough is staged for one funded smithing batch");
+        }
+        if (shouldSellGearMoneyProductsBeforeProduction(gearMoneyProducts, canSmeltOres, canSmithBars,
+                goal.gearMoneyProcessingStarted, bankHasProcessableGearMoneyMaterials)) {
+            if (gearMoneyBatchReady) {
+                return sellGearMoneyItemsStep(player, goal, target);
+            }
+                return bankGearMoneyBatchStep(player, goal, target,
+                        "banking the partial smithed batch before another mining run");
+        }
+        if (shouldBankCarriedMaterialsAfterProcessingStarted(goal.gearMoneyProcessingStarted, carriedMoneyItems,
+                productionAction, bankHasProcessableGearMoneyMaterials)) {
+            return bankGearMoneyBatchStep(player, goal, target,
+                    "banking carried materials because the funded ore/bar batch is already in processing mode");
+        }
+        if (shouldBankProcessedBarsBeforeMoreMining(countInventoryProcessedGearMoneyBars(player), canSmithBars,
+                canSmeltOres, isAlKharidSideForGearMoney(player.absX, player.absY)
+                        || isVarrockGearMoneyBankingCorridor(player.absX, player.absY)
+                        || Boundary.isIn(player, Boundary.BANK_AREA))) {
+            return bankGearMoneyBatchStep(player, goal, target,
+                    "banking leftover bars before another mining run so they can be smithed with the next batch");
+        }
+        if (shouldSellCarriedGearMoneyAfterFurnaceStall(goal.movingStallRecoveries, carriedMoneyItems,
                 productionAction != GEAR_MONEY_PRODUCTION_NONE)) {
+            if (!gearMoneyBatchReady) {
+                return bankGearMoneyBatchStep(player, goal, target,
+                        "banking the partial mined batch after furnace travel trouble");
+            }
             JsonObject result = sellGearMoneyItemsStep(player, goal, target);
             String message = getString(result, "message", "selling carried mined items.");
             result.addProperty("message", "Earning gear money: furnace route stalled; selling carried materials instead: "
@@ -728,6 +1323,10 @@ public class AgentActionService {
             return result;
         }
         if (productionAction == GEAR_MONEY_PRODUCTION_SMELT) {
+            JsonObject gatePrep = prepareGearMoneyAlKharidGateToll(player, goal, target);
+            if (gatePrep != null) {
+                return gatePrep;
+            }
             JsonObject travel = travelTo(player, "al kharid furnace");
             if (!getBoolean(travel, "complete", false)) {
                 travel.addProperty("message", liquidatingForCombat
@@ -743,14 +1342,42 @@ public class AgentActionService {
         }
 
         if (productionAction == GEAR_MONEY_PRODUCTION_SMITH) {
+            if (shouldBankSmeltedBarsBeforeStagedSmithing(countInventoryProcessedGearMoneyBars(player),
+                    hasBankedSmeltableGearMoneyOresForBar(player, smithableBar), liquidatingForCombat,
+                    goal.gearMoneyProcessingStarted,
+                    player.getItemAssistant().freeSlots())) {
+                return bankGearMoneyBatchStep(player, goal, target,
+                        "banking smelted bars until the staged ore pile is fully smelted");
+            }
+            int carriedSmithingBars = AgentToolService.countInventoryItem(player, smithableBar);
+            int bankedSmithingBars = AgentToolService.countBankItem(player, smithableBar);
+            if (shouldTopUpGearMoneySmithingBars(carriedSmithingBars, bankedSmithingBars,
+                    player.getItemAssistant().freeSlots(), liquidatingForCombat)) {
+                if (!Boundary.isIn(player, Boundary.BANK_AREA)) {
+                    JsonObject travel = travelTo(player, gearMoneyClutterBankLandmark(player.absX, player.absY));
+                    travel.addProperty("message", "Earning gear money: topping up banked bars before walking to Varrock anvils.");
+                    return travel;
+                }
+                JsonObject result = AgentToolService.handle(player, "withdraw_bank_items",
+                        itemAmountArgs(smithableBar, Math.max(1, player.getItemAssistant().freeSlots())));
+                result.addProperty("message", "Earning gear money: topped up carried bars before smithing the staged batch.");
+                return result;
+            }
             SmithingChoice smithingChoice = bestGearMoneySmithingChoice(player, smithableBar);
             JsonObject hammerPrep = prepareGearMoneyHammer(player, goal, target);
             if (hammerPrep != null) {
                 return hammerPrep;
             }
-            JsonObject gatePrep = prepareGearMoneyAlKharidGateToll(player, goal, target);
-            if (gatePrep != null) {
-                return gatePrep;
+            if (shouldPrepareAlKharidGateTollForSmithing(player.absX, player.absY)) {
+                JsonObject gatePrep = prepareGearMoneyAlKharidGateToll(player, goal, target);
+                if (gatePrep != null) {
+                    return gatePrep;
+                }
+            }
+            if (player.isShopping || player.isBanking) {
+                JsonObject result = AgentToolService.handle(player, "close_interfaces", new JsonObject());
+                result.addProperty("message", "Earning gear money: closing interfaces before walking to Varrock anvils.");
+                return result;
             }
             JsonObject travel = travelTo(player, "varrock west anvils");
             if (!getBoolean(travel, "complete", false)) {
@@ -758,6 +1385,9 @@ public class AgentActionService {
                 return travel;
             }
             JsonObject result = AgentToolService.handle(player, "smith_item", smithItemArgs(smithingChoice.getItemId()));
+            if (getBoolean(result, "success", false)) {
+                goal.rememberGearMoneyCraftedProduct(smithingChoice.getItemId());
+            }
             result.addProperty("message", "Earning gear money for " + target.itemName() + ": "
                     + getString(result, "message", "smithing the best available item."));
             return result;
@@ -767,9 +1397,68 @@ public class AgentActionService {
             return sellGearMoneyItemsStep(player, goal, target);
         }
 
-        if (inventoryMoneyItems > 0
+        int bankedGearMoneyItems = countBankGearMoneyItems(player, goal);
+        if (shouldWithdrawTargetAcquisitionSaleBatch(targetAcquisitionRawLiquidation, gearMoneyBatchReady,
+                carriedMoneyItems, bankedGearMoneyItems, player.getItemAssistant().freeSlots())) {
+            if (!Boundary.isIn(player, Boundary.BANK_AREA)) {
+                JsonObject result = travelTo(player, gearMoneyClutterBankLandmark(player.absX, player.absY));
+                result.addProperty("message",
+                        "Earning gear money: returning to bank for the funded target-acquisition sale batch.");
+                return result;
+            }
+            int itemId = bestBankGearMoneyItem(player, goal);
+            if (itemId <= 0) {
+                return sellGearMoneyItemsStep(player, goal, target);
+            }
+            JsonObject result = AgentToolService.handle(player, "withdraw_bank_items",
+                    itemAmountArgs(itemId, Math.max(1, player.getItemAssistant().freeSlots())));
+            if (!getBoolean(result, "success", false) || getInt(result, "withdrawnAmount", 0) <= 0) {
+                JsonObject sell = sellGearMoneyItemsStep(player, goal, target);
+                sell.addProperty("message",
+                        "Earning gear money: target-acquisition sale top-up was unavailable; selling the carried batch instead: "
+                                + getString(sell, "message", "selling carried batch."));
+                return sell;
+            }
+            result.addProperty("message",
+                    "Earning gear money: withdrew staged target-acquisition sale items from bank storage.");
+            return result;
+        }
+        if (shouldSellTargetAcquisitionSaleBatch(targetAcquisitionRawLiquidation, gearMoneyBatchReady,
+                carriedMoneyItems)) {
+            return sellGearMoneyItemsStep(player, goal, target);
+        }
+        if (shouldWithdrawMoreStoredGearMoneySaleItems(carriedMoneyItems, bankedGearMoneyItems,
+                player.getItemAssistant().freeSlots(), gearMoneyBatchReady, goal.gearMoneyProcessingStarted,
+                bankHasProcessableGearMoneyMaterials)) {
+            if (!Boundary.isIn(player, Boundary.BANK_AREA)) {
+                JsonObject result = travelTo(player, gearMoneyClutterBankLandmark(player.absX, player.absY));
+                result.addProperty("message",
+                        "Earning gear money: returning to bank to top up the carried sale batch.");
+                return result;
+            }
+            int itemId = bestBankGearMoneyItem(player, goal);
+            if (itemId <= 0) {
+                return sellGearMoneyItemsStep(player, goal, target);
+            }
+            JsonObject result = AgentToolService.handle(player, "withdraw_bank_items",
+                    itemAmountArgs(itemId, Math.max(1, player.getItemAssistant().freeSlots())));
+            if (!getBoolean(result, "success", false) || getInt(result, "withdrawnAmount", 0) <= 0) {
+                JsonObject sell = sellGearMoneyItemsStep(player, goal, target);
+                sell.addProperty("message", "Earning gear money: stored sale top-up was unavailable; selling the carried batch instead: "
+                        + getString(sell, "message", "selling carried batch."));
+                return sell;
+            }
+            result.addProperty("message", "Earning gear money: topped up the carried sale batch from bank storage.");
+            return result;
+        }
+
+        if (carriedMoneyItems > 0
                 && (player.getItemAssistant().freeSlots() <= 0
-                        || inventoryMoneyItems >= MIN_GEAR_MONEY_ITEMS_BEFORE_SELLING)) {
+                        || carriedMoneyItems >= MIN_GEAR_MONEY_ITEMS_BEFORE_SELLING)) {
+            if (!gearMoneyBatchReady) {
+                return bankGearMoneyBatchStep(player, goal, target,
+                        "banking the full partial batch before another mining run");
+            }
             return sellGearMoneyItemsStep(player, goal, target);
         }
 
@@ -777,7 +1466,7 @@ public class AgentActionService {
             int bankPickaxe = bestBankPickaxe(player);
             if (bankPickaxe > 0) {
                 if (!Boundary.isIn(player, Boundary.BANK_AREA)) {
-                    JsonObject result = travelTo(player, "varrock east bank");
+                    JsonObject result = travelTo(player, gearMoneyClutterBankLandmark(player.absX, player.absY));
                     result.addProperty("message", "Earning gear money: returning to the bank for a pickaxe.");
                     return result;
                 }
@@ -788,17 +1477,61 @@ public class AgentActionService {
             return AgentToolService.failure("Earning gear money requires a pickaxe, but no banked or carried pickaxe is available.");
         }
 
-        if (inventoryMoneyItems <= 0 && countBankGearMoneyItems(player) > 0
-                && player.getItemAssistant().freeSlots() > 0) {
+        if (shouldWithdrawBankedGearMoneyMaterialsForProcessing(carriedMoneyItems, bankHasSmeltableGearMoneyOres,
+                bankedProcessableGearMoneyItems, gearMoneyProcessingBatchReady, player.getItemAssistant().freeSlots(),
+                goal.gearMoneyProcessingStarted)) {
             if (!Boundary.isIn(player, Boundary.BANK_AREA)) {
-                JsonObject result = travelTo(player, "varrock east bank");
-                result.addProperty("message", "Earning gear money: returning to bank for stored ores or bars to sell.");
+                JsonObject result = travelTo(player, gearMoneyClutterBankLandmark(player.absX, player.absY));
+                result.addProperty("message",
+                        "Earning gear money: returning to bank for staged materials before more processing.");
                 return result;
             }
-            int itemId = bestBankGearMoneyItem(player);
+            int itemId = gearMoneyProcessableWithdrawalItem(bankHasSmeltableGearMoneyOres,
+                    bestBankSmeltableGearMoneyOre(player), bestBankProcessableGearMoneyItem(player));
+            if (itemId > 0) {
+                JsonObject result = AgentToolService.handle(player, "withdraw_bank_items",
+                        itemAmountArgs(itemId, Math.max(1, player.getItemAssistant().freeSlots())));
+                result.addProperty("message", isGearMoneyBar(itemId)
+                        ? "Earning gear money: withdrew staged bars to smith before selling the funded batch."
+                        : "Earning gear money: withdrew staged ore to keep smelting before smithing the batch.");
+                return result;
+            }
+        }
+
+        if (carriedMoneyItems <= 0 && gearMoneyProcessingBatchReady
+                && countBankProcessableGearMoneyItems(player) > 0
+                && player.getItemAssistant().freeSlots() > 0) {
+            if (!Boundary.isIn(player, Boundary.BANK_AREA)) {
+                JsonObject result = travelTo(player, gearMoneyClutterBankLandmark(player.absX, player.absY));
+                result.addProperty("message",
+                        "Earning gear money: returning to bank for staged materials before the funded sale.");
+                return result;
+            }
+            int itemId = gearMoneyProcessableWithdrawalItem(bankHasSmeltableGearMoneyOres,
+                    bestBankSmeltableGearMoneyOre(player), bestBankProcessableGearMoneyItem(player));
             JsonObject result = AgentToolService.handle(player, "withdraw_bank_items",
                     itemAmountArgs(itemId, Math.max(1, player.getItemAssistant().freeSlots())));
-            result.addProperty("message", "Earning gear money: withdrew stored money-making items to sell.");
+            result.addProperty("message", isGearMoneyBar(itemId)
+                    ? "Earning gear money: withdrew staged bars to smith before selling the funded batch."
+                    : "Earning gear money: withdrew staged ore to finish smelting before selling the funded batch.");
+            return result;
+        }
+
+        if (carriedMoneyItems <= 0 && bankedGearMoneyItems > 0
+                && (gearMoneyBatchReady || goal.gearMoneyProcessingStarted)
+                && player.getItemAssistant().freeSlots() > 0) {
+            if (!Boundary.isIn(player, Boundary.BANK_AREA)) {
+                JsonObject result = travelTo(player, gearMoneyClutterBankLandmark(player.absX, player.absY));
+                result.addProperty("message", "Earning gear money: returning to bank for the funded sale batch.");
+                return result;
+            }
+            int itemId = bestBankGearMoneyItem(player, goal);
+            if (itemId <= 0) {
+                return AgentToolService.failure("Earning gear money expected a banked sale batch, but no sellable item was available.");
+            }
+            JsonObject result = AgentToolService.handle(player, "withdraw_bank_items",
+                    itemAmountArgs(itemId, Math.max(1, player.getItemAssistant().freeSlots())));
+            result.addProperty("message", "Earning gear money: withdrew stored batch items to sell in one trip.");
             return result;
         }
 
@@ -809,32 +1542,56 @@ public class AgentActionService {
         }
 
         if (player.getItemAssistant().freeSlots() <= 0) {
-            if (inventoryMoneyItems > 0) {
+            if (carriedMoneyItems > 0) {
+                if (!gearMoneyBatchReady) {
+                    return bankGearMoneyBatchStep(player, goal, target,
+                            "banking the full partial batch before another mining run");
+                }
                 return sellGearMoneyItemsStep(player, goal, target);
             }
-            JsonObject result = travelTo(player, "varrock east bank");
+            JsonObject result = travelTo(player, gearMoneyClutterBankLandmark(player.absX, player.absY));
             result.addProperty("message", "Earning gear money: inventory is full, returning to bank before mining.");
             return result;
         }
 
         int miningLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.MINING]);
         int smithingLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.SMITHING]);
+        int totalCopperOre = AgentToolService.countInventoryItem(player, COPPER_ORE)
+                + AgentToolService.countBankItem(player, COPPER_ORE);
+        int totalTinOre = AgentToolService.countInventoryItem(player, TIN_ORE)
+                + AgentToolService.countBankItem(player, TIN_ORE);
+        int totalIronOre = AgentToolService.countInventoryItem(player, IRON_ORE)
+                + AgentToolService.countBankItem(player, IRON_ORE);
+        int totalCoal = AgentToolService.countInventoryItem(player, COAL) + AgentToolService.countBankItem(player, COAL);
         String ore = gearMoneyOreForMiningLevel(miningLevel, smithingLevel,
-                AgentToolService.countInventoryItem(player, COPPER_ORE) + AgentToolService.countBankItem(player, COPPER_ORE),
-                AgentToolService.countInventoryItem(player, TIN_ORE) + AgentToolService.countBankItem(player, TIN_ORE),
-                AgentToolService.countInventoryItem(player, IRON_ORE) + AgentToolService.countBankItem(player, IRON_ORE),
-                AgentToolService.countInventoryItem(player, COAL) + AgentToolService.countBankItem(player, COAL));
+                totalCopperOre, totalTinOre, totalIronOre, totalCoal,
+                player.getItemAssistant().freeSlots(), player.absX, player.absY,
+                spendableCoins, liquidityTargetCost, gearMoneyProductValue,
+                AgentToolService.countInventoryItem(player, BRONZE_BAR) + AgentToolService.countBankItem(player, BRONZE_BAR),
+                AgentToolService.countInventoryItem(player, IRON_BAR) + AgentToolService.countBankItem(player, IRON_BAR),
+                AgentToolService.countInventoryItem(player, STEEL_BAR) + AgentToolService.countBankItem(player, STEEL_BAR));
         ore = gearMoneyOreForRouteSafety(ore, AgentToolService.countInventoryFood(player),
                 player.playerLevel[Constants.HITPOINTS],
                 player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.HITPOINTS]));
-        String mineLandmark = gearMoneyMineLandmark(ore);
-        JsonObject travel = travelTo(player, mineLandmark);
-        if (!getBoolean(travel, "complete", false)) {
-            travel.addProperty("message", "Earning gear money: walking to " + mineLandmark + " to mine "
-                    + ore + " for higher-value smithing.");
-            return travel;
+        if (shouldBankNearFullGearMoneyBatchBeforeOreSwitch(carriedMoneyItems, player.getItemAssistant().freeSlots(),
+                ore, player.absX, player.absY)) {
+            if (gearMoneyBatchReady) {
+                return sellGearMoneyItemsStep(player, goal, target);
+            }
+            return bankGearMoneyBatchStep(player, goal, target,
+                    "banking the nearly full mined batch instead of crossing mines for a small top-up");
         }
-        JsonObject result = AgentToolService.handle(player, "mine_ore", oreArgs(ore));
+        String mineLandmark = gearMoneyMineLandmark(ore);
+        if (!isGearMoneyMine(ore, player.absX, player.absY)) {
+            JsonObject travel = travelTo(player, mineLandmark);
+            if (!getBoolean(travel, "complete", false)) {
+                travel.addProperty("message", "Earning gear money: walking to " + mineLandmark + " to mine "
+                        + ore + " for higher-value smithing.");
+                return travel;
+            }
+        }
+        JsonObject result = AgentToolService.handle(player, "mine_ore",
+                gearMoneyOreArgs(ore, player.absX, player.absY, goal.shouldWaitForLocalMiningRespawn()));
         result.addProperty("message", "Earning gear money for " + target.itemName() + ": "
                 + getString(result, "message", "mining ore."));
         return result;
@@ -917,21 +1674,35 @@ public class AgentActionService {
 
     private static JsonObject prepareGearMoneyAlKharidGateToll(Player player, CombatGoal goal, GearTarget target) {
         int inventoryCoins = AgentToolService.countInventoryItem(player, COINS);
-        if (!shouldSellLocalSeedItemForGateToll(inventoryCoins, shouldUseLocalAlKharidGeneralStore(player),
-                hammerSeedItemForCoins(
-                        AgentToolService.countInventoryItem(player, IRON_ORE),
-                        AgentToolService.countInventoryItem(player, COPPER_ORE),
-                        AgentToolService.countInventoryItem(player, TIN_ORE),
-                        AgentToolService.countInventoryItem(player, BRONZE_BAR),
-                        AgentToolService.countBankItem(player, COINS)))) {
+        if (inventoryCoins >= AL_KHARID_GATE_TOLL) {
             return null;
         }
+        int bankCoins = AgentToolService.countBankItem(player, COINS);
         int seedItemId = hammerSeedItemForCoins(
                 AgentToolService.countInventoryItem(player, IRON_ORE),
                 AgentToolService.countInventoryItem(player, COPPER_ORE),
                 AgentToolService.countInventoryItem(player, TIN_ORE),
                 AgentToolService.countInventoryItem(player, BRONZE_BAR),
-                AgentToolService.countBankItem(player, COINS));
+                bankCoins);
+        if (shouldSellLocalSeedItemForGateToll(inventoryCoins, shouldUseLocalAlKharidGeneralStore(player),
+                seedItemId)) {
+            return sellGateTollSeedItemForCoinsStep(player, goal, target, seedItemId);
+        }
+        if (bankCoins > 0) {
+            if (!Boundary.isIn(player, Boundary.BANK_AREA)) {
+                JsonObject result = travelTo(player, "varrock east bank");
+                result.addProperty("message", "Earning gear money: returning to bank for Al Kharid gate toll coins.");
+                return result;
+            }
+            JsonObject result = AgentToolService.handle(player, "withdraw_bank_items",
+                    itemAmountArgs(COINS, Math.min(AL_KHARID_HAMMER_AND_GATE_COIN_BUFFER, bankCoins)));
+            result.addProperty("message",
+                    "Earning gear money: withdrew a small Al Kharid toll float before furnace travel.");
+            return result;
+        }
+        if (seedItemId <= 0) {
+            return null;
+        }
         return sellGateTollSeedItemForCoinsStep(player, goal, target, seedItemId);
     }
 
@@ -951,7 +1722,10 @@ public class AgentActionService {
 
     static boolean shouldWithdrawGearMoneyTravelCoins(int inventoryCoins, int bankCoins, int freeSlots,
             boolean inBankArea) {
-        return inBankArea && freeSlots > 0 && inventoryCoins < AL_KHARID_GATE_TOLL && bankCoins > 0;
+        return inBankArea
+                && (freeSlots > 0 || inventoryCoins > 0)
+                && inventoryCoins < AL_KHARID_HAMMER_AND_GATE_COIN_BUFFER
+                && bankCoins > 0;
     }
 
     static boolean shouldSellCarriedGearMoneyAfterFurnaceStall(int movingStallRecoveries, int carriedMoneyItems,
@@ -959,6 +1733,14 @@ public class AgentActionService {
         return !canProcessCarriedMaterials
                 && movingStallRecoveries >= 8
                 && carriedMoneyItems >= MIN_GEAR_MONEY_ITEMS_BEFORE_SELLING;
+    }
+
+    static boolean shouldBankProcessedBarsBeforeMoreMining(int processedBars, boolean canSmithBars,
+            boolean canSmeltOres, boolean onFurnaceSide) {
+        return processedBars > 0
+                && !canSmithBars
+                && !canSmeltOres
+                && (onFurnaceSide || processedBars >= MIN_PROCESSED_BARS_BEFORE_SELLING);
     }
 
     static boolean shouldSellMaterialsForHammerCoins(int inventoryCoins, int bankCoins, boolean localGeneralStore,
@@ -972,6 +1754,31 @@ public class AgentActionService {
 
     static boolean shouldSellLocalSeedItemForGateToll(int inventoryCoins, boolean localGeneralStore, int seedItemId) {
         return inventoryCoins < AL_KHARID_GATE_TOLL && localGeneralStore && seedItemId > 0;
+    }
+
+    static boolean shouldPrepareAlKharidGateTollForSmithing(int x, int y) {
+        return isAlKharidSideForGearMoney(x, y);
+    }
+
+    static boolean shouldPrepareAlKharidGateTollForCombat(int x, int y, int inventoryCoins, String trainingArea) {
+        return inventoryCoins < AL_KHARID_GATE_TOLL
+                && isAlKharidSideForGearMoney(x, y)
+                && shouldReserveAlKharidReturnTollForTarget(trainingArea);
+    }
+
+    static boolean shouldReserveAlKharidReturnTollForTarget(String targetName) {
+        String target = targetName == null ? "" : targetName.trim().toLowerCase();
+        if (target.contains("al kharid") || target.contains("kebab") || target.contains("shantay")
+                || target.contains("nardah")) {
+            return false;
+        }
+        return true;
+    }
+
+    static boolean hasEnoughCoinsForTargetAcquisitionTrip(int inventoryCoins, int bankCoins, int entryCost,
+            int reserveCoins, int unitCost) {
+        return Math.max(0, inventoryCoins) + Math.max(0, bankCoins)
+                >= Math.max(0, entryCost) + Math.max(0, reserveCoins) + Math.max(1, unitCost);
     }
 
     static int hammerSeedItemForCoins(int ironOre, int copperOre, int tinOre, int bronzeBars, int bankCoins) {
@@ -991,6 +1798,62 @@ public class AgentActionService {
             return BRONZE_BAR;
         }
         return -1;
+    }
+
+    private static int inventoryAlKharidGateTollSeedItem(Player player, CombatGoal goal) {
+        int bestItem = -1;
+        int bestValue = -1;
+        for (int i = 0; i < player.playerItems.length; i++) {
+            int storedId = player.playerItems[i];
+            if (storedId <= 0) {
+                continue;
+            }
+            int itemId = storedId - 1;
+            if (!isAlKharidGateTollSeedItem(player, itemId, goal)) {
+                continue;
+            }
+            int value = estimatedGearMoneySellCoins(itemId);
+            if (value > bestValue) {
+                bestValue = value;
+                bestItem = itemId;
+            }
+        }
+        return bestItem;
+    }
+
+    private static int bankAlKharidGateTollSeedItem(Player player, CombatGoal goal) {
+        int bestItem = -1;
+        int bestValue = -1;
+        for (int itemId : GEAR_MONEY_RAW_MATERIAL_ITEM_IDS) {
+            if (AgentToolService.countBankItem(player, itemId) <= 0) {
+                continue;
+            }
+            int value = estimatedGearMoneySellCoins(itemId);
+            if (value > bestValue) {
+                bestValue = value;
+                bestItem = itemId;
+            }
+        }
+        if (bestItem > 0) {
+            return bestItem;
+        }
+        for (SmithingData data : SmithingData.values()) {
+            int itemId = data.getId();
+            if (isGearMoneySaleItem(player, itemId, goal) && AgentToolService.countBankItem(player, itemId) > 0) {
+                int value = estimatedGearMoneySellCoins(itemId);
+                if (value > bestValue) {
+                    bestValue = value;
+                    bestItem = itemId;
+                }
+            }
+        }
+        return bestItem;
+    }
+
+    private static boolean isAlKharidGateTollSeedItem(Player player, int itemId, CombatGoal goal) {
+        return isGearMoneyItem(itemId)
+                || isGearMoneySaleItem(player, itemId, goal)
+                || itemId == LOGS;
     }
 
     private static JsonObject sellHammerSeedItemForCoinsStep(Player player, CombatGoal goal, GearTarget target,
@@ -1053,6 +1916,81 @@ public class AgentActionService {
         return result;
     }
 
+    private static JsonObject prepareAlKharidGateTollForCombat(Player player, CombatGoal goal) {
+        if (!shouldPrepareAlKharidGateTollForCombat(player.absX, player.absY,
+                AgentToolService.countInventoryItem(player, COINS), goal == null ? "" : goal.area)) {
+            return null;
+        }
+
+        int inventorySeedItem = inventoryAlKharidGateTollSeedItem(player, goal);
+        if (inventorySeedItem > 0 && shouldUseLocalAlKharidGeneralStore(player)) {
+            JsonObject result = sellAlKharidCombatTollSeedItemStep(player, goal, inventorySeedItem);
+            result.addProperty("message", "Preparing Al Kharid gate toll before combat: "
+                    + getString(result, "message", "selling local money-making item."));
+            return result;
+        }
+
+        if (!Boundary.isIn(player, Boundary.BANK_AREA)) {
+            JsonObject result = travelTo(player, "al kharid bank");
+            result.addProperty("message",
+                    "Preparing Al Kharid gate toll before combat: walking to Al Kharid bank for legitimate travel coins.");
+            return result;
+        }
+
+        int bankCoins = AgentToolService.countBankItem(player, COINS);
+        if (bankCoins > 0 && player.getItemAssistant().freeSlots() > 0) {
+            int amount = Math.min(AL_KHARID_GATE_TOLL - AgentToolService.countInventoryItem(player, COINS),
+                    bankCoins);
+            JsonObject result = AgentToolService.handle(player, "withdraw_bank_items",
+                    itemAmountArgs(COINS, Math.max(1, amount)));
+            result.addProperty("message",
+                    "Preparing Al Kharid gate toll before combat: withdrew banked coins for the gate.");
+            return result;
+        }
+
+        int bankSeedItem = bankAlKharidGateTollSeedItem(player, goal);
+        if (bankSeedItem > 0 && player.getItemAssistant().freeSlots() > 0) {
+            JsonObject result = AgentToolService.handle(player, "withdraw_bank_items",
+                    itemAmountArgs(bankSeedItem, targetAcquisitionBatchAmount(
+                            AL_KHARID_GATE_TOLL, AgentToolService.countInventoryItem(player, COINS),
+                            player.getItemAssistant().freeSlots())));
+            result.addProperty("message",
+                    "Preparing Al Kharid gate toll before combat: withdrew banked mined money-making items to sell locally.");
+            return result;
+        }
+
+        return AgentToolService.failure(
+                "Preparing Al Kharid gate toll before combat requires 10 coins, but no banked coins or mined money-making items are available.");
+    }
+
+    private static JsonObject sellAlKharidCombatTollSeedItemStep(Player player, CombatGoal goal, int itemId) {
+        JsonObject travel = travelTo(player, "al kharid general store");
+        if (!getBoolean(travel, "complete", false)) {
+            travel.addProperty("message", "walking to Al Kharid general store to sell a money-making item.");
+            return travel;
+        }
+
+        if (!currentShopNameContains(player, "general")) {
+            JsonObject result = openShop(player, "general");
+            result.addProperty("message", "opening the general store to fund the gate toll.");
+            return result;
+        }
+
+        JsonObject result = AgentToolService.handle(player, "sell_inventory_item", itemAmountArgs(itemId, 1));
+        if (result != null && result.has("success") && result.get("success").getAsBoolean()) {
+            int sold = getInt(result, "sold", 0);
+            int coins = getInt(result, "coinsReceived", 0);
+            if (goal != null) {
+                goal.gearMoneyTrips++;
+                goal.gearMoneyItemsSold += sold;
+                goal.gearMoneyCoinsEarned += coins;
+            }
+            result.addProperty("message", "sold " + sold + " money-making item(s) for " + coins
+                    + " gate-toll coins while preserving combat supplies.");
+        }
+        return result;
+    }
+
     private JsonObject prepareGearMoneyFood(Player player, CombatGoal goal) {
         int inventoryFood = AgentToolService.countInventoryFood(player);
         if (!shouldCarryFoodForGearMoney(inventoryFood,
@@ -1103,13 +2041,14 @@ public class AgentActionService {
             return result;
         }
 
-        JsonObject result = AgentToolService.handle(player, "sell_inventory_items", gearMoneySellArgs());
+        JsonObject result = AgentToolService.handle(player, "sell_inventory_items", gearMoneySellArgs(player, goal));
         if (result != null && result.has("success") && result.get("success").getAsBoolean()) {
             int sold = getInt(result, "sold", 0);
             int coins = getInt(result, "coinsReceived", 0);
             goal.gearMoneyTrips++;
             goal.gearMoneyItemsSold += sold;
             goal.gearMoneyCoinsEarned += coins;
+            goal.clearGearMoneyCraftedProductIfGone(player);
             result.addProperty("message", "Earning gear money for " + target.itemName() + ": sold " + sold
                     + " mined/smithed item(s) for " + coins + " coins.");
         }
@@ -1129,6 +2068,42 @@ public class AgentActionService {
         return result;
     }
 
+    private static JsonObject bankGearMoneyBatchStep(Player player, CombatGoal goal, GearTarget target, String reason) {
+        if (!Boundary.isIn(player, Boundary.BANK_AREA)) {
+            JsonObject travel = travelTo(player, gearMoneyClutterBankLandmark(player.absX, player.absY));
+            travel.addProperty("message", "Earning gear money for " + target.itemName() + ": " + reason
+                    + " instead of selling early.");
+            return travel;
+        }
+
+        JsonObject result = AgentToolService.handle(player, "deposit_inventory_items", gearMoneyBatchBankArgs(player, goal));
+        String message = getString(result, "message", "banked carried money-making items.");
+        result.addProperty("message", "Earning gear money for " + target.itemName() + ": " + reason
+                + " instead of selling early: " + message);
+        return result;
+    }
+
+    private static JsonObject bankGearMoneyRawMaterialsStep(Player player, CombatGoal goal, GearTarget target,
+            String reason) {
+        if (!Boundary.isIn(player, Boundary.BANK_AREA)) {
+            JsonObject travel = travelTo(player, gearMoneyClutterBankLandmark(player.absX, player.absY));
+            travel.addProperty("message", "Earning gear money for " + target.itemName() + ": " + reason
+                    + " instead of selling early.");
+            return travel;
+        }
+
+        JsonObject result = AgentToolService.handle(player, "deposit_inventory_items", gearMoneyRawMaterialsBankArgs());
+        int depositedAmount = getInt(result, "depositedAmount", 0);
+        if (shouldRememberRawMaterialsBankedAfterProcessingStarted(
+                result != null && result.has("success") && result.get("success").getAsBoolean(), depositedAmount)) {
+            goal.rememberGearMoneyRawMaterialsBankedAfterProcessingStarted();
+        }
+        String message = getString(result, "message", "banked carried ore.");
+        result.addProperty("message", "Earning gear money for " + target.itemName() + ": " + reason
+                + " instead of selling early: " + message);
+        return result;
+    }
+
     static String gearMoneyGeneralStoreLandmark(int x, int y) {
         return isAlKharidSideForGearMoney(x, y) ? "al kharid general store" : "varrock general store";
     }
@@ -1143,6 +2118,150 @@ public class AgentActionService {
 
     static boolean isAlKharidSideForGearMoney(int x, int y) {
         return x >= 3268 && x <= 3335 && y >= 3160 && y <= 3235;
+    }
+
+    static boolean isAlKharidBankingSideForGearMoney(int x, int y) {
+        return x >= 3240 && x <= 3335 && y >= 3160 && y <= 3235;
+    }
+
+    private static boolean isNardahGearTarget(GearTarget target) {
+        return target != null && "nardah adventurer store".equals(target.landmark);
+    }
+
+    private static int estimatedGearAcquisitionCost(GearTarget target) {
+        if (target == null) {
+            return 0;
+        }
+        return target.estimatedPrice + (isNardahGearTarget(target) ? NARDAH_TRANSIT_COST : 0);
+    }
+
+    private static int estimatedGearAcquisitionCost(GearTarget target, Player player) {
+        if (target == null) {
+            return 0;
+        }
+        if (!isNardahGearTarget(target) || player == null) {
+            return estimatedGearAcquisitionCost(target);
+        }
+        return estimatedNardahGearAcquisitionCost(target.estimatedPrice, player.absX, player.absY,
+                player.heightLevel);
+    }
+
+    static int estimatedNardahGearAcquisitionCost(int targetPrice, int x, int y, int height) {
+        if (isNardahTransitComplete(x, y, height)) {
+            return targetPrice;
+        }
+        if (isInPollnivneachReturnArea(x, y, height)
+                || height == 0 && y <= 3115 && x >= 3297 && x <= 3320) {
+            return targetPrice + NARDAH_CARPET_FARE;
+        }
+        return targetPrice + NARDAH_TRANSIT_COST;
+    }
+
+    private static boolean isNearNardah(Player player) {
+        return isNearNardah(player.absX, player.absY, player.heightLevel);
+    }
+
+    private static boolean isNearNardah(int x, int y, int height) {
+        return height == 0 && AgentKnowledgeBase.distance(x, y, 3407, 2921) <= 12;
+    }
+
+    private static boolean isNardahTransitComplete(Player player) {
+        return player != null && isNardahTransitComplete(player.absX, player.absY, player.heightLevel);
+    }
+
+    static boolean isNardahTransitComplete(int x, int y, int height) {
+        return height == 0 && (y <= 3050 || isNearNardah(x, y, height));
+    }
+
+    private static boolean isNearShantayPass(Player player) {
+        return player.heightLevel == 0 && AgentKnowledgeBase.distance(player.absX, player.absY, 3303, 3124) <= 8;
+    }
+
+    private static boolean isNearShantayGateNorth(Player player) {
+        return player.heightLevel == 0 && AgentKnowledgeBase.distance(player.absX, player.absY, 3304, 3117) <= 4;
+    }
+
+    private static boolean isAtShantayGateNorth(Player player) {
+        return player.heightLevel == 0 && player.absY == 3117
+                && player.absX >= 3297 && player.absX <= 3311;
+    }
+
+    private static boolean isSouthOfShantayGate(Player player) {
+        return player.heightLevel == 0 && player.absY <= 3115
+                && player.absX >= 3297 && player.absX <= 3320;
+    }
+
+    private static boolean isNearShantayRugMerchant(Player player) {
+        return player.heightLevel == 0 && AgentKnowledgeBase.distance(player.absX, player.absY, 3311, 3109) <= 4;
+    }
+
+    static boolean shouldUseDesertReturnTransit(String landmark) {
+        if (landmark == null) {
+            return false;
+        }
+        String normalized = landmark.trim().toLowerCase().replace('_', ' ');
+        return normalized.length() > 0
+                && normalized.indexOf("nardah") < 0
+                && normalized.indexOf("seddu") < 0
+                && normalized.indexOf("shantay") < 0;
+    }
+
+    static boolean shouldRideNardahCarpetToPollnivneach(int x, int y, int height, String landmark) {
+        return shouldUseDesertReturnTransit(landmark) && isNearNardah(x, y, height);
+    }
+
+    static boolean shouldWalkToPollnivneachRugStation(int x, int y, int height, String landmark) {
+        return shouldUseDesertReturnTransit(landmark)
+                && isInPollnivneachReturnArea(x, y, height)
+                && !isNearPollnivneachRugStation(x, y, height);
+    }
+
+    static boolean shouldRidePollnivneachCarpetToShantay(int x, int y, int height, String landmark) {
+        return shouldUseDesertReturnTransit(landmark) && isNearPollnivneachRugStation(x, y, height);
+    }
+
+    static boolean shouldWalkToShantayGateFromSouth(int x, int y, int height, String landmark) {
+        return shouldUseDesertReturnTransit(landmark)
+                && isSouthOfShantayGate(x, y, height)
+                && !isAtShantayGateSouth(x, y, height);
+    }
+
+    static boolean shouldUseShantayGateFromSouth(int x, int y, int height, String landmark) {
+        return shouldUseDesertReturnTransit(landmark) && isAtShantayGateSouth(x, y, height);
+    }
+
+    private static boolean isInPollnivneachReturnArea(int x, int y, int height) {
+        return height == 0 && x >= 3330 && x <= 3385 && y >= 2935 && y <= 3020;
+    }
+
+    private static boolean isNearPollnivneachRugStation(int x, int y, int height) {
+        return height == 0 && AgentKnowledgeBase.distance(x, y, POLLNIVNEACH_RUG_X, POLLNIVNEACH_RUG_Y) <= 4;
+    }
+
+    private static boolean isSouthOfShantayGate(int x, int y, int height) {
+        return height == 0 && y <= SHANTAY_GATE_SOUTH_Y
+                && x >= 3297 && x <= 3320;
+    }
+
+    private static boolean isAtShantayGateSouth(int x, int y, int height) {
+        return height == 0 && y == SHANTAY_GATE_SOUTH_Y
+                && x >= 3297 && x <= 3311;
+    }
+
+    private static Npc nearestNpc(Player player, int npcType, int maxDistance) {
+        Npc nearest = null;
+        int nearestDistance = Integer.MAX_VALUE;
+        for (Npc npc : NpcHandler.npcs) {
+            if (npc == null || npc.isDead || npc.npcType != npcType || npc.heightLevel != player.heightLevel) {
+                continue;
+            }
+            int distance = AgentKnowledgeBase.distance(player.absX, player.absY, npc.absX, npc.absY);
+            if (distance <= maxDistance && distance < nearestDistance) {
+                nearest = npc;
+                nearestDistance = distance;
+            }
+        }
+        return nearest;
     }
 
     private static JsonObject acquirePickaxeUpgradeStep(Player player, CombatGoal goal, PickaxeTarget target) {
@@ -1357,22 +2476,27 @@ public class AgentActionService {
         int inventoryFood = AgentToolService.countInventoryFood(player);
         int inventoryRawFood = AgentToolService.countInventoryRawCookableFood(player);
         if (inventoryFood >= desiredFood) {
-            goal.restockingFood = false;
-            JsonObject result = AgentToolService.success("Restocked food for combat training.");
-            result.add("state", AgentToolService.observeState(player));
-            return result;
+            return finishFoodRestock(player, goal, "Restocked food for combat training.");
         }
         if (inventoryFood >= minimumReturnFood(desiredFood)
                 && AgentToolService.countInventoryRawCookableFood(player) <= 0
                 && AgentToolService.countBankFood(player) <= 0
                 && AgentToolService.countBankRawCookableFood(player) < MIN_RAW_FOOD_BEFORE_COOKING) {
-            goal.restockingFood = false;
-            JsonObject result = AgentToolService.success("Restocked enough cooked food to resume combat training.");
-            result.add("state", AgentToolService.observeState(player));
-            return result;
+            return finishFoodRestock(player, goal, "Restocked enough cooked food to resume combat training.");
         }
 
-        if (shouldVisitBankForFood(player, inventoryRawFood)) {
+        JsonObject targetBatchBanking = bankSuppliesForTargetFoodRestockStep(player, goal, desiredFood,
+                inventoryFood);
+        if (targetBatchBanking != null) {
+            return targetBatchBanking;
+        }
+
+        JsonObject kebabRestock = buyKebabRestockStep(player, goal, desiredFood, inventoryFood);
+        if (kebabRestock != null) {
+            return kebabRestock;
+        }
+        if (shouldVisitBankForFood(player, inventoryRawFood)
+                && !shouldPreferTargetShopFoodRestockBeforeBank(player, desiredFood, inventoryFood)) {
             if (!Boundary.isIn(player, Boundary.BANK_AREA)) {
                 JsonObject travelArgs = new JsonObject();
                 travelArgs.addProperty("name", "varrock east bank");
@@ -1385,10 +2509,15 @@ public class AgentActionService {
                 return bankResult;
             }
         }
-
-        JsonObject kebabRestock = buyKebabRestockStep(player, goal, desiredFood, inventoryFood);
-        if (kebabRestock != null) {
-            return kebabRestock;
+        JsonObject shopFoodMoney = earnShopFoodMoneyForTargetRestockStep(player, goal, desiredFood, inventoryFood);
+        if (shopFoodMoney != null) {
+            return shopFoodMoney;
+        }
+        if (shouldClosePreparationInterface(player.isShopping, player.isBanking)) {
+            JsonObject result = AgentToolService.handle(player, "close_interfaces", new JsonObject());
+            result.addProperty("message",
+                    "Restocking food: closing the preparation interface before fallback food gathering.");
+            return result;
         }
 
         JsonObject rawFoodPickup = pickupRestockRawFood(player);
@@ -1443,6 +2572,70 @@ public class AgentActionService {
         return result;
     }
 
+    private JsonObject bankSuppliesForTargetFoodRestockStep(Player player, CombatGoal goal, int desiredFood,
+            int inventoryFood) {
+        int supplyCount = countInventoryTargetAcquisitionBlockingSupplies(player, goal);
+        int freeSlots = player.getItemAssistant().freeSlots();
+        boolean canBuyFood = hasKebabRestockSource(player);
+        if (!shouldBankSuppliesBeforeTargetAcquisition(supplyCount, freeSlots, desiredFood, inventoryFood,
+                canBuyFood)) {
+            return null;
+        }
+
+        if (!Boundary.isIn(player, Boundary.BANK_AREA)) {
+            JsonObject result = travelTo(player, supplyBankLandmark(player, goal));
+            result.addProperty("message", "Restocking food: banking combat supplies before target-sized shop restock.");
+            return result;
+        }
+
+        JsonObject result = AgentToolService.handle(player, "deposit_inventory_items",
+                targetAcquisitionSupplyArgsWithoutCoins(0, player, goal));
+        int depositedItems = depositedInventoryItems(result);
+        if (result != null && result.has("success") && result.get("success").getAsBoolean()
+                && depositedItems > 0) {
+            goal.bankTrips++;
+            goal.bankedSupplyItems += depositedItems;
+            String message = getString(result, "message", "Deposited combat supplies.");
+            result.addProperty("message", "Restocking food: banked combat supplies to free slots for a target-sized batch: "
+                    + message);
+        }
+        return result;
+    }
+
+    private JsonObject earnShopFoodMoneyForTargetRestockStep(Player player, CombatGoal goal, int desiredFood,
+            int inventoryFood) {
+        TargetAcquisitionPlan plan = kebabAcquisitionPlan(player, goal, desiredFood, inventoryFood,
+                currentShopItemPrice(player, KEBAB, KEBAB_SHOP_PRICE));
+        if (!plan.shouldEarnMoneyBeforeTrip()) {
+            return null;
+        }
+
+        goal.beginTargetMoney(KEBAB, SHOP_FOOD_MONEY_TARGET_NAME, plan.requiredCoins());
+        JsonObject result = earnGearMoneyStep(player, goal);
+        if (result != null) {
+            String message = getString(result, "message", "batching money-making items.");
+            result.addProperty("message", "Restocking food money: batching ore, bars, and sale items toward "
+                    + plan.requiredCoins() + " coins for a one-trip kebab restock: " + message);
+        }
+        return result;
+    }
+
+    private JsonObject finishFoodRestock(Player player, CombatGoal goal, String message) {
+        goal.restockingFood = false;
+        if (shouldClosePreparationInterface(player.isShopping, player.isBanking)) {
+            JsonObject result = AgentToolService.handle(player, "close_interfaces", new JsonObject());
+            result.addProperty("message", message + " Closing the open preparation interface.");
+            return result;
+        }
+        JsonObject result = AgentToolService.success(message);
+        result.add("state", AgentToolService.observeState(player));
+        return result;
+    }
+
+    static boolean shouldClosePreparationInterface(boolean isShopping, boolean isBanking) {
+        return isShopping || isBanking;
+    }
+
     private JsonObject pickupRestockCombatSupply(Player player, CombatGoal goal) {
         if (player.getItemAssistant().freeSlots() <= 0) {
             return null;
@@ -1478,20 +2671,42 @@ public class AgentActionService {
         int freeSlots = player.getItemAssistant().freeSlots();
         int inventoryCoins = AgentToolService.countInventoryItem(player, COINS);
         int bankCoins = AgentToolService.countBankItem(player, COINS);
-        if (!shouldBuyKebabsForFood(inventoryFood, desiredFood, inventoryCoins, bankCoins, freeSlots)) {
+        boolean onAlKharidSide = isAlKharidSideForGearMoney(player.absX, player.absY);
+        boolean reserveReturnToll = shouldReserveAlKharidReturnTollForTarget(goal == null ? "" : goal.area);
+        TargetAcquisitionPlan plan = kebabAcquisitionPlan(player, goal, desiredFood, inventoryFood,
+                currentShopItemPrice(player, KEBAB, KEBAB_SHOP_PRICE));
+        if (plan.shouldDelayTripForFundedBatch()) {
+            return null;
+        }
+        if (!shouldBuyKebabsForFood(inventoryFood, desiredFood, inventoryCoins, bankCoins, freeSlots)
+                || !plan.hasEnoughCoinsForTrip()) {
             return null;
         }
 
-        if (inventoryCoins <= 0) {
+        if (plan.shouldSellCarriedItemsBeforeShopTrip()) {
+            goal.beginTargetMoney(KEBAB, SHOP_FOOD_MONEY_TARGET_NAME, plan.requiredCoins());
+            JsonObject result = sellGearMoneyItemsStep(player, goal, shopFoodMoneyTarget(plan.requiredCoins()));
+            result.addProperty("message", "Restocking food: clearing carried money-making items first so the shop trip "
+                    + "can buy the planned batch: " + getString(result, "message", "selling carried batch."));
+            return result;
+        }
+
+        int coinFloat = plan.coinFloat();
+        if (shouldWithdrawKebabCoinFloat(inventoryCoins, coinFloat, bankCoins, freeSlots,
+                Boundary.isIn(player, Boundary.BANK_AREA), onAlKharidSide)) {
             if (!Boundary.isIn(player, Boundary.BANK_AREA)) {
-                JsonObject travel = travelTo(player, "varrock east bank");
-                travel.addProperty("message", "Restocking food: returning to bank for a small kebab coin float.");
+                JsonObject travel = travelTo(player, onAlKharidSide ? "al kharid bank" : "varrock east bank");
+                travel.addProperty("message", "Restocking food: returning to bank for a gate-and-kebab coin float.");
                 return travel;
             }
-            int amount = kebabCoinFloat(desiredFood, inventoryFood, freeSlots, bankCoins);
+            int amount = Math.min(bankCoins, Math.max(1, coinFloat - inventoryCoins));
             JsonObject result = AgentToolService.handle(player, "withdraw_bank_items", itemAmountArgs(COINS, amount));
-            result.addProperty("message", "Restocking food: withdrew a small coin float for Al Kharid kebabs.");
+            result.addProperty("message", "Restocking food: withdrew a gate-and-kebab coin float for Al Kharid.");
             return result;
+        }
+
+        if (inventoryCoins <= 0) {
+            return null;
         }
 
         if (player.isBanking) {
@@ -1512,14 +2727,21 @@ public class AgentActionService {
             return result;
         }
 
-        int amount = Math.max(1, Math.min(freeSlots, desiredFood - inventoryFood));
+        int kebabUnitCost = currentShopItemPrice(player, KEBAB, KEBAB_SHOP_PRICE);
+        plan = kebabAcquisitionPlan(player, goal, desiredFood, inventoryFood, kebabUnitCost);
+        int amount = plan.affordableBatchAmount();
+        if (amount <= 0) {
+            return null;
+        }
         JsonObject result = AgentToolService.handle(player, "buy_shop_item", itemAmountArgs(KEBAB, amount));
-        int bought = getInt(result, "bought", 0);
         if (result == null) {
             return AgentToolService.failure("Restocking food: kebab purchase failed; falling back to gathered food.");
         }
+        int bought = getInt(result, "bought", 0);
         if (result.has("success") && result.get("success").getAsBoolean()) {
-            goal.withdrawnFoodItems += bought;
+            if (goal != null) {
+                goal.withdrawnFoodItems += bought;
+            }
             result.addProperty("message", "Restocking food: bought " + bought
                     + " kebab(s) for faster Strength and money-making runs.");
         } else {
@@ -1548,15 +2770,17 @@ public class AgentActionService {
     }
 
     private JsonObject prepareFoodFromBank(Player player, CombatGoal goal, int desiredFood) {
-        int supplyCount = countInventoryCombatSupplies(player);
+        int supplyCount = countInventoryCombatSupplies(player, goal);
         if (shouldDepositSuppliesDuringFoodRestock(supplyCount, player.getItemAssistant().freeSlots())) {
-            JsonObject result = AgentToolService.handle(player, "deposit_inventory_items", combatSupplyArgs(0));
-            int depositedAmount = getInt(result, "depositedAmount", 0);
+            JsonObject result = AgentToolService.handle(player, "deposit_inventory_items",
+                    combatSupplyArgs(0, player, goal));
+            int depositedItems = depositedInventoryItems(result);
+            int depositedAmount = getInt(result, "depositedAmount", depositedItems);
             if (result != null && result.has("success") && result.get("success").getAsBoolean()) {
-                int remainingSupplyCount = countInventoryCombatSupplies(player);
+                int remainingSupplyCount = countInventoryCombatSupplies(player, goal);
                 if (supplyDepositMadeProgress(supplyCount, depositedAmount, remainingSupplyCount)) {
                     goal.bankTrips++;
-                    goal.bankedSupplyItems += depositedAmount;
+                    goal.bankedSupplyItems += depositedItems;
                     String message = getString(result, "message", "Deposited combat supplies.");
                     result.addProperty("message", "Restocking food: banked combat supplies for later account progression: " + message);
                     return result;
@@ -1591,6 +2815,10 @@ public class AgentActionService {
 
         int availableRawFood = AgentToolService.countInventoryRawCookableFood(player)
                 + AgentToolService.countBankRawCookableFood(player);
+        if (shouldPreferTargetFoodAcquisitionOverSmallRawBatch(inventoryFood, desiredFood, availableRawFood,
+                hasKebabRestockSource(player))) {
+            return null;
+        }
         if (availableRawFood > 0) {
             JsonObject fireSupplyResult = prepareFireSuppliesFromBank(player);
             if (fireSupplyResult != null) {
@@ -1637,15 +2865,66 @@ public class AgentActionService {
         return depositedAmount > 0 && supplyCountAfter < supplyCountBefore;
     }
 
+    static int depositedInventoryItems(JsonObject result) {
+        if (result == null) {
+            return 0;
+        }
+        return getInt(result, "deposited", getInt(result, "depositedAmount", 0));
+    }
+
     static boolean shouldDepositSuppliesDuringFoodRestock(int supplyCount, int freeSlots) {
-        return shouldBankCombatSupplyCount(supplyCount, freeSlots);
+        return supplyCount > 0 && (freeSlots <= 0 || supplyCount >= SUPPLY_COUNT_BEFORE_BANKING);
     }
 
     private static JsonObject combatSupplyArgs(int maxDistance) {
+        return combatSupplyArgs(maxDistance, null, null);
+    }
+
+    private static JsonObject combatSupplyArgs(int maxDistance, Player player, CombatGoal goal) {
         JsonObject arguments = new JsonObject();
         JsonArray itemIds = new JsonArray();
         addItemIds(itemIds, COMBAT_SUPPLY_ITEM_IDS);
-        addItemIds(itemIds, COMBAT_GEAR_ITEM_IDS);
+        for (int itemId : COMBAT_GEAR_ITEM_IDS) {
+            if (!shouldExcludeFromCombatSupplyBanking(player, itemId, goal)) {
+                itemIds.add(itemId);
+            }
+        }
+        arguments.add("itemIds", itemIds);
+        if (maxDistance > 0) {
+            arguments.addProperty("maxDistance", maxDistance);
+        }
+        return arguments;
+    }
+
+    private static JsonObject combatSupplyArgsWithoutCoins(int maxDistance, Player player, CombatGoal goal) {
+        JsonObject arguments = new JsonObject();
+        JsonArray itemIds = new JsonArray();
+        addItemIds(itemIds, BANK_TRIGGER_COMBAT_SUPPLY_ITEM_IDS);
+        for (int itemId : COMBAT_GEAR_ITEM_IDS) {
+            if (!shouldExcludeFromCombatSupplyBanking(player, itemId, goal)) {
+                itemIds.add(itemId);
+            }
+        }
+        arguments.add("itemIds", itemIds);
+        if (maxDistance > 0) {
+            arguments.addProperty("maxDistance", maxDistance);
+        }
+        return arguments;
+    }
+
+    private static JsonObject targetAcquisitionSupplyArgsWithoutCoins(int maxDistance, Player player, CombatGoal goal) {
+        JsonObject arguments = new JsonObject();
+        JsonArray itemIds = new JsonArray();
+        for (int itemId : BANK_TRIGGER_COMBAT_SUPPLY_ITEM_IDS) {
+            if (isTargetAcquisitionBlockingSupplyItem(itemId)) {
+                itemIds.add(itemId);
+            }
+        }
+        for (int itemId : COMBAT_GEAR_ITEM_IDS) {
+            if (!shouldExcludeFromCombatSupplyBanking(player, itemId, goal)) {
+                itemIds.add(itemId);
+            }
+        }
         arguments.add("itemIds", itemIds);
         if (maxDistance > 0) {
             arguments.addProperty("maxDistance", maxDistance);
@@ -1692,6 +2971,12 @@ public class AgentActionService {
         return arguments;
     }
 
+    private static JsonObject optionArgs(int option) {
+        JsonObject arguments = new JsonObject();
+        arguments.addProperty("option", option);
+        return arguments;
+    }
+
     private static JsonObject objectIdArgs(int objectId, int maxDistance) {
         JsonObject arguments = new JsonObject();
         JsonArray objectIds = new JsonArray();
@@ -1734,6 +3019,19 @@ public class AgentActionService {
         return arguments;
     }
 
+    static JsonObject gearMoneyOreArgs(String ore, int x, int y) {
+        return gearMoneyOreArgs(ore, x, y, true);
+    }
+
+    static JsonObject gearMoneyOreArgs(String ore, int x, int y, boolean waitForLocalRespawn) {
+        JsonObject arguments = oreArgs(ore);
+        if (waitForLocalRespawn && isGearMoneyMine(ore, x, y)) {
+            arguments.addProperty("maxDistance", GEAR_MONEY_LOCAL_MINING_SCAN_DISTANCE);
+            arguments.addProperty("waitForLocalRespawn", true);
+        }
+        return arguments;
+    }
+
     private static JsonObject smeltArgs(int barItemId, int amount) {
         JsonObject arguments = new JsonObject();
         arguments.addProperty("itemId", barItemId);
@@ -1749,37 +3047,117 @@ public class AgentActionService {
     }
 
     private static JsonObject gearMoneySellArgs() {
+        return gearMoneySellArgs(null, null);
+    }
+
+    private static JsonObject gearMoneySellArgs(CombatGoal goal) {
+        return gearMoneySellArgs(null, goal);
+    }
+
+    private static JsonObject gearMoneySellArgs(Player player, CombatGoal goal) {
         JsonObject arguments = new JsonObject();
         JsonArray itemIds = new JsonArray();
-        addItemIds(itemIds, GEAR_MONEY_ITEM_IDS);
-        addSmithingProductItemIds(itemIds);
+        if (shouldLiquidateStagedGearMoneyItems(goal)) {
+            addItemIds(itemIds, GEAR_MONEY_ITEM_IDS);
+        }
+        addGearMoneySaleItemIds(itemIds, goal);
+        addStackedGearMoneyProductItemIds(itemIds, player);
         arguments.add("itemIds", itemIds);
         arguments.addProperty("amount", Integer.MAX_VALUE);
         return arguments;
     }
 
+    private static JsonObject gearMoneyBatchBankArgs() {
+        return gearMoneyBatchBankArgs(null);
+    }
+
+    private static JsonObject gearMoneyBatchBankArgs(CombatGoal goal) {
+        return gearMoneyBatchBankArgs(null, goal);
+    }
+
+    private static JsonObject gearMoneyBatchBankArgs(Player player, CombatGoal goal) {
+        JsonObject arguments = new JsonObject();
+        JsonArray itemIds = new JsonArray();
+        addGearMoneyItemIds(itemIds, goal);
+        addStackedGearMoneyProductItemIds(itemIds, player);
+        arguments.add("itemIds", itemIds);
+        arguments.addProperty("amount", Integer.MAX_VALUE);
+        return arguments;
+    }
+
+    private static JsonObject gearMoneyRawMaterialsBankArgs() {
+        JsonObject arguments = new JsonObject();
+        JsonArray itemIds = new JsonArray();
+        addItemIds(itemIds, GEAR_MONEY_RAW_MATERIAL_ITEM_IDS);
+        arguments.add("itemIds", itemIds);
+        arguments.addProperty("amount", Integer.MAX_VALUE);
+        return arguments;
+    }
+
+    private static void addGearMoneyItemIds(JsonArray itemIds) {
+        addGearMoneyItemIds(itemIds, null);
+    }
+
+    private static void addGearMoneyItemIds(JsonArray itemIds, CombatGoal goal) {
+        addItemIds(itemIds, GEAR_MONEY_ITEM_IDS);
+        addGearMoneySaleItemIds(itemIds, goal);
+    }
+
+    private static void addGearMoneySaleItemIds(JsonArray itemIds) {
+        addGearMoneySaleItemIds(itemIds, null);
+    }
+
+    private static void addGearMoneySaleItemIds(JsonArray itemIds, CombatGoal goal) {
+        addSmithingProductItemIds(itemIds);
+        if (goal != null && isTrackedGearMoneyProductItem(goal.gearMoneyCraftedProductItemId, goal)) {
+            itemIds.add(goal.gearMoneyCraftedProductItemId);
+        }
+    }
+
     private static void addSmithingProductItemIds(JsonArray itemIds) {
         for (SmithingData data : SmithingData.values()) {
-            if (isGearMoneyProductItem(data.getId())) {
+            if (isGearMoneySaleItem(data.getId())) {
                 itemIds.add(data.getId());
             }
         }
     }
 
+    private static void addStackedGearMoneyProductItemIds(JsonArray itemIds, Player player) {
+        if (player == null) {
+            return;
+        }
+        for (SmithingData data : SmithingData.values()) {
+            int itemId = data.getId();
+            if (isStackedGearMoneyProductItem(itemId,
+                    AgentToolService.countInventoryItem(player, itemId) + AgentToolService.countBankItem(player, itemId))) {
+                itemIds.add(itemId);
+            }
+        }
+    }
+
     private static JsonObject gearMoneyClutterArgs(Player player) {
+        return gearMoneyClutterArgs(player, null);
+    }
+
+    private static JsonObject gearMoneyClutterArgs(Player player, CombatGoal goal) {
         JsonObject arguments = new JsonObject();
         JsonArray itemIds = new JsonArray();
+        boolean bankExcessFood = shouldBankExcessGearMoneyFood(AgentToolService.countInventoryFood(player));
         for (int i = 0; i < player.playerItems.length; i++) {
             int storedId = player.playerItems[i];
             if (storedId <= 0) {
                 continue;
             }
             int itemId = storedId - 1;
-            if (isGearMoneyClutterItemForBanking(player, itemId)) {
+            if (isGearMoneyClutterItemForBanking(player, itemId, goal)
+                    || bankExcessFood && AgentToolService.isAgentFood(itemId)) {
                 itemIds.add(itemId);
             }
         }
         arguments.add("itemIds", itemIds);
+        if (bankExcessFood) {
+            arguments.addProperty("keepFoodCount", GEAR_MONEY_FOOD_BUFFER);
+        }
         return arguments;
     }
 
@@ -1863,6 +3241,10 @@ public class AgentActionService {
     }
 
     private static JsonObject travelTo(Player player, String landmark) {
+        JsonObject desertReturn = prepareDesertReturnTransit(player, landmark);
+        if (desertReturn != null) {
+            return desertReturn;
+        }
         if (isChampionsGuildUpperFloor(player) && !isChampionsGuildRuneStoreLandmark(landmark)) {
             JsonObject result = climbNearestStairs(player, "Leaving Scavvo's Rune Store before resuming the surface route.");
             result.addProperty("complete", false);
@@ -1883,6 +3265,58 @@ public class AgentActionService {
             return travelToChampionsGuildRuneStore(player);
         }
         return travelToDirect(player, landmark);
+    }
+
+    private static JsonObject prepareDesertReturnTransit(Player player, String landmark) {
+        if (player == null || !shouldUseDesertReturnTransit(landmark)) {
+            return null;
+        }
+        if (shouldRideNardahCarpetToPollnivneach(player.absX, player.absY, player.heightLevel, landmark)) {
+            return rideDesertCarpet(player, POLLNIVNEACH_RUG_X, POLLNIVNEACH_RUG_Y,
+                    "Leaving the Nardah area by normal carpet travel toward Pollnivneach.");
+        }
+        if (shouldRidePollnivneachCarpetToShantay(player.absX, player.absY, player.heightLevel, landmark)) {
+            return rideDesertCarpet(player, SHANTAY_RUG_RETURN_X, SHANTAY_RUG_RETURN_Y,
+                    "Leaving Pollnivneach by normal carpet travel toward Shantay Pass.");
+        }
+        if (shouldWalkToPollnivneachRugStation(player.absX, player.absY, player.heightLevel, landmark)) {
+            JsonObject result = AgentToolService.handle(player, "walk_to_tile",
+                    walkTileArgs(POLLNIVNEACH_RUG_X, POLLNIVNEACH_RUG_Y, 0));
+            result.addProperty("message", "Walking to the Pollnivneach rug station for the return trip.");
+            return result;
+        }
+        if (shouldUseShantayGateFromSouth(player.absX, player.absY, player.heightLevel, landmark)) {
+            player.stopMovement();
+            player.endCurrentTask();
+            player.getPlayerAssistant().resetFollow();
+            player.getCombatAssistant().resetPlayerAttack();
+            player.objectX = player.absX;
+            player.objectY = player.absY + 1;
+            OtherObjects.initShantay(player, SHANTAY_GATE_OBJECT);
+            JsonObject result = AgentToolService.success(
+                    "Passed north through the Shantay gate using normal gate interaction.");
+            result.add("state", AgentToolService.observeState(player));
+            return result;
+        }
+        if (shouldWalkToShantayGateFromSouth(player.absX, player.absY, player.heightLevel, landmark)) {
+            JsonObject result = AgentToolService.handle(player, "walk_to_tile",
+                    walkTileArgs(SHANTAY_GATE_SOUTH_X, SHANTAY_GATE_SOUTH_Y, 0));
+            result.addProperty("message", "Walking to the south side of the Shantay gate before returning north.");
+            return result;
+        }
+        return null;
+    }
+
+    private static JsonObject rideDesertCarpet(Player player, int x, int y, String message) {
+        if (AgentToolService.countInventoryItem(player, COINS) < NARDAH_CARPET_FARE) {
+            JsonObject result = AgentToolService.failure("Need 200 coins for the normal desert carpet return route.");
+            result.add("state", AgentToolService.observeState(player));
+            return result;
+        }
+        CarpetTravel.carpetTravel(player, x, y);
+        JsonObject result = AgentToolService.success(message);
+        result.add("state", AgentToolService.observeState(player));
+        return result;
     }
 
     private static JsonObject travelToChampionsGuildRuneStore(Player player) {
@@ -2002,11 +3436,19 @@ public class AgentActionService {
         return AgentToolService.handle(player, "open_nearest_shop", arguments);
     }
 
+    static boolean isNearLandmarkTarget(String landmarkName, int x, int y, int height, int maxDistance) {
+        AgentKnowledgeBase.Landmark landmark = AgentKnowledgeBase.findLandmark(landmarkName);
+        if (landmark == null || landmark.getTarget().height != height) {
+            return false;
+        }
+        return AgentKnowledgeBase.distance(x, y, landmark.getTarget().x, landmark.getTarget().y) <= maxDistance;
+    }
+
     private static boolean shouldAcquireCombatGear(Player player, CombatGoal goal) {
         if (goal == null || player == null) {
             return false;
         }
-        if (goal.actionsRun - goal.lastGearAttemptAction < GEAR_CHECK_INTERVAL_ACTIONS) {
+        if (shouldDeferGearCheck(goal.actionsRun, goal.lastGearAttemptAction)) {
             return false;
         }
         if (isPlayerInCombat(player)) {
@@ -2019,31 +3461,54 @@ public class AgentActionService {
         return true;
     }
 
+    private static boolean shouldAcquirePickaxeUpgrade(Player player, CombatGoal goal) {
+        if (goal == null || player == null) {
+            return false;
+        }
+        PickaxeTarget target = nextPickaxeUpgrade(player);
+        return shouldAcquirePickaxeUpgrade(goal.actionsRun, goal.lastGearAttemptAction, isPlayerInCombat(player),
+                target != null, goal.isPickaxeUpgradeDeferred(target));
+    }
+
+    static boolean shouldAcquirePickaxeUpgrade(int actionsRun, int lastGearAttemptAction, boolean inCombat,
+            boolean hasUpgrade, boolean deferred) {
+        return hasUpgrade
+                && !deferred
+                && !inCombat
+                && !shouldDeferGearCheck(actionsRun, lastGearAttemptAction);
+    }
+
     private static boolean shouldEarnGearMoney(Player player, CombatGoal goal) {
         if (goal == null || player == null) {
             return false;
         }
-        if (goal.actionsRun - goal.lastGearAttemptAction < GEAR_CHECK_INTERVAL_ACTIONS) {
+        if (shouldDeferGearCheck(goal.actionsRun, goal.lastGearAttemptAction)) {
             return false;
         }
         if (isPlayerInCombat(player)) {
             return false;
         }
-        GearTarget target = nextDesiredGearTarget(player);
-        if (target == null) {
-            return false;
-        }
-        int attackLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.ATTACK]);
-        int strengthLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.STRENGTH]);
+        GearTarget target = nextDesiredGearMoneyTarget(player, goal);
         int spendableCoins = AgentToolService.countInventoryItem(player, COINS)
                 + AgentToolService.countBankItem(player, COINS);
-        if (shouldDeferExpensiveWeaponUpgradeForCombat(attackLevel, strengthLevel, goal.targetLevel, spendableCoins,
-                bestEquippedGearTier(player, WEAPON_GEAR_TARGETS), target)
-                && countInventoryGearMoneyItems(player) == 0
-                && countInventoryGearMoneyProducts(player) == 0) {
-            return false;
+        if (target != null) {
+            return shouldEarnGearMoneyForTargetCosts(spendableCoins,
+                    estimatedGearAcquisitionCost(target, player), -1);
         }
-        return spendableCoins < target.estimatedPrice;
+        PickaxeTarget pickaxeTarget = nextDesiredPickaxeMoneyTarget(player, goal);
+        return shouldEarnGearMoneyForTargetCosts(spendableCoins, -1,
+                pickaxeTarget == null ? -1 : pickaxeTarget.estimatedPrice);
+    }
+
+    static boolean shouldDeferGearCheck(int actionsRun, int lastGearAttemptAction) {
+        return actionsRun - lastGearAttemptAction < GEAR_CHECK_INTERVAL_ACTIONS;
+    }
+
+    static boolean shouldEarnGearMoneyForTargetCosts(int spendableCoins, int gearTargetCost, int pickaxeTargetCost) {
+        if (gearTargetCost > 0) {
+            return spendableCoins < gearTargetCost;
+        }
+        return pickaxeTargetCost > 0 && spendableCoins < pickaxeTargetCost;
     }
 
     private static GearTarget nextGearTarget(Player player) {
@@ -2056,7 +3521,7 @@ public class AgentActionService {
         if (weapon != null) {
             return weapon;
         }
-        if (shouldSaveForWeaponBeforeArmor(attackLevel, strengthLevel, spendableCoins,
+        if (shouldSaveForWeaponBeforeArmor(player, attackLevel, strengthLevel, spendableCoins,
                 bestEquippedGearTier(player, WEAPON_GEAR_TARGETS))) {
             return null;
         }
@@ -2071,6 +3536,10 @@ public class AgentActionService {
         GearTarget shield = bestActionableGearTarget(player, SHIELD_GEAR_TARGETS, defenceLevel, spendableCoins);
         if (shield != null) {
             return shield;
+        }
+        GearTarget helm = bestActionableGearTarget(player, HELM_GEAR_TARGETS, defenceLevel, spendableCoins);
+        if (helm != null) {
+            return helm;
         }
         return null;
     }
@@ -2094,7 +3563,66 @@ public class AgentActionService {
         if (shield != null) {
             return shield;
         }
+        GearTarget helm = bestDesiredGearTarget(player, HELM_GEAR_TARGETS, defenceLevel);
+        if (helm != null) {
+            return helm;
+        }
         return null;
+    }
+
+    private static GearTarget nextDesiredGearMoneyTarget(Player player, CombatGoal goal) {
+        int attackLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.ATTACK]);
+        int strengthLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.STRENGTH]);
+        int defenceLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.DEFENCE]);
+        int spendableCoins = AgentToolService.countInventoryItem(player, COINS)
+                + AgentToolService.countBankItem(player, COINS);
+        int targetLevel = goal == null ? DEFAULT_GOAL_TARGET_LEVEL : goal.targetLevel;
+        int bestWeaponTier = bestEquippedGearTier(player, WEAPON_GEAR_TARGETS);
+        GearTarget weapon = bestDesiredGearTarget(player, WEAPON_GEAR_TARGETS, attackLevel, bestWeaponTier);
+        if (weapon != null && !shouldDeferExpensiveWeaponUpgradeForCombat(attackLevel, strengthLevel, targetLevel,
+                spendableCoins, bestWeaponTier, weapon)) {
+            return weapon;
+        }
+        GearTarget body = bestDesiredGearTarget(player, BODY_GEAR_TARGETS, defenceLevel,
+                bestEquippedGearTier(player, BODY_GEAR_TARGETS));
+        if (body != null) {
+            return body;
+        }
+        GearTarget legs = bestDesiredGearTarget(player, LEGS_GEAR_TARGETS, defenceLevel,
+                bestEquippedGearTier(player, LEGS_GEAR_TARGETS));
+        if (legs != null) {
+            return legs;
+        }
+        GearTarget shield = bestDesiredGearTarget(player, SHIELD_GEAR_TARGETS, defenceLevel,
+                bestEquippedGearTier(player, SHIELD_GEAR_TARGETS));
+        if (shield != null) {
+            return shield;
+        }
+        return bestDesiredGearTarget(player, HELM_GEAR_TARGETS, defenceLevel,
+                bestEquippedGearTier(player, HELM_GEAR_TARGETS));
+    }
+
+    private static PickaxeTarget nextDesiredPickaxeMoneyTarget(Player player, CombatGoal goal) {
+        int miningLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.MINING]);
+        int spendableCoins = AgentToolService.countInventoryItem(player, COINS)
+                + AgentToolService.countBankItem(player, COINS);
+        int itemId = recommendedPickaxeMoneyUpgradeId(miningLevel, bestOwnedPickaxeTier(player), spendableCoins);
+        PickaxeTarget target = itemId <= 0 ? null : pickaxeTargetByItemId(itemId);
+        return goal != null && goal.isPickaxeUpgradeDeferred(target) ? null : target;
+    }
+
+    private static GearTarget pickaxeMoneyGearTarget(PickaxeTarget target) {
+        return target == null ? null : new GearTarget(target.itemId, target.requiredMiningLevel, target.tier,
+                target.landmarkName, target.shopName, target.estimatedPrice);
+    }
+
+    private static boolean isShopFoodMoneyTarget(CombatGoal goal) {
+        return goal != null && goal.gearMoneyTargetItemId == KEBAB;
+    }
+
+    private static GearTarget shopFoodMoneyTarget(int targetCoins) {
+        return new GearTarget(KEBAB, 0, 0, "al kharid kebab shop", "kebab",
+                Math.max(1, targetCoins));
     }
 
     static boolean shouldInterruptGearMoneyForAffordableUpgrade(int affordableItemId, int desiredItemId) {
@@ -2112,6 +3640,7 @@ public class AgentActionService {
     private static boolean sameGearFamily(GearTarget first, GearTarget second) {
         return containsGearTarget(WEAPON_GEAR_TARGETS, first) && containsGearTarget(WEAPON_GEAR_TARGETS, second)
                 || containsGearTarget(BODY_GEAR_TARGETS, first) && containsGearTarget(BODY_GEAR_TARGETS, second)
+                || containsGearTarget(HELM_GEAR_TARGETS, first) && containsGearTarget(HELM_GEAR_TARGETS, second)
                 || containsGearTarget(LEGS_GEAR_TARGETS, first) && containsGearTarget(LEGS_GEAR_TARGETS, second)
                 || containsGearTarget(SHIELD_GEAR_TARGETS, first) && containsGearTarget(SHIELD_GEAR_TARGETS, second);
     }
@@ -2128,17 +3657,26 @@ public class AgentActionService {
         return false;
     }
 
+    static boolean shouldPrioritizePickaxeUpgradeOverGear(int gearItemId, int pickaxeItemId) {
+        if (gearItemId <= 0 || pickaxeItemId <= 0) {
+            return false;
+        }
+        GearTarget gearTarget = gearTargetByItemId(gearItemId);
+        return gearTarget != null && !containsGearTarget(WEAPON_GEAR_TARGETS, gearTarget);
+    }
+
     private static GearTarget bestActionableGearTarget(Player player, GearTarget[] targets, int level,
             int spendableCoins) {
         int bestEquippedTier = bestEquippedGearTier(player, targets);
         GearTarget best = null;
         for (GearTarget target : targets) {
-            if (level < target.minLevel || target.tier <= bestEquippedTier) {
+            if (level < target.minLevel || target.tier <= bestEquippedTier
+                    || !isGearTargetAvailable(player, target)) {
                 continue;
             }
             if (AgentToolService.countInventoryItem(player, target.itemId) > 0
                     || AgentToolService.countBankItem(player, target.itemId) > 0
-                    || spendableCoins >= target.estimatedPrice) {
+                    || spendableCoins >= estimatedGearAcquisitionCost(target, player)) {
                 best = target;
             }
         }
@@ -2146,10 +3684,15 @@ public class AgentActionService {
     }
 
     private static GearTarget bestDesiredGearTarget(Player player, GearTarget[] targets, int level) {
-        int bestEquippedTier = bestEquippedGearTier(player, targets);
+        return bestDesiredGearTarget(player, targets, level, bestEquippedGearTier(player, targets));
+    }
+
+    private static GearTarget bestDesiredGearTarget(Player player, GearTarget[] targets, int level,
+            int bestEquippedTier) {
         GearTarget best = null;
         for (GearTarget target : targets) {
-            if (level >= target.minLevel && target.tier > bestEquippedTier) {
+            if (level >= target.minLevel && target.tier > bestEquippedTier
+                    && isGearTargetAvailable(player, target)) {
                 best = target;
             }
         }
@@ -2161,6 +3704,45 @@ public class AgentActionService {
         return target != null && target.tier > bestOwnedTier ? target.itemId : -1;
     }
 
+    static int recommendedGearMoneyUpgradeId(int attackLevel, int strengthLevel, int defenceLevel,
+            int spendableCoins, int bestWeaponTier, int bestBodyTier, int bestHelmTier, int bestLegsTier,
+            int bestShieldTier, int targetLevel) {
+        return recommendedGearMoneyUpgradeId(attackLevel, strengthLevel, defenceLevel, spendableCoins,
+                bestWeaponTier, bestBodyTier, bestHelmTier, bestLegsTier, bestShieldTier, targetLevel, true);
+    }
+
+    static int recommendedGearMoneyUpgradeId(int attackLevel, int strengthLevel, int defenceLevel,
+            int spendableCoins, int bestWeaponTier, int bestBodyTier, int bestHelmTier, int bestLegsTier,
+            int bestShieldTier, int targetLevel, boolean championsGuildAvailable) {
+        GearTarget weapon = bestDesiredGearTarget(WEAPON_GEAR_TARGETS, attackLevel, bestWeaponTier,
+                championsGuildAvailable);
+        if (weapon != null && !shouldDeferExpensiveWeaponUpgradeForCombat(attackLevel, strengthLevel, targetLevel,
+                spendableCoins, bestWeaponTier, weapon)) {
+            return weapon.itemId;
+        }
+        GearTarget body = bestDesiredGearTarget(BODY_GEAR_TARGETS, defenceLevel, bestBodyTier,
+                championsGuildAvailable);
+        if (body != null) {
+            return body.itemId;
+        }
+        GearTarget legs = bestDesiredGearTarget(LEGS_GEAR_TARGETS, defenceLevel, bestLegsTier,
+                championsGuildAvailable);
+        if (legs != null) {
+            return legs.itemId;
+        }
+        GearTarget shield = bestDesiredGearTarget(SHIELD_GEAR_TARGETS, defenceLevel, bestShieldTier,
+                championsGuildAvailable);
+        if (shield != null) {
+            return shield.itemId;
+        }
+        GearTarget helm = bestDesiredGearTarget(HELM_GEAR_TARGETS, defenceLevel, bestHelmTier,
+                championsGuildAvailable);
+        if (helm != null) {
+            return helm.itemId;
+        }
+        return -1;
+    }
+
     static boolean shouldSaveForWeaponBeforeArmor(int attackLevel, int spendableCoins, int bestWeaponTier) {
         return shouldSaveForWeaponBeforeArmor(attackLevel, attackLevel, spendableCoins, bestWeaponTier);
     }
@@ -2168,6 +3750,16 @@ public class AgentActionService {
     static boolean shouldSaveForWeaponBeforeArmor(int attackLevel, int strengthLevel, int spendableCoins,
             int bestWeaponTier) {
         GearTarget target = recommendedGearTarget(WEAPON_GEAR_TARGETS, attackLevel);
+        return target != null
+                && target.tier > bestWeaponTier
+                && spendableCoins < target.estimatedPrice
+                && !shouldDeferExpensiveWeaponUpgradeForCombat(attackLevel, strengthLevel, DEFAULT_GOAL_TARGET_LEVEL,
+                        spendableCoins, bestWeaponTier, target);
+    }
+
+    private static boolean shouldSaveForWeaponBeforeArmor(Player player, int attackLevel, int strengthLevel,
+            int spendableCoins, int bestWeaponTier) {
+        GearTarget target = recommendedGearTarget(player, WEAPON_GEAR_TARGETS, attackLevel);
         return target != null
                 && target.tier > bestWeaponTier
                 && spendableCoins < target.estimatedPrice
@@ -2211,6 +3803,9 @@ public class AgentActionService {
     }
 
     static boolean shouldTrainStrengthBeforeExpensiveWeapon(int attackLevel, int strengthLevel, int targetLevel) {
+        if (attackLevel >= 40 && strengthLevel >= MIN_STRENGTH_BEFORE_RUNE_WEAPON_SAVINGS) {
+            return false;
+        }
         int meaningfulStrengthTarget = Math.min(targetLevel, attackLevel);
         return strengthLevel + 8 < attackLevel || strengthLevel + 5 < meaningfulStrengthTarget;
     }
@@ -2223,6 +3818,50 @@ public class AgentActionService {
             }
         }
         return best;
+    }
+
+    private static GearTarget recommendedGearTarget(Player player, GearTarget[] targets, int level) {
+        GearTarget best = null;
+        for (GearTarget target : targets) {
+            if (level >= target.minLevel && isGearTargetAvailable(player, target)) {
+                best = target;
+            }
+        }
+        return best;
+    }
+
+    private static GearTarget bestDesiredGearTarget(GearTarget[] targets, int level, int bestEquippedTier) {
+        return bestDesiredGearTarget(targets, level, bestEquippedTier, true);
+    }
+
+    private static GearTarget bestDesiredGearTarget(GearTarget[] targets, int level, int bestEquippedTier,
+            boolean championsGuildAvailable) {
+        GearTarget best = null;
+        for (GearTarget target : targets) {
+            if (level >= target.minLevel && target.tier > bestEquippedTier
+                    && isGearTargetAvailable(target, championsGuildAvailable)) {
+                best = target;
+            }
+        }
+        return best;
+    }
+
+    static boolean isChampionsGuildGearAvailable(int itemId, int questPoints) {
+        GearTarget target = gearTargetByItemId(itemId);
+        return target != null && isGearTargetAvailable(target, questPoints >= CHAMPIONS_GUILD_QUEST_POINTS);
+    }
+
+    private static boolean isGearTargetAvailable(Player player, GearTarget target) {
+        return target != null && isGearTargetAvailable(target,
+                player != null && player.questPoints >= CHAMPIONS_GUILD_QUEST_POINTS);
+    }
+
+    private static boolean isGearTargetAvailable(GearTarget target, boolean championsGuildAvailable) {
+        return target != null && (!isChampionsGuildGearTarget(target) || championsGuildAvailable);
+    }
+
+    private static boolean isChampionsGuildGearTarget(GearTarget target) {
+        return target != null && isChampionsGuildRuneStoreLandmark(target.landmark);
     }
 
     private static int bestOwnedGearTier(Player player, GearTarget[] targets) {
@@ -2275,6 +3914,10 @@ public class AgentActionService {
         if (target != null) {
             return target;
         }
+        target = gearTargetByItemId(HELM_GEAR_TARGETS, itemId);
+        if (target != null) {
+            return target;
+        }
         target = gearTargetByItemId(LEGS_GEAR_TARGETS, itemId);
         if (target != null) {
             return target;
@@ -2318,12 +3961,19 @@ public class AgentActionService {
     }
 
     private static boolean shouldBankCombatSupplies(Player player) {
-        int supplyCount = countInventoryCombatSupplies(player);
+        return shouldBankCombatSupplies(player, null);
+    }
+
+    private static boolean shouldBankCombatSupplies(Player player, CombatGoal goal) {
+        int supplyCount = countInventoryCombatSupplies(player, goal);
         return shouldBankCombatSupplyCount(supplyCount, player.getItemAssistant().freeSlots());
     }
 
     static boolean shouldBankCombatSupplyCount(int supplyCount, int freeSlots) {
-        return supplyCount > 0 && (freeSlots <= 0 || supplyCount >= SUPPLY_COUNT_BEFORE_BANKING);
+        return supplyCount > 0
+                && (freeSlots <= 0
+                || supplyCount >= SUPPLY_COUNT_BEFORE_BANKING
+                        && freeSlots <= MIN_FREE_LOOT_SLOTS_BEFORE_SUPPLY_BANKING);
     }
 
     private static boolean shouldStoreAccountItems(Player player, CombatGoal goal) {
@@ -2350,12 +4000,46 @@ public class AgentActionService {
             return false;
         }
         int inventoryFood = AgentToolService.countInventoryFood(player);
-        int retreatAt = AgentCombatPlanner.retreatAtHitpoints(player.getPlayerAssistant().getLevelForXP(
-                player.playerXP[Constants.HITPOINTS]));
+        int attackLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.ATTACK]);
+        int strengthLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.STRENGTH]);
+        int defenceLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.DEFENCE]);
+        int hitpointsLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.HITPOINTS]);
+        int retreatAt = AgentCombatPlanner.retreatAtHitpoints(hitpointsLevel);
         if (player.playerLevel[Constants.HITPOINTS] <= retreatAt + 2 && inventoryFood <= 0) {
             return true;
         }
-        return inventoryFood <= MIN_FOOD_BEFORE_RESTOCK && hasFoodRestockSource(player);
+        boolean hasRestockSource = hasFoodRestockSource(player);
+        if (inventoryFood <= MIN_FOOD_BEFORE_RESTOCK && hasRestockSource) {
+            return true;
+        }
+        return shouldRestockForBetterTrainingArea(attackLevel, strengthLevel, defenceLevel, hitpointsLevel,
+                inventoryFood, AgentToolService.countBankFood(player), hasKebabRestockSource(player),
+                hasRestockSource, goal.fixedArea);
+    }
+
+    static boolean shouldRestockForBetterTrainingArea(int attackLevel, int strengthLevel, int defenceLevel,
+            int hitpointsLevel, int inventoryFood, int bankFood, boolean canBuyFood, boolean canGatherFood,
+            boolean fixedArea) {
+        if (fixedArea || inventoryFood < 0) {
+            return false;
+        }
+        int meleeAverage = (attackLevel + strengthLevel + defenceLevel) / 3;
+        int desiredFood = meleeAverage >= 20 ? DESIRED_HIGH_LEVEL_FOOD : DESIRED_LOW_LEVEL_FOOD;
+        int restockedFood = Math.min(desiredFood, inventoryFood + Math.max(0, bankFood));
+        if (canBuyFood || canGatherFood) {
+            restockedFood = desiredFood;
+        }
+        if (restockedFood <= inventoryFood) {
+            return false;
+        }
+        if (inventoryFood >= minimumReturnFood(desiredFood)) {
+            return false;
+        }
+        AgentCombatPlanner.TrainingArea currentArea = AgentCombatPlanner.recommendedArea(attackLevel, strengthLevel,
+                defenceLevel, hitpointsLevel, inventoryFood);
+        AgentCombatPlanner.TrainingArea restockedArea = AgentCombatPlanner.recommendedArea(attackLevel, strengthLevel,
+                defenceLevel, hitpointsLevel, restockedFood);
+        return !currentArea.getName().equals(restockedArea.getName());
     }
 
     private static boolean shouldVisitBankForFood(Player player, int inventoryRawFood) {
@@ -2363,6 +4047,27 @@ public class AgentActionService {
                 AgentToolService.countBankRawCookableFood(player), hasFoodToolInInventory(player),
                 hasFoodToolInBank(player), countInventoryCombatSupplies(player),
                 player.getItemAssistant().freeSlots(), Boundary.isIn(player, Boundary.BANK_AREA));
+    }
+
+    private static boolean shouldPreferTargetShopFoodRestockBeforeBank(Player player, int desiredFood,
+            int inventoryFood) {
+        return shouldPreferTargetShopFoodRestockBeforeBank(inventoryFood, desiredFood,
+                AgentToolService.countBankFood(player), AgentToolService.countBankRawCookableFood(player),
+                hasKebabRestockSource(player), player.getItemAssistant().freeSlots());
+    }
+
+    static boolean shouldPreferTargetShopFoodRestockBeforeBank(int inventoryFood, int desiredFood, int bankFood,
+            int bankRawFood, boolean canBuyTargetFood, int freeSlots) {
+        if (!canBuyTargetFood || inventoryFood >= desiredFood || freeSlots <= 0) {
+            return false;
+        }
+        if (inventoryFood + Math.max(0, bankFood) >= desiredFood) {
+            return false;
+        }
+        if (bankRawFood >= MIN_RAW_FOOD_BEFORE_COOKING && inventoryFood + bankRawFood >= desiredFood) {
+            return false;
+        }
+        return inventoryFood + freeSlots >= desiredFood;
     }
 
     static boolean shouldVisitBankForFood(int inventoryRawFood, int bankFood, int bankRawFood,
@@ -2416,7 +4121,18 @@ public class AgentActionService {
 
     private static boolean hasKebabRestockSource(Player player) {
         return AgentToolService.countInventoryItem(player, COINS) > 0
-                || AgentToolService.countBankItem(player, COINS) > 0;
+                || AgentToolService.countBankItem(player, COINS) > 0
+                || hasTargetMoneyMakingSource(player, null);
+    }
+
+    private static boolean hasTargetMoneyMakingSource(Player player, CombatGoal goal) {
+        return hasPickaxeInInventory(player)
+                || bestBankPickaxe(player) > 0
+                || countInventoryGearMoneyItems(player) > 0
+                || countInventoryGearMoneyProducts(player, goal) > 0
+                || countBankGearMoneyItems(player, goal) > 0
+                || hasBankedSmeltableGearMoneyOres(player)
+                || countBankProcessableGearMoneyItems(player) > 0;
     }
 
     static boolean shouldBuyKebabsForFood(int inventoryFood, int desiredFood, int inventoryCoins,
@@ -2430,10 +4146,161 @@ public class AgentActionService {
         return bankCoins > 0;
     }
 
+    static boolean shouldEarnShopFoodMoneyForTargetAcquisition(int inventoryFood, int desiredFood,
+            int inventoryCoins, int bankCoins, int targetCoins, boolean canMakeMoney) {
+        return shouldEarnMoneyForTargetAcquisition(inventoryFood, desiredFood, inventoryCoins, bankCoins,
+                targetCoins, canMakeMoney);
+    }
+
+    static boolean shouldEarnMoneyForTargetAcquisition(int currentCount, int targetCount,
+            int inventoryCoins, int bankCoins, int targetCoins, boolean canMakeMoney) {
+        return currentCount < targetCount
+                && targetCoins > 0
+                && inventoryCoins + bankCoins < targetCoins
+                && canMakeMoney;
+    }
+
+    static boolean shouldDelayTargetAcquisitionTripForFundedBatch(int currentCount, int targetCount,
+            int inventoryCoins, int bankCoins, int targetCoins, boolean canMakeMoney) {
+        return shouldEarnMoneyForTargetAcquisition(currentCount, targetCount, inventoryCoins, bankCoins,
+                targetCoins, canMakeMoney);
+    }
+
+    static boolean shouldWithdrawKebabCoinFloat(int inventoryCoins, int targetCoinFloat, int bankCoins,
+            int freeSlots, boolean inBankArea, boolean onAlKharidSide) {
+        if (bankCoins <= 0 || inventoryCoins >= targetCoinFloat) {
+            return false;
+        }
+        if (inBankArea) {
+            return freeSlots > 0 || inventoryCoins > 0;
+        }
+        return !onAlKharidSide && inventoryCoins < AL_KHARID_GATE_TOLL;
+    }
+
     static int kebabCoinFloat(int desiredFood, int inventoryFood, int freeSlots, int bankCoins) {
-        int desiredKebabs = Math.max(1, Math.min(freeSlots, desiredFood - inventoryFood));
-        int amount = Math.max(AL_KHARID_GATE_TOLL + desiredKebabs * 5, KEBAB_RESTOCK_COIN_FLOAT);
-        return Math.min(Math.max(1, bankCoins), amount);
+        return kebabCoinFloat(desiredFood, inventoryFood, freeSlots, 0, bankCoins, 0, AL_KHARID_GATE_TOLL,
+                KEBAB_SHOP_PRICE);
+    }
+
+    static int kebabCoinFloat(int desiredFood, int inventoryFood, int freeSlots, int bankCoins, int entryCost,
+            int reserveCoins) {
+        return kebabCoinFloat(desiredFood, inventoryFood, freeSlots, 0, bankCoins, entryCost, reserveCoins,
+                KEBAB_SHOP_PRICE);
+    }
+
+    static int kebabCoinFloat(int desiredFood, int inventoryFood, int freeSlots, int inventoryCoins, int bankCoins,
+            int entryCost, int reserveCoins, int unitCost) {
+        return targetAcquisitionCoinFloat(desiredFood, inventoryFood, freeSlots, inventoryCoins, bankCoins,
+                entryCost, reserveCoins, unitCost, KEBAB_RESTOCK_COIN_FLOAT);
+    }
+
+    static int targetAcquisitionBatchAmount(int targetCount, int currentCount, int freeSlots) {
+        return Math.max(0, Math.min(Math.max(0, freeSlots), Math.max(0, targetCount - currentCount)));
+    }
+
+    static int targetAcquisitionEffectiveFreeSlots(int freeSlots, int carriedSaleItems) {
+        return Math.min(28, Math.max(0, freeSlots) + Math.max(0, carriedSaleItems));
+    }
+
+    static boolean shouldPreferTargetFoodAcquisitionOverSmallRawBatch(int inventoryFood, int desiredFood,
+            int availableRawFood, boolean canAcquireTarget) {
+        return inventoryFood < desiredFood
+                && availableRawFood > 0
+                && availableRawFood < MIN_RAW_FOOD_BEFORE_COOKING
+                && canAcquireTarget;
+    }
+
+    static int targetAcquisitionRequiredCoins(int targetCount, int currentCount, int freeSlots,
+            int entryCost, int reserveCoins, int unitCost, int minimumFloat) {
+        int desiredItems = targetAcquisitionBatchAmount(targetCount, currentCount, freeSlots);
+        if (desiredItems <= 0) {
+            return 0;
+        }
+        int desiredCoins = Math.max(0, entryCost)
+                + Math.max(0, reserveCoins)
+                + desiredItems * Math.max(1, unitCost);
+        return Math.max(desiredCoins, Math.max(0, minimumFloat));
+    }
+
+    static int targetAcquisitionCoinFloat(int targetCount, int currentCount, int freeSlots, int inventoryCoins,
+            int bankCoins, int entryCost, int reserveCoins, int unitCost, int minimumFloat) {
+        int targetCoins = targetAcquisitionRequiredCoins(targetCount, currentCount, freeSlots, entryCost,
+                reserveCoins, unitCost, minimumFloat);
+        if (targetCoins <= 0) {
+            return 0;
+        }
+        int availableCoins = Math.max(0, inventoryCoins) + Math.max(0, bankCoins);
+        return Math.min(availableCoins, Math.max(1, targetCoins));
+    }
+
+    static int targetAcquisitionBatchAmount(int targetCount, int currentCount, int freeSlots, int unitCost,
+            int reserveCoins, int inventoryCoins) {
+        int slotBatch = targetAcquisitionBatchAmount(targetCount, currentCount, freeSlots);
+        if (unitCost <= 0) {
+            return slotBatch;
+        }
+        int spendableCoins = Math.max(0, inventoryCoins) - Math.max(0, reserveCoins);
+        return Math.max(0, Math.min(slotBatch, spendableCoins / unitCost));
+    }
+
+    private static TargetAcquisitionPlan kebabAcquisitionPlan(Player player, CombatGoal goal, int desiredFood,
+            int inventoryFood, int unitCost) {
+        boolean onAlKharidSide = isAlKharidSideForGearMoney(player.absX, player.absY);
+        boolean reserveReturnToll = shouldReserveAlKharidReturnTollForTarget(goal == null ? "" : goal.area);
+        int entryCost = !onAlKharidSide && reserveReturnToll ? AL_KHARID_GATE_TOLL : 0;
+        int reservedCoins = reserveReturnToll ? AL_KHARID_GATE_TOLL : 0;
+        return targetAcquisitionPlan(KEBAB, SHOP_FOOD_MONEY_TARGET_NAME, desiredFood, inventoryFood,
+                player.getItemAssistant().freeSlots(),
+                countInventoryGearMoneyItems(player) + countInventoryGearMoneyProducts(player, goal),
+                AgentToolService.countInventoryItem(player, COINS), AgentToolService.countBankItem(player, COINS),
+                entryCost, reservedCoins, unitCost, KEBAB_RESTOCK_COIN_FLOAT,
+                hasTargetMoneyMakingSource(player, goal));
+    }
+
+    static TargetAcquisitionPlan targetAcquisitionPlan(int itemId, String targetName, int targetCount,
+            int currentCount, int freeSlots, int carriedSaleItems, int inventoryCoins, int bankCoins,
+            int entryCost, int reserveCoins, int unitCost, int minimumFloat, boolean canMakeMoney) {
+        return new TargetAcquisitionPlan(itemId, targetName, targetCount, currentCount, freeSlots,
+                carriedSaleItems, inventoryCoins, bankCoins, entryCost, reserveCoins, unitCost, minimumFloat,
+                canMakeMoney);
+    }
+
+    static boolean shouldBankSuppliesBeforeTargetAcquisition(int supplyCount, int freeSlots, int targetCount,
+            int currentCount, boolean canAcquireTarget) {
+        if (!canAcquireTarget || supplyCount <= 0) {
+            return false;
+        }
+        int remaining = Math.max(0, targetCount - currentCount);
+        if (remaining <= 0) {
+            return false;
+        }
+        int immediateBatch = targetAcquisitionBatchAmount(targetCount, currentCount, freeSlots);
+        int bankedCapacity = Math.min(28, Math.max(0, freeSlots) + Math.max(0, supplyCount));
+        int bankedBatch = targetAcquisitionBatchAmount(targetCount, currentCount, bankedCapacity);
+        if (immediateBatch < remaining && bankedBatch > immediateBatch) {
+            return true;
+        }
+        int immediateFreeSlotsAfterBatch = Math.max(0, freeSlots - Math.min(remaining, immediateBatch));
+        int bankedFreeSlotsAfterBatch = Math.max(0, bankedCapacity - Math.min(remaining, bankedBatch));
+        return immediateBatch >= remaining
+                && immediateFreeSlotsAfterBatch < MIN_FREE_SLOTS_AFTER_TARGET_ACQUISITION
+                && bankedFreeSlotsAfterBatch > immediateFreeSlotsAfterBatch;
+    }
+
+    static boolean shouldCheckCarriedCombatGear(int actionsRun, int inventoryCombatGearItems) {
+        return actionsRun % 60 == 0 && inventoryCombatGearItems > 0;
+    }
+
+    static int currentShopItemPrice(Player player, int itemId, int fallbackPrice) {
+        if (player == null || !player.isShopping || player.shopId < 0
+                || player.shopId >= ShopHandler.shopItems.length) {
+            return Math.max(1, fallbackPrice);
+        }
+        try {
+            return Math.max(1, player.getShopAssistant().getItemShopValue(itemId, 0, false));
+        } catch (RuntimeException ignored) {
+            return Math.max(1, fallbackPrice);
+        }
     }
 
     private static int desiredCombatFood(Player player) {
@@ -2467,13 +4334,39 @@ public class AgentActionService {
     }
 
     private static int countInventoryCombatSupplies(Player player) {
+        return countInventoryCombatSupplies(player, null);
+    }
+
+    private static int countInventoryCombatSupplies(Player player, CombatGoal goal) {
         int count = 0;
         for (int i = 0; i < player.playerItems.length; i++) {
             int storedId = player.playerItems[i];
             if (storedId <= 0) {
                 continue;
             }
-            if (isCombatSupplyItemForBanking(storedId - 1)) {
+            int itemId = storedId - 1;
+            if (isCombatSupplyItemForBanking(itemId)
+                    && !shouldExcludeFromCombatSupplyBanking(player, itemId, goal)) {
+                count += Math.max(1, player.playerItemsN[i]);
+            }
+        }
+        return count;
+    }
+
+    static int countInventoryTargetAcquisitionBlockingSupplies(Player player) {
+        return countInventoryTargetAcquisitionBlockingSupplies(player, null);
+    }
+
+    private static int countInventoryTargetAcquisitionBlockingSupplies(Player player, CombatGoal goal) {
+        int count = 0;
+        for (int i = 0; i < player.playerItems.length; i++) {
+            int storedId = player.playerItems[i];
+            if (storedId <= 0) {
+                continue;
+            }
+            int itemId = storedId - 1;
+            if (isTargetAcquisitionBlockingSupplyItem(itemId)
+                    && !shouldExcludeFromCombatSupplyBanking(player, itemId, goal)) {
                 count += Math.max(1, player.playerItemsN[i]);
             }
         }
@@ -2494,6 +4387,26 @@ public class AgentActionService {
         return isCombatGearItem(itemId);
     }
 
+    static boolean isTargetAcquisitionBlockingSupplyItem(int itemId) {
+        return isCombatSupplyItemForBanking(itemId)
+                && !AgentToolService.isAgentFood(itemId)
+                && !AgentToolService.isRawCookableFood(itemId);
+    }
+
+    private static boolean shouldExcludeFromCombatSupplyBanking(Player player, int itemId, CombatGoal goal) {
+        return shouldExcludeGearMoneySaleItemFromCombatSupplyBanking(
+                goal != null && goal.earningGearMoney,
+                goal != null && goal.gearMoneyProcessingStarted,
+                goal == null ? 0 : goal.gearMoneyTargetItemId,
+                isGearMoneySaleItem(player, itemId, goal));
+    }
+
+    static boolean shouldExcludeGearMoneySaleItemFromCombatSupplyBanking(boolean earningGearMoney,
+            boolean processingStarted, int gearMoneyTargetItemId, boolean gearMoneySaleItem) {
+        return gearMoneySaleItem
+                && (earningGearMoney || processingStarted || gearMoneyTargetItemId > 0);
+    }
+
     private static boolean isCombatGearItem(int itemId) {
         for (int gearId : COMBAT_GEAR_ITEM_IDS) {
             if (itemId == gearId) {
@@ -2501,6 +4414,20 @@ public class AgentActionService {
             }
         }
         return false;
+    }
+
+    private static int countInventoryCombatGearItems(Player player) {
+        int count = 0;
+        for (int i = 0; i < player.playerItems.length; i++) {
+            int storedId = player.playerItems[i];
+            if (storedId <= 0) {
+                continue;
+            }
+            if (isCombatGearItem(storedId - 1)) {
+                count += Math.max(1, player.playerItemsN[i]);
+            }
+        }
+        return count;
     }
 
     static boolean isGearMoneyItem(int itemId) {
@@ -2513,10 +4440,43 @@ public class AgentActionService {
     }
 
     static boolean isGearMoneyProductItem(int itemId) {
+        return isGearMoneySmithingCandidateItem(itemId)
+                && !isCombatGearItem(itemId);
+    }
+
+    static boolean isGearMoneySmithingCandidateItem(int itemId) {
         return AgentSmithingPlanner.isSmithingProduct(itemId)
                 && !isLowQualityGearMoneySmithingProduct(itemId)
-                && !isAccountStorageItemForBanking(itemId)
-                && !isCombatGearItem(itemId);
+                && !isAccountStorageItemForBanking(itemId);
+    }
+
+    static boolean isGearMoneySaleItem(int itemId) {
+        return isGearMoneyProductItem(itemId);
+    }
+
+    private static boolean isGearMoneySaleItem(int itemId, CombatGoal goal) {
+        return isGearMoneySaleItem(itemId) || isTrackedGearMoneyProductItem(itemId, goal);
+    }
+
+    private static boolean isGearMoneySaleItem(Player player, int itemId, CombatGoal goal) {
+        return isGearMoneySaleItem(itemId, goal)
+                || player != null && isStackedGearMoneyProductItem(itemId,
+                        AgentToolService.countInventoryItem(player, itemId) + AgentToolService.countBankItem(player, itemId));
+    }
+
+    static boolean isTrackedGearMoneyProductItem(int itemId, int trackedProductItemId) {
+        return itemId > 0
+                && itemId == trackedProductItemId
+                && isGearMoneySmithingCandidateItem(itemId);
+    }
+
+    static boolean isStackedGearMoneyProductItem(int itemId, int count) {
+        return count >= MIN_STACKED_GEAR_MONEY_PRODUCTS_BEFORE_SALE
+                && isGearMoneySmithingCandidateItem(itemId);
+    }
+
+    private static boolean isTrackedGearMoneyProductItem(int itemId, CombatGoal goal) {
+        return goal != null && isTrackedGearMoneyProductItem(itemId, goal.gearMoneyCraftedProductItemId);
     }
 
     static boolean isLowQualityGearMoneySmithingProduct(int itemId) {
@@ -2542,8 +4502,26 @@ public class AgentActionService {
     }
 
     private static boolean isGearMoneyClutterItemForBanking(Player player, int itemId) {
+        return isGearMoneyClutterItemForBanking(player, itemId, null);
+    }
+
+    private static boolean isGearMoneyClutterItemForBanking(Player player, int itemId, CombatGoal goal) {
+        if (isTrackedGearMoneyProductItem(itemId, goal)) {
+            return false;
+        }
+        if (isGearMoneySaleItem(player, itemId, goal)) {
+            return false;
+        }
         return isGearMoneyClutterItemForBanking(itemId)
                 || isObsoleteGearMoneyPickaxeForBanking(itemId, bestCarriedUsablePickaxeTier(player));
+    }
+
+    static boolean shouldBankExcessGearMoneyFood(int inventoryFood) {
+        return excessGearMoneyFoodCount(inventoryFood) > 0;
+    }
+
+    static int excessGearMoneyFoodCount(int inventoryFood) {
+        return Math.max(0, inventoryFood - GEAR_MONEY_FOOD_BUFFER);
     }
 
     static boolean isObsoleteGearMoneyPickaxeForBanking(int itemId, int bestCarriedUsablePickaxeTier) {
@@ -2560,14 +4538,35 @@ public class AgentActionService {
         return count;
     }
 
+    private static int countInventoryRawGearMoneyMaterials(Player player) {
+        int count = 0;
+        for (int materialItemId : GEAR_MONEY_RAW_MATERIAL_ITEM_IDS) {
+            count += AgentToolService.countInventoryItem(player, materialItemId);
+        }
+        return count;
+    }
+
     private static int countInventoryGearMoneyProducts(Player player) {
+        return countInventoryGearMoneyProducts(player, null);
+    }
+
+    private static int countInventoryGearMoneyProducts(Player player, CombatGoal goal) {
         int count = 0;
         for (SmithingData data : SmithingData.values()) {
-            if (isGearMoneyProductItem(data.getId())) {
+            if (isGearMoneySaleItem(player, data.getId(), goal)) {
                 count += AgentToolService.countInventoryItem(player, data.getId());
             }
         }
         return count;
+    }
+
+    private static int countInventoryProcessedGearMoneyBars(Player player) {
+        return AgentToolService.countInventoryItem(player, BRONZE_BAR)
+                + AgentToolService.countInventoryItem(player, IRON_BAR)
+                + AgentToolService.countInventoryItem(player, STEEL_BAR)
+                + AgentToolService.countInventoryItem(player, MITHRIL_BAR)
+                + AgentToolService.countInventoryItem(player, ADAMANT_BAR)
+                + AgentToolService.countInventoryItem(player, RUNE_BAR);
     }
 
     static int estimatedGearMoneySellCoins(int itemId) {
@@ -2598,7 +4597,7 @@ public class AgentActionService {
         if (itemId == RUNE_BAR) {
             return 3200;
         }
-        if (isGearMoneyProductItem(itemId)) {
+        if (isGearMoneySmithingCandidateItem(itemId)) {
             int shopValue = estimatedGeneralStoreSellCoins(itemId);
             if (shopValue > 0) {
                 return shopValue;
@@ -2642,49 +4641,654 @@ public class AgentActionService {
     }
 
     private static int estimatedInventoryGearMoneyCoins(Player player) {
+        return estimatedInventoryGearMoneyCoins(player, null);
+    }
+
+    private static int estimatedInventoryGearMoneyCoins(Player player, CombatGoal goal) {
         int coins = 0;
-        for (int moneyItemId : GEAR_MONEY_ITEM_IDS) {
-            coins += AgentToolService.countInventoryItem(player, moneyItemId)
-                    * estimatedGearMoneySellCoins(moneyItemId);
-        }
         for (SmithingData data : SmithingData.values()) {
-            coins += AgentToolService.countInventoryItem(player, data.getId())
-                    * estimatedGearMoneySellCoins(data.getId());
+            if (isGearMoneySaleItem(player, data.getId(), goal)) {
+                coins += AgentToolService.countInventoryItem(player, data.getId())
+                        * estimatedGearMoneySellCoins(data.getId());
+            }
+        }
+        if (shouldLiquidateStagedGearMoneyItems(goal)) {
+            coins += estimatedInventoryStagedGearMoneyItemCoins(player);
         }
         return coins;
     }
 
+    private static int estimatedBankGearMoneyCoins(Player player) {
+        return estimatedBankGearMoneyCoins(player, null);
+    }
+
+    private static int estimatedBankGearMoneyCoins(Player player, CombatGoal goal) {
+        int coins = 0;
+        for (SmithingData data : SmithingData.values()) {
+            if (isGearMoneySaleItem(player, data.getId(), goal)) {
+                coins += AgentToolService.countBankItem(player, data.getId())
+                        * estimatedGearMoneySellCoins(data.getId());
+            }
+        }
+        if (shouldLiquidateStagedGearMoneyItems(goal)) {
+            coins += estimatedBankStagedGearMoneyItemCoins(player);
+        }
+        return coins;
+    }
+
+    static boolean shouldLiquidateStagedGearMoneyItemsForTarget(int targetItemId) {
+        for (int itemId : TARGET_ACQUISITION_RAW_LIQUIDATION_ITEM_IDS) {
+            if (targetItemId == itemId) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean shouldLiquidateStagedGearMoneyItems(CombatGoal goal) {
+        return goal != null && shouldLiquidateStagedGearMoneyItemsForTarget(goal.gearMoneyTargetItemId);
+    }
+
+    static int estimatedInventoryStagedGearMoneyItemCoins(Player player) {
+        int coins = 0;
+        for (int itemId : GEAR_MONEY_ITEM_IDS) {
+            coins += AgentToolService.countInventoryItem(player, itemId) * estimatedGearMoneySellCoins(itemId);
+        }
+        return coins;
+    }
+
+    static int estimatedBankStagedGearMoneyItemCoins(Player player) {
+        int coins = 0;
+        for (int itemId : GEAR_MONEY_ITEM_IDS) {
+            coins += AgentToolService.countBankItem(player, itemId) * estimatedGearMoneySellCoins(itemId);
+        }
+        return coins;
+    }
+
+    static int estimatedProcessedGearMoneyPotentialCoins(Player player, int spendableCoins) {
+        return estimatedProcessedGearMoneyPotentialCoins(player, spendableCoins, null);
+    }
+
+    static int estimatedProcessedGearMoneyPotentialCoins(Player player, int spendableCoins, CombatGoal goal) {
+        int smithingLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.SMITHING]);
+        int coins = spendableCoins + estimatedGearMoneyProductCoins(player, goal);
+
+        int bronzeBars = AgentToolService.countInventoryItem(player, BRONZE_BAR)
+                + AgentToolService.countBankItem(player, BRONZE_BAR);
+        int copperOre = AgentToolService.countInventoryItem(player, COPPER_ORE)
+                + AgentToolService.countBankItem(player, COPPER_ORE);
+        int tinOre = AgentToolService.countInventoryItem(player, TIN_ORE)
+                + AgentToolService.countBankItem(player, TIN_ORE);
+        coins += estimatedGearMoneySmithingPotentialSellCoins(smithingLevel, BRONZE_BAR,
+                bronzeBars + Math.min(copperOre, tinOre));
+
+        int ironOre = AgentToolService.countInventoryItem(player, IRON_ORE)
+                + AgentToolService.countBankItem(player, IRON_ORE);
+        int coal = AgentToolService.countInventoryItem(player, COAL) + AgentToolService.countBankItem(player, COAL);
+        int steelBars = AgentToolService.countInventoryItem(player, STEEL_BAR)
+                + AgentToolService.countBankItem(player, STEEL_BAR);
+        if (smithingLevel >= STEEL_SMELTING_SMITHING_LEVEL) {
+            int steelBarsFromOre = Math.min(ironOre, coal / STEEL_COAL_PER_BAR);
+            steelBars += steelBarsFromOre;
+            ironOre -= steelBarsFromOre;
+        }
+        coins += estimatedGearMoneySmithingPotentialSellCoins(smithingLevel, STEEL_BAR, steelBars);
+
+        int ironBars = AgentToolService.countInventoryItem(player, IRON_BAR)
+                + AgentToolService.countBankItem(player, IRON_BAR);
+        if (smithingLevel >= IRON_SMELTING_SMITHING_LEVEL) {
+            ironBars += ironOre;
+        }
+        coins += estimatedGearMoneySmithingPotentialSellCoins(smithingLevel, IRON_BAR, ironBars);
+
+        coins += estimatedGearMoneySmithingPotentialSellCoins(smithingLevel, MITHRIL_BAR,
+                AgentToolService.countInventoryItem(player, MITHRIL_BAR) + AgentToolService.countBankItem(player, MITHRIL_BAR));
+        coins += estimatedGearMoneySmithingPotentialSellCoins(smithingLevel, ADAMANT_BAR,
+                AgentToolService.countInventoryItem(player, ADAMANT_BAR) + AgentToolService.countBankItem(player, ADAMANT_BAR));
+        coins += estimatedGearMoneySmithingPotentialSellCoins(smithingLevel, RUNE_BAR,
+                AgentToolService.countInventoryItem(player, RUNE_BAR) + AgentToolService.countBankItem(player, RUNE_BAR));
+        return coins;
+    }
+
+    private static int estimatedGearMoneyProductCoins(Player player) {
+        return estimatedGearMoneyProductCoins(player, null);
+    }
+
+    private static int estimatedGearMoneyProductCoins(Player player, CombatGoal goal) {
+        int coins = 0;
+        for (SmithingData data : SmithingData.values()) {
+            if (isGearMoneyProductItem(data.getId())
+                    || isStackedGearMoneyProductItem(data.getId(),
+                            AgentToolService.countInventoryItem(player, data.getId())
+                                    + AgentToolService.countBankItem(player, data.getId()))) {
+                coins += (AgentToolService.countInventoryItem(player, data.getId())
+                        + AgentToolService.countBankItem(player, data.getId()))
+                        * estimatedGearMoneySellCoins(data.getId());
+            } else if (isTrackedGearMoneyProductItem(data.getId(), goal)) {
+                coins += (AgentToolService.countInventoryItem(player, data.getId())
+                        + AgentToolService.countBankItem(player, data.getId()))
+                        * estimatedGearMoneySellCoins(data.getId());
+            }
+        }
+        return coins;
+    }
+
+    static int estimatedGearMoneySmithingPotentialSellCoins(int smithingLevel, int barItemId, int availableBars) {
+        if (availableBars <= 0) {
+            return 0;
+        }
+        SmithingChoice choice = bestGearMoneySmithingChoice(smithingLevel, barItemId, availableBars);
+        if (choice == null || choice.getBarsNeeded() <= 0) {
+            return availableBars * estimatedGearMoneySellCoins(barItemId);
+        }
+        int barsNeeded = choice.getBarsNeeded();
+        int productCount = availableBars / barsNeeded;
+        int leftoverBars = availableBars % barsNeeded;
+        return productCount * estimatedGearMoneySellCoins(choice.getItemId())
+                + leftoverBars * estimatedGearMoneySellCoins(barItemId);
+    }
+
+    static boolean shouldSellGearMoneyBatch(int spendableCoins, int carriedGearMoneyValue,
+            int bankedGearMoneyValue, int targetCost) {
+        return spendableCoins + carriedGearMoneyValue + bankedGearMoneyValue >= targetCost;
+    }
+
+    static int gearMoneyLiquidityTargetCost(int gearTargetCost, int pickaxeTargetCost) {
+        if (pickaxeTargetCost <= 0) {
+            return gearTargetCost;
+        }
+        return Math.min(gearTargetCost, pickaxeTargetCost);
+    }
+
+    static boolean shouldBankGearMoneyBatchBeforeTarget(int carriedMoneyItems, int spendableCoins,
+            int carriedGearMoneyValue, int bankedGearMoneyValue, int targetCost) {
+        return carriedMoneyItems > 0
+                && spendableCoins + carriedGearMoneyValue + bankedGearMoneyValue < targetCost;
+    }
+
+    static boolean shouldBankGearMoneyCarryoverBeforeCombat(int carriedMoneyItems, boolean earningGearMoney,
+            boolean gearingUp) {
+        return shouldBankGearMoneyCarryoverBeforeCombat(carriedMoneyItems, earningGearMoney, gearingUp, false);
+    }
+
+    static boolean shouldBankGearMoneyCarryoverBeforeCombat(int carriedMoneyItems, boolean earningGearMoney,
+            boolean gearingUp, boolean preparingTransitCoins) {
+        return carriedMoneyItems > 0 && !earningGearMoney && !gearingUp && !preparingTransitCoins;
+    }
+
+    static boolean shouldStopMiningForFundedGearMoneyProcessing(boolean isMining, boolean processingStarted) {
+        return isMining && processingStarted;
+    }
+
+    static boolean shouldPrepareSteelSmeltingInputs(int smithingLevel, int carriedIronOre, int carriedCoal,
+            int bankedIronOre, int bankedCoal, int freeSlots, int carriedProcessedBars, int carriedProducts,
+            boolean liquidatingForCombat) {
+        return shouldPrepareSteelSmeltingInputs(smithingLevel, carriedIronOre, carriedCoal, bankedIronOre,
+                bankedCoal, freeSlots, carriedProcessedBars, carriedProducts, liquidatingForCombat,
+                Integer.MIN_VALUE, Integer.MIN_VALUE, false);
+    }
+
+    static boolean shouldPrepareSteelSmeltingInputs(int smithingLevel, int carriedIronOre, int carriedCoal,
+            int bankedIronOre, int bankedCoal, int freeSlots, int carriedProcessedBars, int carriedProducts,
+            boolean liquidatingForCombat, int x, int y) {
+        return shouldPrepareSteelSmeltingInputs(smithingLevel, carriedIronOre, carriedCoal, bankedIronOre,
+                bankedCoal, freeSlots, carriedProcessedBars, carriedProducts, liquidatingForCombat, x, y, false);
+    }
+
+    static boolean shouldPrepareSteelSmeltingInputs(int smithingLevel, int carriedIronOre, int carriedCoal,
+            int bankedIronOre, int bankedCoal, int freeSlots, int carriedProcessedBars, int carriedProducts,
+            boolean liquidatingForCombat, int x, int y, boolean processingStarted) {
+        if (liquidatingForCombat || carriedProcessedBars > 0 || carriedProducts > 0
+                || !shouldUseSteelForGearMoney(smithingLevel)) {
+            return false;
+        }
+        int totalIron = carriedIronOre + bankedIronOre;
+        int totalCoal = carriedCoal + bankedCoal;
+        if (Math.min(totalIron, totalCoal / STEEL_COAL_PER_BAR) <= 0) {
+            return false;
+        }
+        if (!processingStarted
+                && shouldDelaySteelCoalPairingForIronBatch(carriedIronOre, carriedCoal, bankedCoal, freeSlots)) {
+            return false;
+        }
+        if (!processingStarted && shouldMineCoalInsteadOfBankingForPairing(carriedIronOre, carriedCoal, freeSlots,
+                x, y)) {
+            return false;
+        }
+        return Math.min(carriedIronOre, carriedCoal / STEEL_COAL_PER_BAR) <= 0
+                || steelCoalNeededForIron(carriedIronOre, carriedCoal) > 0;
+    }
+
+    static boolean shouldUseSteelForGearMoney(int smithingLevel) {
+        return smithingLevel >= STEEL_SMELTING_SMITHING_LEVEL
+                && canSmithGearMoneyProductFromBar(smithingLevel, STEEL_BAR);
+    }
+
+    static int steelCoalNeededForIron(int ironOre, int coal) {
+        return Math.max(0, ironOre * STEEL_COAL_PER_BAR - coal);
+    }
+
+    static boolean shouldDelaySteelCoalPairingForIronBatch(int carriedIronOre, int carriedCoal, int bankedCoal,
+            int freeSlots) {
+        int coalNeeded = steelCoalNeededForIron(carriedIronOre, carriedCoal);
+        if (carriedIronOre <= 0 || coalNeeded <= 0 || freeSlots <= 0) {
+            return false;
+        }
+        if (bankedCoal < coalNeeded) {
+            return true;
+        }
+        if (freeSlots <= coalNeeded) {
+            return false;
+        }
+        return carriedIronOre < targetSteelIronMiningBatch(carriedIronOre, carriedCoal, bankedCoal, freeSlots);
+    }
+
+    static boolean shouldMineCoalInsteadOfBankingForPairing(int carriedIronOre, int carriedCoal, int freeSlots,
+            int x, int y) {
+        int coalNeeded = steelCoalNeededForIron(carriedIronOre, carriedCoal);
+        return coalNeeded > 0 && freeSlots >= coalNeeded && isGearMoneyCoalMine(x, y);
+    }
+
+    static int targetSteelIronMiningBatch(int carriedIronOre, int carriedCoal, int bankedCoal, int freeSlots) {
+        int totalOreSlots = Math.max(0, carriedIronOre) + Math.max(0, carriedCoal) + Math.max(0, freeSlots);
+        int slotLimitedBars = totalOreSlots / (STEEL_COAL_PER_BAR + 1);
+        int coalLimitedBars = (Math.max(0, carriedCoal) + Math.max(0, bankedCoal)) / STEEL_COAL_PER_BAR;
+        int ironSlotLimitedBars = Math.max(0, carriedIronOre) + Math.max(0, freeSlots);
+        return Math.max(1, Math.min(slotLimitedBars, Math.min(coalLimitedBars, ironSlotLimitedBars)));
+    }
+
+    static int targetSteelSmeltingBars(int freeSlots, int availableIronOre, int availableCoal) {
+        if (freeSlots < STEEL_COAL_PER_BAR + 1 || availableIronOre <= 0 || availableCoal < STEEL_COAL_PER_BAR) {
+            return 0;
+        }
+        int slotLimitedBars = freeSlots / (STEEL_COAL_PER_BAR + 1);
+        return Math.min(slotLimitedBars, Math.min(availableIronOre, availableCoal / STEEL_COAL_PER_BAR));
+    }
+
+    static boolean shouldBankGearMoneyMaterialsBeforeProcessing(int productionAction, int carriedMoneyItems,
+            boolean rawSaleBatchReady, boolean processingBatchReady, boolean liquidatingForCombat, int freeSlots,
+            boolean carryingBalancedSteelSmeltingBatch) {
+        return productionAction == GEAR_MONEY_PRODUCTION_SMELT
+                && carriedMoneyItems > 0
+                && !rawSaleBatchReady
+                && !processingBatchReady
+                && !liquidatingForCombat
+                && freeSlots <= 0;
+    }
+
+    static boolean shouldBankNearFullGearMoneyBatchBeforeOreSwitch(int carriedMoneyItems, int freeSlots,
+            String nextOre, int x, int y) {
+        return carriedMoneyItems > 0
+                && freeSlots <= MIN_FREE_SLOTS_BEFORE_BANKING
+                && isAnyGearMoneyMine(x, y)
+                && !isGearMoneyMine(nextOre, x, y);
+    }
+
+    static boolean shouldProcessGearMoneyBatch(boolean processingBatchReady, boolean liquidatingForCombat) {
+        return processingBatchReady || liquidatingForCombat;
+    }
+
+    static boolean shouldProcessGearMoneyBatch(boolean processingBatchReady, boolean liquidatingForCombat,
+            boolean processingStarted) {
+        return shouldProcessGearMoneyBatch(processingBatchReady, liquidatingForCombat) || processingStarted;
+    }
+
+    static boolean isBalancedSteelSmeltingBatch(int ironOre, int coal) {
+        return ironOre > 0 && coal >= ironOre * STEEL_COAL_PER_BAR;
+    }
+
+    static boolean shouldSellReadyGearMoneyBatchBeforeProcessing(int carriedSaleItems, boolean rawSaleBatchReady,
+            int productionAction) {
+        return shouldSellReadyGearMoneyBatchBeforeProcessing(carriedSaleItems, rawSaleBatchReady, productionAction,
+                false, false);
+    }
+
+    static boolean shouldSellReadyGearMoneyBatchBeforeProcessing(int carriedSaleItems, boolean rawSaleBatchReady,
+            int productionAction, boolean processingStarted, boolean bankHasProcessableMaterials) {
+        return carriedSaleItems > 0
+                && rawSaleBatchReady
+                && productionAction == GEAR_MONEY_PRODUCTION_NONE
+                && !shouldFinishStagedMaterialsBeforeSelling(processingStarted, bankHasProcessableMaterials);
+    }
+
+    static boolean shouldWithdrawMoreStoredGearMoneySaleItems(int carriedSaleItems, int bankedSaleItems, int freeSlots,
+            boolean rawSaleBatchReady, boolean processingStarted, boolean bankHasProcessableMaterials) {
+        return carriedSaleItems > 0
+                && bankedSaleItems > 0
+                && freeSlots > 0
+                && (rawSaleBatchReady || processingStarted)
+                && !bankHasProcessableMaterials;
+    }
+
+    static boolean shouldStopMiningForFundedTargetAcquisitionSale(boolean mining, boolean targetAcquisitionSale,
+            boolean rawSaleBatchReady) {
+        return mining && targetAcquisitionSale && rawSaleBatchReady;
+    }
+
+    static boolean shouldWithdrawTargetAcquisitionSaleBatch(boolean targetAcquisitionSale, boolean rawSaleBatchReady,
+            int carriedSaleItems, int bankedSaleItems, int freeSlots) {
+        return targetAcquisitionSale
+                && rawSaleBatchReady
+                && bankedSaleItems > 0
+                && freeSlots > 0;
+    }
+
+    static boolean shouldSellTargetAcquisitionSaleBatch(boolean targetAcquisitionSale, boolean rawSaleBatchReady,
+            int carriedSaleItems) {
+        return targetAcquisitionSale && rawSaleBatchReady && carriedSaleItems > 0;
+    }
+
+    static boolean shouldDelayGearMoneyProductionForFullerLoad(int productionAction, int carriedMoneyItems,
+            int freeSlots, boolean rawSaleBatchReady, boolean processingBatchReady, boolean liquidatingForCombat,
+            boolean carryingBalancedSteelSmeltingBatch, int x, int y) {
+        return shouldDelayGearMoneyProductionForFullerLoad(productionAction, carriedMoneyItems, freeSlots,
+                rawSaleBatchReady, processingBatchReady, liquidatingForCombat, carryingBalancedSteelSmeltingBatch,
+                x, y, false);
+    }
+
+    static boolean shouldDelayGearMoneyProductionForFullerLoad(int productionAction, int carriedMoneyItems,
+            int freeSlots, boolean rawSaleBatchReady, boolean processingBatchReady, boolean liquidatingForCombat,
+            boolean carryingBalancedSteelSmeltingBatch, int x, int y, boolean processingStarted) {
+        return productionAction == GEAR_MONEY_PRODUCTION_SMELT
+                && carriedMoneyItems > 0
+                && freeSlots > 0
+                && !rawSaleBatchReady
+                && !liquidatingForCombat
+                && !carryingBalancedSteelSmeltingBatch
+                && (processingStarted || !processingBatchReady || isGearMoneyIronMine(x, y)
+                        || isGearMoneyCoalMine(x, y));
+    }
+
+    static boolean shouldRememberRawMaterialsBankedAfterProcessingStarted(boolean success, int depositedAmount) {
+        return success && depositedAmount > 0;
+    }
+
+    static boolean shouldBankCarriedMaterialsAfterProcessingStarted(boolean processingStarted, int carriedMoneyItems,
+            int productionAction, int bankedProcessableItems) {
+        return shouldBankCarriedMaterialsAfterProcessingStarted(processingStarted, carriedMoneyItems, productionAction,
+                bankedProcessableItems > 0);
+    }
+
+    static boolean shouldBankCarriedMaterialsAfterProcessingStarted(boolean processingStarted, int carriedMoneyItems,
+            int productionAction, boolean bankHasProcessableMaterials) {
+        return processingStarted
+                && carriedMoneyItems > 0
+                && productionAction == GEAR_MONEY_PRODUCTION_NONE
+                && bankHasProcessableMaterials;
+    }
+
+    static boolean shouldBankCarriedBatchAfterProcessingStarted(boolean processingStarted, int carriedMoneyItems) {
+        return shouldBankCarriedBatchAfterProcessingStarted(processingStarted, carriedMoneyItems, false);
+    }
+
+    static boolean shouldBankCarriedBatchAfterProcessingStarted(boolean processingStarted, int carriedMoneyItems,
+            boolean alreadyBankedAfterProcessingStarted) {
+        return processingStarted && carriedMoneyItems > 0 && !alreadyBankedAfterProcessingStarted;
+    }
+
+    static boolean shouldBankSmeltedBarsBeforeStagedSmithing(int processedBars, boolean hasBankedSmeltableOres,
+            boolean liquidatingForCombat) {
+        return shouldBankSmeltedBarsBeforeStagedSmithing(processedBars, hasBankedSmeltableOres,
+                liquidatingForCombat, false);
+    }
+
+    static boolean shouldBankSmeltedBarsBeforeStagedSmithing(int processedBars, boolean hasBankedSmeltableOres,
+            boolean liquidatingForCombat, boolean processingStarted) {
+        return shouldBankSmeltedBarsBeforeStagedSmithing(processedBars, hasBankedSmeltableOres,
+                liquidatingForCombat, processingStarted, MIN_FREE_SLOTS_BEFORE_BANKING + 1);
+    }
+
+    static boolean shouldBankSmeltedBarsBeforeStagedSmithing(int processedBars, boolean hasBankedSmeltableOres,
+            boolean liquidatingForCombat, boolean processingStarted, int freeSlots) {
+        return processedBars > 0
+                && hasBankedSmeltableOres
+                && !liquidatingForCombat
+                && freeSlots > MIN_FREE_SLOTS_BEFORE_BANKING;
+    }
+
+    static boolean shouldSmithCarriedBarsBeforeResidualSmelting(int productionAction, boolean canSmithBars,
+            int processedBars, int rawMaterials, int freeSlots, boolean processingStarted) {
+        return processingStarted
+                && productionAction == GEAR_MONEY_PRODUCTION_SMELT
+                && canSmithBars
+                && processedBars > 0
+                && rawMaterials <= 0
+                && freeSlots <= MIN_FREE_SLOTS_BEFORE_BANKING;
+    }
+
+    static boolean shouldTopUpGearMoneySmithingBars(int carriedBars, int bankedSameBars, int freeSlots,
+            boolean liquidatingForCombat) {
+        return carriedBars > 0
+                && bankedSameBars > 0
+                && freeSlots > 0
+                && !liquidatingForCombat;
+    }
+
+    static boolean shouldWithdrawBankedGearMoneyMaterialsForProcessing(int carriedMoneyItems,
+            boolean hasBankedSmeltableOres, int bankedProcessableItems, boolean processingBatchReady, int freeSlots) {
+        return shouldWithdrawBankedGearMoneyMaterialsForProcessing(carriedMoneyItems, hasBankedSmeltableOres,
+                bankedProcessableItems, processingBatchReady, freeSlots, false);
+    }
+
+    static boolean shouldWithdrawBankedGearMoneyMaterialsForProcessing(int carriedMoneyItems,
+            boolean hasBankedSmeltableOres, int bankedProcessableItems, boolean processingBatchReady, int freeSlots,
+            boolean processingStarted) {
+        if (carriedMoneyItems > 0 || freeSlots <= 0) {
+            return false;
+        }
+        return hasProcessableGearMoneyMaterials(hasBankedSmeltableOres, bankedProcessableItems)
+                && (processingBatchReady || processingStarted);
+    }
+
+    static boolean hasProcessableGearMoneyMaterials(boolean hasBankedSmeltableOres, int bankedProcessableItems) {
+        return hasBankedSmeltableOres || bankedProcessableItems > 0;
+    }
+
+    static int gearMoneyProcessableWithdrawalItem(boolean hasBankedSmeltableOres, int smeltableOreItemId,
+            int fallbackProcessableItemId) {
+        if (isSteelOrBetterGearMoneyBar(fallbackProcessableItemId)) {
+            return fallbackProcessableItemId;
+        }
+        if (hasBankedSmeltableOres && smeltableOreItemId > 0) {
+            return smeltableOreItemId;
+        }
+        return fallbackProcessableItemId;
+    }
+
+    static boolean isSteelOrBetterGearMoneyBar(int itemId) {
+        return itemId == STEEL_BAR
+                || itemId == MITHRIL_BAR
+                || itemId == ADAMANT_BAR
+                || itemId == RUNE_BAR;
+    }
+
+    static boolean isGearMoneyBar(int itemId) {
+        return itemId == BRONZE_BAR
+                || itemId == IRON_BAR
+                || itemId == STEEL_BAR
+                || itemId == MITHRIL_BAR
+                || itemId == ADAMANT_BAR
+                || itemId == RUNE_BAR;
+    }
+
     private static int countBankGearMoneyItems(Player player) {
+        return countBankGearMoneyItems(player, null);
+    }
+
+    private static int countBankGearMoneyItems(Player player, CombatGoal goal) {
         int count = 0;
-        for (int moneyItemId : GEAR_MONEY_ITEM_IDS) {
-            count += AgentToolService.countBankItem(player, moneyItemId);
+        for (SmithingData data : SmithingData.values()) {
+            if (isGearMoneySaleItem(player, data.getId(), goal)) {
+                count += AgentToolService.countBankItem(player, data.getId());
+            }
+        }
+        if (shouldLiquidateStagedGearMoneyItems(goal)) {
+            count += countBankStagedGearMoneyItems(player);
         }
         return count;
     }
 
     private static int countInventoryGearMoneyClutterItems(Player player) {
-        int count = 0;
+        return countInventoryGearMoneyClutterItems(player, null);
+    }
+
+    private static int countInventoryGearMoneyClutterItems(Player player, CombatGoal goal) {
+        int count = excessGearMoneyFoodCount(AgentToolService.countInventoryFood(player));
         for (int i = 0; i < player.playerItems.length; i++) {
             int storedId = player.playerItems[i];
             if (storedId <= 0) {
                 continue;
             }
             int itemId = storedId - 1;
-            if (isGearMoneyClutterItemForBanking(player, itemId)) {
+            if (isGearMoneyClutterItemForBanking(player, itemId, goal)) {
                 count += Math.max(1, player.playerItemsN[i]);
             }
         }
         return count;
     }
 
+    private static int countBankProcessableGearMoneyItems(Player player) {
+        int itemId = bestBankProcessableGearMoneyItem(player);
+        return itemId <= 0 ? 0 : AgentToolService.countBankItem(player, itemId);
+    }
+
+    private static int countBankProcessedGearMoneyBars(Player player) {
+        return AgentToolService.countBankItem(player, BRONZE_BAR)
+                + AgentToolService.countBankItem(player, IRON_BAR)
+                + AgentToolService.countBankItem(player, STEEL_BAR)
+                + AgentToolService.countBankItem(player, MITHRIL_BAR)
+                + AgentToolService.countBankItem(player, ADAMANT_BAR)
+                + AgentToolService.countBankItem(player, RUNE_BAR);
+    }
+
     private static int bestBankGearMoneyItem(Player player) {
-        for (int i = GEAR_MONEY_ITEM_IDS.length - 1; i >= 0; i--) {
-            int itemId = GEAR_MONEY_ITEM_IDS[i];
-            if (AgentToolService.countBankItem(player, itemId) > 0) {
-                return itemId;
+        return bestBankGearMoneyItem(player, null);
+    }
+
+    private static int bestBankGearMoneyItem(Player player, CombatGoal goal) {
+        int bestItemId = -1;
+        int bestValue = -1;
+        for (SmithingData data : SmithingData.values()) {
+            int itemId = data.getId();
+            if (isGearMoneySaleItem(player, itemId, goal) && AgentToolService.countBankItem(player, itemId) > 0) {
+                int value = estimatedGearMoneySellCoins(itemId);
+                if (value > bestValue) {
+                    bestValue = value;
+                    bestItemId = itemId;
+                }
             }
         }
+        if (shouldLiquidateStagedGearMoneyItems(goal)) {
+            int itemId = bestBankStagedGearMoneyItem(player);
+            int value = itemId <= 0 ? -1 : estimatedGearMoneySellCoins(itemId);
+            if (value > bestValue) {
+                bestItemId = itemId;
+            }
+        }
+        return bestItemId;
+    }
+
+    static int countBankStagedGearMoneyItems(Player player) {
+        int count = 0;
+        for (int itemId : GEAR_MONEY_ITEM_IDS) {
+            count += AgentToolService.countBankItem(player, itemId);
+        }
+        return count;
+    }
+
+    static int bestBankStagedGearMoneyItem(Player player) {
+        int bestItemId = -1;
+        int bestValue = -1;
+        for (int itemId : GEAR_MONEY_ITEM_IDS) {
+            if (AgentToolService.countBankItem(player, itemId) <= 0) {
+                continue;
+            }
+            int value = estimatedGearMoneySellCoins(itemId);
+            if (value > bestValue) {
+                bestValue = value;
+                bestItemId = itemId;
+            }
+        }
+        return bestItemId;
+    }
+
+    private static int bestBankSmeltableGearMoneyOre(Player player) {
+        int smithingLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.SMITHING]);
+        if (smithingLevel >= STEEL_SMELTING_SMITHING_LEVEL
+                && AgentToolService.countBankItem(player, IRON_ORE) > 0
+                && AgentToolService.countBankItem(player, COAL) >= STEEL_COAL_PER_BAR) {
+            return IRON_ORE;
+        }
+        if (smithingLevel >= IRON_SMELTING_SMITHING_LEVEL
+                && AgentToolService.countBankItem(player, IRON_ORE) > 0) {
+            return IRON_ORE;
+        }
+        int copper = AgentToolService.countBankItem(player, COPPER_ORE);
+        int tin = AgentToolService.countBankItem(player, TIN_ORE);
+        if (copper > 0 && tin > 0) {
+            return copper <= tin ? COPPER_ORE : TIN_ORE;
+        }
         return -1;
+    }
+
+    private static int bestBankProcessableGearMoneyItem(Player player) {
+        int smithingLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.SMITHING]);
+        int[] barIds = {RUNE_BAR, ADAMANT_BAR, MITHRIL_BAR, STEEL_BAR, IRON_BAR, BRONZE_BAR};
+        for (int barId : barIds) {
+            int bankedBars = AgentToolService.countBankItem(player, barId);
+            if (shouldUseBankedGearMoneyBarsForProcessing(smithingLevel, barId, bankedBars)) {
+                return barId;
+            }
+        }
+        if (smithingLevel >= IRON_SMELTING_SMITHING_LEVEL && AgentToolService.countBankItem(player, IRON_ORE) > 0) {
+            return IRON_ORE;
+        }
+        return -1;
+    }
+
+    static boolean shouldUseBankedGearMoneyBarsForProcessing(int smithingLevel, int barItemId, int bankedBars) {
+        if (bankedBars <= 0) {
+            return false;
+        }
+        SmithingChoice choice = bestGearMoneySmithingChoice(smithingLevel, barItemId, bankedBars);
+        if (choice == null) {
+            return false;
+        }
+        int preferredBars = Math.max(choice.getBarsNeeded(), bestPotentialGearMoneySmithingBars(smithingLevel, barItemId));
+        return bankedBars >= preferredBars;
+    }
+
+    private static boolean hasBankedSmeltableGearMoneyOres(Player player) {
+        int smithingLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.SMITHING]);
+        if (smithingLevel >= STEEL_SMELTING_SMITHING_LEVEL
+                && AgentToolService.countBankItem(player, IRON_ORE) > 0
+                && AgentToolService.countBankItem(player, COAL) >= STEEL_COAL_PER_BAR) {
+            return true;
+        }
+        if (smithingLevel >= IRON_SMELTING_SMITHING_LEVEL
+                && AgentToolService.countBankItem(player, IRON_ORE) > 0) {
+            return true;
+        }
+        return AgentToolService.countBankItem(player, COPPER_ORE) > 0
+                && AgentToolService.countBankItem(player, TIN_ORE) > 0;
+    }
+
+    static boolean hasBankedSmeltableGearMoneyOresForBar(Player player, int barItemId) {
+        int smithingLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.SMITHING]);
+        if (barItemId == STEEL_BAR) {
+            return smithingLevel >= STEEL_SMELTING_SMITHING_LEVEL
+                    && AgentToolService.countBankItem(player, IRON_ORE) > 0
+                    && AgentToolService.countBankItem(player, COAL) >= STEEL_COAL_PER_BAR;
+        }
+        if (barItemId == IRON_BAR) {
+            return smithingLevel >= IRON_SMELTING_SMITHING_LEVEL
+                    && AgentToolService.countBankItem(player, IRON_ORE) > 0;
+        }
+        if (barItemId == BRONZE_BAR) {
+            return AgentToolService.countBankItem(player, COPPER_ORE) > 0
+                    && AgentToolService.countBankItem(player, TIN_ORE) > 0;
+        }
+        return false;
     }
 
     private static int bestSmithableGearMoneyBar(Player player) {
@@ -2711,19 +5315,26 @@ public class AgentActionService {
         if (choice == null) {
             return false;
         }
-        return shouldSmithGearMoneyBars(bars, choice.getBarsNeeded(), player.getItemAssistant().freeSlots(),
+        int preferredBars = Math.max(choice.getBarsNeeded(), bestPotentialGearMoneySmithingBars(player, barItemId));
+        return shouldSmithGearMoneyBars(bars, choice.getBarsNeeded(), preferredBars, player.getItemAssistant().freeSlots(),
                 liquidatingForCombat);
     }
 
     static boolean shouldSmithGearMoneyBars(int bars, int choiceBarsNeeded, int freeSlots,
             boolean liquidatingForCombat) {
+        return shouldSmithGearMoneyBars(bars, choiceBarsNeeded, choiceBarsNeeded, freeSlots, liquidatingForCombat);
+    }
+
+    static boolean shouldSmithGearMoneyBars(int bars, int choiceBarsNeeded, int preferredBarsNeeded, int freeSlots,
+            boolean liquidatingForCombat) {
         if (bars <= 0 || choiceBarsNeeded <= 0) {
             return false;
         }
+        int batchBarsNeeded = Math.max(choiceBarsNeeded, preferredBarsNeeded);
         return liquidatingForCombat
                 || freeSlots <= MIN_FREE_SLOTS_BEFORE_BANKING
                 || bars >= MIN_BARS_BEFORE_SMITHING
-                || bars >= choiceBarsNeeded;
+                || bars >= batchBarsNeeded;
     }
 
     static int gearMoneyProductionAction(boolean canSmeltOres, boolean canSmithBars) {
@@ -2736,12 +5347,43 @@ public class AgentActionService {
         return GEAR_MONEY_PRODUCTION_NONE;
     }
 
+    static boolean shouldSellGearMoneyProductsBeforeProduction(int gearMoneyProducts, boolean canSmeltOres,
+            boolean canSmithBars) {
+        return shouldSellGearMoneyProductsBeforeProduction(gearMoneyProducts, canSmeltOres, canSmithBars,
+                false, false);
+    }
+
+    static boolean shouldSellGearMoneyProductsBeforeProduction(int gearMoneyProducts, boolean canSmeltOres,
+            boolean canSmithBars, boolean processingStarted, boolean bankHasProcessableMaterials) {
+        return gearMoneyProducts > 0
+                && gearMoneyProductionAction(canSmeltOres, canSmithBars) == GEAR_MONEY_PRODUCTION_NONE
+                && !shouldFinishStagedMaterialsBeforeSelling(processingStarted, bankHasProcessableMaterials);
+    }
+
+    static boolean shouldFinishStagedMaterialsBeforeSelling(boolean processingStarted,
+            boolean bankHasProcessableMaterials) {
+        return processingStarted && bankHasProcessableMaterials;
+    }
+
     private static SmithingChoice bestGearMoneySmithingChoice(Player player, int barItemId) {
         int smithingLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.SMITHING]);
-        int availableBars = AgentToolService.countInventoryItem(player, barItemId);
+        return bestGearMoneySmithingChoice(smithingLevel, barItemId, AgentToolService.countInventoryItem(player, barItemId));
+    }
+
+    private static int bestPotentialGearMoneySmithingBars(Player player, int barItemId) {
+        int smithingLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.SMITHING]);
+        return bestPotentialGearMoneySmithingBars(smithingLevel, barItemId);
+    }
+
+    private static int bestPotentialGearMoneySmithingBars(int smithingLevel, int barItemId) {
+        SmithingChoice choice = bestGearMoneySmithingChoice(smithingLevel, barItemId, Integer.MAX_VALUE);
+        return choice == null ? 0 : choice.getBarsNeeded();
+    }
+
+    private static SmithingChoice bestGearMoneySmithingChoice(int smithingLevel, int barItemId, int availableBars) {
         SmithingChoice best = null;
         for (SmithingChoice choice : AgentSmithingPlanner.smithableItems(smithingLevel, barItemId, availableBars, "")) {
-            if (!isGearMoneyProductItem(choice.getItemId())) {
+            if (!isGearMoneySmithingCandidateItem(choice.getItemId())) {
                 continue;
             }
             if (best == null || isBetterGearMoneySmithingChoice(choice, best, availableBars)) {
@@ -2757,6 +5399,18 @@ public class AgentActionService {
     }
 
     static boolean isBetterGearMoneySmithingItem(int candidateItemId, int currentItemId, int availableBars) {
+        int candidateRequiredLevel = smithingProductRequiredLevel(candidateItemId);
+        int currentRequiredLevel = smithingProductRequiredLevel(currentItemId);
+        if (candidateRequiredLevel != currentRequiredLevel) {
+            return candidateRequiredLevel > currentRequiredLevel;
+        }
+
+        int candidateBars = Math.max(1, smithingProductBars(candidateItemId));
+        int currentBars = Math.max(1, smithingProductBars(currentItemId));
+        if (candidateBars != currentBars) {
+            return candidateBars > currentBars;
+        }
+
         int candidateBatchCoins = estimatedGearMoneySmithingBatchSellCoins(candidateItemId, availableBars);
         int currentBatchCoins = estimatedGearMoneySmithingBatchSellCoins(currentItemId, availableBars);
         if (candidateBatchCoins != currentBatchCoins) {
@@ -2765,8 +5419,6 @@ public class AgentActionService {
 
         int candidateSellCoins = estimatedGearMoneySellCoins(candidateItemId);
         int currentSellCoins = estimatedGearMoneySellCoins(currentItemId);
-        int candidateBars = Math.max(1, smithingProductBars(candidateItemId));
-        int currentBars = Math.max(1, smithingProductBars(currentItemId));
         int candidateValuePerBar = candidateSellCoins * currentBars;
         int currentValuePerBar = currentSellCoins * candidateBars;
         if (candidateValuePerBar != currentValuePerBar) {
@@ -2779,14 +5431,6 @@ public class AgentActionService {
             return candidateBatchXp > currentBatchXp;
         }
 
-        int candidateRequiredLevel = smithingProductRequiredLevel(candidateItemId);
-        int currentRequiredLevel = smithingProductRequiredLevel(currentItemId);
-        if (candidateRequiredLevel != currentRequiredLevel) {
-            return candidateRequiredLevel > currentRequiredLevel;
-        }
-        if (candidateBars != currentBars) {
-            return candidateBars > currentBars;
-        }
         return candidateItemId > currentItemId;
     }
 
@@ -2822,9 +5466,14 @@ public class AgentActionService {
     }
 
     private static boolean shouldSmeltGearMoneyOres(Player player, int barItemId, boolean liquidatingForCombat) {
+        return shouldSmeltGearMoneyOres(player, barItemId, liquidatingForCombat, false);
+    }
+
+    private static boolean shouldSmeltGearMoneyOres(Player player, int barItemId, boolean liquidatingForCombat,
+            boolean processingStarted) {
         int possibleBars = smeltableGearMoneyBars(player, barItemId);
         return shouldSmeltGearMoneyOres(possibleBars, player.getItemAssistant().freeSlots(),
-                isAlKharidSideForGearMoney(player.absX, player.absY), liquidatingForCombat);
+                isAlKharidSideForGearMoney(player.absX, player.absY), liquidatingForCombat, processingStarted);
     }
 
     static boolean shouldSmeltGearMoneyOres(int possibleBars, int freeSlots, boolean onFurnaceSide) {
@@ -2833,11 +5482,17 @@ public class AgentActionService {
 
     static boolean shouldSmeltGearMoneyOres(int possibleBars, int freeSlots, boolean onFurnaceSide,
             boolean liquidatingForCombat) {
+        return shouldSmeltGearMoneyOres(possibleBars, freeSlots, onFurnaceSide, liquidatingForCombat, false);
+    }
+
+    static boolean shouldSmeltGearMoneyOres(int possibleBars, int freeSlots, boolean onFurnaceSide,
+            boolean liquidatingForCombat, boolean processingStarted) {
         if (possibleBars <= 0) {
             return false;
         }
         return liquidatingForCombat
-                || onFurnaceSide && possibleBars >= MIN_BARS_BEFORE_SMITHING
+                || processingStarted
+                || onFurnaceSide
                 || freeSlots <= MIN_FREE_SLOTS_BEFORE_BANKING
                 || possibleBars >= MIN_ORE_SETS_BEFORE_SMELTING;
     }
@@ -2888,11 +5543,15 @@ public class AgentActionService {
     }
 
     private static PickaxeTarget nextPickaxeUpgrade(Player player) {
-        int miningLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.MINING]);
         int spendableCoins = AgentToolService.countInventoryItem(player, COINS)
                 + AgentToolService.countBankItem(player, COINS);
+        return nextPickaxeUpgrade(player, spendableCoins);
+    }
+
+    private static PickaxeTarget nextPickaxeUpgrade(Player player, int availableCoins) {
+        int miningLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.MINING]);
         int currentBestTier = bestOwnedPickaxeTier(player);
-        int itemId = recommendedPickaxeUpgradeId(miningLevel, currentBestTier, spendableCoins);
+        int itemId = recommendedPickaxeUpgradeId(miningLevel, currentBestTier, availableCoins);
         return itemId <= 0 ? null : pickaxeTargetByItemId(itemId);
     }
 
@@ -2913,6 +5572,25 @@ public class AgentActionService {
             }
         }
         return best == null ? -1 : best.itemId;
+    }
+
+    static int recommendedPickaxeMoneyUpgradeId(int miningLevel, int currentBestTier, int spendableCoins) {
+        if (currentBestTier <= 0) {
+            PickaxeTarget starter = pickaxeTargetByItemId(BRONZE_PICKAXE);
+            return starter != null && starter.requiredMiningLevel <= miningLevel
+                    && starter.estimatedPrice > spendableCoins ? starter.itemId : -1;
+        }
+        PickaxeTarget next = null;
+        for (PickaxeTarget target : PICKAXE_TARGETS) {
+            if (target.tier <= currentBestTier || target.requiredMiningLevel > miningLevel
+                    || target.estimatedPrice <= spendableCoins) {
+                continue;
+            }
+            if (next == null || target.tier < next.tier) {
+                next = target;
+            }
+        }
+        return next == null ? -1 : next.itemId;
     }
 
     private static PickaxeTarget pickaxeTargetByItemId(int itemId) {
@@ -2983,13 +5661,209 @@ public class AgentActionService {
 
     static String gearMoneyOreForMiningLevel(int miningLevel, int smithingLevel, int copperCount, int tinCount,
             int ironCount, int coalCount) {
-        if (miningLevel >= 30 && smithingLevel >= STEEL_SMELTING_SMITHING_LEVEL) {
-            return gearMoneySteelOreForCounts(ironCount, coalCount);
+        return gearMoneyOreForMiningLevel(miningLevel, smithingLevel, copperCount, tinCount, ironCount, coalCount, 0,
+                Integer.MIN_VALUE, Integer.MIN_VALUE);
+    }
+
+    static String gearMoneyOreForMiningLevel(int miningLevel, int smithingLevel, int copperCount, int tinCount,
+            int ironCount, int coalCount, int freeSlots, int x, int y) {
+        return gearMoneyOreForMiningLevel(miningLevel, smithingLevel, copperCount, tinCount, ironCount, coalCount,
+                freeSlots, x, y, 0, 0, 0, 0, 0, 0);
+    }
+
+    static String gearMoneyOreForMiningLevel(int miningLevel, int smithingLevel, int copperCount, int tinCount,
+            int ironCount, int coalCount, int freeSlots, int x, int y, int spendableCoins, int targetCost,
+            int productCoins, int bronzeBars, int ironBars, int steelBars) {
+        String targetBatchOre = gearMoneyOreForTargetBatch(miningLevel, smithingLevel, copperCount, tinCount,
+                ironCount, coalCount, freeSlots, x, y, spendableCoins, targetCost, productCoins,
+                bronzeBars, ironBars, steelBars);
+        if (!targetBatchOre.isEmpty()) {
+            return targetBatchOre;
         }
-        if (miningLevel >= 15 && smithingLevel >= IRON_SMELTING_SMITHING_LEVEL) {
+        if (miningLevel >= 30
+                && smithingLevel >= STEEL_SMELTING_SMITHING_LEVEL
+                && canSmithGearMoneyProductFromBar(smithingLevel, STEEL_BAR)) {
+            return gearMoneySteelOreForCounts(ironCount, coalCount, freeSlots, x, y);
+        }
+        if (miningLevel >= 15
+                && smithingLevel >= IRON_SMELTING_SMITHING_LEVEL
+                && canSmithGearMoneyProductFromBar(smithingLevel, IRON_BAR)) {
             return "iron";
         }
         return copperCount <= tinCount ? "copper" : "tin";
+    }
+
+    private static String gearMoneyOreForTargetBatch(int miningLevel, int smithingLevel, int copperCount, int tinCount,
+            int ironCount, int coalCount, int freeSlots, int x, int y, int spendableCoins, int targetCost,
+            int productCoins, int bronzeBars, int ironBars, int steelBars) {
+        int preferredBar = preferredGearMoneyBatchBar(miningLevel, smithingLevel);
+        if (preferredBar <= 0) {
+            return "";
+        }
+        int targetBars = requiredGearMoneyBatchBars(smithingLevel, preferredBar,
+                targetCost - Math.max(0, spendableCoins) - Math.max(0, productCoins));
+        if (targetBars <= 0) {
+            return "";
+        }
+        if (stagedGearMoneyBatchBars(preferredBar, copperCount, tinCount, ironCount, coalCount,
+                bronzeBars, ironBars, steelBars) >= targetBars) {
+            return "";
+        }
+
+        if (preferredBar == STEEL_BAR) {
+            int targetOreBars = Math.max(0, targetBars - Math.max(0, steelBars));
+            return nextBatchMaterialSource(targetOreBars, x, y,
+                    batchMaterialNeed("iron", ironCount, 1),
+                    batchMaterialNeed("coal", coalCount, STEEL_COAL_PER_BAR));
+        }
+        if (preferredBar == IRON_BAR) {
+            int targetOreBars = Math.max(0, targetBars - Math.max(0, ironBars));
+            return nextBatchMaterialSource(targetOreBars, x, y,
+                    batchMaterialNeed("iron", ironCount, 1));
+        }
+        int targetOreBars = Math.max(0, targetBars - Math.max(0, bronzeBars));
+        return nextBatchMaterialSource(targetOreBars, x, y,
+                batchMaterialNeed("copper", copperCount, 1),
+                batchMaterialNeed("tin", tinCount, 1));
+    }
+
+    static boolean isPreferredGearMoneyBatchStaged(Player player, int spendableCoins, int targetCost,
+            int productCoins) {
+        int miningLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.MINING]);
+        int smithingLevel = player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.SMITHING]);
+        return isPreferredGearMoneyBatchStaged(miningLevel, smithingLevel,
+                AgentToolService.countInventoryItem(player, COPPER_ORE) + AgentToolService.countBankItem(player, COPPER_ORE),
+                AgentToolService.countInventoryItem(player, TIN_ORE) + AgentToolService.countBankItem(player, TIN_ORE),
+                AgentToolService.countInventoryItem(player, IRON_ORE) + AgentToolService.countBankItem(player, IRON_ORE),
+                AgentToolService.countInventoryItem(player, COAL) + AgentToolService.countBankItem(player, COAL),
+                AgentToolService.countInventoryItem(player, BRONZE_BAR) + AgentToolService.countBankItem(player, BRONZE_BAR),
+                AgentToolService.countInventoryItem(player, IRON_BAR) + AgentToolService.countBankItem(player, IRON_BAR),
+                AgentToolService.countInventoryItem(player, STEEL_BAR) + AgentToolService.countBankItem(player, STEEL_BAR),
+                spendableCoins, targetCost, productCoins);
+    }
+
+    static boolean isPreferredGearMoneyBatchStaged(int miningLevel, int smithingLevel, int copperCount, int tinCount,
+            int ironCount, int coalCount, int bronzeBars, int ironBars, int steelBars, int spendableCoins,
+            int targetCost, int productCoins) {
+        int preferredBar = preferredGearMoneyBatchBar(miningLevel, smithingLevel);
+        if (preferredBar <= 0) {
+            return true;
+        }
+        int targetBars = requiredGearMoneyBatchBars(smithingLevel, preferredBar,
+                targetCost - Math.max(0, spendableCoins) - Math.max(0, productCoins));
+        return targetBars <= 0 || stagedGearMoneyBatchBars(preferredBar, copperCount, tinCount, ironCount, coalCount,
+                bronzeBars, ironBars, steelBars) >= targetBars;
+    }
+
+    static int requiredGearMoneyBatchBars(int smithingLevel, int barItemId, int remainingCoins) {
+        if (remainingCoins <= 0) {
+            return 0;
+        }
+        int high = 1;
+        while (high < MAX_GEAR_MONEY_TARGET_BATCH_BARS
+                && estimatedGearMoneySmithingPotentialSellCoins(smithingLevel, barItemId, high) < remainingCoins) {
+            high *= 2;
+        }
+        high = Math.min(high, MAX_GEAR_MONEY_TARGET_BATCH_BARS);
+        int low = 1;
+        while (low < high) {
+            int mid = low + ((high - low) / 2);
+            if (estimatedGearMoneySmithingPotentialSellCoins(smithingLevel, barItemId, mid) >= remainingCoins) {
+                high = mid;
+            } else {
+                low = mid + 1;
+            }
+        }
+        return low;
+    }
+
+    static int preferredGearMoneyBatchBar(int miningLevel, int smithingLevel) {
+        if (miningLevel >= 30
+                && smithingLevel >= STEEL_SMELTING_SMITHING_LEVEL
+                && canSmithGearMoneyProductFromBar(smithingLevel, STEEL_BAR)) {
+            return STEEL_BAR;
+        }
+        if (miningLevel >= 15
+                && smithingLevel >= IRON_SMELTING_SMITHING_LEVEL
+                && canSmithGearMoneyProductFromBar(smithingLevel, IRON_BAR)) {
+            return IRON_BAR;
+        }
+        return BRONZE_BAR;
+    }
+
+    static int stagedGearMoneyBatchBars(int barItemId, int copperCount, int tinCount, int ironCount, int coalCount,
+            int bronzeBars, int ironBars, int steelBars) {
+        if (barItemId == STEEL_BAR) {
+            return stagedBatchOutputCount(steelBars,
+                    batchMaterialNeed("iron", ironCount, 1),
+                    batchMaterialNeed("coal", coalCount, STEEL_COAL_PER_BAR));
+        }
+        if (barItemId == IRON_BAR) {
+            return stagedBatchOutputCount(ironBars, batchMaterialNeed("iron", ironCount, 1));
+        }
+        if (barItemId == BRONZE_BAR) {
+            return stagedBatchOutputCount(bronzeBars,
+                    batchMaterialNeed("copper", copperCount, 1),
+                    batchMaterialNeed("tin", tinCount, 1));
+        }
+        return 0;
+    }
+
+    static BatchMaterialNeed batchMaterialNeed(String sourceName, int availableCount, int unitsPerOutput) {
+        return new BatchMaterialNeed(sourceName, availableCount, unitsPerOutput);
+    }
+
+    static int stagedBatchOutputCount(int finishedOutputs, BatchMaterialNeed... needs) {
+        int stagedOutputs = Integer.MAX_VALUE;
+        if (needs == null || needs.length == 0) {
+            stagedOutputs = 0;
+        } else {
+            for (BatchMaterialNeed need : needs) {
+                if (need == null) {
+                    continue;
+                }
+                stagedOutputs = Math.min(stagedOutputs, need.stagedOutputs());
+            }
+            if (stagedOutputs == Integer.MAX_VALUE) {
+                stagedOutputs = 0;
+            }
+        }
+        return Math.max(0, finishedOutputs) + Math.max(0, stagedOutputs);
+    }
+
+    static String nextBatchMaterialSource(int targetOutputs, int x, int y, BatchMaterialNeed... needs) {
+        if (targetOutputs <= 0 || needs == null || needs.length == 0) {
+            return "";
+        }
+        BatchMaterialNeed currentSourceNeed = null;
+        BatchMaterialNeed largestNeed = null;
+        for (BatchMaterialNeed need : needs) {
+            if (need == null || need.deficitUnits(targetOutputs) <= 0) {
+                continue;
+            }
+            if (isGearMoneyMine(need.sourceName(), x, y)) {
+                currentSourceNeed = need;
+            }
+            if (largestNeed == null
+                    || need.deficitUnits(targetOutputs) > largestNeed.deficitUnits(targetOutputs)) {
+                largestNeed = need;
+            }
+        }
+        if (currentSourceNeed != null) {
+            return currentSourceNeed.sourceName();
+        }
+        return largestNeed == null ? "" : largestNeed.sourceName();
+    }
+
+    private static boolean canSmithGearMoneyProductFromBar(int smithingLevel, int barItemId) {
+        for (SmithingData data : SmithingData.values()) {
+            if (data.getLvl() <= smithingLevel
+                    && AgentSmithingPlanner.requiredBarForItem(data.getId()) == barItemId
+                    && isGearMoneySmithingCandidateItem(data.getId())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     static String gearMoneySteelOreForCounts(int ironCount, int coalCount) {
@@ -2999,8 +5873,63 @@ public class AgentActionService {
         return coalCount < ironCount * STEEL_COAL_PER_BAR ? "coal" : "iron";
     }
 
+    static String gearMoneySteelOreForCounts(int ironCount, int coalCount, int freeSlots, int x, int y) {
+        if (freeSlots <= 0) {
+            return gearMoneySteelOreForCounts(ironCount, coalCount);
+        }
+        int totalOreCapacity = Math.max(0, ironCount) + Math.max(0, coalCount) + Math.max(0, freeSlots);
+        int targetBars = Math.max(1, totalOreCapacity / (STEEL_COAL_PER_BAR + 1));
+        int targetIron = targetBars;
+        int targetCoal = targetBars * STEEL_COAL_PER_BAR;
+        if (isGearMoneyCoalMine(x, y) && coalCount < targetCoal) {
+            return "coal";
+        }
+        if (isGearMoneyIronMine(x, y) && ironCount < targetIron) {
+            return "iron";
+        }
+        if (ironCount < targetIron) {
+            return "iron";
+        }
+        if (coalCount < targetCoal) {
+            return "coal";
+        }
+        return gearMoneySteelOreForCounts(ironCount, coalCount);
+    }
+
     static String gearMoneyMineLandmark(String ore) {
         return "coal".equals(ore) ? "varrock east coal mine" : "varrock east mine";
+    }
+
+    static boolean isGearMoneyCoalMine(int x, int y) {
+        return x >= VARROCK_COAL_DANGER_MIN_X && x <= VARROCK_COAL_DANGER_MAX_X + 3
+                && y >= VARROCK_COAL_DANGER_MIN_Y && y <= VARROCK_COAL_DANGER_MAX_Y;
+    }
+
+    static boolean isGearMoneyIronMine(int x, int y) {
+        return x >= 3270 && x <= 3298 && y >= 3350 && y <= 3378;
+    }
+
+    static boolean isAnyGearMoneyMine(int x, int y) {
+        return isGearMoneyCoalMine(x, y) || isGearMoneyIronMine(x, y);
+    }
+
+    static boolean isGearMoneyMine(String ore, int x, int y) {
+        return "coal".equals(ore) ? isGearMoneyCoalMine(x, y) : isGearMoneyIronMine(x, y);
+    }
+
+    static boolean shouldBankGearMoneyClutterBeforeProcessing(int clutterCount, int x, int y) {
+        return clutterCount > 0 && isVarrockGearMoneyBankingCorridor(x, y);
+    }
+
+    static boolean isVarrockGearMoneyBankingCorridor(int x, int y) {
+        return x >= 3180 && x <= 3305 && y >= 3350 && y <= 3435;
+    }
+
+    static String gearMoneyClutterBankLandmark(int x, int y) {
+        if (isAlKharidBankingSideForGearMoney(x, y)) {
+            return "al kharid bank";
+        }
+        return x < 3230 ? "varrock west bank" : "varrock east bank";
     }
 
     static String gearMoneyOreForRouteSafety(String ore, int inventoryFood, int currentHitpoints,
@@ -3017,12 +5946,31 @@ public class AgentActionService {
     }
 
     static boolean isStaleMovementWait(int currentX, int currentY, int lastMovingX, int lastMovingY,
-            int movingWaitSteps) {
-        return currentX == lastMovingX && currentY == lastMovingY && movingWaitSteps >= MAX_MOVING_WAIT_STEPS;
+            int stationaryMovingWaitSteps) {
+        return currentX == lastMovingX && currentY == lastMovingY
+                && stationaryMovingWaitSteps >= MAX_STATIONARY_MOVING_WAIT_STEPS;
     }
 
     static boolean isExceededMovementWait(int movingWaitSteps) {
         return movingWaitSteps >= MAX_MOVING_WAIT_STEPS;
+    }
+
+    static boolean isRouteOscillation(int currentX, int currentY, int previousX, int previousY,
+            int beforePreviousX, int beforePreviousY) {
+        return currentX == beforePreviousX && currentY == beforePreviousY
+                && (currentX != previousX || currentY != previousY);
+    }
+
+    static boolean shouldBlockRouteOscillation(int reversalCount) {
+        return reversalCount >= MAX_ROUTE_OSCILLATION_REVERSALS;
+    }
+
+    static boolean isRouteStale(int currentX, int currentY, int previousX, int previousY, int staleSteps) {
+        return currentX == previousX && currentY == previousY && staleSteps >= MAX_ROUTE_STALE_STEPS;
+    }
+
+    static boolean shouldBlockRouteStale(int staleSteps) {
+        return staleSteps >= MAX_ROUTE_STALE_STEPS;
     }
 
     static boolean shouldDeferPickaxeRoute(int noMoveAttempts) {
@@ -3083,7 +6031,10 @@ public class AgentActionService {
     }
 
     static String supplyBankLandmark(String trainingArea, int x, int y, boolean restockingFood) {
-        if (x >= 3230 && x <= 3310 && y >= 3300 && y < 3425) {
+        if (isAlKharidBankingSideForGearMoney(x, y)) {
+            return "al kharid bank";
+        }
+        if (x >= 3230 && x <= 3310 && y >= 3300 && y <= 3435) {
             return "varrock east bank";
         }
         if (restockingFood && x >= 3200 && x <= 3310 && y < 3425) {
@@ -3124,6 +6075,13 @@ public class AgentActionService {
         }
         int attackerIndex = activeCombatNpcIndex(player);
         if (attackerIndex > 0 && player.playerLevel[Constants.HITPOINTS] > retreatAt) {
+            if (shouldWaitForActiveCombatThreatClearance(attackerIndex, player.npcIndex, player.killingNpcIndex,
+                    player.underAttackBy, player.underAttackBy2, isLiveNpc(attackerIndex))) {
+                JsonObject result = AgentToolService.success(prefix
+                        + ": already clearing attacker before non-combat work; waiting for combat to resolve.");
+                result.add("state", AgentToolService.observeState(player));
+                return result;
+            }
             JsonObject attackArgs = new JsonObject();
             attackArgs.addProperty("npcIndex", attackerIndex);
             JsonObject result = AgentToolService.handle(player, "attack_npc", attackArgs);
@@ -3137,6 +6095,23 @@ public class AgentActionService {
         String message = getString(result, "message", "Walking to safety.");
         result.addProperty("message", prefix + ": escaping combat before non-combat work: " + message);
         return result;
+    }
+
+    static boolean shouldWaitForActiveCombatThreatClearance(int attackerIndex, int npcIndex, int killingNpcIndex,
+            int underAttackBy, int underAttackBy2, boolean liveNpc) {
+        return liveNpc
+                && attackerIndex > 0
+                && (npcIndex == attackerIndex || killingNpcIndex == attackerIndex)
+                && (killingNpcIndex == attackerIndex || underAttackBy == attackerIndex
+                        || underAttackBy2 == attackerIndex);
+    }
+
+    private static boolean isLiveNpc(int npcIndex) {
+        if (npcIndex <= 0 || npcIndex >= NpcHandler.npcs.length) {
+            return false;
+        }
+        Npc npc = NpcHandler.npcs[npcIndex];
+        return npc != null && !npc.isDead && npc.HP > 0;
     }
 
     static boolean shouldRetreatNonCombatThreatForFood(int currentHitpoints, int maxHitpoints, int inventoryFood,
@@ -3215,7 +6190,8 @@ public class AgentActionService {
         String lower = message == null ? "" : message.toLowerCase();
         return lower.contains("repositioning to continue combat")
                 || lower.contains("walking into melee range to attack")
-                || lower.contains("reacquiring combat target");
+                || lower.contains("reacquiring combat target")
+                || (lower.contains("no suitable") && lower.contains("moving toward"));
     }
 
     private void logGoalEvent(AgentSession session, String event, CombatGoal goal, JsonObject result) {
@@ -3245,6 +6221,15 @@ public class AgentActionService {
             return object.get(name).getAsJsonObject();
         }
         return null;
+    }
+
+    private static JsonObject resultPlayer(JsonObject result) {
+        JsonObject player = jsonObject(result, "player");
+        if (player != null) {
+            return player;
+        }
+        JsonObject state = jsonObject(result, "state");
+        return jsonObject(state, "player");
     }
 
     private static String getString(JsonObject object, String name, String fallback) {
@@ -3281,6 +6266,119 @@ public class AgentActionService {
             }
         }
         return fallback;
+    }
+
+    static final class TargetAcquisitionPlan {
+        private final int itemId;
+        private final String targetName;
+        private final int targetCount;
+        private final int currentCount;
+        private final int freeSlots;
+        private final int carriedSaleItems;
+        private final int inventoryCoins;
+        private final int bankCoins;
+        private final int entryCost;
+        private final int reserveCoins;
+        private final int unitCost;
+        private final int minimumFloat;
+        private final boolean canMakeMoney;
+
+        private TargetAcquisitionPlan(int itemId, String targetName, int targetCount, int currentCount,
+                int freeSlots, int carriedSaleItems, int inventoryCoins, int bankCoins, int entryCost,
+                int reserveCoins, int unitCost, int minimumFloat, boolean canMakeMoney) {
+            this.itemId = itemId;
+            this.targetName = targetName == null ? "" : targetName;
+            this.targetCount = Math.max(0, targetCount);
+            this.currentCount = Math.max(0, currentCount);
+            this.freeSlots = Math.max(0, freeSlots);
+            this.carriedSaleItems = Math.max(0, carriedSaleItems);
+            this.inventoryCoins = Math.max(0, inventoryCoins);
+            this.bankCoins = Math.max(0, bankCoins);
+            this.entryCost = Math.max(0, entryCost);
+            this.reserveCoins = Math.max(0, reserveCoins);
+            this.unitCost = Math.max(1, unitCost);
+            this.minimumFloat = Math.max(0, minimumFloat);
+            this.canMakeMoney = canMakeMoney;
+        }
+
+        int itemId() {
+            return itemId;
+        }
+
+        String targetName() {
+            return targetName;
+        }
+
+        int effectiveFreeSlots() {
+            return targetAcquisitionEffectiveFreeSlots(freeSlots, carriedSaleItems);
+        }
+
+        int desiredBatchAmount() {
+            return targetAcquisitionBatchAmount(targetCount, currentCount, effectiveFreeSlots());
+        }
+
+        int immediateBatchAmount() {
+            return targetAcquisitionBatchAmount(targetCount, currentCount, freeSlots);
+        }
+
+        int affordableBatchAmount() {
+            return targetAcquisitionBatchAmount(targetCount, currentCount, freeSlots, unitCost, reserveCoins,
+                    inventoryCoins);
+        }
+
+        int requiredCoins() {
+            return targetAcquisitionRequiredCoins(targetCount, currentCount, effectiveFreeSlots(), entryCost,
+                    reserveCoins, unitCost, minimumFloat);
+        }
+
+        int coinFloat() {
+            return targetAcquisitionCoinFloat(targetCount, currentCount, freeSlots, inventoryCoins, bankCoins,
+                    entryCost, reserveCoins, unitCost, minimumFloat);
+        }
+
+        boolean shouldEarnMoneyBeforeTrip() {
+            return shouldEarnMoneyForTargetAcquisition(currentCount, targetCount, inventoryCoins,
+                    bankCoins, requiredCoins(), canMakeMoney);
+        }
+
+        boolean shouldDelayTripForFundedBatch() {
+            return shouldDelayTargetAcquisitionTripForFundedBatch(currentCount, targetCount, inventoryCoins,
+                    bankCoins, requiredCoins(), canMakeMoney);
+        }
+
+        boolean hasEnoughCoinsForTrip() {
+            return inventoryCoins + bankCoins >= requiredCoins();
+        }
+
+        boolean shouldSellCarriedItemsBeforeShopTrip() {
+            return carriedSaleItems > 0
+                    && desiredBatchAmount() > immediateBatchAmount()
+                    && inventoryCoins + bankCoins >= requiredCoins();
+        }
+    }
+
+    static final class BatchMaterialNeed {
+        private final String sourceName;
+        private final int availableCount;
+        private final int unitsPerOutput;
+
+        private BatchMaterialNeed(String sourceName, int availableCount, int unitsPerOutput) {
+            this.sourceName = sourceName == null ? "" : sourceName;
+            this.availableCount = Math.max(0, availableCount);
+            this.unitsPerOutput = Math.max(1, unitsPerOutput);
+        }
+
+        String sourceName() {
+            return sourceName;
+        }
+
+        int stagedOutputs() {
+            return availableCount / unitsPerOutput;
+        }
+
+        int deficitUnits(int targetOutputs) {
+            return Math.max(0, Math.max(0, targetOutputs) * unitsPerOutput - availableCount);
+        }
     }
 
     private static class GearTarget {
@@ -3407,9 +6505,26 @@ public class AgentActionService {
         private int gearMoneyCoinsEarned;
         private int gearMoneyTargetCoins;
         private int movingWaitSteps;
+        private int stationaryMovingWaitSteps;
         private int lastMovingX = Integer.MIN_VALUE;
         private int lastMovingY = Integer.MIN_VALUE;
         private int movingStallRecoveries;
+        private String routeWatchLandmark = "";
+        private int routeWatchTargetX = Integer.MIN_VALUE;
+        private int routeWatchTargetY = Integer.MIN_VALUE;
+        private int routeWatchPreviousX = Integer.MIN_VALUE;
+        private int routeWatchPreviousY = Integer.MIN_VALUE;
+        private int routeWatchBeforePreviousX = Integer.MIN_VALUE;
+        private int routeWatchBeforePreviousY = Integer.MIN_VALUE;
+        private int routeOscillationReversals;
+        private int routeOscillationRecoveries;
+        private String routeOscillationLandmark = "";
+        private int routeWatchStaleSteps;
+        private int routeStaleRecoveries;
+        private String routeStaleLandmark = "";
+        private int miningClickWaitUntilTick;
+        private int miningClickWaits;
+        private int localMiningRespawnWaits;
         private int pickaxeRouteItemId;
         private int pickaxeRouteX = Integer.MIN_VALUE;
         private int pickaxeRouteY = Integer.MIN_VALUE;
@@ -3434,13 +6549,20 @@ public class AgentActionService {
         private int lastLoggedGearMoneyItemsSold;
         private int lastLoggedGearMoneyCoinsEarned;
         private int lastLoggedMovingStallRecoveries;
+        private int lastLoggedRouteOscillationRecoveries;
+        private int lastLoggedRouteStaleRecoveries;
+        private int lastLoggedMiningClickWaits;
         private int lastLoggedPickaxeRouteDeferrals;
         private int lastGearAttemptAction = -GEAR_CHECK_INTERVAL_ACTIONS;
         private int gearCombatCancelAttempts;
         private int gearTargetItemId;
         private String gearTargetName = "";
         private int gearMoneyTargetItemId;
+        private int gearMoneyPickaxeTargetItemId;
         private String gearMoneyTargetName = "";
+        private int gearMoneyCraftedProductItemId;
+        private boolean gearMoneyProcessingStarted;
+        private boolean gearMoneyRawMaterialsBankedAfterProcessingStarted;
         private String status = "running";
         private String message = "Combat goal is running.";
         private boolean bankingSupplies;
@@ -3534,17 +6656,67 @@ public class AgentActionService {
             earningGearMoney = true;
             gearingUp = false;
             gearMoneyTargetItemId = target.itemId;
+            gearMoneyPickaxeTargetItemId = 0;
             gearMoneyTargetName = target.itemName();
-            gearMoneyTargetCoins = target.estimatedPrice;
+            gearMoneyTargetCoins = estimatedGearAcquisitionCost(target);
             gearTargetItemId = target.itemId;
             gearTargetName = target.itemName();
+        }
+
+        private void beginTargetMoney(int itemId, String targetName, int targetCoins) {
+            earningGearMoney = true;
+            gearingUp = false;
+            gearMoneyTargetItemId = itemId;
+            gearMoneyPickaxeTargetItemId = 0;
+            gearMoneyTargetName = targetName == null ? "" : targetName;
+            gearMoneyTargetCoins = Math.max(1, targetCoins);
+            gearTargetItemId = 0;
+            gearTargetName = "";
+        }
+
+        private void beginPickaxeMoney(PickaxeTarget target) {
+            earningGearMoney = true;
+            gearingUp = false;
+            gearMoneyTargetItemId = 0;
+            gearMoneyPickaxeTargetItemId = target.itemId;
+            gearMoneyTargetName = target.itemName();
+            gearMoneyTargetCoins = target.estimatedPrice;
+            gearTargetItemId = 0;
+            gearTargetName = "";
         }
 
         private void clearGearMoney() {
             earningGearMoney = false;
             gearMoneyTargetItemId = 0;
+            gearMoneyPickaxeTargetItemId = 0;
             gearMoneyTargetName = "";
             gearMoneyTargetCoins = 0;
+            gearMoneyCraftedProductItemId = 0;
+            gearMoneyProcessingStarted = false;
+            gearMoneyRawMaterialsBankedAfterProcessingStarted = false;
+        }
+
+        private void rememberGearMoneyProcessingStarted() {
+            gearMoneyProcessingStarted = true;
+        }
+
+        private void rememberGearMoneyRawMaterialsBankedAfterProcessingStarted() {
+            if (gearMoneyProcessingStarted) {
+                gearMoneyRawMaterialsBankedAfterProcessingStarted = true;
+            }
+        }
+
+        private void rememberGearMoneyCraftedProduct(int itemId) {
+            if (isGearMoneySmithingCandidateItem(itemId)) {
+                gearMoneyCraftedProductItemId = itemId;
+            }
+        }
+
+        private void clearGearMoneyCraftedProductIfGone(Player player) {
+            if (gearMoneyCraftedProductItemId > 0
+                    && AgentToolService.countInventoryItem(player, gearMoneyCraftedProductItemId) <= 0) {
+                gearMoneyCraftedProductItemId = 0;
+            }
         }
 
         private boolean targetReached() {
@@ -3606,16 +6778,131 @@ public class AgentActionService {
             if (lastMovingX != player.absX || lastMovingY != player.absY) {
                 lastMovingX = player.absX;
                 lastMovingY = player.absY;
+                stationaryMovingWaitSteps = 0;
                 return true;
             }
-            return !isStaleMovementWait(player.absX, player.absY, lastMovingX, lastMovingY, movingWaitSteps);
+            stationaryMovingWaitSteps++;
+            return !isStaleMovementWait(player.absX, player.absY, lastMovingX, lastMovingY,
+                    stationaryMovingWaitSteps);
         }
 
         private void recoverFromMovementStall(Player player) {
             movingWaitSteps = 0;
+            stationaryMovingWaitSteps = 0;
             lastMovingX = player.absX;
             lastMovingY = player.absY;
             movingStallRecoveries++;
+        }
+
+        private boolean shouldWaitForMiningClick() {
+            return ticksElapsed < miningClickWaitUntilTick;
+        }
+
+        private void rememberMiningClickWait(JsonObject result) {
+            int cooldownTicks = getInt(result, "cooldownTicks", 0);
+            if (cooldownTicks <= 0) {
+                return;
+            }
+            miningClickWaits++;
+            miningClickWaitUntilTick = Math.max(miningClickWaitUntilTick, ticksElapsed + cooldownTicks);
+        }
+
+        private boolean shouldWaitForLocalMiningRespawn() {
+            return localMiningRespawnWaits < MAX_LOCAL_MINING_RESPAWN_WAITS;
+        }
+
+        private void rememberLocalMiningRespawnWait(JsonObject result) {
+            if (getBoolean(result, "waitingForLocalRespawn", false)) {
+                localMiningRespawnWaits++;
+                return;
+            }
+            localMiningRespawnWaits = 0;
+        }
+
+        private boolean recordRouteProgressAndShouldBlock(JsonObject result) {
+            String landmark = getString(result, "landmark", "");
+            if (landmark.isEmpty() || getBoolean(result, "complete", false)) {
+                clearRouteWatch();
+                return false;
+            }
+            JsonObject player = resultPlayer(result);
+            JsonObject target = jsonObject(result, "target");
+            if (player == null || target == null) {
+                return false;
+            }
+            int x = getInt(player, "x", Integer.MIN_VALUE);
+            int y = getInt(player, "y", Integer.MIN_VALUE);
+            int targetX = getInt(target, "x", Integer.MIN_VALUE);
+            int targetY = getInt(target, "y", Integer.MIN_VALUE);
+            if (x == Integer.MIN_VALUE || y == Integer.MIN_VALUE
+                    || targetX == Integer.MIN_VALUE || targetY == Integer.MIN_VALUE) {
+                clearRouteWatch();
+                return false;
+            }
+            if (!landmark.equals(routeWatchLandmark) || targetX != routeWatchTargetX || targetY != routeWatchTargetY) {
+                routeWatchLandmark = landmark;
+                routeWatchTargetX = targetX;
+                routeWatchTargetY = targetY;
+                routeWatchPreviousX = x;
+                routeWatchPreviousY = y;
+                routeWatchBeforePreviousX = Integer.MIN_VALUE;
+                routeWatchBeforePreviousY = Integer.MIN_VALUE;
+                routeOscillationReversals = 0;
+                routeWatchStaleSteps = 0;
+                return false;
+            }
+
+            boolean oscillating = routeWatchBeforePreviousX != Integer.MIN_VALUE
+                    && isRouteOscillation(x, y, routeWatchPreviousX, routeWatchPreviousY,
+                            routeWatchBeforePreviousX, routeWatchBeforePreviousY);
+            boolean stalePosition = x == routeWatchPreviousX && y == routeWatchPreviousY;
+            if (oscillating) {
+                routeOscillationReversals++;
+                routeOscillationRecoveries++;
+                routeOscillationLandmark = landmark;
+                routeWatchStaleSteps = 0;
+                result.addProperty("routeOscillationDetected", true);
+                result.addProperty("routeOscillationReversals", routeOscillationReversals);
+            } else if (stalePosition) {
+                routeWatchStaleSteps++;
+                result.addProperty("routeStaleSteps", routeWatchStaleSteps);
+            } else if (x != routeWatchPreviousX || y != routeWatchPreviousY) {
+                routeOscillationReversals = 0;
+                routeWatchStaleSteps = 0;
+            }
+            boolean staleBlocked = stalePosition
+                    && isRouteStale(x, y, routeWatchPreviousX, routeWatchPreviousY, routeWatchStaleSteps);
+            routeWatchBeforePreviousX = routeWatchPreviousX;
+            routeWatchBeforePreviousY = routeWatchPreviousY;
+            routeWatchPreviousX = x;
+            routeWatchPreviousY = y;
+
+            if (shouldBlockRouteOscillation(routeOscillationReversals)) {
+                block("Route oscillation detected while traveling to " + landmark + " around tile "
+                        + x + "," + y + "; stopping the durable goal instead of running back and forth.");
+                return true;
+            }
+            if (staleBlocked) {
+                routeStaleRecoveries++;
+                routeStaleLandmark = landmark;
+                result.addProperty("routeStaleDetected", true);
+                block("Route stalled while traveling to " + landmark + " at tile "
+                        + x + "," + y + "; stopping the durable goal instead of repeating the same walk.");
+                return true;
+            }
+            return false;
+        }
+
+        private void clearRouteWatch() {
+            routeWatchLandmark = "";
+            routeWatchTargetX = Integer.MIN_VALUE;
+            routeWatchTargetY = Integer.MIN_VALUE;
+            routeWatchPreviousX = Integer.MIN_VALUE;
+            routeWatchPreviousY = Integer.MIN_VALUE;
+            routeWatchBeforePreviousX = Integer.MIN_VALUE;
+            routeWatchBeforePreviousY = Integer.MIN_VALUE;
+            routeOscillationReversals = 0;
+            routeWatchStaleSteps = 0;
         }
 
         private void complete(String message) {
@@ -3657,6 +6944,9 @@ public class AgentActionService {
                     || gearMoneyItemsSold != lastLoggedGearMoneyItemsSold
                     || gearMoneyCoinsEarned != lastLoggedGearMoneyCoinsEarned
                     || movingStallRecoveries != lastLoggedMovingStallRecoveries
+                    || routeOscillationRecoveries != lastLoggedRouteOscillationRecoveries
+                    || routeStaleRecoveries != lastLoggedRouteStaleRecoveries
+                    || miningClickWaits != lastLoggedMiningClickWaits
                     || pickaxeRouteDeferrals != lastLoggedPickaxeRouteDeferrals) {
                 rememberLoggedSupplies();
                 return true;
@@ -3691,6 +6981,9 @@ public class AgentActionService {
             lastLoggedGearMoneyItemsSold = gearMoneyItemsSold;
             lastLoggedGearMoneyCoinsEarned = gearMoneyCoinsEarned;
             lastLoggedMovingStallRecoveries = movingStallRecoveries;
+            lastLoggedRouteOscillationRecoveries = routeOscillationRecoveries;
+            lastLoggedRouteStaleRecoveries = routeStaleRecoveries;
+            lastLoggedMiningClickWaits = miningClickWaits;
             lastLoggedPickaxeRouteDeferrals = pickaxeRouteDeferrals;
         }
 
@@ -3741,6 +7034,18 @@ public class AgentActionService {
             json.addProperty("gearMoneyCoinsEarned", gearMoneyCoinsEarned);
             json.addProperty("gearMoneyTargetCoins", gearMoneyTargetCoins);
             json.addProperty("movingStallRecoveries", movingStallRecoveries);
+            json.addProperty("routeOscillationRecoveries", routeOscillationRecoveries);
+            if (!routeOscillationLandmark.isEmpty()) {
+                json.addProperty("routeOscillationLandmark", routeOscillationLandmark);
+            }
+            json.addProperty("routeStaleRecoveries", routeStaleRecoveries);
+            if (!routeStaleLandmark.isEmpty()) {
+                json.addProperty("routeStaleLandmark", routeStaleLandmark);
+            }
+            json.addProperty("miningClickWaits", miningClickWaits);
+            if (ticksElapsed < miningClickWaitUntilTick) {
+                json.addProperty("miningClickWaitTicksRemaining", miningClickWaitUntilTick - ticksElapsed);
+            }
             json.addProperty("pickaxeRouteDeferrals", pickaxeRouteDeferrals);
             if (deferredPickaxeItemId > 0 && actionsRun < deferredPickaxeUntilAction) {
                 json.addProperty("deferredPickaxeItemId", deferredPickaxeItemId);
@@ -3755,6 +7060,16 @@ public class AgentActionService {
                 json.addProperty("gearMoneyTargetItemId", gearMoneyTargetItemId);
                 json.addProperty("gearMoneyTargetName", gearMoneyTargetName);
             }
+            if (gearMoneyPickaxeTargetItemId > 0) {
+                json.addProperty("gearMoneyPickaxeTargetItemId", gearMoneyPickaxeTargetItemId);
+                json.addProperty("gearMoneyTargetName", gearMoneyTargetName);
+            }
+            if (gearMoneyCraftedProductItemId > 0) {
+                json.addProperty("gearMoneyCraftedProductItemId", gearMoneyCraftedProductItemId);
+            }
+            json.addProperty("gearMoneyProcessingStarted", gearMoneyProcessingStarted);
+            json.addProperty("gearMoneyRawMaterialsBankedAfterProcessingStarted",
+                    gearMoneyRawMaterialsBankedAfterProcessingStarted);
             json.addProperty("fixedArea", fixedArea);
             json.addProperty("fixedStyle", fixedStyle);
             if (!area.isEmpty()) {
