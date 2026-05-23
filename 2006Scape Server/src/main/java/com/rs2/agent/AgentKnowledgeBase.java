@@ -90,6 +90,8 @@ public class AgentKnowledgeBase {
         add(new Landmark("seddu adventurer store", tile(3407, 2921, 0), nardahAdventurerStoreRoute()));
         add(new Landmark("oziach rune armour", tile(3069, 3517, 0), oziachRuneArmourRoute()));
         add(new Landmark("oziach", tile(3069, 3517, 0), oziachRuneArmourRoute()));
+        add(new Landmark("falador west bank", tile(2946, 3368, 0), faladorWestBankRoute(), BANK_ARRIVAL_RADIUS));
+        add(new Landmark("falador bank", tile(2946, 3368, 0), faladorWestBankRoute(), BANK_ARRIVAL_RADIUS));
         add(new Landmark("falador shield shop", tile(2974, 3383, 0), faladorShieldShopRoute()));
         add(new Landmark("falador white knights", tile(2977, 3343, 0), faladorWhiteKnightsRoute()));
         add(new Landmark("white knights", tile(2977, 3343, 0), faladorWhiteKnightsRoute()));
@@ -413,7 +415,9 @@ public class AgentKnowledgeBase {
     }
 
     private static Tile westernSurfaceRoadRecovery(int x, int y, int height, List<Tile> route) {
-        if (height != 0 || !usesWesternSurfaceRoadRecovery(route)) {
+        boolean varrockWestBankFaladorPocket = routeEndsAt(route, tile(3185, 3436, 0))
+                && x >= 2990 && x <= 3035 && y >= 3380 && y < 3415;
+        if (height != 0 || !usesWesternSurfaceRoadRecovery(route) && !varrockWestBankFaladorPocket) {
             return null;
         }
         if (x >= 2930 && x <= 2965 && y >= 3440 && y <= 3515) {
@@ -423,7 +427,13 @@ public class AgentKnowledgeBase {
             return distance(x, y, 2990, 3429) > 4 ? tile(2990, 3429, 0) : tile(3022, 3429, 0);
         }
         if (x >= 2990 && x <= 3035 && y >= 3380 && y < 3415) {
-            return distance(x, y, 3005, 3404) > 4 ? tile(3005, 3404, 0) : tile(3023, 3420, 0);
+            if (y < 3404) {
+                if (x < 3021) {
+                    return tile(3021, 3394, 0);
+                }
+                return tile(3021, 3404, 0);
+            }
+            return tile(3023, 3420, 0);
         }
         if (x >= 2990 && x <= 3035 && y >= 3415 && y <= 3440) {
             if (x > 3026) {
@@ -482,7 +492,16 @@ public class AgentKnowledgeBase {
             return distance(x, y, 3040, 3428) > 4 ? tile(3040, 3428, 0) : tile(3023, 3420, 0);
         }
         if (x >= 2990 && x < 3035 && y >= 3415 && y <= 3440) {
-            return distance(x, y, 3023, 3420) > 4 ? tile(3023, 3420, 0) : tile(3005, 3404, 0);
+            if (x > 3025) {
+                return tile(3023, 3420, 0);
+            }
+            if (x >= 3016 && y < 3427) {
+                return tile(3022, 3429, 0);
+            }
+            if (x > 2994) {
+                return tile(2990, 3429, 0);
+            }
+            return tile(2965, 3392, 0);
         }
         return null;
     }
@@ -533,10 +552,14 @@ public class AgentKnowledgeBase {
         if (height != 0 || !routeEndsAt(route, tile(3253, 3420, 0))) {
             return null;
         }
-        if (x >= 3298 && x <= 3310 && y >= 3310 && y < 3324) {
-            return tile(3295, 3317, 0);
+        if (x >= 3292 && x <= 3310 && y >= 3275 && y <= 3330) {
+            return tile(3285, Math.min(3325, Math.max(3283, y)), 0);
         }
-        if (x >= 3288 && x < 3298 && y >= 3310 && y < 3330) {
+        if (x >= 3260 && x < 3292 && y >= 3270 && y < 3310) {
+            Tile safeRoad = tile(3261, 3322, 0);
+            return routeContains(route, safeRoad) ? safeRoad : null;
+        }
+        if (x >= 3280 && x < 3298 && y >= 3310 && y < 3330) {
             Tile northRoad = tile(3280, 3343, 0);
             return routeContains(route, northRoad) ? northRoad : null;
         }
@@ -1005,6 +1028,14 @@ public class AgentKnowledgeBase {
         List<Tile> route = new ArrayList<Tile>(faladorShieldShopRoute());
         route.add(tile(2974, 3365, 0));
         route.add(tile(2977, 3343, 0));
+        return route;
+    }
+
+    private static List<Tile> faladorWestBankRoute() {
+        List<Tile> route = new ArrayList<Tile>(faladorShieldShopRoute());
+        route.add(tile(2974, 3365, 0));
+        route.add(tile(2950, 3369, 0));
+        route.add(tile(2946, 3368, 0));
         return route;
     }
 

@@ -82,6 +82,24 @@ public class AgentActionServiceTest {
     }
 
     @Test
+    public void durableGoalPromotesNestedStatePlayerForConsistentProgressLogs() {
+        JsonObject player = new JsonObject();
+        player.addProperty("x", 3303);
+        player.addProperty("y", 3300);
+
+        JsonObject state = new JsonObject();
+        state.add("player", player);
+
+        JsonObject result = AgentToolService.success("continuing");
+        result.add("state", state);
+
+        JsonObject loggable = AgentActionService.loggableGoalResult(result);
+        assertTrue(loggable.has("player"));
+        assertEquals(3303, loggable.getAsJsonObject("player").get("x").getAsInt());
+        assertFalse(result.has("player"));
+    }
+
+    @Test
     public void durableGoalBanksCommonCombatSupplies() {
         assertTrue(AgentActionService.isCombatSupplyItemForBanking(526)); // bones
         assertTrue(AgentActionService.isCombatSupplyItemForBanking(1739)); // cowhide
@@ -169,8 +187,12 @@ public class AgentActionServiceTest {
         assertEquals("varrock west bank", AgentActionService.supplyBankLandmark("barbarian village"));
         assertEquals("varrock west bank", AgentActionService.supplyBankLandmark("varrock guards"));
         assertEquals("varrock east bank", AgentActionService.supplyBankLandmark("rock crabs"));
+        assertEquals("falador west bank", AgentActionService.supplyBankLandmark("falador white knights"));
+        assertEquals("falador west bank", AgentActionService.supplyBankLandmark("white knights"));
         assertEquals("varrock east bank",
                 AgentActionService.supplyBankLandmark("barbarian village", 3253, 3322, true));
+        assertEquals("falador west bank",
+                AgentActionService.supplyBankLandmark("falador white knights", 2965, 3341, false));
         assertEquals("al kharid bank",
                 AgentActionService.supplyBankLandmark("barbarian village", 3275, 3180, true));
         assertEquals("al kharid bank",
@@ -418,10 +440,25 @@ public class AgentActionServiceTest {
     public void durableGoalBanksMiningByproductsBeforeProcessingOreNearVarrockBanks() {
         assertTrue(AgentActionService.shouldBankGearMoneyClutterBeforeProcessing(2, 3286, 3368));
         assertTrue(AgentActionService.shouldBankGearMoneyClutterBeforeProcessing(1, 3216, 3415));
+        assertTrue(AgentActionService.shouldBankGearMoneyClutterBeforeProcessing(1, 2973, 3366));
         assertFalse(AgentActionService.shouldBankGearMoneyClutterBeforeProcessing(0, 3286, 3368));
         assertFalse(AgentActionService.shouldBankGearMoneyClutterBeforeProcessing(2, 3275, 3186));
+        assertTrue(AgentActionService.shouldBankCarriedGearMoneyBeforeClutterDeposit(19, 3, 0,
+                false, false, false));
+        assertTrue(AgentActionService.shouldBankCarriedGearMoneyBeforeClutterDeposit(19, 3, 4,
+                false, false, false));
+        assertFalse(AgentActionService.shouldBankCarriedGearMoneyBeforeClutterDeposit(19, 3, 5,
+                false, false, false));
+        assertFalse(AgentActionService.shouldBankCarriedGearMoneyBeforeClutterDeposit(19, 3, 0,
+                true, false, false));
+        assertTrue(AgentActionService.shouldBankNearFullGearMoneyBatchBeforeMoreMining(19, 3, 3290, 3380));
+        assertTrue(AgentActionService.shouldBankNearFullGearMoneyBatchBeforeMoreMining(19, 4, 3290, 3380));
+        assertFalse(AgentActionService.shouldBankNearFullGearMoneyBatchBeforeMoreMining(19, 5, 3290, 3380));
+        assertFalse(AgentActionService.shouldBankNearFullGearMoneyBatchBeforeMoreMining(19, 3, 3290, 3378));
         assertEquals("varrock east bank", AgentActionService.gearMoneyClutterBankLandmark(3286, 3368));
         assertEquals("varrock west bank", AgentActionService.gearMoneyClutterBankLandmark(3216, 3415));
+        assertEquals("falador west bank", AgentActionService.gearMoneyClutterBankLandmark(2973, 3366));
+        assertEquals("falador west bank", AgentActionService.gearMoneyClutterBankLandmark(3005, 3394));
         assertEquals("al kharid bank", AgentActionService.gearMoneyClutterBankLandmark(3274, 3186));
         assertEquals("al kharid bank", AgentActionService.gearMoneyClutterBankLandmark(3259, 3229));
     }
@@ -570,7 +607,7 @@ public class AgentActionServiceTest {
         assertTrue(AgentActionService.isPreferredGearMoneyBatchStaged(46, 37,
                 0, 0, targetBars, targetBars * 2, 0, 0, 0, 0, 32000, 0));
 
-        assertEquals("iron", AgentActionService.gearMoneyOreForMiningLevel(46, 37,
+        assertEquals("coal", AgentActionService.gearMoneyOreForMiningLevel(46, 37,
                 0, 0, 22, 0, 0, 3285, 3365, 0, 32000, 0, 0, 0, 0));
         assertEquals("coal", AgentActionService.gearMoneyOreForMiningLevel(46, 37,
                 0, 0, targetBars, 0, 0, 3285, 3365, 0, 32000, 0, 0, 0, 0));
@@ -595,6 +632,9 @@ public class AgentActionServiceTest {
         assertEquals("coal", AgentActionService.nextBatchMaterialSource(500, 3200, 3200,
                 AgentActionService.batchMaterialNeed("iron", 470, 1),
                 AgentActionService.batchMaterialNeed("coal", 920, 2)));
+        assertEquals("coal", AgentActionService.nextBatchMaterialSource(500, 3285, 3365,
+                AgentActionService.batchMaterialNeed("iron", 99, 1),
+                AgentActionService.batchMaterialNeed("coal", 0, 2)));
         assertEquals("", AgentActionService.nextBatchMaterialSource(500, 3200, 3200,
                 AgentActionService.batchMaterialNeed("iron", 500, 1),
                 AgentActionService.batchMaterialNeed("coal", 1000, 2)));
@@ -1049,6 +1089,18 @@ public class AgentActionServiceTest {
 
     @Test
     public void durableGoalCapsLocalMiningRespawnWaits() {
+        assertEquals(12, AgentActionService.localMiningRespawnWaitCap("coal"));
+        assertEquals(2, AgentActionService.localMiningRespawnWaitCap("iron"));
+        assertEquals(2, AgentActionService.localMiningRespawnWaitCap("copper ore"));
+        assertEquals(8, AgentActionService.localMiningRespawnWaitCap(""));
+
+        assertTrue(AgentActionService.shouldWaitForLocalMiningRespawn("coal", 11));
+        assertFalse(AgentActionService.shouldWaitForLocalMiningRespawn("coal", 12));
+        assertTrue(AgentActionService.shouldWaitForLocalMiningRespawn("iron", 1));
+        assertFalse(AgentActionService.shouldWaitForLocalMiningRespawn("iron", 2));
+        assertTrue(AgentActionService.shouldWaitForLocalMiningRespawn(7));
+        assertFalse(AgentActionService.shouldWaitForLocalMiningRespawn(8));
+
         JsonObject waitArgs = AgentActionService.gearMoneyOreArgs("iron", 3285, 3351, true);
         assertTrue(waitArgs.get("waitForLocalRespawn").getAsBoolean());
         assertEquals(8, waitArgs.get("maxDistance").getAsInt());
@@ -1472,5 +1524,27 @@ public class AgentActionServiceTest {
         assertFalse(AgentActionService.shouldAcquirePickaxeUpgrade(80, 0, true, true, false));
         assertFalse(AgentActionService.shouldAcquirePickaxeUpgrade(80, 0, false, false, false));
         assertFalse(AgentActionService.shouldAcquirePickaxeUpgrade(80, 0, false, true, true));
+    }
+
+    @Test
+    public void durableGoalChainsGearPrepWhileStagedAtBank() {
+        assertTrue(AgentActionService.shouldDeferActionableGearCheck(40, 0, false, false));
+        assertFalse(AgentActionService.shouldDeferActionableGearCheck(40, 0, true, false));
+        assertFalse(AgentActionService.shouldDeferActionableGearCheck(40, 0, false, true));
+
+        Player player = new Player(0) {
+        };
+        player.questPoints = 0;
+        player.playerXP[Constants.ATTACK] = 48620;
+        player.playerXP[Constants.DEFENCE] = 27548;
+        player.playerEquipment[3] = 1301; // Adamant longsword already equipped.
+        player.bankItems[0] = 1106; // Steel chainbody is owned and should come before a shop body.
+        player.bankItemsN[0] = 1;
+        player.bankItems[1] = 1074; // Adamant platelegs.
+        player.bankItemsN[1] = 1;
+        player.bankItems[2] = 996; // Coins can afford a mithril platebody, but owned gear is staged first.
+        player.bankItemsN[2] = 10136;
+
+        assertEquals(1105, AgentActionService.nextCombatGearTargetItemId(player));
     }
 }

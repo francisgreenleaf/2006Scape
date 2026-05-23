@@ -11,6 +11,7 @@ import com.google.gson.JsonObject;
 import com.rs2.Constants;
 import com.rs2.agent.AgentSmithingPlanner.SmithingChoice;
 import com.rs2.game.content.quests.QuestAssistant;
+import com.rs2.game.content.skills.core.Mining;
 import com.rs2.game.content.skills.smithing.SmithingData;
 import com.rs2.game.content.traveling.CarpetTravel;
 import com.rs2.game.npcs.Npc;
@@ -128,7 +129,10 @@ public class AgentActionService {
     private static final int MIN_ORE_SETS_BEFORE_SMELTING = 24;
     private static final int MAX_GEAR_MONEY_TARGET_BATCH_BARS = 10000;
     private static final int GEAR_MONEY_LOCAL_MINING_SCAN_DISTANCE = 8;
-    private static final int MAX_LOCAL_MINING_RESPAWN_WAITS = 3;
+    private static final int DEFAULT_LOCAL_MINING_RESPAWN_WAITS = 8;
+    private static final int MIN_LOCAL_MINING_RESPAWN_WAITS = 2;
+    private static final int LOCAL_MINING_RESPAWN_BUFFER_WAITS = 2;
+    private static final int MAX_LOCAL_MINING_RESPAWN_WAITS = 12;
     private static final int COAL_ROUTE_MIN_FOOD = MIN_FOOD_BEFORE_RESTOCK + 1;
     private static final int GEAR_MONEY_FOOD_BUFFER = COAL_ROUTE_MIN_FOOD;
     private static final int IRON_SMELTING_SMITHING_LEVEL = 15;
@@ -543,6 +547,20 @@ public class AgentActionService {
         return "goal_progress".equals(event)
                 || "goal_completed".equals(event)
                 || "goal_blocked".equals(event);
+    }
+
+    static JsonObject loggableGoalResult(JsonObject result) {
+        if (result == null || result.has("player") || !result.has("state")
+                || !result.get("state").isJsonObject()) {
+            return result;
+        }
+        JsonObject state = result.getAsJsonObject("state");
+        if (!state.has("player")) {
+            return result;
+        }
+        JsonObject copy = result.deepCopy();
+        copy.add("player", state.get("player").deepCopy());
+        return copy;
     }
 
     private JsonObject runCombatGoalStep(Player player, CombatGoal goal, JsonObject actionArguments) {
@@ -1217,6 +1235,13 @@ public class AgentActionService {
         }
 
         int gearMoneyClutterItems = countInventoryGearMoneyClutterItems(player, goal);
+        if (Boundary.isIn(player, Boundary.BANK_AREA)
+                && shouldBankCarriedGearMoneyBeforeClutterDeposit(carriedMoneyItems, gearMoneyClutterItems,
+                        player.getItemAssistant().freeSlots(), gearMoneyBatchReady, gearMoneyProcessingBatchReady,
+                        liquidatingForCombat)) {
+            return bankGearMoneyBatchStep(player, goal, target,
+                    "banking the carried ore/bar batch before clearing mining byproducts");
+        }
         if (Boundary.isIn(player, Boundary.BANK_AREA) && gearMoneyClutterItems > 0) {
             JsonObject result = AgentToolService.handle(player, "deposit_inventory_items", gearMoneyClutterArgs(player, goal));
             int depositedAmount = getInt(result, "depositedAmount", 0);
@@ -1581,6 +1606,14 @@ public class AgentActionService {
             return bankGearMoneyBatchStep(player, goal, target,
                     "banking the nearly full mined batch instead of crossing mines for a small top-up");
         }
+        if (shouldBankNearFullGearMoneyBatchBeforeMoreMining(carriedMoneyItems, player.getItemAssistant().freeSlots(),
+                player.absX, player.absY)) {
+            if (gearMoneyBatchReady) {
+                return sellGearMoneyItemsStep(player, goal, target);
+            }
+            return bankGearMoneyBatchStep(player, goal, target,
+                    "banking the nearly full mined batch before returning to a mine for a small top-up");
+        }
         String mineLandmark = gearMoneyMineLandmark(ore);
         if (!isGearMoneyMine(ore, player.absX, player.absY)) {
             JsonObject travel = travelTo(player, mineLandmark);
@@ -1591,7 +1624,7 @@ public class AgentActionService {
             }
         }
         JsonObject result = AgentToolService.handle(player, "mine_ore",
-                gearMoneyOreArgs(ore, player.absX, player.absY, goal.shouldWaitForLocalMiningRespawn()));
+                gearMoneyOreArgs(ore, player.absX, player.absY, goal.shouldWaitForLocalMiningRespawn(ore)));
         result.addProperty("message", "Earning gear money for " + target.itemName() + ": "
                 + getString(result, "message", "mining ore."));
         return result;
@@ -3032,6 +3065,46 @@ public class AgentActionService {
         return arguments;
     }
 
+    static boolean shouldWaitForLocalMiningRespawn(int localMiningRespawnWaits) {
+        return shouldWaitForLocalMiningRespawn("", localMiningRespawnWaits);
+    }
+
+    static boolean shouldWaitForLocalMiningRespawn(String ore, int localMiningRespawnWaits) {
+        return localMiningRespawnWaits < localMiningRespawnWaitCap(ore);
+    }
+
+    static int localMiningRespawnWaitCap(String ore) {
+        int respawnTicks = miningRespawnTicksForOre(ore);
+        if (respawnTicks <= 0) {
+            return DEFAULT_LOCAL_MINING_RESPAWN_WAITS;
+        }
+        int waits = (respawnTicks + DEFAULT_GOAL_STEP_INTERVAL_TICKS - 1) / DEFAULT_GOAL_STEP_INTERVAL_TICKS;
+        if (respawnTicks >= DEFAULT_GOAL_STEP_INTERVAL_TICKS * 2) {
+            waits += LOCAL_MINING_RESPAWN_BUFFER_WAITS;
+        }
+        return Math.min(MAX_LOCAL_MINING_RESPAWN_WAITS, Math.max(MIN_LOCAL_MINING_RESPAWN_WAITS, waits));
+    }
+
+    private static int miningRespawnTicksForOre(String ore) {
+        String normalized = ore == null ? "" : ore.trim().toLowerCase();
+        if (normalized.endsWith(" ore")) {
+            normalized = normalized.substring(0, normalized.length() - 4).trim();
+        }
+        if ("coal".equals(normalized)) {
+            return Mining.rockData.COAL.getRespawnTimer();
+        }
+        if ("iron".equals(normalized)) {
+            return Mining.rockData.IRON.getRespawnTimer();
+        }
+        if ("copper".equals(normalized)) {
+            return Mining.rockData.COPPER.getRespawnTimer();
+        }
+        if ("tin".equals(normalized)) {
+            return Mining.rockData.TIN.getRespawnTimer();
+        }
+        return 0;
+    }
+
     private static JsonObject smeltArgs(int barItemId, int amount) {
         JsonObject arguments = new JsonObject();
         arguments.addProperty("itemId", barItemId);
@@ -3448,9 +3521,6 @@ public class AgentActionService {
         if (goal == null || player == null) {
             return false;
         }
-        if (shouldDeferGearCheck(goal.actionsRun, goal.lastGearAttemptAction)) {
-            return false;
-        }
         if (isPlayerInCombat(player)) {
             return false;
         }
@@ -3458,7 +3528,19 @@ public class AgentActionService {
         if (target == null) {
             return false;
         }
+        if (shouldDeferActionableGearCheck(goal.actionsRun, goal.lastGearAttemptAction,
+                AgentToolService.countInventoryItem(player, target.itemId) > 0,
+                Boundary.isIn(player, Boundary.BANK_AREA))) {
+            return false;
+        }
         return true;
+    }
+
+    static boolean shouldDeferActionableGearCheck(int actionsRun, int lastGearAttemptAction,
+            boolean inventoryHasTarget, boolean inBankArea) {
+        return shouldDeferGearCheck(actionsRun, lastGearAttemptAction)
+                && !inventoryHasTarget
+                && !inBankArea;
     }
 
     private static boolean shouldAcquirePickaxeUpgrade(Player player, CombatGoal goal) {
@@ -3525,6 +3607,10 @@ public class AgentActionService {
                 bestEquippedGearTier(player, WEAPON_GEAR_TARGETS))) {
             return null;
         }
+        GearTarget ownedArmor = bestOwnedArmorGearTarget(player, defenceLevel);
+        if (ownedArmor != null) {
+            return ownedArmor;
+        }
         GearTarget body = bestActionableGearTarget(player, BODY_GEAR_TARGETS, defenceLevel, spendableCoins);
         if (body != null) {
             return body;
@@ -3542,6 +3628,27 @@ public class AgentActionService {
             return helm;
         }
         return null;
+    }
+
+    static int nextCombatGearTargetItemId(Player player) {
+        GearTarget target = nextGearTarget(player);
+        return target == null ? -1 : target.itemId;
+    }
+
+    private static GearTarget bestOwnedArmorGearTarget(Player player, int defenceLevel) {
+        GearTarget body = bestOwnedGearTarget(player, BODY_GEAR_TARGETS, defenceLevel);
+        if (body != null) {
+            return body;
+        }
+        GearTarget legs = bestOwnedGearTarget(player, LEGS_GEAR_TARGETS, defenceLevel);
+        if (legs != null) {
+            return legs;
+        }
+        GearTarget shield = bestOwnedGearTarget(player, SHIELD_GEAR_TARGETS, defenceLevel);
+        if (shield != null) {
+            return shield;
+        }
+        return bestOwnedGearTarget(player, HELM_GEAR_TARGETS, defenceLevel);
     }
 
     private static GearTarget nextDesiredGearTarget(Player player) {
@@ -3677,6 +3784,20 @@ public class AgentActionService {
             if (AgentToolService.countInventoryItem(player, target.itemId) > 0
                     || AgentToolService.countBankItem(player, target.itemId) > 0
                     || spendableCoins >= estimatedGearAcquisitionCost(target, player)) {
+                best = target;
+            }
+        }
+        return best;
+    }
+
+    private static GearTarget bestOwnedGearTarget(Player player, GearTarget[] targets, int level) {
+        int bestEquippedTier = bestEquippedGearTier(player, targets);
+        GearTarget best = null;
+        for (GearTarget target : targets) {
+            if (level >= target.minLevel && target.tier > bestEquippedTier
+                    && isGearTargetAvailable(player, target)
+                    && (AgentToolService.countInventoryItem(player, target.itemId) > 0
+                            || AgentToolService.countBankItem(player, target.itemId) > 0)) {
                 best = target;
             }
         }
@@ -4916,12 +5037,30 @@ public class AgentActionService {
                 && freeSlots <= 0;
     }
 
+    static boolean shouldBankCarriedGearMoneyBeforeClutterDeposit(int carriedMoneyItems, int clutterItems,
+            int freeSlots, boolean rawSaleBatchReady, boolean processingBatchReady, boolean liquidatingForCombat) {
+        return carriedMoneyItems > 0
+                && clutterItems > 0
+                && freeSlots <= MIN_FREE_SLOTS_BEFORE_BANKING
+                && !rawSaleBatchReady
+                && !processingBatchReady
+                && !liquidatingForCombat;
+    }
+
     static boolean shouldBankNearFullGearMoneyBatchBeforeOreSwitch(int carriedMoneyItems, int freeSlots,
             String nextOre, int x, int y) {
         return carriedMoneyItems > 0
                 && freeSlots <= MIN_FREE_SLOTS_BEFORE_BANKING
                 && isAnyGearMoneyMine(x, y)
                 && !isGearMoneyMine(nextOre, x, y);
+    }
+
+    static boolean shouldBankNearFullGearMoneyBatchBeforeMoreMining(int carriedMoneyItems, int freeSlots,
+            int x, int y) {
+        return carriedMoneyItems > 0
+                && freeSlots <= MIN_FREE_SLOTS_BEFORE_BANKING
+                && (isVarrockGearMoneyBankingCorridor(x, y) || isFaladorGearMoneyBankingCorridor(x, y))
+                && !isAnyGearMoneyMine(x, y);
     }
 
     static boolean shouldProcessGearMoneyBatch(boolean processingBatchReady, boolean liquidatingForCombat) {
@@ -5838,18 +5977,21 @@ public class AgentActionService {
         BatchMaterialNeed currentSourceNeed = null;
         BatchMaterialNeed largestNeed = null;
         for (BatchMaterialNeed need : needs) {
-            if (need == null || need.deficitUnits(targetOutputs) <= 0) {
+            if (need == null || need.deficitOutputs(targetOutputs) <= 0) {
                 continue;
             }
             if (isGearMoneyMine(need.sourceName(), x, y)) {
                 currentSourceNeed = need;
             }
             if (largestNeed == null
-                    || need.deficitUnits(targetOutputs) > largestNeed.deficitUnits(targetOutputs)) {
+                    || need.deficitOutputs(targetOutputs) > largestNeed.deficitOutputs(targetOutputs)
+                    || (need.deficitOutputs(targetOutputs) == largestNeed.deficitOutputs(targetOutputs)
+                            && need.deficitUnits(targetOutputs) > largestNeed.deficitUnits(targetOutputs))) {
                 largestNeed = need;
             }
         }
-        if (currentSourceNeed != null) {
+        if (currentSourceNeed != null && largestNeed != null
+                && currentSourceNeed.deficitOutputs(targetOutputs) >= largestNeed.deficitOutputs(targetOutputs)) {
             return currentSourceNeed.sourceName();
         }
         return largestNeed == null ? "" : largestNeed.sourceName();
@@ -5918,16 +6060,24 @@ public class AgentActionService {
     }
 
     static boolean shouldBankGearMoneyClutterBeforeProcessing(int clutterCount, int x, int y) {
-        return clutterCount > 0 && isVarrockGearMoneyBankingCorridor(x, y);
+        return clutterCount > 0
+                && (isVarrockGearMoneyBankingCorridor(x, y) || isFaladorGearMoneyBankingCorridor(x, y));
     }
 
     static boolean isVarrockGearMoneyBankingCorridor(int x, int y) {
         return x >= 3180 && x <= 3305 && y >= 3350 && y <= 3435;
     }
 
+    static boolean isFaladorGearMoneyBankingCorridor(int x, int y) {
+        return x >= 2940 && x <= 3066 && y >= 3300 && y <= 3415;
+    }
+
     static String gearMoneyClutterBankLandmark(int x, int y) {
         if (isAlKharidBankingSideForGearMoney(x, y)) {
             return "al kharid bank";
+        }
+        if (isFaladorGearMoneyBankingCorridor(x, y)) {
+            return "falador west bank";
         }
         return x < 3230 ? "varrock west bank" : "varrock east bank";
     }
@@ -6019,6 +6169,9 @@ public class AgentActionService {
 
     static String supplyBankLandmark(String trainingArea) {
         String area = trainingArea == null ? "" : trainingArea.trim().toLowerCase();
+        if (area.contains("falador") || area.contains("white knight")) {
+            return "falador west bank";
+        }
         if (area.contains("barbarian") || area.contains("varrock")) {
             return "varrock west bank";
         }
@@ -6033,6 +6186,9 @@ public class AgentActionService {
     static String supplyBankLandmark(String trainingArea, int x, int y, boolean restockingFood) {
         if (isAlKharidBankingSideForGearMoney(x, y)) {
             return "al kharid bank";
+        }
+        if (x >= 2945 && x <= 3066 && y >= 3303 && y <= 3390) {
+            return "falador west bank";
         }
         if (x >= 3230 && x <= 3310 && y >= 3300 && y <= 3435) {
             return "varrock east bank";
@@ -6374,6 +6530,10 @@ public class AgentActionService {
 
         int stagedOutputs() {
             return availableCount / unitsPerOutput;
+        }
+
+        int deficitOutputs(int targetOutputs) {
+            return Math.max(0, Math.max(0, targetOutputs) - stagedOutputs());
         }
 
         int deficitUnits(int targetOutputs) {
@@ -6807,8 +6967,8 @@ public class AgentActionService {
             miningClickWaitUntilTick = Math.max(miningClickWaitUntilTick, ticksElapsed + cooldownTicks);
         }
 
-        private boolean shouldWaitForLocalMiningRespawn() {
-            return localMiningRespawnWaits < MAX_LOCAL_MINING_RESPAWN_WAITS;
+        private boolean shouldWaitForLocalMiningRespawn(String ore) {
+            return AgentActionService.shouldWaitForLocalMiningRespawn(ore, localMiningRespawnWaits);
         }
 
         private void rememberLocalMiningRespawnWait(JsonObject result) {
@@ -7043,6 +7203,9 @@ public class AgentActionService {
                 json.addProperty("routeStaleLandmark", routeStaleLandmark);
             }
             json.addProperty("miningClickWaits", miningClickWaits);
+            if (localMiningRespawnWaits > 0) {
+                json.addProperty("localMiningRespawnWaits", localMiningRespawnWaits);
+            }
             if (ticksElapsed < miningClickWaitUntilTick) {
                 json.addProperty("miningClickWaitTicksRemaining", miningClickWaitUntilTick - ticksElapsed);
             }
@@ -7081,8 +7244,9 @@ public class AgentActionService {
             if (!style.isEmpty()) {
                 json.addProperty("style", style);
             }
-            if (lastResult != null) {
-                json.add("lastResult", lastResult);
+            JsonObject result = loggableGoalResult(lastResult);
+            if (result != null) {
+                json.add("lastResult", result);
             }
             return json;
         }
