@@ -12,10 +12,11 @@ Current canonical files:
 
 Agent context maps, shortcut proofs, temporary route crops, and comparison renders should not be written here by default. Use the context-map renderers' default ignored archive under `agent-navigation/.local/context-maps/<date>/`, or pass an explicit `/tmp/...` path for smoke tests.
 
-To keep active exports current while traces are being collected, run:
+To keep active exports current in the background while traces are being collected, run:
 
 ```sh
-agent-navigation/tools/refresh_active_maps.py
+agent-navigation/tools/active_map_refresher.py start
+agent-navigation/tools/active_map_refresher.py status
 ```
 
-It refreshes `surface-routes`, `Mr. Flame`, `Heat Map`, and `Mr. Flame Fog` on independent loops, uses ignored temp files for atomic replacement, and records status under `agent-navigation/.local/map-refresh/status.json`. Parallel topology workers use per-map cache subdirectories under `agent-navigation/.local/topology-render-cache/`. The static `cache-world-map` is skipped unless missing or explicitly refreshed.
+`active_map_refresher.py` manages the PID, log, status file, and restart behavior for the lower-level `refresh_active_maps.py` worker. It refreshes `surface-routes`, `Mr. Flame`, `Heat Map`, and `Mr. Flame Fog` on independent loops, uses ignored temp files for atomic replacement, and records status under `agent-navigation/.local/map-refresh/status.json`. Parallel topology workers use per-map cache subdirectories under `agent-navigation/.local/topology-render-cache/`. The static `cache-world-map` is skipped unless missing or explicitly refreshed.

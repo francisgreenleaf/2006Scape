@@ -4,6 +4,7 @@
 The full cache-world map is static, so this watcher only refreshes it when it
 is missing or explicitly requested. Active movement/route maps run in their own
 workers by default so slow topology renders do not block quick route-map updates.
+Use active_map_refresher.py for detached background start/status/log/stop control.
 """
 
 import argparse
