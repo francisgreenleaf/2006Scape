@@ -9,6 +9,9 @@ For the reliable server/client/login/bridge startup flow used before route explo
 - `data/places.json`: named places, aliases, arrival radii, safety notes, and canonical tiles.
 - `data/routes.json`: route memories between places, including walk tiles, door/gate/floor interactions, blockers, run policy, and evidence links.
 - `data/hazards.json`: known danger zones, NPC risk, requirements, and avoidance notes.
+- `data/agility_courses.json`: agility course obstacle definitions for `tools/agility_runner.py`.
+- `data/agility/policies/*.policy.json`: ignored local adaptive course timing/failure state.
+- `data/agility/runs/`: ignored local agility smoke/lap JSONL evidence and summaries.
 - `data/observations.jsonl`: ignored local append-only route-learning observations from `rs.observe_state`, screenshots, and manual notes.
 - `data/movement_traces*.jsonl`: ignored optional legacy/dev movement trace streams from `tools/route_recorder.py`.
 - `data/route_tests.json`: regression checks for expected route selection, next steps, and safety warnings.
@@ -19,7 +22,9 @@ For the reliable server/client/login/bridge startup flow used before route explo
 - `tools/capture-client-screenshot.sh`: macOS helper that captures the running Java client window and prints the screenshot path as JSON.
 - `tools/capture-cardinal-screenshots.sh`: compact four-angle screenshot helper for north/east/south/west visual route debugging.
 - `tools/rs-tool.sh`: small bridge wrapper for calling `rs` tools through the active local session without hand-writing `curl` each time.
-- `tools/refresh_active_maps.py`: continuous refresher for canonical `surface-routes`, profile movement, `Heat Map`, and profile fog exports. It writes status/temp files under ignored `.local/map-refresh/` and does not refresh the static full cache map unless missing or requested.
+- `tools/agility_runner.py`: bridge-backed agility course runner that keeps obstacle execution and timing evidence out of the AI token loop.
+- `tools/active_map_refresher.py`: background controller for keeping canonical `surface-routes`, profile movement, `Heat Map`, and profile fog exports current. Use it for `start`, `status`, `logs`, `stop`, and `restart`.
+- `tools/refresh_active_maps.py`: lower-level foreground worker used by `active_map_refresher.py`. It writes status/temp files under ignored `.local/map-refresh/` and does not refresh the static full cache map unless missing or requested.
 
 ## Unified Movement Telemetry
 
@@ -104,3 +109,15 @@ Routes should include:
 - known blockers and recovery steps.
 
 Do not mark a route `verified` until it has been completed from start to destination using normal gameplay mechanics. Use `learned-partial` or `needs-verification` while the route still depends on assumptions.
+
+## Agility Runner
+
+`tools/agility_runner.py` runs known agility courses through normal bridge tools: it observes the player, walks to each obstacle approach tile, clicks the configured object, waits for the expected post-state, and records compact local evidence.
+
+```sh
+python3 agent-navigation/tools/agility_runner.py --course gnome_agility_course --laps 1 --dry-run
+python3 agent-navigation/tools/agility_runner.py --course gnome_agility_course --laps 10
+RS_PROFILE=MrGem python3 agent-navigation/tools/agility_runner.py --course gnome_agility_course --laps 10
+```
+
+Course definitions are shareable JSON in `data/agility_courses.json`. Run logs and adaptive policy stats are local generated data under `data/agility/` and should stay ignored unless a user explicitly asks to curate a specific artifact.

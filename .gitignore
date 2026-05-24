@@ -18,6 +18,8 @@ hs_err_pid*.log
 **/hs_err_pid*.log
 agent-navigation/.local/
 agent-navigation/data/marathons/
+agent-navigation/data/agility/policies/*.policy.json
+agent-navigation/data/agility/runs/
 agent-navigation/data/movement_traces*.jsonl
 agent-navigation/data/observations.jsonl
 agent-navigation/screenshots/**

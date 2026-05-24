@@ -1,0 +1,281 @@
+{
+  "courses": [
+    {
+      "id": "gnome_agility_course",
+      "name": "Gnome Agility Course",
+      "placeId": "gnome_agility_course",
+      "startTile": {
+        "x": 2474,
+        "y": 3436,
+        "height": 0
+      },
+      "startRadius": 6,
+      "lapCompleteRadius": 4,
+      "notes": "Object ids are from GnomeAgility.java. Runner logs stay under agent-navigation/data/agility so agility-course traces can be scored separately from route heat maps later.",
+      "steps": [
+        {
+          "id": "log_balance",
+          "name": "Log balance",
+          "expectedHeight": 0,
+          "maxTicks": 18,
+          "postRadius": 1,
+          "postTiles": [
+            {
+              "x": 2474,
+              "y": 3429,
+              "height": 0
+            }
+          ],
+          "variants": [
+            {
+              "id": "main",
+              "objectId": 2295,
+              "objectName": "Log balance",
+              "objectTile": {
+                "x": 2474,
+                "y": 3435,
+                "height": 0
+              },
+              "approachTile": {
+                "x": 2474,
+                "y": 3436,
+                "height": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "first_net",
+          "name": "Obstacle net",
+          "expectedHeight": 0,
+          "maxTicks": 18,
+          "postRadius": 3,
+          "postTiles": [
+            {
+              "x": 2471,
+              "y": 3424,
+              "height": 1
+            },
+            {
+              "x": 2473,
+              "y": 3423,
+              "height": 1
+            }
+          ],
+          "variants": [
+            {
+              "id": "west",
+              "objectId": 2285,
+              "objectName": "Obstacle net",
+              "objectTile": {
+                "x": 2471,
+                "y": 3425,
+                "height": 0
+              },
+              "approachTile": {
+                "x": 2471,
+                "y": 3426,
+                "height": 0
+              }
+            },
+            {
+              "id": "center",
+              "objectId": 2285,
+              "objectName": "Obstacle net",
+              "objectTile": {
+                "x": 2473,
+                "y": 3425,
+                "height": 0
+              },
+              "approachTile": {
+                "x": 2473,
+                "y": 3426,
+                "height": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "tree_up",
+          "name": "Tree branch up",
+          "expectedHeight": 1,
+          "maxTicks": 18,
+          "postRadius": 3,
+          "postTiles": [
+            {
+              "x": 2473,
+              "y": 3420,
+              "height": 2
+            }
+          ],
+          "variants": [
+            {
+              "id": "branch",
+              "objectId": 2313,
+              "objectName": "Tree branch",
+              "objectTile": {
+                "x": 2473,
+                "y": 3422,
+                "height": 1
+              },
+              "approachTile": {
+                "x": 2473,
+                "y": 3423,
+                "height": 1
+              }
+            }
+          ]
+        },
+        {
+          "id": "rope",
+          "name": "Balancing rope",
+          "expectedHeight": 2,
+          "maxTicks": 18,
+          "postRadius": 1,
+          "postTiles": [
+            {
+              "x": 2483,
+              "y": 3420,
+              "height": 2
+            }
+          ],
+          "variants": [
+            {
+              "id": "main",
+              "objectId": 2312,
+              "objectName": "Balancing rope",
+              "objectTile": {
+                "x": 2478,
+                "y": 3420,
+                "height": 2
+              },
+              "approachTile": {
+                "x": 2477,
+                "y": 3420,
+                "height": 2
+              }
+            }
+          ]
+        },
+        {
+          "id": "tree_down",
+          "name": "Tree branch down",
+          "expectedHeight": 2,
+          "maxTicks": 18,
+          "postRadius": 3,
+          "postTiles": [
+            {
+              "x": 2485,
+              "y": 3419,
+              "height": 0
+            },
+            {
+              "x": 2485,
+              "y": 3420,
+              "height": 0
+            }
+          ],
+          "variants": [
+            {
+              "id": "branch",
+              "objectId": 2314,
+              "objectName": "Tree branch",
+              "objectTile": {
+                "x": 2486,
+                "y": 3419,
+                "height": 2
+              },
+              "approachTile": {
+                "x": 2485,
+                "y": 3419,
+                "height": 2
+              }
+            }
+          ]
+        },
+        {
+          "id": "second_net",
+          "name": "Obstacle net down",
+          "expectedHeight": 0,
+          "maxTicks": 18,
+          "postRadius": 3,
+          "postTiles": [
+            {
+              "x": 2483,
+              "y": 3427,
+              "height": 0
+            }
+          ],
+          "variants": [
+            {
+              "id": "main",
+              "objectId": 2286,
+              "objectName": "Obstacle net",
+              "objectTile": {
+                "x": 2483,
+                "y": 3426,
+                "height": 0
+              },
+              "approachTile": {
+                "x": 2483,
+                "y": 3425,
+                "height": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "pipe",
+          "name": "Obstacle pipe",
+          "expectedHeight": 0,
+          "maxTicks": 24,
+          "postRadius": 2,
+          "postTiles": [
+            {
+              "x": 2484,
+              "y": 3437,
+              "height": 0
+            },
+            {
+              "x": 2487,
+              "y": 3437,
+              "height": 0
+            }
+          ],
+          "variants": [
+            {
+              "id": "west_pipe",
+              "objectId": 154,
+              "objectName": "Obstacle pipe",
+              "objectTile": {
+                "x": 2484,
+                "y": 3431,
+                "height": 0
+              },
+              "approachTile": {
+                "x": 2484,
+                "y": 3430,
+                "height": 0
+              }
+            },
+            {
+              "id": "east_pipe",
+              "objectId": 4058,
+              "objectName": "Obstacle pipe",
+              "objectTile": {
+                "x": 2487,
+                "y": 3431,
+                "height": 0
+              },
+              "approachTile": {
+                "x": 2487,
+                "y": 3430,
+                "height": 0
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

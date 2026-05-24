@@ -43,13 +43,14 @@ agent-navigation/tools/render_movement_topology_v6.py
 
 Use the profile movement map for the main map, `Heat Map` for player-facing trace-coverage density, and the profile fog map for fog-of-war coverage. Agents should not run these full topology renders during live routing unless explicitly asked. Active movement maps read the latest movement traces at render time. Legacy versioned map renderers may exist on disk for old outputs; leave them alone and do not use them as current maps.
 
-For continuous refresh while movement traces are being collected:
+For continuous background refresh while movement traces are being collected:
 
 ```sh
-agent-navigation/tools/refresh_active_maps.py
+agent-navigation/tools/active_map_refresher.py start
+agent-navigation/tools/active_map_refresher.py status
 ```
 
-The refresher updates `surface-routes`, the profile movement map, `Heat Map`, and profile fog in independent non-overlapping worker loops with a 30-second target cadence. It writes ignored temp/status files under `agent-navigation/.local/map-refresh/`, uses per-map cache subdirectories under `agent-navigation/.local/topology-render-cache/` for parallel topology workers, atomically replaces canonical PNG/JSON files only after successful renders, passes trace-profile filters through to movement renderers, and skips the static `cache-world-map` unless it is missing or `--refresh-world-map` is passed.
+Use `agent-navigation/tools/active_map_refresher.py` as the special background tool; it manages the PID, log, status file, and restart behavior for the lower-level `refresh_active_maps.py` worker. The refresher updates `surface-routes`, the profile movement map, `Heat Map`, and profile fog in independent non-overlapping worker loops with a 30-second target cadence. It writes ignored temp/status files under `agent-navigation/.local/map-refresh/`, uses per-map cache subdirectories under `agent-navigation/.local/topology-render-cache/` for parallel topology workers, atomically replaces canonical PNG/JSON files only after successful renders, passes trace-profile filters through to movement renderers, and skips the static `cache-world-map` unless it is missing or `--refresh-world-map` is passed. Use `refresh_active_maps.py --once ...` directly only for one-shot validation or renderer debugging.
 
 For route overview:
 

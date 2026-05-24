@@ -75,13 +75,16 @@ Use `--no-world-map` or `--world-map-source none` on an active wrapper when you 
 
 ## Continuous Refresh
 
-Use `refresh_active_maps.py` when the active exports should stay current while movement traces keep changing:
+Use `active_map_refresher.py` when the active exports should stay current in the background while movement traces keep changing:
 
 ```sh
-agent-navigation/tools/refresh_active_maps.py
+agent-navigation/tools/active_map_refresher.py start
+agent-navigation/tools/active_map_refresher.py status
+agent-navigation/tools/active_map_refresher.py logs --lines 40
+agent-navigation/tools/active_map_refresher.py stop
 ```
 
-By default it refreshes these canonical files in parallel worker loops:
+`active_map_refresher.py` is the small background controller for the lower-level `refresh_active_maps.py` worker. By default it refreshes these canonical files in parallel worker loops:
 
 - `agent-navigation/topology/surface-routes.png`
 - `agent-navigation/topology/movement-topology-v4.png` / `.json`
@@ -97,11 +100,11 @@ Movement map workers honor the same trace-profile filtering as the topology rend
 Useful options:
 
 ```sh
+agent-navigation/tools/active_map_refresher.py restart --only mr-flame --interval-seconds 30
+agent-navigation/tools/active_map_refresher.py restart --serial
+agent-navigation/tools/active_map_refresher.py restart --refresh-world-map
+agent-navigation/tools/active_map_refresher.py restart --trace-profile mrflame
 agent-navigation/tools/refresh_active_maps.py --once
-agent-navigation/tools/refresh_active_maps.py --only mr-flame --interval-seconds 30
-agent-navigation/tools/refresh_active_maps.py --serial
-agent-navigation/tools/refresh_active_maps.py --refresh-world-map --once
-agent-navigation/tools/refresh_active_maps.py --trace-profile mrflame
 ```
 
 ## Cache Inputs
