@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "place.schema.json",
+  "type": "object",
+  "required": ["id", "name", "kind", "region", "tile", "arrivalRadius", "tags", "safety"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+    "name": {"type": "string"},
+    "aliases": {"type": "array", "items": {"type": "string"}},
+    "kind": {"type": "string"},
+    "region": {"type": "string"},
+    "tile": {"$ref": "#/$defs/tile"},
+    "arrivalRadius": {"type": "integer", "minimum": 0},
+    "tags": {"type": "array", "items": {"type": "string"}},
+    "safety": {
+      "type": "object",
+      "required": ["risk", "minCombatLevel", "minFood", "notes"],
+      "properties": {
+        "risk": {"type": "string"},
+        "minCombatLevel": {"type": "integer", "minimum": 1},
+        "minFood": {"type": "integer", "minimum": 0},
+        "notes": {"type": "string"}
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "tile": {
+      "type": "object",
+      "required": ["x", "y", "height"],
+      "properties": {
+        "x": {"type": "integer"},
+        "y": {"type": "integer"},
+        "height": {"type": "integer"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

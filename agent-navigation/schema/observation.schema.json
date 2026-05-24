@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "observation.schema.json",
+  "type": "object",
+  "required": ["schemaVersion", "id", "timestamp", "source", "player", "tile", "notes"],
+  "properties": {
+    "schemaVersion": {"type": "integer"},
+    "id": {"type": "string", "pattern": "^obs_[A-Za-z0-9_]+$"},
+    "timestamp": {"type": "string"},
+    "source": {"type": "string"},
+    "player": {"type": "string"},
+    "place": {"type": ["string", "null"]},
+    "route": {"type": ["string", "null"]},
+    "tile": {"$ref": "#/$defs/tile"},
+    "screenshot": {"type": ["string", "null"]},
+    "state": {"type": ["object", "null"]},
+    "stateSummary": {"type": "object"},
+    "notes": {"type": "string"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "tile": {
+      "type": "object",
+      "required": ["x", "y", "height"],
+      "properties": {
+        "x": {"type": "integer"},
+        "y": {"type": "integer"},
+        "height": {"type": "integer"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

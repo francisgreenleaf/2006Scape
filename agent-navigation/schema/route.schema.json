@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "route.schema.json",
+  "type": "object",
+  "required": ["id", "name", "from", "to", "status", "confidence", "steps", "requirements", "safety"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+    "name": {"type": "string"},
+    "from": {"type": "string"},
+    "to": {"type": "string"},
+    "status": {"type": "string"},
+    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "bidirectional": {"type": "boolean"},
+    "source": {"type": "string"},
+    "summary": {"type": "string"},
+    "tags": {"type": "array", "items": {"type": "string"}},
+    "runPolicy": {"type": "object", "additionalProperties": true},
+    "requirements": {"type": "object", "additionalProperties": true},
+    "safety": {"type": "object", "additionalProperties": true},
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "type", "instruction"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "type": {"type": "string"},
+          "to": {"$ref": "#/$defs/tile"},
+          "near": {"$ref": "#/$defs/tile"},
+          "instruction": {"type": "string"},
+          "blocker": {"type": "string"}
+        },
+        "additionalProperties": true
+      }
+    },
+    "evidence": {"type": "array", "items": {"type": "string"}},
+    "knownBlockers": {"type": "array", "items": {"type": "object"}}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "tile": {
+      "type": "object",
+      "required": ["x", "y", "height"],
+      "properties": {
+        "x": {"type": "integer"},
+        "y": {"type": "integer"},
+        "height": {"type": "integer"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -76,6 +76,10 @@ public final class Main {
 						ClientSettings.AGENT_AUTO_LOGIN = true;
 						ClientSettings.SHOW_JAVA_VERSION_WARNINGS = false;
 						break;
+					case "-2x":
+					case "-double-size":
+						ClientSettings.CLIENT_SCALE = 2;
+						break;
 				}
 				if (args[i].startsWith("-") && (i + 1) < args.length  && !args[i + 1].startsWith("-")) {
 					switch(args[i]) {
@@ -89,6 +93,11 @@ public final class Main {
 							ClientSettings.AGENT_AUTO_COMMAND = args[++i];
 							ClientSettings.AGENT_AUTO_LOGIN = true;
 							ClientSettings.SHOW_JAVA_VERSION_WARNINGS = false;
+							break;
+						case "-scale":
+						case "-client-scale":
+						case "-window-scale":
+							ClientSettings.CLIENT_SCALE = parseClientScale(args[++i]);
 							break;
 					}
 				}
@@ -153,6 +162,22 @@ public final class Main {
 			game.createClientFrame(503, 765);
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
+		}
+	}
+
+	private static int parseClientScale(String value) {
+		try {
+			int scale = Integer.parseInt(value);
+			if (scale < 1) {
+				return 1;
+			}
+			if (scale > 4) {
+				return 4;
+			}
+			return scale;
+		} catch (NumberFormatException e) {
+			System.out.println("[Client] invalid scale value, using 1: " + value);
+			return 1;
 		}
 	}
 

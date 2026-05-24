@@ -1,0 +1,4 @@
+interface:
+  display_name: "2006Scape Agent Bridge Dev"
+  short_description: "Build and debug rs bridge tools"
+  default_prompt: "Use $2006scape-agent-bridge-dev to add or debug a 2006Scape rs.* bridge tool safely."

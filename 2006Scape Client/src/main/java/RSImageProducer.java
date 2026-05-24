@@ -34,7 +34,12 @@ final class RSImageProducer implements ImageProducer, ImageObserver {
 
 	public void drawGraphics(int i, Graphics g, int k) {
 		method239();
-		g.drawImage(anImage320, k, i, this);
+		int scale = Math.max(1, ClientSettings.CLIENT_SCALE);
+		if (scale == 1) {
+			g.drawImage(anImage320, k, i, this);
+		} else {
+			g.drawImage(anImage320, k * scale, i * scale, anInt316 * scale, anInt317 * scale, this);
+		}
 	}
 
 	@Override

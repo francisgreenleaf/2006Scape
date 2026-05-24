@@ -1,0 +1,171 @@
+{
+  "schemaVersion": 1,
+  "tests": [
+    {
+      "name": "lumbridge_general_store_from_courtyard",
+      "from": "3222,3218,0",
+      "to": "lumbridge_general_store",
+      "combatLevel": 3,
+      "food": 1,
+      "coins": 0,
+      "expectRoute": "lumbridge_courtyard_to_general_store",
+      "expectType": "walk",
+      "expectNext": "3218,3230,0"
+    },
+    {
+      "name": "lumbridge_kitchen_blocker_from_approach",
+      "from": "3204,3215,0",
+      "to": "lumbridge_kitchen_range",
+      "combatLevel": 3,
+      "food": 2,
+      "coins": 0,
+      "expectRoute": "lumbridge_courtyard_to_kitchen_range",
+      "expectType": "interact_object",
+      "expectNext": "3207,3217,0"
+    },
+    {
+      "name": "al_kharid_bank_requires_gate_coins",
+      "from": "3222,3218,0",
+      "to": "al_kharid_bank",
+      "combatLevel": 3,
+      "food": 1,
+      "coins": 0,
+      "expectRoute": "lumbridge_courtyard_to_al_kharid_bank",
+      "expectType": "walk",
+      "expectNext": "3267,3227,0",
+      "expectWarningContains": [
+        "coins 0 < required 10"
+      ]
+    },
+    {
+      "name": "varrock_east_bank_to_mine",
+      "from": "3253,3420,0",
+      "to": "varrock_east_mine",
+      "combatLevel": 3,
+      "food": 1,
+      "coins": 0,
+      "expectRoute": "varrock_east_bank_to_east_mine",
+      "expectType": "walk",
+      "expectNext": "3271,3410,0"
+    },
+    {
+      "name": "varrock_east_mine_to_bank",
+      "from": "3285,3365,0",
+      "to": "varrock_east_bank",
+      "combatLevel": 3,
+      "food": 1,
+      "coins": 0,
+      "expectRoute": "varrock_east_mine_road_to_east_bank_preview_verified",
+      "expectType": "walk",
+      "expectNext": "3274,3375,0"
+    },
+    {
+      "name": "al_kharid_general_store_requires_gate_coins",
+      "from": "3222,3218,0",
+      "to": "al_kharid_general_store",
+      "combatLevel": 3,
+      "food": 1,
+      "coins": 0,
+      "expectRoute": "lumbridge_courtyard_to_al_kharid_general_store",
+      "expectType": "walk",
+      "expectNext": "3239,3218,0",
+      "expectWarningContains": [
+        "coins 0 < required 10"
+      ]
+    },
+    {
+      "name": "lumbridge_to_varrock_square",
+      "from": "3222,3218,0",
+      "to": "varrock_square",
+      "combatLevel": 3,
+      "food": 1,
+      "coins": 0,
+      "expectRoute": "lumbridge_courtyard_to_varrock_square",
+      "expectType": "walk",
+      "expectNext": "3234,3238,0"
+    },
+    {
+      "name": "varrock_square_to_champions_requires_run_energy",
+      "from": "3210,3424,0",
+      "to": "champions_guild_stairs",
+      "combatLevel": 3,
+      "food": 2,
+      "coins": 9,
+      "runEnergy": 10,
+      "runEnabled": false,
+      "expectRoute": "varrock_square_to_champions_guild_stairs",
+      "expectType": "walk",
+      "expectNext": "3206,3399,0",
+      "expectWarningContains": [
+        "run energy 10 < required 20",
+        "run disabled but required"
+      ]
+    },
+    {
+      "name": "lumbridge_to_barbarian_village_food_warning",
+      "from": "3222,3218,0",
+      "to": "barbarian_village",
+      "combatLevel": 3,
+      "food": 1,
+      "coins": 0,
+      "expectRoute": "lumbridge_courtyard_to_barbarian_village",
+      "expectType": "walk",
+      "expectNext": "3252,3236,0",
+      "expectWarningContains": [
+        "food 1 < required 2"
+      ]
+    },
+    {
+      "name": "varrock_east_bank_to_square_live_verified",
+      "from": "3253,3420,0",
+      "to": "varrock_square",
+      "combatLevel": 3,
+      "food": 0,
+      "coins": 0,
+      "runEnergy": 31,
+      "runEnabled": false,
+      "expectRoute": "varrock_east_bank_to_varrock_square",
+      "expectType": "walk",
+      "expectNext": "3238,3420,0"
+    },
+    {
+      "name": "varrock_square_to_west_bank_live_verified",
+      "from": "3210,3424,0",
+      "to": "varrock_west_bank",
+      "combatLevel": 3,
+      "food": 0,
+      "coins": 0,
+      "runEnergy": 76,
+      "runEnabled": true,
+      "expectRoute": "varrock_square_to_varrock_west_bank",
+      "expectType": "walk",
+      "expectNext": "3194,3430,0"
+    },
+    {
+      "name": "varrock_east_bank_to_barbarian_village_live_verified",
+      "from": "3253,3420,0",
+      "to": "barbarian_village",
+      "combatLevel": 3,
+      "food": 2,
+      "coins": 0,
+      "runEnergy": 21,
+      "runEnabled": true,
+      "expectRoute": "varrock_east_bank_to_barbarian_village",
+      "expectType": "walk",
+      "expectNext": "3238,3420,0"
+    },
+    {
+      "name": "barbarian_village_to_varrock_east_bank_live_verified",
+      "from": "3081,3429,0",
+      "to": "varrock_east_bank",
+      "combatLevel": 3,
+      "food": 2,
+      "coins": 0,
+      "runEnergy": 12,
+      "runEnabled": false,
+      "expectRoute": "barbarian_village_to_varrock_east_bank",
+      "expectType": "walk",
+      "expectNext": "3092,3429,0"
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "2006Scape Agent Session Logs"
+  short_description: "Read and improve agent session memory"
+  default_prompt: "Use $2006scape-agent-session-logs to inspect the latest 2006Scape agent session summaries and profile memory safely."

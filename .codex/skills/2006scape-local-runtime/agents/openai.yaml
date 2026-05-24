@@ -1,0 +1,4 @@
+interface:
+  display_name: "2006Scape Local Runtime"
+  short_description: "Start and repair the local game bridge"
+  default_prompt: "Use $2006scape-local-runtime to relaunch or claim the local 2006Scape server, client, and selected profile bridge session safely."

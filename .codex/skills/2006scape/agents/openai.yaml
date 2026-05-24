@@ -1,0 +1,4 @@
+interface:
+  display_name: "2006Scape"
+  short_description: "Orient and route 2006Scape repo work"
+  default_prompt: "Use $2006scape to choose the right 2006Scape workflow, starter command, and child skill before working."

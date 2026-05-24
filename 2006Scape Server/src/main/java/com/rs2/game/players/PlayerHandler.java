@@ -4,6 +4,7 @@ import java.net.InetSocketAddress;
 
 import com.rs2.Constants;
 import com.rs2.GameEngine;
+import com.rs2.agent.AgentPassiveTraceLog;
 import com.rs2.game.content.minigames.castlewars.CastleWars;
 import com.rs2.game.npcs.Npc;
 import com.rs2.game.npcs.NpcHandler;
@@ -21,6 +22,7 @@ public class PlayerHandler {
 	public static int updateSeconds;
 	public static long updateStartTime;
 	private boolean kickAllPlayers = false;
+	private long passiveTraceTick = 0L;
 
 	static {
 		for (int i = 0; i < Constants.MAX_PLAYERS; i++) {
@@ -112,6 +114,7 @@ public class PlayerHandler {
 
 	public void process() {
 		updatePlayerNames();
+		passiveTraceTick++;
 		if (kickAllPlayers) {
 			for (int i = 0; i < PlayerHandler.players.length; i++) {
 				if (players[i] != null) {
@@ -186,6 +189,7 @@ public class PlayerHandler {
 
 				players[i].process();
 				players[i].postProcessing();
+				AgentPassiveTraceLog.INSTANCE.captureBeforeMovement(players[i], passiveTraceTick);
 				players[i].getNextPlayerMovement();
 				players[i].preProcessing();
 			} catch (Exception e) {
@@ -253,6 +257,7 @@ public class PlayerHandler {
 					} else {
 						players[i].update();
 					}
+					AgentPassiveTraceLog.INSTANCE.recordAfterUpdate(players[i], passiveTraceTick);
 				}
 			} catch (Exception e) {
 				e.printStackTrace();

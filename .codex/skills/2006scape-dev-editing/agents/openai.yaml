@@ -1,0 +1,4 @@
+interface:
+  display_name: "2006Scape Dev Editing"
+  short_description: "Experience-derived repo editing lessons"
+  default_prompt: "Use $2006scape-dev-editing when editing or testing the 2006Scape repo."

@@ -83,6 +83,7 @@ public class ClientSettings {
     public static boolean SINGLE_ONDEMAND = true;
 
     public static boolean SHOW_NAVBAR = true;
+    public static int CLIENT_SCALE = 1;
     public static final String NAV_MAINMENU_LINK = SERVER_WEBSITE;
     public static final String NAV_WORLDMAP_LINK = SERVER_WEBSITE + "img/worldmap.jpg";
     public static final String NAV_MANUAL_LINK = SERVER_WEBSITE;

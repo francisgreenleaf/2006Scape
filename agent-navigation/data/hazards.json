@@ -1,0 +1,776 @@
+{
+  "schemaVersion": 1,
+  "hazards": [
+    {
+      "id": "lumbridge_goblins_field",
+      "name": "Lumbridge Goblins",
+      "type": "npc_zone",
+      "region": "lumbridge",
+      "center": {
+        "x": 3252,
+        "y": 3236,
+        "height": 0
+      },
+      "radius": 18,
+      "risk": "medium-low",
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1
+      },
+      "npcs": [
+        {
+          "name": "Goblin",
+          "combatLevel": 2,
+          "maxHit": 2,
+          "aggressive": false
+        }
+      ],
+      "avoidWhen": [
+        "hitpoints below 6",
+        "no food and account is level 3",
+        "already in combat with another NPC"
+      ],
+      "notes": "Observed near Lumbridge on a new account. Safe enough for early training with food."
+    },
+    {
+      "id": "lumbridge_giant_rats_basement_edge",
+      "name": "Lumbridge Giant Rats",
+      "type": "npc_zone",
+      "region": "lumbridge",
+      "center": {
+        "x": 3191,
+        "y": 3208,
+        "height": 0
+      },
+      "radius": 16,
+      "risk": "medium-low",
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1
+      },
+      "npcs": [
+        {
+          "name": "Giant rat",
+          "combatLevel": 3,
+          "maxHit": 2,
+          "aggressive": false
+        },
+        {
+          "name": "Rat",
+          "combatLevel": 1,
+          "maxHit": 1,
+          "aggressive": false
+        }
+      ],
+      "avoidWhen": [
+        "low hitpoints",
+        "walking with valuable inventory and no food"
+      ],
+      "notes": "Seen near the kitchen approach observation. Not high risk, but can interrupt a route if accidentally attacked."
+    },
+    {
+      "id": "varrock_south_dark_wizards_unverified",
+      "name": "Varrock South Dark Wizards",
+      "type": "npc_zone",
+      "region": "varrock",
+      "center": {
+        "x": 3222,
+        "y": 3372,
+        "height": 0
+      },
+      "radius": 24,
+      "risk": "death-confirmed-for-new-accounts",
+      "requirements": {
+        "minCombatLevel": 20,
+        "minFood": 4,
+        "minRunEnergy": 60,
+        "requiresRun": true
+      },
+      "npcs": [
+        {
+          "name": "Dark wizard",
+          "combatLevel": 7,
+          "aggressive": false,
+          "hostileWhenInRangeOrEngaged": true
+        },
+        {
+          "name": "Dark wizard",
+          "combatLevel": 20,
+          "aggressive": false,
+          "hostileWhenInRangeOrEngaged": true
+        }
+      ],
+      "avoidWhen": [
+        "combat level below 20",
+        "food below 4",
+        "run energy below 60",
+        "already low on run from a long route",
+        "trying to pass through 3222-3238,3364-3374 corridor",
+        "route can use a safer east/south road instead"
+      ],
+      "notes": "Live death observed 2026-05-24: level 3 MrFlame attempted to run south through Varrock dark wizard corridor from 3206,3424 toward 3237,3295. Combat contact began near 3238,3373; player died at 3233,3366 with nearby Dark wizard levels 7 and 20. NPC aggressive flag reported false, but hostile combat occurred during transit. Do not record observed damage as proven max hit. Follow-up Catherby attempt evidence confirms the south/east Varrock shortcut and bank-tail probes can pull level-3 MrFlame into Dark wizard combat/death even when NPC aggressive=false; avoid long clicks through 3252,3381 and repair the route with short road-aligned proof legs.",
+      "status": "live-death-confirmed",
+      "observations": [
+        "2026-05-24 Catherby attempt: travel_to_landmark varrock_square from 3252,3381 pulled into Dark wizard level 7 combat around 3237,3369; HP 10 -> 1 at 3230,3370, no food, then death/respawn at Lumbridge.",
+        "2026-05-24 retry: target 3253,3420 from 3274,3375 entered unexpected combat context around 3260,3375/3252,3381; cancelled and recovered to 3285,3365 with HP 10."
+      ]
+    },
+    {
+      "id": "lumbridge_cows_field",
+      "name": "Lumbridge Cow Field",
+      "type": "npc_zone",
+      "region": "lumbridge",
+      "center": {
+        "x": 3255,
+        "y": 3266,
+        "height": 0
+      },
+      "radius": 18,
+      "risk": "medium-low",
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1
+      },
+      "npcs": [
+        {
+          "name": "Cow",
+          "combatLevel": 2,
+          "maxHit": 1,
+          "aggressive": false
+        }
+      ],
+      "avoidWhen": [
+        "inventory is full and the goal is travel rather than combat",
+        "hitpoints below retreat threshold"
+      ],
+      "notes": "Low-risk training area on the Lumbridge-to-Varrock road. Route logic should avoid starting combat unless the user asked to train."
+    },
+    {
+      "id": "al_kharid_gate_toll",
+      "name": "Al Kharid Gate Toll",
+      "type": "navigation_gate",
+      "region": "lumbridge_al_kharid",
+      "center": {
+        "x": 3267,
+        "y": 3227,
+        "height": 0
+      },
+      "radius": 2,
+      "risk": "blocker",
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "coins": 10
+      },
+      "npcs": [],
+      "avoidWhen": [
+        "carried coins below 10",
+        "interface or dialogue state is unknown"
+      ],
+      "notes": "The gate is not a combat hazard, but it blocks routes unless the player can pay or has an unlock. Use normal object/gate handling and verify the crossing."
+    },
+    {
+      "id": "varrock_east_mine_inventory_pressure",
+      "name": "Varrock East Mine Inventory Pressure",
+      "type": "resource_loop",
+      "region": "varrock",
+      "center": {
+        "x": 3285,
+        "y": 3365,
+        "height": 0
+      },
+      "radius": 10,
+      "risk": "operational",
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1
+      },
+      "npcs": [],
+      "avoidWhen": [
+        "free inventory slots are low and the target is not banking",
+        "no pickaxe is available for mining tasks"
+      ],
+      "notes": "Mining routes should check inventory and bank ores instead of repeatedly walking to rocks with a full pack."
+    },
+    {
+      "id": "barbarian_village_unverified_combat_zone",
+      "name": "Barbarian Village Unverified Combat Zone",
+      "type": "npc_zone",
+      "region": "barbarian_village",
+      "center": {
+        "x": 3081,
+        "y": 3429,
+        "height": 0
+      },
+      "radius": 18,
+      "risk": "medium",
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 2,
+        "minRunEnergy": 20,
+        "requiresRun": true
+      },
+      "npcs": [
+        {
+          "name": "Barbarian",
+          "combatLevel": null,
+          "maxHit": null,
+          "aggressive": null
+        }
+      ],
+      "avoidWhen": [
+        "hitpoints below 8",
+        "no food",
+        "route has not been live-verified in this server build"
+      ],
+      "notes": "Seeded from long-route coverage rather than a live observation. Stop and observe before entering or interacting in Barbarian Village."
+    },
+    {
+      "id": "taverley_white_wolf_gate_west",
+      "name": "Taverley Gate West White Wolves",
+      "type": "npc_zone",
+      "region": "taverley",
+      "center": {
+        "x": 2870,
+        "y": 3437,
+        "height": 0
+      },
+      "radius": 28,
+      "risk": "death-confirmed-for-new-accounts",
+      "requirements": {
+        "minCombatLevel": 35,
+        "minFood": 6,
+        "minRunEnergy": 70,
+        "requiresRun": true
+      },
+      "npcs": [
+        {
+          "name": "White wolf",
+          "combatLevel": 25,
+          "aggressive": false,
+          "hostileWhenAttackedOrPathingTooClose": true
+        }
+      ],
+      "avoidWhen": [
+        "combat level below 35",
+        "food below 6",
+        "run energy below 70",
+        "route can avoid the immediate west side of the Taverley gate",
+        "target path crosses 2870,3436 or nearby white wolves"
+      ],
+      "notes": "Live death observed 2026-05-24 during the Gnome Agility Course push. The gate around 2935/2936,3451 was opened through normal gameplay and the route reached 2916,3434, then a westward probe to 2870,3436 entered combat with White wolf level 25 at 2870,3437. HP dropped from 10 to 5 and then death occurred at 2869,3436 with no food. NPC aggressive flag reported false; do not infer max hit from observed damage.",
+      "observations": [
+        "2026-05-24: after manual gate proof at 2935/2936,3451, route_runner direct-preview probe reached 2870,3436 and triggered White wolf level 25 combat; MrFlame died and respawned at Lumbridge."
+      ]
+    },
+    {
+      "id": "dwarven_mine_descent_unverified",
+      "name": "Dwarven Mine Descent Unverified",
+      "type": "navigation_gate",
+      "region": "dwarven_mine",
+      "center": {
+        "x": 3024,
+        "y": 3450,
+        "height": 0
+      },
+      "radius": 4,
+      "risk": "blocker",
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 2
+      },
+      "npcs": [],
+      "avoidWhen": [
+        "the user only asked for surface travel",
+        "underground exits and hazards have not been observed",
+        "inventory is full or no food is available"
+      ],
+      "notes": "Surface route to the ladder is known from Java waypoints, but descending should wait for explicit observation of underground state."
+    },
+    {
+      "id": "varrock_south_shop_route_unverified",
+      "name": "Varrock South Shop Route Unverified",
+      "type": "route_uncertainty",
+      "region": "varrock",
+      "center": {
+        "x": 3206,
+        "y": 3399,
+        "height": 0
+      },
+      "radius": 16,
+      "risk": "medium",
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 2
+      },
+      "npcs": [],
+      "avoidWhen": [
+        "route drifts toward dark wizards",
+        "run energy below 20",
+        "run is disabled",
+        "hitpoints below 8",
+        "no food or no recent observation"
+      ],
+      "notes": "The Champions' Guild approach from Varrock square was live-checked with run enabled on 2026-05-24 and completed safely at 10 HP. Keep run required here because the return leg drained energy heavily."
+    },
+    {
+      "id": "black_knights_fortress_low_level_transit",
+      "name": "Black Knights Fortress Low-Level Transit Hazard",
+      "type": "npc_zone",
+      "region": "north_falador_monastery",
+      "center": {
+        "x": 3030,
+        "y": 3505,
+        "height": 0
+      },
+      "radius": 28,
+      "risk": "high-for-new-accounts",
+      "requirements": {
+        "minCombatLevel": 25,
+        "minFood": 3,
+        "minRunEnergy": 40,
+        "requiresRun": true
+      },
+      "npcs": [
+        {
+          "name": "Black Knight",
+          "combatLevel": 33,
+          "attack": 20,
+          "defence": 20,
+          "aggressive": false,
+          "hostileWhenAttackedOrPathingTooClose": true
+        }
+      ],
+      "avoidWhen": [
+        "combat level below 25",
+        "hitpoints below 10",
+        "food below 3",
+        "run energy below 40",
+        "route can use a safer Falador west road instead",
+        "player is already target-linked to a Black Knight"
+      ],
+      "notes": "Live observed 2026-05-24: level 3 MrFlame crossed near 3024,3498 while resetting from north of Falador, got into combat with Black Knight level 33, lost 3 HP during retreat to 3050,3490, then ate Shrimps. NPC aggressive flag reported false, but combat linkage/hostility occurred during transit; treat as unsafe until combat level, food, and run improve. Do not treat observed damage as a proven max hit."
+    },
+    {
+      "id": "port_sarim_highwayman_road_contact",
+      "name": "Port Sarim Highwayman Road Contact",
+      "type": "npc_zone",
+      "region": "falador_port_sarim",
+      "center": {
+        "x": 3006,
+        "y": 3275,
+        "height": 0
+      },
+      "radius": 14,
+      "risk": "death-confirmed-for-new-accounts",
+      "requirements": {
+        "minCombatLevel": 10,
+        "minFood": 3,
+        "minRunEnergy": 30,
+        "requiresRun": true
+      },
+      "npcs": [
+        {
+          "name": "Highwayman",
+          "combatLevel": 5,
+          "aggressive": false,
+          "hostileWhenInRangeOrEngaged": true
+        }
+      ],
+      "avoidWhen": [
+        "combat level below 10",
+        "hitpoints below 10",
+        "food below 3",
+        "route can use a wider Rimmington or Draynor/Port Sarim approach",
+        "player is already target-linked to a Highwayman"
+      ],
+      "notes": "Live death observed 2026-05-24: level 3 MrFlame followed the Falador south road toward Port Sarim from 3001,3282 to 3031,3250. Unexpected combat started near 3005,3275 with a Highwayman level 5 at distance 1; HP dropped 10 -> 4 -> 1 with no food and the player died/respawned at Lumbridge. NPC aggressive flag reported false, but underAttack=true/target-linked combat occurred during transit. Do not treat observed damage as a proven max hit."
+    },
+    {
+      "id": "lumbridge_basement_rockslugs_level_29",
+      "name": "Lumbridge Basement Rockslugs",
+      "type": "npc_zone",
+      "region": "lumbridge",
+      "center": {
+        "x": 3212,
+        "y": 9588,
+        "height": 0
+      },
+      "radius": 18,
+      "risk": "dangerous-for-new-accounts",
+      "requirements": {
+        "minCombatLevel": 20,
+        "minFood": 4,
+        "minRunEnergy": 40,
+        "requiresRun": true
+      },
+      "npcs": [
+        {
+          "name": "Rockslug",
+          "combatLevel": 29,
+          "aggressive": false,
+          "hostileWhenInRangeOrEngaged": true
+        }
+      ],
+      "avoidWhen": [
+        "combat level below 20",
+        "food below 4",
+        "run energy below 40",
+        "route can stay near the basement entry instead",
+        "player is only trying to verify trapdoor access"
+      ],
+      "notes": "Observed from Lumbridge basement entry on 2026-05-24: multiple level-29 Rockslugs about 27-30 tiles south. They were not aggressive in the observation, but are unsafe for level-3 MrFlame if approached or engaged."
+    },
+    {
+      "id": "lumbridge_west_exterior_rats",
+      "name": "Lumbridge West Exterior Rats",
+      "type": "npc_zone",
+      "region": "lumbridge",
+      "center": {
+        "x": 3194,
+        "y": 3208,
+        "height": 0
+      },
+      "radius": 18,
+      "risk": "low",
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0
+      },
+      "npcs": [
+        {
+          "name": "Rat",
+          "combatLevel": 1,
+          "aggressive": false,
+          "hostileWhenAttackedOrPathingTooClose": false
+        },
+        {
+          "name": "Giant rat",
+          "combatLevel": 3,
+          "aggressive": false,
+          "hostileWhenAttackedOrPathingTooClose": false
+        }
+      ],
+      "avoidWhen": [
+        "player is already in combat",
+        "hitpoints below 5 and no food remains",
+        "route accidentally targets an NPC instead of a tile"
+      ],
+      "notes": "Observed 2026-05-24 from 3204,3218: Rat level 1 at distance 4 and Giant rats level 3 at distance 12-13, all aggressive=false and no combat occurred during the west castle exterior route. Record as low risk, not a route blocker."
+    },
+    {
+      "id": "lumbridge_west_goblin_field",
+      "name": "Lumbridge West Goblin Field",
+      "type": "npc_zone",
+      "region": "lumbridge",
+      "center": {
+        "x": 3160,
+        "y": 3230,
+        "height": 0
+      },
+      "radius": 24,
+      "risk": "medium-low",
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1
+      },
+      "npcs": [
+        {
+          "name": "Goblin",
+          "combatLevel": 2,
+          "aggressive": false,
+          "hostileWhenAttackedOrPathingTooClose": false
+        }
+      ],
+      "avoidWhen": [
+        "player is already in combat",
+        "hitpoints below 6 and no food remains",
+        "route is trying to preserve resources for a longer westward crossing"
+      ],
+      "notes": "Observed 2026-05-24 from 3168,3224: multiple Goblins level 2 at distances 7-29, aggressive=false, underAttack=false, no combat occurred during transit. Safe to pass through with food, but avoid lingering or accidental attacks.",
+      "relatedHazards": [
+        "draynor_jail_guard_edge"
+      ]
+    },
+    {
+      "id": "draynor_jail_guard_edge",
+      "name": "Draynor Jail Guard Edge",
+      "type": "npc_zone",
+      "region": "draynor_lumbridge_west",
+      "center": {
+        "x": 3125,
+        "y": 3247,
+        "height": 0
+      },
+      "radius": 18,
+      "risk": "high-for-new-accounts",
+      "requirements": {
+        "minCombatLevel": 15,
+        "minFood": 2,
+        "minRunEnergy": 30
+      },
+      "npcs": [
+        {
+          "name": "Jail Guard",
+          "combatLevel": 26,
+          "aggressive": false,
+          "hostileWhenAttackedOrPathingTooClose": true
+        }
+      ],
+      "avoidWhen": [
+        "combat level below 15 and route can remain south of the jail",
+        "food below 2",
+        "run energy below 30",
+        "player has accidentally targeted or attacked a guard"
+      ],
+      "notes": "Observed 2026-05-24 from 3148,3228: Jail Guards level 26 at distance 21-26, aggressive=false, underAttack=false. Relaunch exploration later reached 3120,3239 and a northwest probe toward 3106,3248 entered Jail Guard combat near 3116,3236/3116,3237. HP later dropped to 7 before the only bread was eaten and the route retreated. Treat the northwest jail edge as combat-contact territory for level-3 MrFlame, not just a distant proximity hazard.",
+      "observations": [
+        "2026-05-24 relaunch exploration: target 3106,3248 from the 3120,3239 jail edge entered Jail Guard level 26 combat near 3116,3236/3116,3237; HP later fell to 7 before bread recovery."
+      ]
+    },
+    {
+      "id": "draynor_southeast_unicorns",
+      "name": "Draynor Southeast Unicorns",
+      "type": "npc_zone",
+      "region": "draynor_lumbridge_west",
+      "center": {
+        "x": 3134,
+        "y": 3217,
+        "height": 0
+      },
+      "radius": 12,
+      "risk": "medium-low",
+      "requirements": {
+        "minCombatLevel": 8,
+        "minFood": 1
+      },
+      "npcs": [
+        {
+          "name": "Unicorn",
+          "combatLevel": 15,
+          "aggressive": false,
+          "hostileWhenAttackedOrPathingTooClose": false
+        }
+      ],
+      "avoidWhen": [
+        "player is already in combat",
+        "route accidentally targets a Unicorn",
+        "hitpoints below 8 and no food remains"
+      ],
+      "notes": "Observed 2026-05-24 from 3134,3218: Unicorn level 15 at distance 1-2, aggressive=false, underAttack=false. Safe as adjacent transit in this observation, but do not attack on a level-3 account."
+    },
+    {
+      "id": "draynor_southeast_wizard_edge",
+      "name": "Draynor Southeast Wizard Edge",
+      "type": "npc_zone",
+      "region": "draynor_lumbridge_west",
+      "center": {
+        "x": 3147,
+        "y": 3205,
+        "height": 0
+      },
+      "radius": 14,
+      "risk": "medium-for-new-accounts",
+      "requirements": {
+        "minCombatLevel": 10,
+        "minFood": 2,
+        "minRunEnergy": 20
+      },
+      "npcs": [
+        {
+          "name": "Wizard",
+          "combatLevel": 9,
+          "aggressive": false,
+          "hostileWhenAttackedOrPathingTooClose": true
+        }
+      ],
+      "avoidWhen": [
+        "combat level below 10 and route can go west/southwest instead",
+        "food below 2",
+        "player has accidentally attacked or been targeted by a Wizard"
+      ],
+      "notes": "Observed 2026-05-24 from 3134,3218: Wizard level 9 at distance 13, aggressive=false, underAttack=false. Treat as a route-skirt hazard for low-level accounts; do not infer max hit from this observation."
+    },
+    {
+      "id": "draynor_southeast_black_knight_edge",
+      "name": "Draynor Southeast Black Knight Edge",
+      "type": "npc_zone",
+      "region": "draynor_lumbridge_west",
+      "center": {
+        "x": 3088,
+        "y": 3229,
+        "height": 0
+      },
+      "radius": 32,
+      "risk": "high-for-new-accounts",
+      "requirements": {
+        "minCombatLevel": 25,
+        "minFood": 3,
+        "minRunEnergy": 40,
+        "requiresRun": true
+      },
+      "npcs": [
+        {
+          "name": "Black Knight",
+          "combatLevel": 33,
+          "aggressive": false,
+          "hostileWhenAttackedOrPathingTooClose": true
+        }
+      ],
+      "avoidWhen": [
+        "combat level below 25",
+        "food below 3",
+        "run energy below 40",
+        "route can skirt south or east instead",
+        "player has accidentally attacked or been target-linked to a Black Knight"
+      ],
+      "notes": "Observed 2026-05-24 from 3115,3202: Black Knight level 33 at distance 27, aggressive=false, underAttack=false. Treat as high risk for level-3 MrFlame because earlier Black Knight contact caused dangerous combat elsewhere; safe only as distant transit, not a fight or idle area."
+    },
+    {
+      "id": "draynor_south_wizard_group",
+      "name": "Draynor South Wizard Group",
+      "type": "npc_zone",
+      "region": "draynor_lumbridge_west",
+      "center": {
+        "x": 3108,
+        "y": 3159,
+        "height": 0
+      },
+      "radius": 24,
+      "risk": "medium-for-new-accounts",
+      "requirements": {
+        "minCombatLevel": 10,
+        "minFood": 2,
+        "minRunEnergy": 20
+      },
+      "npcs": [
+        {
+          "name": "Wizard",
+          "combatLevel": 9,
+          "aggressive": false,
+          "hostileWhenAttackedOrPathingTooClose": true
+        }
+      ],
+      "avoidWhen": [
+        "combat level below 10 and route can stay north or west",
+        "food below 2",
+        "run energy below 20",
+        "player has accidentally attacked or been targeted by a Wizard"
+      ],
+      "notes": "Observed 2026-05-24 from 3115,3186, 3102,3171, and 3096,3169: multiple Wizards level 9, aggressive=false, underAttack=false. From 3096,3169 nearest Wizard was distance 8. Keep as a low-level route-skirt hazard; do not infer max hit from these observations.",
+      "observations": [
+        "2026-05-24: 3102,3171 checkpoint observed Wizards level 9 at distance 11-17, aggressive=false, no combat.",
+        "2026-05-24: 3096,3169 checkpoint observed Wizards level 9 at distance 8-16, aggressive=false, no combat."
+      ]
+    },
+    {
+      "id": "draynor_southeast_ranged_npc_cluster",
+      "name": "Draynor Southeast Ranged NPC Cluster",
+      "type": "npc_zone",
+      "region": "draynor_lumbridge_west",
+      "center": {
+        "x": 3148,
+        "y": 3206,
+        "height": 0
+      },
+      "radius": 20,
+      "risk": "high-for-new-accounts",
+      "requirements": {
+        "minCombatLevel": 25,
+        "minFood": 3,
+        "minRunEnergy": 40,
+        "requiresRun": true
+      },
+      "npcs": [
+        {
+          "name": "Archer",
+          "combatLevel": 42,
+          "aggressive": false,
+          "hostileWhenAttackedOrPathingTooClose": true
+        },
+        {
+          "name": "Wizard",
+          "combatLevel": 9,
+          "aggressive": false,
+          "hostileWhenAttackedOrPathingTooClose": true
+        },
+        {
+          "name": "Monk",
+          "combatLevel": 5,
+          "aggressive": false,
+          "hostileWhenAttackedOrPathingTooClose": true
+        },
+        {
+          "name": "Warrior",
+          "combatLevel": 48,
+          "aggressive": false,
+          "hostileWhenAttackedOrPathingTooClose": true
+        }
+      ],
+      "avoidWhen": [
+        "combat level below 25",
+        "food below 3",
+        "run energy below 40",
+        "route can stay west or south instead",
+        "player has accidentally attacked any NPC in the cluster"
+      ],
+      "notes": "Observed 2026-05-24 from 3120,3208: Archer level 42, Wizard level 9, and Monk level 5 around 3146-3148,3202-3209, all aggressive=false and underAttack=false. High risk for level-3 MrFlame if accidentally engaged; do not infer max hit from observation. Follow-up 2026-05-24 observation from 3122,3218 also saw Warrior level 48 at 3151,3203 with aggressive=false and underAttack=false; treat the east/southeast NPC cluster as high risk for level-3 routing."
+    },
+    {
+      "id": "draynor_black_knight_dark_wizard_crossroads",
+      "name": "Draynor Black Knight and Dark Wizard Crossroads",
+      "region": "draynor_lumbridge_west",
+      "radius": 30,
+      "risk": "death-confirmed-for-new-accounts",
+      "requirements": {
+        "minCombatLevel": 25,
+        "minFood": 3,
+        "minRunEnergy": 40,
+        "requiresRun": true
+      },
+      "npcs": [
+        {
+          "name": "Black Knight",
+          "combatLevel": 33,
+          "aggressive": false,
+          "hostileWhenAttackedOrPathingTooClose": true
+        },
+        {
+          "name": "Dark wizard",
+          "combatLevel": 7,
+          "aggressive": false,
+          "hostileWhenAttackedOrPathingTooClose": true
+        },
+        {
+          "name": "Market Guard",
+          "combatLevel": 20,
+          "aggressive": false,
+          "hostileWhenAttackedOrPathingTooClose": true
+        },
+        {
+          "name": "Jail Guard",
+          "combatLevel": 26,
+          "aggressive": false,
+          "hostileWhenAttackedOrPathingTooClose": true
+        }
+      ],
+      "avoidWhen": [
+        "combat level below 25",
+        "food below 3",
+        "run energy below 40",
+        "route can take a wider south or east arc",
+        "player has accidentally attacked any NPC in the cluster"
+      ],
+      "notes": "Observed 2026-05-24 while probing west/southwest from 3110,3218 through 3099,3209, 3092,3213, and later 3087,3220. The 3087,3220 frontier itself was reached with HP 10 and no combat, but southwest 3075,3215 was blocked and northwest 3079,3246 entered Dark wizard level 7 combat around 3090,3236/3088,3236. HP dropped from 10 to 3 with no food, then MrFlame died and respawned at Lumbridge. Black Knight level 33 and Market Guards level 20 were nearby. This pocket is death-confirmed for level-3/no-food routing.",
+      "type": "npc_zone",
+      "center": {
+        "x": 3088,
+        "y": 3236,
+        "height": 0
+      },
+      "observations": [
+        "2026-05-24 relaunch exploration: from 3087,3220, target 3079,3246 triggered Dark wizard level 7 combat near 3090,3236/3088,3236; HP 10 -> 3, no food, death/respawn at Lumbridge."
+      ]
+    }
+  ]
+}

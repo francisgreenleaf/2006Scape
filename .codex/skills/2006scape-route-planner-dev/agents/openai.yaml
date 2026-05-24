@@ -1,0 +1,4 @@
+interface:
+  display_name: "2006Scape Route Planner Dev"
+  short_description: "Build the learned route planner"
+  default_prompt: "Use $2006scape-route-planner-dev to improve the 2006Scape router, route runner, graph data, or ML/GNN routing plan."

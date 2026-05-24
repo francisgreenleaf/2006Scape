@@ -45,10 +45,13 @@ import com.rs2.game.objects.Objects;
 import com.rs2.game.objects.impl.Climbing;
 import com.rs2.game.objects.impl.OtherObjects;
 import com.rs2.game.players.Player;
+import com.rs2.game.players.PlayerHandler;
 import com.rs2.game.dialogues.DialogueOptions;
 import com.rs2.game.shops.ShopHandler;
 import com.rs2.game.shops.Shops;
 import com.rs2.net.packets.impl.ClickObject;
+import com.rs2.util.Misc;
+import com.rs2.util.Stream;
 import com.rs2.world.Boundary;
 import com.rs2.world.GlobalDropsHandler;
 import com.rs2.world.clip.PathFinder;
@@ -59,9 +62,10 @@ public class AgentToolService {
     private static final int DEFAULT_SCAN_DISTANCE = 30;
     private static final int LOCAL_COMBAT_ENGAGE_DISTANCE = 12;
     private static final int DEFAULT_OBJECT_SCAN_DISTANCE = 60;
-    private static final int MAX_WALK_CHUNK_DISTANCE = 16;
     private static final int MAP_REGION_SIZE = 104;
     private static final int MAP_REGION_MARGIN = 2;
+    private static final int DEFAULT_WALK_CHUNK_DISTANCE = 48;
+    private static final int MAX_WALK_CHUNK_DISTANCE = MAP_REGION_SIZE - 2 * MAP_REGION_MARGIN - 1;
     private static final long MINING_RECLICK_COOLDOWN_MS = 1800L;
     private static final int COINS = AgentCombatPlanner.coinsItemId();
     private static final int HAMMER = 2347;
@@ -77,6 +81,11 @@ public class AgentToolService {
     private static final int AL_KHARID_GATE_EXIT_Y = 3220;
     private static final int VARROCK_ROUTE_JOIN_X = 3252;
     private static final int VARROCK_ROUTE_JOIN_Y = 3236;
+    private static final int VARROCK_DARK_WIZARD_RUN_MIN_ENERGY = 20;
+    private static final int VARROCK_DARK_WIZARD_MIN_X = 3190;
+    private static final int VARROCK_DARK_WIZARD_MAX_X = 3240;
+    private static final int VARROCK_DARK_WIZARD_MIN_Y = 3350;
+    private static final int VARROCK_DARK_WIZARD_MAX_Y = 3410;
     private static final int AL_KHARID_GATE_WEST_OBJECT = 2882;
     private static final int AL_KHARID_GATE_EAST_OBJECT = 2883;
     private static final int[] SMITHING_BAR_IDS = {2363, 2361, 2359, 2353, 2351, 2349};
@@ -124,8 +133,14 @@ public class AgentToolService {
         if ("close_interfaces".equals(tool)) {
             return closeInterfaces(player);
         }
+        if ("preview_local_path".equals(tool)) {
+            return previewLocalPath(player, arguments);
+        }
         if (!canAct(player)) {
             return failure("The player cannot act right now.");
+        }
+        if ("send_public_chat".equals(tool)) {
+            return sendPublicChat(player, arguments);
         }
         if ("set_run".equals(tool)) {
             return setRun(player, arguments);
@@ -242,6 +257,7 @@ public class AgentToolService {
         JsonObject result = success("Observed current game state.");
         addPlayerState(result, player);
         result.add("agentPersonality", AgentProfileMemory.INSTANCE.readForPlayer(player.playerName));
+        result.add("nearbyPlayers", nearbyPlayers(player, DEFAULT_SCAN_DISTANCE, 12));
         result.add("nearbyNpcs", nearbyNpcs(player, DEFAULT_SCAN_DISTANCE, 12));
         result.add("nearbyObjects", nearbyObjects(player, 20, 16));
         result.add("nearbyGroundItems", nearbyGroundItems(player, 20, 16));
@@ -307,6 +323,31 @@ public class AgentToolService {
         return player != null && !player.disconnected && !player.isDead && !player.inTrade && player.duelStatus != 5;
     }
 
+    private static JsonObject sendPublicChat(Player player, JsonObject arguments) {
+        String message = getString(arguments, "message", "").trim();
+        if (message.length() == 0) {
+            return failure("message is required.");
+        }
+        if (message.length() > 80) {
+            message = message.substring(0, 80);
+        }
+        int color = clamp(getInt(arguments, "color", 0), 0, 11);
+        int effects = clamp(getInt(arguments, "effects", 0), 0, 5);
+        Stream stream = new Stream(new byte[Constants.BUFFER_SIZE]);
+        Misc.textPack(stream, message);
+        player.setChatTextColor(color);
+        player.setChatTextEffects(effects);
+        player.setChatTextSize((byte) stream.currentOffset);
+        player.setChatText(stream.buffer);
+        player.setChatTextUpdateRequired(true);
+        JsonObject result = success("Sent public chat.");
+        result.addProperty("chatMessage", message);
+        result.addProperty("color", color);
+        result.addProperty("effects", effects);
+        addPlayerState(result, player);
+        return result;
+    }
+
     private static JsonObject walkToTile(Player player, JsonObject arguments) {
         int x = getInt(arguments, "x", player.absX);
         int y = getInt(arguments, "y", player.absY);
@@ -321,14 +362,63 @@ public class AgentToolService {
         player.getPacketSender().closeAllWindows();
         player.isBanking = false;
         player.isShopping = false;
-        int[] walkTarget = boundedWalkTarget(player, x, y);
+        int maxWalkDistance = walkChunkDistance(arguments);
+        int[] walkTarget = boundedWalkTarget(player, x, y, maxWalkDistance);
         player.getPlayerAssistant().playerWalk(walkTarget[0], walkTarget[1]);
         JsonObject result = success("Walking toward tile.");
         addPlayerState(result, player);
         result.add("target", tile(x, y, height));
+        result.addProperty("maxWalkDistance", maxWalkDistance);
         if (walkTarget[0] != x || walkTarget[1] != y) {
             result.add("walkTarget", tile(walkTarget[0], walkTarget[1], height));
         }
+        return result;
+    }
+
+    private static JsonObject previewLocalPath(Player player, JsonObject arguments) {
+        int x = getInt(arguments, "x", player.absX);
+        int y = getInt(arguments, "y", player.absY);
+        int height = getInt(arguments, "height", player.heightLevel);
+        boolean moveNear = getBoolean(arguments, "moveNear", true);
+        boolean applyBounds = getBoolean(arguments, "applyBounds", true);
+        int maxWalkDistance = walkChunkDistance(arguments);
+        int xLength = Math.max(1, Math.min(20, getInt(arguments, "xLength", 1)));
+        int yLength = Math.max(1, Math.min(20, getInt(arguments, "yLength", 1)));
+        if (height != player.heightLevel) {
+            JsonObject result = failure("Cannot preview a normal local path to a different height level.");
+            addPlayerState(result, player);
+            return result;
+        }
+        int walkX = x;
+        int walkY = y;
+        if (applyBounds) {
+            int[] walkTarget = boundedWalkTarget(player, x, y, maxWalkDistance);
+            walkX = walkTarget[0];
+            walkY = walkTarget[1];
+        }
+        List<int[]> path = PathFinder.getPathFinder().findRouteTiles(player, walkX, walkY, moveNear, xLength, yLength);
+        boolean alreadyThere = player.absX == walkX && player.absY == walkY;
+        JsonObject result = success(path.isEmpty() && !alreadyThere ? "No local clipped path found." : "Local path preview ready.");
+        result.addProperty("reachable", alreadyThere || !path.isEmpty());
+        result.addProperty("moveNear", moveNear);
+        result.addProperty("applyBounds", applyBounds);
+        result.addProperty("maxWalkDistance", maxWalkDistance);
+        result.addProperty("pathLength", path.size());
+        result.add("target", tile(x, y, height));
+        if (walkX != x || walkY != y) {
+            result.add("walkTarget", tile(walkX, walkY, height));
+        }
+        JsonArray tiles = new JsonArray();
+        for (int i = 0; i < path.size(); i++) {
+            int[] step = path.get(i);
+            tiles.add(tile(step[0], step[1], step[2]));
+        }
+        result.add("path", tiles);
+        if (!path.isEmpty()) {
+            int[] finalTile = path.get(path.size() - 1);
+            result.add("finalTile", tile(finalTile[0], finalTile[1], finalTile[2]));
+        }
+        addPlayerState(result, player);
         return result;
     }
 
@@ -339,13 +429,17 @@ public class AgentToolService {
             addPlayerState(result, player);
             return result;
         }
+        setRunEnabled(player, enabled);
+        JsonObject result = success(player.isRunning2 ? "Run enabled." : "Run disabled.");
+        addPlayerState(result, player);
+        return result;
+    }
+
+    private static void setRunEnabled(Player player, boolean enabled) {
         player.isRunning2 = enabled;
         player.isRunning = player.isNewWalkCmdIsRunning() || player.isRunning2;
         player.getPacketSender().sendConfig(504, player.isRunning2 ? 1 : 0);
         player.getPacketSender().sendConfig(173, player.isRunning2 ? 1 : 0);
-        JsonObject result = success(player.isRunning2 ? "Run enabled." : "Run disabled.");
-        addPlayerState(result, player);
-        return result;
     }
 
     private static JsonObject travelToLandmark(Player player, JsonObject arguments) {
@@ -372,6 +466,21 @@ public class AgentToolService {
             return gateResult;
         }
         if (!step.isComplete()) {
+            JsonObject runMonitor = maybePrepareRunForHazard(player, landmark, step);
+            if (runMonitor != null && runMonitor.has("blocked") && runMonitor.get("blocked").getAsBoolean()) {
+                JsonObject blocked = failure(runMonitor.has("message") ? runMonitor.get("message").getAsString()
+                        : "Run energy is too low for this hazard route.");
+                blocked.addProperty("complete", false);
+                blocked.addProperty("landmark", landmark.getName());
+                blocked.add("target", tile(landmark.getTarget().x, landmark.getTarget().y, landmark.getTarget().height));
+                blocked.add("nextWaypoint", tile(step.getTile().x, step.getTile().y, step.getTile().height));
+                blocked.add("runMonitor", runMonitor);
+                addPlayerState(blocked, player);
+                return blocked;
+            }
+            if (runMonitor != null) {
+                result.add("runMonitor", runMonitor);
+            }
             player.getPlayerAssistant().resetFollow();
             player.getCombatAssistant().resetPlayerAttack();
             player.endCurrentTask();
@@ -387,6 +496,77 @@ public class AgentToolService {
         }
         addPlayerState(result, player);
         return result;
+    }
+
+    private static JsonObject maybePrepareRunForHazard(Player player, AgentKnowledgeBase.Landmark landmark,
+            AgentKnowledgeBase.TravelStep step) {
+        if (player == null || landmark == null || step == null || step.isComplete()) {
+            return null;
+        }
+        if (!shouldRunForVarrockDarkWizardApproach(player, landmark, step)) {
+            return null;
+        }
+
+        int energy = (int) Math.ceil(player.playerEnergy);
+        boolean alreadyEnabled = player.isRunning2;
+        JsonObject monitor = new JsonObject();
+        monitor.addProperty("hazard", "varrock_south_dark_wizards");
+        monitor.addProperty("reason", "Entering or crossing the south Varrock dark-wizard approach.");
+        monitor.addProperty("minRunEnergy", VARROCK_DARK_WIZARD_RUN_MIN_ENERGY);
+        monitor.addProperty("energyBefore", energy);
+        monitor.addProperty("runEnabledBefore", alreadyEnabled);
+
+        boolean currentlyInsideRunZone = isVarrockDarkWizardRunZone(player.absX, player.absY, player.heightLevel);
+        if (!currentlyInsideRunZone && energy < VARROCK_DARK_WIZARD_RUN_MIN_ENERGY) {
+            monitor.addProperty("blocked", true);
+            monitor.addProperty("runEnabledAfter", player.isRunning2);
+            monitor.addProperty("message", "Run energy " + energy + "% is below the "
+                    + VARROCK_DARK_WIZARD_RUN_MIN_ENERGY
+                    + "% minimum for entering the south Varrock dark-wizard approach.");
+            return monitor;
+        }
+
+        if (!player.isRunning2 && player.playerEnergy > 0) {
+            setRunEnabled(player, true);
+            monitor.addProperty("enabledRun", true);
+        } else {
+            monitor.addProperty("enabledRun", false);
+        }
+        monitor.addProperty("blocked", false);
+        monitor.addProperty("runEnabledAfter", player.isRunning2);
+        monitor.addProperty("energyAfter", (int) Math.ceil(player.playerEnergy));
+        return monitor;
+    }
+
+    private static boolean shouldRunForVarrockDarkWizardApproach(Player player,
+            AgentKnowledgeBase.Landmark landmark, AgentKnowledgeBase.TravelStep step) {
+        String name = landmark.getName() == null ? "" : landmark.getName().toLowerCase(Locale.ENGLISH);
+        boolean southVarrockTarget = name.contains("sword shop") || name.contains("champions guild");
+        if (!southVarrockTarget && !isVarrockDarkWizardRunZone(player.absX, player.absY, player.heightLevel)
+                && !isVarrockDarkWizardRunZone(step.getTile().x, step.getTile().y, step.getTile().height)) {
+            return false;
+        }
+        return isVarrockDarkWizardRunZone(player.absX, player.absY, player.heightLevel)
+                || isVarrockDarkWizardRunZone(step.getTile().x, step.getTile().y, step.getTile().height)
+                || (southVarrockTarget && isVarrockDarkWizardApproach(player.absX, player.absY, player.heightLevel))
+                || (southVarrockTarget
+                        && isVarrockDarkWizardApproach(step.getTile().x, step.getTile().y, step.getTile().height));
+    }
+
+    private static boolean isVarrockDarkWizardApproach(int x, int y, int height) {
+        return height == 0
+                && x >= VARROCK_DARK_WIZARD_MIN_X
+                && x <= VARROCK_DARK_WIZARD_MAX_X
+                && y >= VARROCK_DARK_WIZARD_MIN_Y
+                && y <= 3425;
+    }
+
+    private static boolean isVarrockDarkWizardRunZone(int x, int y, int height) {
+        return height == 0
+                && x >= VARROCK_DARK_WIZARD_MIN_X
+                && x <= VARROCK_DARK_WIZARD_MAX_X
+                && y >= VARROCK_DARK_WIZARD_MIN_Y
+                && y <= VARROCK_DARK_WIZARD_MAX_Y;
     }
 
     private static JsonObject maybeUseAlKharidGate(Player player, AgentKnowledgeBase.Landmark landmark,
@@ -449,8 +629,12 @@ public class AgentToolService {
     }
 
     private static int[] boundedWalkTarget(Player player, int targetX, int targetY) {
+        return boundedWalkTarget(player, targetX, targetY, DEFAULT_WALK_CHUNK_DISTANCE);
+    }
+
+    private static int[] boundedWalkTarget(Player player, int targetX, int targetY, int maxWalkDistance) {
         return boundedWalkTarget(player.absX, player.absY, player.getMapRegionX(), player.getMapRegionY(),
-                targetX, targetY);
+                targetX, targetY, maxWalkDistance);
     }
 
     static boolean isWithinObjectInteractionRange(int playerX, int playerY, Objects object) {
@@ -543,13 +727,20 @@ public class AgentToolService {
 
     static int[] boundedWalkTarget(int playerX, int playerY, int mapRegionX, int mapRegionY,
             int targetX, int targetY) {
+        return boundedWalkTarget(playerX, playerY, mapRegionX, mapRegionY, targetX, targetY,
+                DEFAULT_WALK_CHUNK_DISTANCE);
+    }
+
+    static int[] boundedWalkTarget(int playerX, int playerY, int mapRegionX, int mapRegionY,
+            int targetX, int targetY, int maxWalkDistance) {
         int walkX = targetX;
         int walkY = targetY;
         int dx = targetX - playerX;
         int dy = targetY - playerY;
-        if (Math.max(Math.abs(dx), Math.abs(dy)) > MAX_WALK_CHUNK_DISTANCE) {
-            walkX = playerX + clamp(dx, -MAX_WALK_CHUNK_DISTANCE, MAX_WALK_CHUNK_DISTANCE);
-            walkY = playerY + clamp(dy, -MAX_WALK_CHUNK_DISTANCE, MAX_WALK_CHUNK_DISTANCE);
+        int chunkDistance = clamp(maxWalkDistance, 1, MAX_WALK_CHUNK_DISTANCE);
+        if (Math.max(Math.abs(dx), Math.abs(dy)) > chunkDistance) {
+            walkX = playerX + clamp(dx, -chunkDistance, chunkDistance);
+            walkY = playerY + clamp(dy, -chunkDistance, chunkDistance);
         }
         if (mapRegionX >= 0 && mapRegionY >= 0) {
             int minX = mapRegionX * 8 + MAP_REGION_MARGIN;
@@ -564,6 +755,11 @@ public class AgentToolService {
             walkY = playerY + Integer.signum(targetY - playerY);
         }
         return new int[] { walkX, walkY };
+    }
+
+    private static int walkChunkDistance(JsonObject arguments) {
+        return clamp(getInt(arguments, "maxWalkDistance", DEFAULT_WALK_CHUNK_DISTANCE),
+                1, MAX_WALK_CHUNK_DISTANCE);
     }
 
     private static int clamp(int value, int min, int max) {
@@ -941,7 +1137,7 @@ public class AgentToolService {
             return failure("No matching object found nearby.");
         }
         JsonObject result = success("Found nearest object.");
-        result.add("object", objectJson(match.object, match.distance));
+        result.add("object", objectJson(player, match.object, match.distance));
         return result;
     }
 
@@ -981,10 +1177,25 @@ public class AgentToolService {
         if (object != null && isTemporarilyReplaced(object)) {
             return failure("That object is temporarily unavailable.");
         }
+        Objects actionObject = object == null ? new Objects(objectId, x, y, player.heightLevel, 0, 10, 0) : object;
+        boolean requireReachable = getBoolean(arguments, "requireReachable", true);
+        boolean inRange = isWithinObjectInteractionRange(player.absX, player.absY, actionObject);
+        int[] walkTarget = inRange ? null : objectInteractionWalkTarget(player, actionObject);
+        if (requireReachable && !inRange && walkTarget == null) {
+            JsonObject result = failure("That object is visible but not reachable from the current side.");
+            result.add("object", objectJson(player, actionObject,
+                    AgentKnowledgeBase.distance(player.absX, player.absY, x, y)));
+            addPlayerState(result, player);
+            return result;
+        }
         clickObject(player, objectId, x, y, optionNumber);
         JsonObject result = success("Interacting with object.");
-        result.add("object", objectJson(object == null ? new Objects(objectId, x, y, player.heightLevel, 0, 10, 0) : object,
+        result.add("object", objectJson(player, actionObject,
                 AgentKnowledgeBase.distance(player.absX, player.absY, x, y)));
+        result.addProperty("objectReachable", inRange || walkTarget != null);
+        if (walkTarget != null) {
+            result.add("objectWalkTarget", tile(walkTarget[0], walkTarget[1], player.heightLevel));
+        }
         addPlayerState(result, player);
         return result;
     }
@@ -2941,6 +3152,31 @@ public class AgentToolService {
                 || "tin".equals(resource) || "iron".equals(resource) || "coal".equals(resource);
     }
 
+    private static JsonArray nearbyPlayers(Player player, int maxDistance, int limit) {
+        JsonArray array = new JsonArray();
+        for (Player other : PlayerHandler.players) {
+            if (other == null || other == player || other.disconnected || other.heightLevel != player.heightLevel) {
+                continue;
+            }
+            int distance = AgentKnowledgeBase.distance(player.absX, player.absY, other.absX, other.absY);
+            if (distance > maxDistance) {
+                continue;
+            }
+            JsonObject json = new JsonObject();
+            json.addProperty("name", other.playerName);
+            json.addProperty("x", other.absX);
+            json.addProperty("y", other.absY);
+            json.addProperty("height", other.heightLevel);
+            json.addProperty("distance", distance);
+            json.addProperty("combatLevel", other.combatLevel);
+            array.add(json);
+            if (array.size() >= limit) {
+                break;
+            }
+        }
+        return array;
+    }
+
     private static JsonArray nearbyNpcs(Player player, int maxDistance, int limit) {
         JsonArray array = new JsonArray();
         for (Npc npc : NpcHandler.npcs) {
@@ -2961,7 +3197,7 @@ public class AgentToolService {
     private static JsonArray nearbyObjects(Player player, int maxDistance, int limit) {
         JsonArray array = new JsonArray();
         for (Objects object : Region.getObjectsInRadius(player.absX, player.absY, player.heightLevel, maxDistance)) {
-            array.add(objectJson(object, AgentKnowledgeBase.distance(player.absX, player.absY, object.objectX, object.objectY)));
+            array.add(objectJson(player, object, AgentKnowledgeBase.distance(player.absX, player.absY, object.objectX, object.objectY)));
             if (array.size() >= limit) {
                 break;
             }
@@ -3451,6 +3687,27 @@ public class AgentToolService {
             json.addProperty("requiredLevel", Woodcutting.getTreeLevelRequirement(object.objectId));
             json.addProperty("logId", Woodcutting.getTreeLogId(object.objectId));
             json.addProperty("xp", Woodcutting.getTreeExperience(object.objectId));
+        }
+        return json;
+    }
+
+    private static JsonObject objectJson(Player player, Objects object, int distance) {
+        JsonObject json = objectJson(object, distance);
+        if (player == null || object == null) {
+            return json;
+        }
+        boolean inRange = isWithinObjectInteractionRange(player.absX, player.absY, object);
+        int[] walkTarget = inRange ? null : objectInteractionWalkTarget(player, object);
+        boolean reachable = inRange || walkTarget != null;
+        json.addProperty("reachable", reachable);
+        json.addProperty("interactionInRange", inRange);
+        if (walkTarget != null) {
+            json.add("interactionWalkTarget", tile(walkTarget[0], walkTarget[1], player.heightLevel));
+        }
+        int[] unsafeTarget = objectInteractionWalkTarget(player.absX, player.absY, player.getMapRegionX(),
+                player.getMapRegionY(), object);
+        if (unsafeTarget != null) {
+            json.add("nearestInteractionTile", tile(unsafeTarget[0], unsafeTarget[1], player.heightLevel));
         }
         return json;
     }

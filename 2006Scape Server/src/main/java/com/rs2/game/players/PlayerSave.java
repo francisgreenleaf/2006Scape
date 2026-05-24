@@ -306,6 +306,9 @@ public class PlayerSave {
 							case "impsC":
 								player.impsC = Integer.parseInt(token2);
 								break;
+							case "pantryPanic":
+								player.pantryPanic = Integer.parseInt(token2);
+								break;
 							case "knightS":
 								player.knightS = Integer.parseInt(token2);
 								break;
@@ -777,6 +780,8 @@ public class PlayerSave {
 			characterfile.write("doricQuest = " + player.doricQuest);
 			characterfile.newLine();
 			characterfile.write("impsC = " + player.impsC);
+			characterfile.newLine();
+			characterfile.write("pantryPanic = " + player.pantryPanic);
 			characterfile.newLine();
 			characterfile.write("knightS = " + player.knightS);
 			characterfile.newLine();

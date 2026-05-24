@@ -1,0 +1,4 @@
+interface:
+  display_name: "2006Scape Gameplay Progression"
+  short_description: "Grow a 2006Scape profile through normal gameplay"
+  default_prompt: "Use $2006scape-gameplay-progression to train, gather, bank, shop, or progress the selected profile through normal 2006Scape gameplay."

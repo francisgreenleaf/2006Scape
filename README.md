@@ -23,6 +23,8 @@ The agent bridge currently supports:
 
 The bridge is intentionally constrained. Agent actions go through existing game mechanics such as walking, combat, shops, banking, mining, and smithing. It does not add admin teleports, item spawning, direct player-stat edits, or screen automation.
 
+For a contributor-oriented summary of the fork work, see [canvrno's additions so far](docs/canvrno-additions.md).
+
 # Installation + Running (Developers)
 
 ## One-command local launch on macOS
@@ -49,17 +51,38 @@ Useful focused scripts:
 ./scripts/start-client.sh
 ```
 
+`start-server.sh` copies the built server jar to `/tmp/2006scape-run/` before launching it. Keep that behavior on during local work: do not run the live server directly from `2006Scape Server/target/server-1.0-jar-with-dependencies.jar` while rebuilding with Maven, because replacing a jar under a running Java 8 process can crash lazy class loading.
+
+Launcher JVM options can be passed through environment variables:
+
+```sh
+SERVER_JAVA_OPTS="-Dsun.zip.disableMemoryMapping=true" ./scripts/start-server.sh
+CLIENT_JAVA_OPTS="-Dsun.java2d.uiScale=2" ./scripts/start-client.sh -u "MrFlame"
+CLIENT_SINGLE_INSTANCE=0 ./scripts/start-client.sh -u "MrGem"
+```
+
+The client also supports a repo-native scale flag that doubles the game canvas while preserving normal in-game mouse coordinates:
+
+```sh
+./scripts/start-client.sh -u "MrFlame" -scale 2 -no-nav
+```
+
 Client arguments can be appended to either client launcher, for example:
 
 ```sh
 ./scripts/run-local.sh -u myname -p mypass
 ```
 
-For agent testing, it is useful to prefill the shared local profile:
+For current agent testing, prefill the default local profile, or choose another profile explicitly:
 
 ```sh
+./scripts/run-local.sh -u "MrFlame"
 ./scripts/run-local.sh -u "MrGem"
 ```
+
+For Codex-controlled exploration where repo tools such as `agent-navigation/tools/rs-tool.sh` need an active bridge session, use the dedicated startup runbook:
+
+- [Local Agent Startup](docs/local-agent-startup.md)
 
 ## Using the Codex Agent Bridge
 
@@ -75,8 +98,10 @@ Basic flow:
 1. Start the local server and client:
 
    ```sh
-   ./scripts/run-local.sh -u "MrGem"
+   ./scripts/run-local.sh -u "MrFlame"
    ```
+
+   For another profile, use that profile name and set `RS_PROFILE=<name>` for repo-side bridge tools.
 
 2. Log into the game world.
 3. Type `/agent key` once per local setup and enter your API key in the Swing password dialog. The key is passed to Codex auth and is not written to repository files.
@@ -94,6 +119,8 @@ Basic flow:
 6. Use `/agent stop` to interrupt the active turn and clear the current server-side action.
 
 Agent sessions are local gameplay runs. The model is expected to observe first, prefer server-side batch tools for repeated travel and resource gathering, use `wait_until_idle` for production batches such as smelting or smithing, and adapt to game state such as missing tools, low hitpoints, full inventory, unreachable targets, closed interfaces, or insufficient skill levels.
+
+Current navigation work is tracked in `agent-navigation/`. That folder stores places, route memories, hazards, route tests, and live observations. The most recent focus is safe travel, including run-energy requirements around south Varrock and the verified Varrock square to Champions' Guild stairs route.
 
 Useful checks while developing the bridge:
 

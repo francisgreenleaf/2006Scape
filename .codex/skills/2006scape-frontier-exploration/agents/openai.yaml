@@ -1,0 +1,4 @@
+interface:
+  display_name: "2006Scape Frontier Exploration"
+  short_description: "Expand the route graph safely"
+  default_prompt: "Use $2006scape-frontier-exploration to explore unknown 2006Scape areas with short safe probes and reusable route evidence."

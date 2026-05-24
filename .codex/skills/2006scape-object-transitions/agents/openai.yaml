@@ -1,0 +1,4 @@
+interface:
+  display_name: "2006Scape Object Transitions"
+  short_description: "Prove doors, gates, and ladders"
+  default_prompt: "Use $2006scape-object-transitions to learn or verify a 2006Scape door, gate, ladder, trapdoor, ship, or other object transition."

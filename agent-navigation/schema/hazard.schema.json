@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hazard.schema.json",
+  "type": "object",
+  "required": ["id", "name", "type", "region", "center", "radius", "risk", "requirements", "notes"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+    "name": {"type": "string"},
+    "type": {"type": "string"},
+    "region": {"type": "string"},
+    "center": {"$ref": "#/$defs/tile"},
+    "radius": {"type": "integer", "minimum": 0},
+    "risk": {"type": "string"},
+    "requirements": {"type": "object", "additionalProperties": true},
+    "npcs": {"type": "array", "items": {"type": "object"}},
+    "avoidWhen": {"type": "array", "items": {"type": "string"}},
+    "notes": {"type": "string"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "tile": {
+      "type": "object",
+      "required": ["x", "y", "height"],
+      "properties": {
+        "x": {"type": "integer"},
+        "y": {"type": "integer"},
+        "height": {"type": "integer"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

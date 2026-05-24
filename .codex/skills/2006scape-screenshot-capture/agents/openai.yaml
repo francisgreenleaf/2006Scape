@@ -1,0 +1,4 @@
+interface:
+  display_name: "2006Scape Screenshots"
+  short_description: "Capture four game camera angles"
+  default_prompt: "Use $2006scape-screenshot-capture to take compact north/east/south/west client screenshots for visual route debugging."

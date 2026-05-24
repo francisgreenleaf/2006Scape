@@ -11,6 +11,7 @@ import com.rs2.game.content.minigames.FightPits;
 import com.rs2.game.content.minigames.PestControl;
 import com.rs2.game.content.minigames.castlewars.CastleWarObjects;
 import com.rs2.game.content.minigames.castlewars.CastleWars;
+import com.rs2.game.content.quests.custom.lumbridge.pantrypanic.PantryPanic;
 import com.rs2.game.content.quests.QuestRewards;
 import com.rs2.game.content.random.PartyRoom;
 import com.rs2.game.content.randomevents.FreakyForester;
@@ -53,6 +54,9 @@ public class ObjectsActions {
         player.faceUpdate(0);
         player.clickObjectType = 0;
         player.turnPlayerTo(objectX, objectY);
+        if (PantryPanic.handleObjectClick(player, objectType, objectX, objectY)) {
+            return;
+        }
         player.getCompost().handleObjectClick(objectType, objectX, objectY);
         if (Farming.harvest(player, objectX, objectY)) {
             return;

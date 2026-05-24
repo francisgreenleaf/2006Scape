@@ -79,6 +79,14 @@ public class AgentToolServiceTest {
         int[] target = AgentToolService.boundedWalkTarget(3252, 3236, 400, 394, 3252, 3266);
 
         assertEquals(3252, target[0]);
+        assertEquals(3253, target[1]);
+    }
+
+    @Test
+    public void walkTargetsCanUseSmallerRequestedChunks() {
+        int[] target = AgentToolService.boundedWalkTarget(3252, 3236, 400, 394, 3252, 3266, 16);
+
+        assertEquals(3252, target[0]);
         assertEquals(3252, target[1]);
     }
 
