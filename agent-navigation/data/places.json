@@ -1,0 +1,2483 @@
+{
+  "schemaVersion": 1,
+  "places": [
+    {
+      "id": "lumbridge_castle_courtyard",
+      "name": "Lumbridge Castle Courtyard",
+      "aliases": [
+        "lumbridge",
+        "lumbridge castle",
+        "castle courtyard"
+      ],
+      "kind": "hub",
+      "region": "lumbridge",
+      "tile": {
+        "x": 3222,
+        "y": 3218,
+        "height": 0
+      },
+      "arrivalRadius": 4,
+      "tags": [
+        "surface",
+        "outdoor",
+        "hub",
+        "low_level"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Normal Lumbridge start area. Nearby men, rats, goblins, and cows are low-level but should still be checked for combat state."
+      }
+    },
+    {
+      "id": "lumbridge_kitchen_approach",
+      "name": "Lumbridge Kitchen Approach",
+      "aliases": [
+        "kitchen approach",
+        "lumbridge castle kitchen approach"
+      ],
+      "kind": "interior",
+      "region": "lumbridge",
+      "tile": {
+        "x": 3204,
+        "y": 3215,
+        "height": 0
+      },
+      "arrivalRadius": 1,
+      "tags": [
+        "surface",
+        "interior",
+        "castle",
+        "learning_checkpoint"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Reached by MrFlame while routing to the kitchen. Exact final movement east to the range tile still needs an object/door check."
+      }
+    },
+    {
+      "id": "lumbridge_kitchen_range",
+      "name": "Lumbridge Kitchen Range",
+      "aliases": [
+        "lumbridge kitchen",
+        "lumbridge range",
+        "range",
+        "kitchen"
+      ],
+      "kind": "utility",
+      "region": "lumbridge",
+      "tile": {
+        "x": 3209,
+        "y": 3215,
+        "height": 0
+      },
+      "arrivalRadius": 1,
+      "tags": [
+        "surface",
+        "interior",
+        "castle",
+        "cooking"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Existing Java landmark target for Lumbridge kitchen/range."
+      }
+    },
+    {
+      "id": "lumbridge_goblin_field",
+      "name": "Lumbridge Goblin Field",
+      "aliases": [
+        "lumbridge goblins",
+        "goblins"
+      ],
+      "kind": "training_area",
+      "region": "lumbridge",
+      "tile": {
+        "x": 3252,
+        "y": 3236,
+        "height": 0
+      },
+      "arrivalRadius": 4,
+      "tags": [
+        "surface",
+        "combat",
+        "low_level"
+      ],
+      "safety": {
+        "risk": "medium-low",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Low-level goblins are nearby. Prefer carrying food before training here."
+      }
+    },
+    {
+      "id": "lumbridge_cow_pen",
+      "name": "Lumbridge Cow Pen",
+      "aliases": [
+        "lumbridge cows",
+        "cows",
+        "cow field"
+      ],
+      "kind": "training_area",
+      "region": "lumbridge",
+      "tile": {
+        "x": 3255,
+        "y": 3266,
+        "height": 0
+      },
+      "arrivalRadius": 4,
+      "tags": [
+        "surface",
+        "combat",
+        "food_supply",
+        "low_level"
+      ],
+      "safety": {
+        "risk": "medium-low",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Useful early combat area. Watch inventory space if looting hides, bones, or meat."
+      }
+    },
+    {
+      "id": "lumbridge_general_store",
+      "name": "Lumbridge General Store",
+      "aliases": [
+        "lumbridge store",
+        "general store"
+      ],
+      "kind": "shop",
+      "region": "lumbridge",
+      "tile": {
+        "x": 3212,
+        "y": 3246,
+        "height": 0
+      },
+      "arrivalRadius": 3,
+      "tags": [
+        "surface",
+        "shop"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Low-risk shop route from Lumbridge."
+      }
+    },
+    {
+      "id": "lumbridge_tree_stand",
+      "name": "Lumbridge Tree Stand",
+      "aliases": [
+        "lumbridge trees",
+        "trees"
+      ],
+      "kind": "resource",
+      "region": "lumbridge",
+      "tile": {
+        "x": 3233,
+        "y": 3233,
+        "height": 0
+      },
+      "arrivalRadius": 3,
+      "tags": [
+        "surface",
+        "woodcutting",
+        "low_level"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Low-risk nearby trees. Check inventory space before long chopping loops."
+      }
+    },
+    {
+      "id": "lumbridge_oak_stand",
+      "name": "Lumbridge Oak Stand",
+      "aliases": [
+        "lumbridge oaks",
+        "oaks"
+      ],
+      "kind": "resource",
+      "region": "lumbridge",
+      "tile": {
+        "x": 3209,
+        "y": 3243,
+        "height": 0
+      },
+      "arrivalRadius": 3,
+      "tags": [
+        "surface",
+        "woodcutting",
+        "oak"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Low-risk oak spot from the courtyard."
+      }
+    },
+    {
+      "id": "lumbridge_axe_shop",
+      "name": "Bob's Axes",
+      "aliases": [
+        "lumbridge axe shop",
+        "bob axes",
+        "bob's axes"
+      ],
+      "kind": "shop",
+      "region": "lumbridge",
+      "tile": {
+        "x": 3231,
+        "y": 3203,
+        "height": 0
+      },
+      "arrivalRadius": 3,
+      "tags": [
+        "surface",
+        "shop",
+        "woodcutting"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Low-risk route south-east of Lumbridge castle."
+      }
+    },
+    {
+      "id": "lumbridge_fishing_spot",
+      "name": "Lumbridge Fishing Spot",
+      "aliases": [
+        "fishing spot",
+        "lumbridge river fishing"
+      ],
+      "kind": "resource",
+      "region": "lumbridge",
+      "tile": {
+        "x": 3267,
+        "y": 3148,
+        "height": 0
+      },
+      "arrivalRadius": 4,
+      "tags": [
+        "surface",
+        "fishing",
+        "food_supply"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Known food supply route. Carry a small fishing net for shrimp/anchovies."
+      }
+    },
+    {
+      "id": "al_kharid_gate_west",
+      "name": "Al Kharid Gate West",
+      "aliases": [
+        "west al kharid gate",
+        "lumbridge side gate"
+      ],
+      "kind": "gate",
+      "region": "lumbridge",
+      "tile": {
+        "x": 3267,
+        "y": 3227,
+        "height": 0
+      },
+      "arrivalRadius": 1,
+      "tags": [
+        "surface",
+        "gate",
+        "toll"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Gate crossing requires 10 carried coins unless another unlock exists."
+      }
+    },
+    {
+      "id": "al_kharid_gate_east",
+      "name": "Al Kharid Gate East",
+      "aliases": [
+        "east al kharid gate",
+        "al kharid side gate"
+      ],
+      "kind": "gate",
+      "region": "al_kharid",
+      "tile": {
+        "x": 3268,
+        "y": 3227,
+        "height": 0
+      },
+      "arrivalRadius": 1,
+      "tags": [
+        "surface",
+        "gate",
+        "toll"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Gate crossing requires 10 carried coins unless another unlock exists."
+      }
+    },
+    {
+      "id": "al_kharid_furnace",
+      "name": "Al Kharid Furnace",
+      "aliases": [
+        "furnace",
+        "al kharid furnace"
+      ],
+      "kind": "utility",
+      "region": "al_kharid",
+      "tile": {
+        "x": 3274,
+        "y": 3186,
+        "height": 0
+      },
+      "arrivalRadius": 3,
+      "tags": [
+        "surface",
+        "smithing",
+        "furnace"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Useful smithing route beyond the Al Kharid toll gate."
+      }
+    },
+    {
+      "id": "al_kharid_bank",
+      "name": "Al Kharid Bank",
+      "aliases": [
+        "al kharid bank"
+      ],
+      "kind": "bank",
+      "region": "al_kharid",
+      "tile": {
+        "x": 3269,
+        "y": 3167,
+        "height": 0
+      },
+      "arrivalRadius": 1,
+      "tags": [
+        "surface",
+        "bank"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Bank south of the furnace."
+      }
+    },
+    {
+      "id": "al_kharid_general_store",
+      "name": "Al Kharid General Store",
+      "aliases": [
+        "al kharid store"
+      ],
+      "kind": "shop",
+      "region": "al_kharid",
+      "tile": {
+        "x": 3313,
+        "y": 3183,
+        "height": 0
+      },
+      "arrivalRadius": 3,
+      "tags": [
+        "surface",
+        "shop"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Shop route beyond the Al Kharid gate."
+      }
+    },
+    {
+      "id": "varrock_square",
+      "name": "Varrock Square",
+      "aliases": [
+        "varrock",
+        "varrock center"
+      ],
+      "kind": "hub",
+      "region": "varrock",
+      "tile": {
+        "x": 3210,
+        "y": 3424,
+        "height": 0
+      },
+      "arrivalRadius": 4,
+      "tags": [
+        "surface",
+        "hub",
+        "city"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "City hub reached by the eastern Lumbridge road route."
+      }
+    },
+    {
+      "id": "varrock_east_bank",
+      "name": "Varrock East Bank",
+      "aliases": [
+        "east bank",
+        "varrock east bank"
+      ],
+      "kind": "bank",
+      "region": "varrock",
+      "tile": {
+        "x": 3253,
+        "y": 3420,
+        "height": 0
+      },
+      "arrivalRadius": 1,
+      "tags": [
+        "surface",
+        "bank"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Primary bank for Varrock east mine routes."
+      }
+    },
+    {
+      "id": "varrock_west_bank",
+      "name": "Varrock West Bank",
+      "aliases": [
+        "west bank",
+        "varrock west bank"
+      ],
+      "kind": "bank",
+      "region": "varrock",
+      "tile": {
+        "x": 3185,
+        "y": 3436,
+        "height": 0
+      },
+      "arrivalRadius": 1,
+      "tags": [
+        "surface",
+        "bank"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Western Varrock bank, useful for anvils and west-side shops."
+      }
+    },
+    {
+      "id": "varrock_east_mine",
+      "name": "Varrock East Mine",
+      "aliases": [
+        "east mine",
+        "iron mine",
+        "varrock iron mine"
+      ],
+      "kind": "resource",
+      "region": "varrock",
+      "tile": {
+        "x": 3285,
+        "y": 3365,
+        "height": 0
+      },
+      "arrivalRadius": 4,
+      "tags": [
+        "surface",
+        "mining",
+        "iron"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Common early mining route, usually paired with Varrock east bank."
+      }
+    },
+    {
+      "id": "varrock_east_coal_mine",
+      "name": "Varrock East Coal Mine",
+      "aliases": [
+        "coal mine",
+        "varrock coal mine"
+      ],
+      "kind": "resource",
+      "region": "varrock",
+      "tile": {
+        "x": 3302,
+        "y": 3317,
+        "height": 0
+      },
+      "arrivalRadius": 4,
+      "tags": [
+        "surface",
+        "mining",
+        "coal"
+      ],
+      "safety": {
+        "risk": "low-medium",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Longer south-east mining route. Needs live verification for low-level accounts."
+      }
+    },
+    {
+      "id": "varrock_general_store",
+      "name": "Varrock General Store",
+      "aliases": [
+        "varrock store"
+      ],
+      "kind": "shop",
+      "region": "varrock",
+      "tile": {
+        "x": 3216,
+        "y": 3415,
+        "height": 0
+      },
+      "arrivalRadius": 3,
+      "tags": [
+        "surface",
+        "shop"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Central Varrock shop route."
+      }
+    },
+    {
+      "id": "varrock_west_anvils",
+      "name": "Varrock West Anvils",
+      "aliases": [
+        "anvils",
+        "varrock anvils"
+      ],
+      "kind": "utility",
+      "region": "varrock",
+      "tile": {
+        "x": 3188,
+        "y": 3425,
+        "height": 0
+      },
+      "arrivalRadius": 3,
+      "tags": [
+        "surface",
+        "smithing",
+        "anvil"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Anvil route near Varrock west bank."
+      }
+    },
+    {
+      "id": "al_kharid_scimitar_shop",
+      "name": "Al Kharid Scimitar Shop",
+      "aliases": [
+        "scimitar shop",
+        "al kharid scimitar"
+      ],
+      "kind": "shop",
+      "region": "al_kharid",
+      "tile": {
+        "x": 3289,
+        "y": 3189,
+        "height": 0
+      },
+      "arrivalRadius": 3,
+      "tags": [
+        "surface",
+        "shop",
+        "weapons"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Shop route beyond the Al Kharid gate."
+      }
+    },
+    {
+      "id": "al_kharid_kebab_shop",
+      "name": "Al Kharid Kebab Shop",
+      "aliases": [
+        "kebab shop",
+        "karim kebabs"
+      ],
+      "kind": "shop",
+      "region": "al_kharid",
+      "tile": {
+        "x": 3275,
+        "y": 3180,
+        "height": 0
+      },
+      "arrivalRadius": 3,
+      "tags": [
+        "surface",
+        "shop",
+        "food"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Food shop route beyond the Al Kharid gate."
+      }
+    },
+    {
+      "id": "al_kharid_legs_shop",
+      "name": "Al Kharid Legs Shop",
+      "aliases": [
+        "legs shop",
+        "al kharid platelegs"
+      ],
+      "kind": "shop",
+      "region": "al_kharid",
+      "tile": {
+        "x": 3315,
+        "y": 3175,
+        "height": 0
+      },
+      "arrivalRadius": 3,
+      "tags": [
+        "surface",
+        "shop",
+        "armour"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Armour shop route beyond the Al Kharid gate."
+      }
+    },
+    {
+      "id": "varrock_sword_shop",
+      "name": "Varrock Sword Shop",
+      "aliases": [
+        "sword shop"
+      ],
+      "kind": "shop",
+      "region": "varrock",
+      "tile": {
+        "x": 3206,
+        "y": 3399,
+        "height": 0
+      },
+      "arrivalRadius": 3,
+      "tags": [
+        "surface",
+        "shop",
+        "weapons"
+      ],
+      "safety": {
+        "risk": "medium-low",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "South Varrock route. Avoid the dark wizard area if pathing drifts too far south-east."
+      }
+    },
+    {
+      "id": "varrock_armour_shop",
+      "name": "Varrock Armour Shop",
+      "aliases": [
+        "armour shop",
+        "armor shop"
+      ],
+      "kind": "shop",
+      "region": "varrock",
+      "tile": {
+        "x": 3229,
+        "y": 3438,
+        "height": 0
+      },
+      "arrivalRadius": 3,
+      "tags": [
+        "surface",
+        "shop",
+        "armour"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "North-east Varrock shop route near safer city roads."
+      }
+    },
+    {
+      "id": "champions_guild_stairs",
+      "name": "Champions' Guild Stairs",
+      "aliases": [
+        "champions guild",
+        "champions guild stairs"
+      ],
+      "kind": "landmark",
+      "region": "varrock",
+      "tile": {
+        "x": 3191,
+        "y": 3363,
+        "height": 0
+      },
+      "arrivalRadius": 4,
+      "tags": [
+        "surface",
+        "guild",
+        "stairs"
+      ],
+      "safety": {
+        "risk": "medium-low",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "South-west of Varrock; reached safely from Varrock square with run enabled and 20+ run energy."
+      }
+    },
+    {
+      "id": "barbarian_village",
+      "name": "Barbarian Village",
+      "aliases": [
+        "helmet shop",
+        "barbarian pickaxe"
+      ],
+      "kind": "hub",
+      "region": "barbarian_village",
+      "tile": {
+        "x": 3081,
+        "y": 3429,
+        "height": 0
+      },
+      "arrivalRadius": 4,
+      "tags": [
+        "surface",
+        "hub",
+        "shop"
+      ],
+      "safety": {
+        "risk": "medium-low",
+        "minCombatLevel": 3,
+        "minFood": 2,
+        "notes": "Long route west of Varrock. Bring food and observe before interacting with NPCs."
+      }
+    },
+    {
+      "id": "dwarven_mine_ladder",
+      "name": "Dwarven Mine Ladder",
+      "aliases": [
+        "dwarven mine trapdoor",
+        "dwarven mine ladder"
+      ],
+      "kind": "transport",
+      "region": "dwarven_mine",
+      "tile": {
+        "x": 3024,
+        "y": 3450,
+        "height": 0
+      },
+      "arrivalRadius": 3,
+      "tags": [
+        "surface",
+        "mine",
+        "ladder"
+      ],
+      "safety": {
+        "risk": "medium",
+        "minCombatLevel": 3,
+        "minFood": 2,
+        "notes": "Long mining route. Do not descend until underground hazards and exits are verified."
+      }
+    },
+    {
+      "id": "edgeville_monastery",
+      "name": "Edgeville Monastery",
+      "aliases": [
+        "monastery"
+      ],
+      "kind": "landmark",
+      "region": "edgeville",
+      "tile": {
+        "x": 3052,
+        "y": 3484,
+        "height": 0
+      },
+      "arrivalRadius": 4,
+      "tags": [
+        "surface",
+        "landmark"
+      ],
+      "safety": {
+        "risk": "medium-low",
+        "minCombatLevel": 3,
+        "minFood": 2,
+        "notes": "Long surface route north-west of Barbarian Village; avoid wilderness drift."
+      }
+    },
+    {
+      "id": "falador_shield_shop",
+      "name": "Falador Shield Shop",
+      "aliases": [
+        "shield shop",
+        "falador shields"
+      ],
+      "kind": "shop",
+      "region": "falador",
+      "tile": {
+        "x": 2974,
+        "y": 3383,
+        "height": 0
+      },
+      "arrivalRadius": 3,
+      "tags": [
+        "surface",
+        "shop",
+        "armour"
+      ],
+      "safety": {
+        "risk": "medium-low",
+        "minCombatLevel": 3,
+        "minFood": 2,
+        "notes": "Long westward route derived from the Java knowledge base. Needs live verification."
+      }
+    },
+    {
+      "id": "lumbridge_basement_entry",
+      "name": "Lumbridge Basement Entry",
+      "aliases": [
+        "lumbridge basement",
+        "lumbridge cellar",
+        "lumbridge castle basement"
+      ],
+      "kind": "basement",
+      "region": "lumbridge",
+      "tile": {
+        "x": 3208,
+        "y": 9616,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "underground",
+        "basement",
+        "lumbridge",
+        "verified"
+      ],
+      "safety": {
+        "risk": "medium",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Entry tile is safe in this observation. Rockslugs level 29 were observed about 27 tiles south and non-aggressive at the time; avoid lingering or pushing south on a level-3 account without food/run."
+      }
+    },
+    {
+      "id": "lumbridge_basement_north_safe_spur",
+      "name": "Lumbridge Basement North Safe Spur",
+      "aliases": [
+        "lumbridge basement north",
+        "cellar north spur"
+      ],
+      "kind": "basement",
+      "region": "lumbridge",
+      "tile": {
+        "x": 3208,
+        "y": 9620,
+        "height": 0
+      },
+      "arrivalRadius": 1,
+      "tags": [
+        "underground",
+        "basement",
+        "lumbridge",
+        "verified",
+        "safe-spur"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Live probe from basement entry to 3208,9620 found no nearby NPCs; west wall objects were unreachable."
+      }
+    },
+    {
+      "id": "lumbridge_churchyard_approach",
+      "name": "Lumbridge Churchyard Approach",
+      "aliases": [
+        "lumbridge churchyard",
+        "churchyard approach",
+        "lumbridge graveyard approach"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "lumbridge",
+      "tile": {
+        "x": 3238,
+        "y": 3208,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "lumbridge",
+        "churchyard",
+        "verified",
+        "safe-spur"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Live heartbeat route from Lumbridge courtyard arrived safely with nearby Men level 2 and Goblins level 2 at moderate distance; no combat."
+      }
+    },
+    {
+      "id": "lumbridge_west_castle_exterior",
+      "name": "Lumbridge West Castle Exterior",
+      "aliases": [
+        "west castle exterior",
+        "lumbridge west wall",
+        "lumbridge castle west outside"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "lumbridge",
+      "tile": {
+        "x": 3204,
+        "y": 3218,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "lumbridge",
+        "castle-exterior",
+        "verified",
+        "westward-frontier"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Live heartbeat reached 3204,3218 safely while probing west from the churchyard approach. Nearby Rat level 1 and Giant rat level 3 were non-aggressive; no combat or damage."
+      }
+    },
+    {
+      "id": "lumbridge_west_rat_fence_approach",
+      "name": "Lumbridge West Rat Fence Approach",
+      "aliases": [
+        "west rat fence",
+        "lumbridge west rats",
+        "west of lumbridge castle rats"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "lumbridge",
+      "tile": {
+        "x": 3188,
+        "y": 3220,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "lumbridge",
+        "rats",
+        "fence",
+        "verified",
+        "westward-frontier"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Live heartbeat reached 3188,3220 safely from the west castle exterior. Nearby Giant rats level 3 and Rats level 1 were observed aggressive=false; no combat or damage."
+      }
+    },
+    {
+      "id": "lumbridge_west_goblin_edge",
+      "name": "Lumbridge West Goblin Edge",
+      "aliases": [
+        "west lumbridge goblin edge",
+        "lumbridge west goblins",
+        "goblin edge west of lumbridge"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "lumbridge",
+      "tile": {
+        "x": 3168,
+        "y": 3224,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "lumbridge",
+        "goblins",
+        "verified",
+        "westward-frontier"
+      ],
+      "safety": {
+        "risk": "medium-low",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Live heartbeat reached 3168,3224 safely from 3188,3220. Multiple Goblins level 2 were nearby at distances 7-29, all aggressive=false and not attacking; carry food and avoid manual targeting."
+      }
+    },
+    {
+      "id": "lumbridge_west_goblin_field_center",
+      "name": "Lumbridge West Goblin Field Center",
+      "aliases": [
+        "west goblin field center",
+        "lumbridge goblin field center",
+        "goblin field west checkpoint"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "lumbridge",
+      "tile": {
+        "x": 3148,
+        "y": 3228,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "lumbridge",
+        "goblins",
+        "verified",
+        "westward-frontier"
+      ],
+      "safety": {
+        "risk": "medium-low",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Live heartbeat reached 3148,3228 safely. Goblins level 2 were as close as distance 5-6 and aggressive=false; Jail Guards level 26 were visible 21+ tiles away and aggressive=false."
+      }
+    },
+    {
+      "id": "draynor_southeast_unicorn_edge",
+      "name": "Draynor Southeast Unicorn Edge",
+      "aliases": [
+        "draynor southeast edge",
+        "unicorn edge southeast draynor",
+        "southwest of lumbridge goblins"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "draynor_lumbridge_west",
+      "tile": {
+        "x": 3134,
+        "y": 3218,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "draynor-edge",
+        "unicorn",
+        "verified",
+        "westward-frontier"
+      ],
+      "safety": {
+        "risk": "medium-low",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Live heartbeat reached 3134,3218 safely while skirting southwest of the jail guard zone. Unicorn level 15 was within 1-2 tiles and aggressive=false; Wizard level 9 and Jail Guards level 26 were visible nearby and aggressive=false. Do not attack or linger on a level-3 account."
+      }
+    },
+    {
+      "id": "draynor_southeast_crate_edge",
+      "name": "Draynor Southeast Crate Edge",
+      "aliases": [
+        "draynor crate edge",
+        "southeast draynor crates",
+        "draynor southwest oscillation checkpoint"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "draynor_lumbridge_west",
+      "tile": {
+        "x": 3115,
+        "y": 3202,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "draynor-edge",
+        "crate",
+        "verified",
+        "westward-frontier"
+      ],
+      "safety": {
+        "risk": "medium-for-new-accounts",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Live heartbeat movement toward 3118,3202 ended at 3115,3202 with oscillation but no combat or damage. Nearby crate objects were reachable. Black Knight level 33 was seen 27 tiles away, aggressive=false; do not linger or route closer on a level-3 account without more food/run."
+      }
+    },
+    {
+      "id": "draynor_south_wizard_north_edge",
+      "name": "Draynor South Wizard North Edge",
+      "aliases": [
+        "wizard north edge",
+        "draynor south wizard edge",
+        "south draynor wizard approach"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "draynor_lumbridge_west",
+      "tile": {
+        "x": 3115,
+        "y": 3186,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "draynor-edge",
+        "wizard-edge",
+        "verified",
+        "westward-frontier"
+      ],
+      "safety": {
+        "risk": "medium-for-new-accounts",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Live heartbeat reached 3115,3186 safely from 3115,3202. Wizards level 9 were 26-29 tiles south and aggressive=false; Black Knight/jail guard distance improved. Treat as transit only for level-3 accounts."
+      }
+    },
+    {
+      "id": "draynor_west_heather_probe_target",
+      "name": "Draynor West Heather Probe Target",
+      "aliases": [
+        "draynor west blocked probe",
+        "heather west probe target"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "draynor_lumbridge_west",
+      "tile": {
+        "x": 3098,
+        "y": 3188,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "draynor-edge",
+        "needs-verification",
+        "blocked-probe"
+      ],
+      "safety": {
+        "risk": "unknown",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Not reached. Live attempt from 3115,3186 to 3098,3188 immediately oscillated at the origin; target may be blocked by local terrain/object routing."
+      }
+    },
+    {
+      "id": "draynor_wizard_heather_edge",
+      "name": "Draynor Wizard Heather Edge",
+      "aliases": [
+        "heather edge",
+        "wizard heather edge",
+        "draynor southwest heather edge"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "draynor_lumbridge_west",
+      "tile": {
+        "x": 3102,
+        "y": 3171,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "draynor-edge",
+        "wizard-edge",
+        "verified",
+        "westward-frontier"
+      ],
+      "safety": {
+        "risk": "medium-for-new-accounts",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Live heartbeat reached 3102,3171 from 3115,3186 after direct west vector failed. Wizards level 9 were 11-17 tiles away, aggressive=false, no combat. Use as cautious transit only; avoid pushing south into Wizards on low food."
+      }
+    },
+    {
+      "id": "draynor_wizard_west_edge",
+      "name": "Draynor Wizard West Edge",
+      "aliases": [
+        "wizard west edge",
+        "draynor wizard west edge",
+        "draynor wizard oscillation checkpoint"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "draynor_lumbridge_west",
+      "tile": {
+        "x": 3096,
+        "y": 3169,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "draynor-edge",
+        "wizard-edge",
+        "verified",
+        "westward-frontier",
+        "oscillation-evidence"
+      ],
+      "safety": {
+        "risk": "medium-for-new-accounts",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Live heartbeat attempt toward 3088,3176 settled at 3096,3169 with oscillation. Wizards level 9 were 8-16 tiles away, aggressive=false, no combat. Hazard-adjacent transit only for level-3 MrFlame."
+      }
+    },
+    {
+      "id": "draynor_wizard_west_probe_target",
+      "name": "Draynor Wizard West Probe Target",
+      "aliases": [
+        "3088 3176 probe",
+        "wizard west blocked target"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "draynor_lumbridge_west",
+      "tile": {
+        "x": 3088,
+        "y": 3176,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "draynor-edge",
+        "needs-verification",
+        "blocked-probe"
+      ],
+      "safety": {
+        "risk": "unknown",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Not reached. Attempt from 3102,3171 to 3088,3176 settled at 3096,3169 with oscillation."
+      }
+    },
+    {
+      "id": "draynor_wizard_west_pocket_probe_target",
+      "name": "Draynor Wizard West Pocket Probe Target",
+      "aliases": [
+        "3088 3172 probe",
+        "wizard pocket west blocked target"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "draynor_lumbridge_west",
+      "tile": {
+        "x": 3088,
+        "y": 3172,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "draynor-edge",
+        "needs-verification",
+        "blocked-probe"
+      ],
+      "safety": {
+        "risk": "unknown",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Not reached. Attempt from 3096,3169 to 3088,3172 oscillated immediately at 3096,3169."
+      }
+    },
+    {
+      "id": "draynor_southeast_north_crate_edge",
+      "name": "Draynor Southeast North Crate Edge",
+      "aliases": [
+        "north crate edge",
+        "draynor north crate edge",
+        "northwest arc crate checkpoint"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "draynor_lumbridge_west",
+      "tile": {
+        "x": 3112,
+        "y": 3198,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "draynor-edge",
+        "crate",
+        "verified",
+        "westward-frontier",
+        "oscillation-evidence"
+      ],
+      "safety": {
+        "risk": "medium-for-new-accounts",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Live heartbeat northwest arc from 3115,3186 settled at 3112,3198 with oscillation. HP 10, no combat. Unicorn level 15 was distance 23 and Black Knight level 33 distance 30, both aggressive=false."
+      }
+    },
+    {
+      "id": "draynor_northwest_arc_probe_target",
+      "name": "Draynor Northwest Arc Probe Target",
+      "aliases": [
+        "3106 3198 probe",
+        "northwest arc blocked target"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "draynor_lumbridge_west",
+      "tile": {
+        "x": 3106,
+        "y": 3198,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "draynor-edge",
+        "needs-verification",
+        "blocked-probe"
+      ],
+      "safety": {
+        "risk": "unknown",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Not reached. Attempt from 3115,3186 toward 3106,3198 settled at 3112,3198 with oscillation."
+      }
+    },
+    {
+      "id": "draynor_southeast_guard_skirt",
+      "name": "Draynor Southeast Guard Skirt",
+      "aliases": [
+        "draynor guard skirt",
+        "southeast draynor guard skirt",
+        "north arc away from wizard pocket"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "draynor_lumbridge_west",
+      "tile": {
+        "x": 3120,
+        "y": 3208,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "draynor-edge",
+        "verified",
+        "hazard-skirt",
+        "westward-frontier"
+      ],
+      "safety": {
+        "risk": "medium-for-new-accounts",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Live normal-gameplay movement from 3112,3198 reached 3120,3208 safely. Nearby Unicorn level 15, Jail Guard level 26, Wizard level 9, Monk level 5, Archer level 42, and Goblins level 2 were all aggressive=false and no combat occurred. Treat as transit only for level-3 MrFlame."
+      }
+    },
+    {
+      "id": "draynor_southeast_tree_line",
+      "name": "Draynor Southeast Tree Line",
+      "aliases": [
+        "draynor tree line",
+        "west goblin field tree line",
+        "3132 3228 checkpoint"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "draynor_lumbridge_west",
+      "tile": {
+        "x": 3132,
+        "y": 3228,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "draynor-edge",
+        "tree-line",
+        "verified",
+        "westward-frontier"
+      ],
+      "safety": {
+        "risk": "medium-for-new-accounts",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Live normal-gameplay movement from 3148,3228 reached 3132,3228 safely. Jail Guards level 26 were 16-20 tiles away, Goblins level 2 nearby, all aggressive=false and underAttack=false. Transit only for level-3 MrFlame."
+      }
+    },
+    {
+      "id": "draynor_southwest_tree_opening",
+      "name": "Draynor Southwest Tree Opening",
+      "aliases": [
+        "southwest tree opening",
+        "3122 3218 checkpoint",
+        "draynor tree opening"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "draynor_lumbridge_west",
+      "tile": {
+        "x": 3122,
+        "y": 3218,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "draynor-edge",
+        "tree-line",
+        "verified",
+        "hazard-skirt",
+        "westward-frontier"
+      ],
+      "safety": {
+        "risk": "medium-for-new-accounts",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Live normal-gameplay movement from 3132,3228 reached 3122,3218 safely. Nearby Jail Guards level 26, Unicorn level 15, Wizard level 9, Monk level 5, and Warrior level 48 were all aggressive=false; the Warrior/Monk/Wizard cluster remained east at roughly 24-29 tiles."
+      }
+    },
+    {
+      "id": "draynor_jail_south_skirt",
+      "name": "Draynor Jail South Skirt",
+      "aliases": [
+        "jail south skirt",
+        "3110 3218 checkpoint",
+        "black knight approach skirt"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "draynor_lumbridge_west",
+      "tile": {
+        "x": 3110,
+        "y": 3218,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "draynor-edge",
+        "jail-skirt",
+        "verified",
+        "hazard-skirt",
+        "westward-frontier"
+      ],
+      "safety": {
+        "risk": "high-for-new-accounts",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Live movement from 3122,3218 reached 3110,3218 safely and revealed Dark wizards level 7, Market Guard level 20, Jail Guards level 26, and Black Knight level 33 nearby, all aggressive=false and underAttack=false. Use as a brief transit checkpoint only; do not idle or push northwest on low food."
+      }
+    },
+    {
+      "id": "draynor_black_knight_south_skirt",
+      "name": "Draynor Black Knight South Skirt",
+      "aliases": [
+        "black knight south skirt",
+        "3099 3209 checkpoint",
+        "southwest partial checkpoint"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "draynor_lumbridge_west",
+      "tile": {
+        "x": 3099,
+        "y": 3209,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "draynor-edge",
+        "learned-partial",
+        "hazard-skirt",
+        "oscillation-evidence",
+        "westward-frontier"
+      ],
+      "safety": {
+        "risk": "high-for-new-accounts",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Attempted southwest target 3098,3208 from 3110,3218 settled at 3099,3209 with oscillation. HP stayed 10 and no combat occurred. Black Knight level 33 was 21 tiles away, Dark wizard level 7 was 28 tiles away, and Jail Guard level 26 was 26 tiles away; all aggressive=false."
+      }
+    },
+    {
+      "id": "draynor_black_knight_close_skirt",
+      "name": "Draynor Black Knight Close Skirt",
+      "aliases": [
+        "black knight close skirt",
+        "3092 3213 checkpoint",
+        "west probe close skirt"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "draynor_lumbridge_west",
+      "tile": {
+        "x": 3092,
+        "y": 3213,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "draynor-edge",
+        "learned-partial",
+        "hazard-skirt",
+        "oscillation-evidence",
+        "blocked-probe"
+      ],
+      "safety": {
+        "risk": "high-for-new-accounts",
+        "minCombatLevel": 3,
+        "minFood": 2,
+        "notes": "Attempted west target 3088,3208 from 3099,3209 settled at 3092,3213 with oscillation. HP stayed 10 and no combat occurred, but Black Knight level 33 was only 16 tiles away and Dark wizards level 7 were 23-26 tiles away. Avoid repeating this west vector on one bread."
+      }
+    },
+    {
+      "id": "draynor_south_crate_line_recovery",
+      "name": "Draynor South Crate Line Recovery",
+      "aliases": [
+        "south crate line recovery",
+        "3112 3197 checkpoint",
+        "crate line recovery"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "draynor_lumbridge_west",
+      "tile": {
+        "x": 3112,
+        "y": 3197,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "draynor-edge",
+        "crate",
+        "learned-partial",
+        "recovery",
+        "oscillation-evidence"
+      ],
+      "safety": {
+        "risk": "medium-for-new-accounts",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Southward recovery target 3108,3197 from 3092,3213 settled at 3112,3197 with oscillation. This moved away from the Black Knight/Dark wizard pocket without combat and reconnects near the known crate-line checkpoints."
+      }
+    },
+    {
+      "id": "draynor_black_knight_west_probe_target",
+      "name": "Draynor Black Knight West Probe Target",
+      "aliases": [
+        "3088 3208 probe",
+        "black knight west blocked target"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "draynor_lumbridge_west",
+      "tile": {
+        "x": 3088,
+        "y": 3208,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "draynor-edge",
+        "needs-verification",
+        "blocked-probe"
+      ],
+      "safety": {
+        "risk": "unknown",
+        "minCombatLevel": 3,
+        "minFood": 2,
+        "notes": "Not reached. Live attempt from 3099,3209 to 3088,3208 settled at 3092,3213 with oscillation near Black Knight/Dark wizard hazards."
+      }
+    },
+    {
+      "id": "draynor_south_crate_west_probe_target",
+      "name": "Draynor South Crate West Probe Target",
+      "aliases": [
+        "3100 3197 probe",
+        "crate west blocked target"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "draynor_lumbridge_west",
+      "tile": {
+        "x": 3100,
+        "y": 3197,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "draynor-edge",
+        "needs-verification",
+        "blocked-probe"
+      ],
+      "safety": {
+        "risk": "unknown",
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "notes": "Not reached. Live attempt from 3112,3197 to 3100,3197 oscillated immediately at 3112,3197. Client-window screenshot captured at agent-navigation/screenshots/captures/2026-05-24/blocked-crate-west-20260524T165253Z.png."
+      }
+    },
+    {
+      "id": "lumbridge_west_wall_exterior",
+      "name": "Lumbridge West Wall Exterior",
+      "aliases": [
+        "west wall exterior",
+        "3200 3218 checkpoint",
+        "lumbridge west wall recovery"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "lumbridge",
+      "tile": {
+        "x": 3200,
+        "y": 3218,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "lumbridge",
+        "verified",
+        "wall-adjacent",
+        "recovery",
+        "oscillation-evidence"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Landmark recovery from the Draynor crate line toward Lumbridge courtyard settled here with oscillation and no combat. Nearby rats and giant rats were aggressive=false. Do not target the courtyard directly from here; route south/east through the churchyard approach."
+      }
+    },
+    {
+      "id": "lumbridge_west_wall_east_probe_target",
+      "name": "Lumbridge West Wall East Probe Target",
+      "aliases": [
+        "3204 3218 probe",
+        "west wall east blocked target"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "lumbridge",
+      "tile": {
+        "x": 3204,
+        "y": 3218,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "lumbridge",
+        "blocked-probe",
+        "wall-adjacent"
+      ],
+      "safety": {
+        "risk": "blocked",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Direct attempts from 3200,3218 toward 3222,3218 and 3204,3218 both oscillated at 3200,3218. Treat as a wall blocker from the west side; use the churchyard arc instead."
+      }
+    },
+    {
+      "id": "draynor_black_knight_boulder_frontier",
+      "name": "Draynor Black Knight Boulder Frontier",
+      "aliases": [
+        "3087 3220 checkpoint",
+        "black knight boulder frontier",
+        "dark wizard crossroads south edge"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "draynor_lumbridge_west",
+      "tile": {
+        "x": 3087,
+        "y": 3220,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "draynor-edge",
+        "learned-partial",
+        "hazard-skirt",
+        "oscillation-evidence",
+        "death-evidence",
+        "westward-frontier"
+      ],
+      "safety": {
+        "risk": "death-confirmed-for-new-accounts",
+        "minCombatLevel": 25,
+        "minFood": 3,
+        "notes": "Live relaunch exploration on 2026-05-24 targeted 3068,3215 from 3110,3218 and settled at 3087,3220 with oscillation, HP 10 and no combat. Follow-up southwest target 3075,3215 was blocked at this tile; follow-up northwest target 3079,3246 entered Dark wizard level 7 combat near 3090,3236/3088,3236 and ended in death/respawn. Black Knight level 33 and Market Guards level 20 were nearby. Use only as evidence/frontier, not as a recommended level-3 route."
+      }
+    },
+    {
+      "id": "draynor_black_knight_boulder_southwest_probe_target",
+      "name": "Draynor Black Knight Boulder Southwest Probe Target",
+      "aliases": [
+        "3075 3215 probe",
+        "boulder southwest blocked target"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "draynor_lumbridge_west",
+      "tile": {
+        "x": 3075,
+        "y": 3215,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "draynor-edge",
+        "needs-verification",
+        "blocked-probe"
+      ],
+      "safety": {
+        "risk": "blocked-high-risk",
+        "minCombatLevel": 25,
+        "minFood": 3,
+        "notes": "Not reached. Live attempt from 3087,3220 to 3075,3215 oscillated immediately at 3087,3220 near the Black Knight/Dark wizard crossroads."
+      }
+    },
+    {
+      "id": "draynor_market_northwest_probe_target",
+      "name": "Draynor Market Northwest Probe Target",
+      "aliases": [
+        "3079 3246 probe",
+        "dark wizard death probe target",
+        "market northwest blocked target"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "draynor_lumbridge_west",
+      "tile": {
+        "x": 3079,
+        "y": 3246,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "draynor-edge",
+        "needs-verification",
+        "blocked-probe",
+        "death-evidence"
+      ],
+      "safety": {
+        "risk": "death-confirmed-for-new-accounts",
+        "minCombatLevel": 25,
+        "minFood": 3,
+        "notes": "Not reached. Live attempt from 3087,3220 toward 3079,3246 entered Dark wizard level 7 combat around 3090,3236/3088,3236. HP fell from 10 to 3 with no food, then MrFlame died and respawned at Lumbridge."
+      }
+    },
+    {
+      "id": "draynor_jail_guard_contact_tile",
+      "name": "Draynor Jail Guard Contact Tile",
+      "aliases": [
+        "3116 3237 guard contact",
+        "jail guard combat contact"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "draynor_lumbridge_west",
+      "tile": {
+        "x": 3116,
+        "y": 3237,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "draynor-edge",
+        "hazard-contact",
+        "combat-evidence",
+        "avoid"
+      ],
+      "safety": {
+        "risk": "combat-contact-for-new-accounts",
+        "minCombatLevel": 15,
+        "minFood": 2,
+        "notes": "Relaunch exploration on 2026-05-24 tried 3106,3248 after reaching 3120,3239 and entered Jail Guard level 26 combat near 3116,3236/3116,3237. HP later dropped to 7 before bread was eaten and the route retreated south/east. Avoid this northwest vector on level-3 routing."
+      }
+    },
+    {
+      "id": "varrock_east_mine_road",
+      "name": "Varrock East Mine Road",
+      "aliases": [
+        "3285 3365 checkpoint",
+        "varrock east road south of mine",
+        "east mine road"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "varrock",
+      "tile": {
+        "x": 3285,
+        "y": 3365,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "varrock",
+        "verified",
+        "road",
+        "route-prefix",
+        "frontier"
+      ],
+      "safety": {
+        "risk": "medium-low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Reached safely multiple times from Lumbridge during Catherby/Varrock routing. Unicorns level 15 were visible nearby and aggressive=false. This is the safe end of the verified Lumbridge north-road prefix; do not assume the north/east bank tail is proven."
+      }
+    },
+    {
+      "id": "varrock_east_bank_north_probe_target",
+      "name": "Varrock East Bank North Probe Target",
+      "aliases": [
+        "3274 3417 probe",
+        "east bank north road probe"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "varrock",
+      "tile": {
+        "x": 3274,
+        "y": 3417,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "varrock",
+        "verified",
+        "preview-pathfinder",
+        "bank-approach"
+      ],
+      "safety": {
+        "risk": "medium-low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Reached from 3275,3410 during live route-runner testing with nearby Guards level 21 observed non-aggressive. Use as the north road bank-tail checkpoint, not as proof for the old direct 3285,3365 target."
+      }
+    },
+    {
+      "id": "varrock_east_road_north_partial",
+      "name": "Varrock East Road North Partial",
+      "aliases": [
+        "3274 3375 partial",
+        "east bank north partial settlement"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "varrock",
+      "tile": {
+        "x": 3274,
+        "y": 3375,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "frontier",
+        "learned-partial",
+        "oscillation-evidence",
+        "preview-pathfinder",
+        "surface",
+        "varrock",
+        "verified"
+      ],
+      "safety": {
+        "risk": "medium-for-new-accounts",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Reached from varrock_east_mine_road during live route-runner testing with HP 10 and no combat. Use as the first verified checkpoint for the Varrock east mine road to east bank tail."
+      }
+    },
+    {
+      "id": "varrock_south_altar_edge",
+      "name": "Varrock South Altar Edge",
+      "aliases": [
+        "3252 3381 altar edge",
+        "south varrock blocked altar edge"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "varrock",
+      "tile": {
+        "x": 3252,
+        "y": 3381,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "varrock",
+        "blocked-probe",
+        "hazard-skirt",
+        "avoid"
+      ],
+      "safety": {
+        "risk": "lethal-adjacent-for-new-accounts",
+        "minCombatLevel": 20,
+        "minFood": 4,
+        "notes": "Direct north target to Varrock east bank from this tile failed at the altar/building boundary. travel_to_landmark varrock_square then pulled west into the Dark wizard corridor and caused death. Avoid as a through route."
+      }
+    },
+    {
+      "id": "catherby",
+      "name": "Catherby",
+      "aliases": [
+        "catherby bank",
+        "catherby fishing shore",
+        "catherby coast"
+      ],
+      "kind": "town",
+      "region": "catherby",
+      "tile": {
+        "x": 2809,
+        "y": 3436,
+        "height": 0
+      },
+      "arrivalRadius": 8,
+      "tags": [
+        "surface",
+        "town",
+        "coast",
+        "long-term-target",
+        "unverified"
+      ],
+      "safety": {
+        "risk": "unknown-unverified",
+        "minCombatLevel": 3,
+        "minFood": 4,
+        "notes": "Long-term target added for route planning. No live route to Catherby is verified yet; westward progress should build verified graph links through Falador/Taverley/White Wolf Mountain before using this as an autonomous destination."
+      }
+    },
+    {
+      "id": "varrock_east_temple_wall_edge",
+      "name": "Varrock East Temple Wall Edge",
+      "aliases": [
+        "3288 3393",
+        "east varrock temple wall",
+        "varrock east road wall edge"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "varrock",
+      "tile": {
+        "x": 3288,
+        "y": 3393,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "varrock",
+        "verified",
+        "preview-pathfinder",
+        "route-correction"
+      ],
+      "safety": {
+        "risk": "medium-low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Reached during route-runner bank-tail repair. Original westward target oscillated here; treat this as the useful reached checkpoint, not a wall-bump failure."
+      }
+    },
+    {
+      "id": "varrock_east_bank_southeast_approach",
+      "name": "Varrock East Bank Southeast Approach",
+      "aliases": [
+        "3275 3410",
+        "east bank southeast approach"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "varrock",
+      "tile": {
+        "x": 3275,
+        "y": 3410,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "varrock",
+        "verified",
+        "preview-pathfinder"
+      ],
+      "safety": {
+        "risk": "medium-low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Reached from 3288,3393 by using preview_local_path finalTile. Outside the death-confirmed south Varrock dark-wizard box."
+      }
+    },
+    {
+      "id": "varrock_east_bank_street_edge",
+      "name": "Varrock East Bank Street Edge",
+      "aliases": [
+        "3257 3420",
+        "east bank street edge"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "varrock",
+      "tile": {
+        "x": 3257,
+        "y": 3420,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "varrock",
+        "verified",
+        "bank-approach"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Reached from the north road probe while approaching Varrock east bank. Guards were nearby and observed non-aggressive."
+      }
+    },
+    {
+      "id": "varrock_east_temple_wall_fast_bend",
+      "name": "Varrock East Temple Wall Fast Bend",
+      "aliases": [
+        "3288 3391",
+        "east varrock fast bend"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "varrock",
+      "tile": {
+        "x": 3288,
+        "y": 3391,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "varrock",
+        "verified",
+        "preview-pathfinder",
+        "fast-route"
+      ],
+      "safety": {
+        "risk": "medium-low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Fast mine-to-bank route-runner waypoint reached from 3274,3375 with HP 10 and no combat."
+      }
+    },
+    {
+      "id": "varrock_east_bank_southeast_fast_bend",
+      "name": "Varrock East Bank Southeast Fast Bend",
+      "aliases": [
+        "3277 3408",
+        "east bank southeast fast bend"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "varrock",
+      "tile": {
+        "x": 3277,
+        "y": 3408,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "varrock",
+        "verified",
+        "preview-pathfinder",
+        "fast-route"
+      ],
+      "safety": {
+        "risk": "medium-low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Fast mine-to-bank route-runner waypoint reached from the east temple wall bend; no combat."
+      }
+    },
+    {
+      "id": "varrock_east_bank_outer_street",
+      "name": "Varrock East Bank Outer Street",
+      "aliases": [
+        "3261 3420",
+        "east bank outer street"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "varrock",
+      "tile": {
+        "x": 3261,
+        "y": 3420,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "varrock",
+        "verified",
+        "preview-pathfinder",
+        "bank-approach",
+        "fast-route"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Outer street checkpoint for the fast Varrock east mine road to bank route. Guards nearby have been observed non-aggressive."
+      }
+    },
+    {
+      "id": "varrock_west_road_transition",
+      "name": "Varrock West Road Transition",
+      "aliases": [
+        "3185 3436",
+        "west varrock road transition"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "varrock",
+      "tile": {
+        "x": 3185,
+        "y": 3436,
+        "height": 0
+      },
+      "arrivalRadius": 3,
+      "tags": [
+        "surface",
+        "varrock",
+        "verified",
+        "road",
+        "route-split"
+      ],
+      "safety": {
+        "risk": "medium-low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Intermediate split point on the verified Varrock east bank to Barbarian Village route; keeps static route legs under 32 tiles."
+      }
+    },
+    {
+      "id": "rimmington_north_approach",
+      "name": "Rimmington North Approach",
+      "aliases": [
+        "rimmington approach",
+        "2957 3234",
+        "falador to rimmington road"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "rimmington",
+      "tile": {
+        "x": 2957,
+        "y": 3234,
+        "height": 0
+      },
+      "arrivalRadius": 4,
+      "tags": [
+        "surface",
+        "rimmington",
+        "verified",
+        "coast",
+        "f2p",
+        "route-split"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Reached live on 2026-05-24 from Falador west/south wall via 2946,3266 with HP 10 and no combat. Useful as the safer Rimmington-side alternative to the Highwayman-contested Falador-to-Port-Sarim north road."
+      }
+    },
+    {
+      "id": "rimmington_center",
+      "name": "Rimmington Center",
+      "aliases": [
+        "rimmington",
+        "2957 3218"
+      ],
+      "kind": "town",
+      "region": "rimmington",
+      "tile": {
+        "x": 2957,
+        "y": 3218,
+        "height": 0
+      },
+      "arrivalRadius": 6,
+      "tags": [
+        "surface",
+        "rimmington",
+        "verified",
+        "town",
+        "coast",
+        "f2p"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Reached live on 2026-05-24 from Falador and Rimmington north approach with HP 10 and no combat."
+      }
+    },
+    {
+      "id": "port_sarim_west_coast_road",
+      "name": "Port Sarim West Coast Road",
+      "aliases": [
+        "port sarim west",
+        "3028 3218",
+        "rimmington to port sarim coast"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "port_sarim",
+      "tile": {
+        "x": 3028,
+        "y": 3218,
+        "height": 0
+      },
+      "arrivalRadius": 4,
+      "tags": [
+        "surface",
+        "port-sarim",
+        "verified",
+        "coast",
+        "f2p",
+        "route-split"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Reached live on 2026-05-24 from Rimmington via 3005,3218 with HP 10 and no combat. This is the preferred low-level west/coast approach into Port Sarim, avoiding the Highwayman death tile north of town."
+      }
+    },
+    {
+      "id": "port_sarim_dock",
+      "name": "Port Sarim Dock",
+      "aliases": [
+        "port sarim",
+        "port sarim dock",
+        "3045 3204"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "port_sarim",
+      "tile": {
+        "x": 3045,
+        "y": 3204,
+        "height": 0
+      },
+      "arrivalRadius": 5,
+      "tags": [
+        "surface",
+        "port-sarim",
+        "verified",
+        "dock",
+        "coast",
+        "f2p"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Reached live on 2026-05-24 from Port Sarim west coast road with HP 10 and no combat. Ship objects were visible nearby, but no ship transition was tested."
+      }
+    },
+    {
+      "id": "port_sarim_north_road_frontier",
+      "name": "Port Sarim North Road Frontier",
+      "aliases": [
+        "port sarim north road",
+        "port sarim draynor road",
+        "3047 3246"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "port_sarim",
+      "tile": {
+        "x": 3047,
+        "y": 3246,
+        "height": 0
+      },
+      "arrivalRadius": 5,
+      "tags": [
+        "surface",
+        "port-sarim",
+        "draynor",
+        "verified",
+        "f2p",
+        "connector"
+      ],
+      "safety": {
+        "risk": "medium",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Reached live on 2026-05-24 from Port Sarim dock and later used as part of the Draynor-to-Port Sarim reverse route. No NPCs nearby at the checkpoint, but the road east/north approaches Market Guard, Dark wizard, Jail Guard, and Black Knight hazard zones."
+      }
+    },
+    {
+      "id": "port_sarim_draynor_north_arc",
+      "name": "Port Sarim to Draynor North Arc",
+      "aliases": [
+        "draynor north arc",
+        "port sarim draynor northern arc",
+        "3090 3269"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "draynor",
+      "tile": {
+        "x": 3090,
+        "y": 3269,
+        "height": 0
+      },
+      "arrivalRadius": 5,
+      "tags": [
+        "surface",
+        "port-sarim",
+        "draynor",
+        "verified",
+        "f2p",
+        "connector"
+      ],
+      "safety": {
+        "risk": "medium-high",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Reached live on 2026-05-24 by following the northern arc from 3067,3260 through 3079,3279, avoiding direct contact with the market and dark-wizard cluster. No combat or HP loss observed; keep movement deliberate because Market Guards and Dark wizards are nearby south of the arc."
+      }
+    },
+    {
+      "id": "draynor_jail_east_skirt",
+      "name": "Draynor Jail East Skirt",
+      "aliases": [
+        "draynor jail east skirt",
+        "draynor port sarim connector",
+        "3104 3248"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "draynor",
+      "tile": {
+        "x": 3104,
+        "y": 3248,
+        "height": 0
+      },
+      "arrivalRadius": 5,
+      "tags": [
+        "surface",
+        "draynor",
+        "verified",
+        "f2p",
+        "connector",
+        "hazard-adjacent"
+      ],
+      "safety": {
+        "risk": "high",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Reached live on 2026-05-24 from the Port Sarim northern arc and used to connect to draynor_southwest_tree_opening. No combat or HP loss observed, but nearby NPCs included Dark wizards level 7, Market Guards level 20, Jail Guards level 26, Black Knight level 33, and a Unicorn level 15. Use only as a moving connector, not an idle stop."
+      }
+    },
+    {
+      "id": "draynor_bank_hazard_checkpoint",
+      "name": "Draynor Bank Hazard Checkpoint",
+      "aliases": [
+        "draynor bank",
+        "draynor village bank",
+        "3092 3242"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "draynor",
+      "tile": {
+        "x": 3092,
+        "y": 3242,
+        "height": 0
+      },
+      "arrivalRadius": 4,
+      "tags": [
+        "surface",
+        "draynor",
+        "verified",
+        "f2p",
+        "bank",
+        "hazard-adjacent"
+      ],
+      "safety": {
+        "risk": "high",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Reached live on 2026-05-24 from draynor_southwest_tree_opening with run enabled, HP 10, no combat, and inBankArea=true. A Dark wizard level 7 was observed at distance 4, Market Guards level 20 at 10-14, Black Knight level 33 at 13, and Jail Guard level 26 at 24. Treat as a useful bank checkpoint but do not idle here on a level-3 account."
+      }
+    },
+    {
+      "id": "port_sarim_south_coast_frontier",
+      "name": "Port Sarim South Coast Frontier",
+      "aliases": [
+        "south port sarim coast",
+        "rimmington south coast",
+        "3000 3115"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "port_sarim",
+      "tile": {
+        "x": 3000,
+        "y": 3115,
+        "height": 0
+      },
+      "arrivalRadius": 5,
+      "tags": [
+        "surface",
+        "port-sarim",
+        "rimmington",
+        "verified",
+        "coast",
+        "f2p",
+        "frontier"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Reached live on 2026-05-24 by following the Rimmington/Port Sarim coastline south from 2967,3189 through 3035,3170 and 3021,3145. South and east probes from 3000,3115 were blocked by coastline/water; no NPC hazards observed."
+      }
+    },
+    {
+      "id": "gnome_agility_course",
+      "name": "Gnome Agility Course",
+      "aliases": [
+        "gnome agility",
+        "tree gnome agility course",
+        "gnome course",
+        "2474 3436"
+      ],
+      "kind": "training_area",
+      "region": "tree_gnome_stronghold",
+      "tile": {
+        "x": 2474,
+        "y": 3436,
+        "height": 0
+      },
+      "arrivalRadius": 5,
+      "tags": [
+        "surface",
+        "members",
+        "agility",
+        "tree-gnome-stronghold",
+        "verified",
+        "long-term-target"
+      ],
+      "safety": {
+        "risk": "medium-low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Reached live on 2026-05-24 from Catherby via Seers/Hemenster, the south-west route around Fishing Guild water, and the Tree Gnome Stronghold south gate. Gate object 190 at 2459,3383 moved MrFlame from 2459,3382 to 2459,3385; passive traces should be preferred for route timing, and the gate should remain an object transition rather than an ordinary walk edge."
+      }
+    }
+  ]
+}

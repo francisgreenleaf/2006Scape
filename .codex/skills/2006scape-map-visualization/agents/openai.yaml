@@ -1,0 +1,4 @@
+interface:
+  display_name: "2006Scape Map Visualization"
+  short_description: "Render and review map visuals"
+  default_prompt: "Use $2006scape-map-visualization to improve or review the 2006Scape movement topology and map PNG outputs."

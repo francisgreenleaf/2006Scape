@@ -1,0 +1,6089 @@
+{
+  "schemaVersion": 1,
+  "routes": [
+    {
+      "id": "lumbridge_courtyard_to_kitchen_range",
+      "name": "Lumbridge Courtyard to Kitchen Range",
+      "from": "lumbridge_castle_courtyard",
+      "to": "lumbridge_kitchen_range",
+      "status": "blocked",
+      "confidence": 0.2,
+      "bidirectional": false,
+      "source": "agent-session-log-and-existing-landmark",
+      "summary": "Blocked live route. Multiple rollouts reached exterior/wall-adjacent tiles around 3204,3216/3204,3217 and clicked visible doors/trapdoor through walls without proving an interior transition. Do not use until a door transition with reachable pre-tile, object tile, and post-tile is proven.",
+      "tags": [
+        "lumbridge",
+        "castle",
+        "kitchen",
+        "cooking",
+        "needs-door-check"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 20,
+        "notes": "Enable run when energy is available; this is a short safe route."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "low",
+        "avoidHazards": [
+          "lumbridge_giant_rats_basement_edge"
+        ],
+        "notes": "No high-risk NPCs observed on the approach. If combat starts, stop and observe before continuing."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3222,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Use Lumbridge courtyard as the route anchor."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3204,
+            "y": 3215,
+            "height": 0
+          },
+          "instruction": "Historical bad approach; this reaches the exterior west wall, not a verified kitchen interior tile.",
+          "blocker": "Live evidence shows this tile leads to cross-wall object clicks and repeated oscillation, not reliable kitchen entry."
+        },
+        {
+          "order": 3,
+          "type": "interact_object",
+          "near": {
+            "x": 3207,
+            "y": 3217,
+            "height": 0
+          },
+          "objectId": 12348,
+          "objectName": "Door",
+          "instruction": "Do not trust this step until the route proves a reachable side and post-door tile.",
+          "blocker": "Door object 12348 was found and interacted with during live sessions, but the player remained outside/wall-adjacent. interact_object success was not route success."
+        },
+        {
+          "order": 4,
+          "type": "verify",
+          "near": {
+            "x": 3204,
+            "y": 3215,
+            "height": 0
+          },
+          "instruction": "After the door interaction, observe position and nearby objects before committing to the final walk.",
+          "blocker": "The route has not yet proven which side of the door should be used for the final approach."
+        },
+        {
+          "order": 5,
+          "type": "walk",
+          "to": {
+            "x": 3209,
+            "y": 3215,
+            "height": 0
+          },
+          "instruction": "Walk to the range tile after any blocking door/object has been handled."
+        }
+      ],
+      "evidence": [
+        "obs_2026_05_24_mrflame_lumbridge_kitchen_approach",
+        "obs_2026_05_24_mrflame_lumbridge_kitchen_door"
+      ],
+      "knownBlockers": [
+        {
+          "tile": {
+            "x": 3204,
+            "y": 3215,
+            "height": 0
+          },
+          "kind": "door-side-and-clipping",
+          "status": "confirmed-blocked",
+          "notes": "Repeated live attempts clicked doors/trapdoor through wall-visible geometry and collapsed back to 3204,3216/3204,3217. Needs a new route with reachable adjacency and post-transition proof."
+        }
+      ]
+    },
+    {
+      "id": "lumbridge_courtyard_to_goblin_field",
+      "name": "Lumbridge Courtyard to Goblin Field",
+      "from": "lumbridge_castle_courtyard",
+      "to": "lumbridge_goblin_field",
+      "status": "derived-from-existing-landmark",
+      "confidence": 0.75,
+      "bidirectional": true,
+      "source": "AgentKnowledgeBase.lumbridgeGoblinsRoute",
+      "summary": "Short route from Lumbridge to nearby goblins.",
+      "tags": [
+        "lumbridge",
+        "combat",
+        "goblins"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 25,
+        "notes": "Run is safe on the road; stop and observe if attacked."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-low",
+        "avoidHazards": [],
+        "notes": "Low-level goblins nearby; carry at least one food item for a new account."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3222,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Start from Lumbridge courtyard."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3234,
+            "y": 3230,
+            "height": 0
+          },
+          "instruction": "Move northeast from the castle."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3252,
+            "y": 3236,
+            "height": 0
+          },
+          "instruction": "Arrive at the goblin field and observe before combat."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "lumbridge_courtyard_to_cow_pen",
+      "name": "Lumbridge Courtyard to Cow Pen",
+      "from": "lumbridge_castle_courtyard",
+      "to": "lumbridge_cow_pen",
+      "status": "derived-from-existing-landmark",
+      "confidence": 0.75,
+      "bidirectional": true,
+      "source": "AgentKnowledgeBase.lumbridgeCowsRoute",
+      "summary": "Route from Lumbridge to the cow pen for early combat and supplies.",
+      "tags": [
+        "lumbridge",
+        "combat",
+        "cows",
+        "food"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 30,
+        "notes": "Run between safe waypoints; observe on arrival before attacking."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-low",
+        "avoidHazards": [],
+        "notes": "Cows are low risk but inventory can fill quickly when looting."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3222,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Start from Lumbridge courtyard."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3234,
+            "y": 3230,
+            "height": 0
+          },
+          "instruction": "Move northeast from the castle."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3252,
+            "y": 3236,
+            "height": 0
+          },
+          "instruction": "Pass the goblin field; avoid starting combat unless training there."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 3255,
+            "y": 3266,
+            "height": 0
+          },
+          "instruction": "Arrive at the cow pen and observe food, HP, and available targets."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "lumbridge_courtyard_to_tree_stand",
+      "name": "Lumbridge Courtyard to Tree Stand",
+      "from": "lumbridge_castle_courtyard",
+      "to": "lumbridge_tree_stand",
+      "status": "derived-from-existing-landmark",
+      "confidence": 0.78,
+      "bidirectional": true,
+      "source": "AgentKnowledgeBase.lumbridge trees",
+      "summary": "Short woodcutting route from Lumbridge courtyard to nearby trees.",
+      "tags": [
+        "lumbridge",
+        "woodcutting",
+        "trees"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Walking is fine; save run unless moving between repeated gathering and banking loops."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "items": [
+          "axe for chopping"
+        ],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "low",
+        "avoidHazards": [],
+        "notes": "Low-risk nearby resource route."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3222,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Start from Lumbridge courtyard."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3233,
+            "y": 3229,
+            "height": 0
+          },
+          "instruction": "Move north-east toward the trees."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3233,
+            "y": 3233,
+            "height": 0
+          },
+          "instruction": "Arrive at the tree stand and observe tree/object availability."
+        }
+      ],
+      "evidence": [
+        "obs_2026_05_24_mrflame_lumbridge_tree_area"
+      ]
+    },
+    {
+      "id": "lumbridge_courtyard_to_oak_stand",
+      "name": "Lumbridge Courtyard to Oak Stand",
+      "from": "lumbridge_castle_courtyard",
+      "to": "lumbridge_oak_stand",
+      "status": "derived-from-existing-landmark",
+      "confidence": 0.72,
+      "bidirectional": true,
+      "source": "AgentKnowledgeBase.lumbridge oaks",
+      "summary": "Short route from Lumbridge courtyard to the oak stand north-west of the castle.",
+      "tags": [
+        "lumbridge",
+        "woodcutting",
+        "oaks"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Walking is fine for this short resource route."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "items": [
+          "axe for chopping"
+        ],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "low",
+        "avoidHazards": [],
+        "notes": "Low-risk nearby resource route."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3222,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Start from Lumbridge courtyard."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3218,
+            "y": 3230,
+            "height": 0
+          },
+          "instruction": "Move north-west around the castle."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3209,
+            "y": 3243,
+            "height": 0
+          },
+          "instruction": "Arrive at the oak stand and observe trees before chopping."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "lumbridge_courtyard_to_general_store",
+      "name": "Lumbridge Courtyard to General Store",
+      "from": "lumbridge_castle_courtyard",
+      "to": "lumbridge_general_store",
+      "status": "derived-from-existing-landmark",
+      "confidence": 0.75,
+      "bidirectional": true,
+      "source": "AgentKnowledgeBase.lumbridge general store",
+      "summary": "Short shop route from Lumbridge courtyard to the general store.",
+      "tags": [
+        "lumbridge",
+        "shop",
+        "general-store"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 20,
+        "notes": "Run is safe if the player is not conserving energy for a longer trip."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "low",
+        "avoidHazards": [],
+        "notes": "Low-risk town route."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3222,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Start from Lumbridge courtyard."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3218,
+            "y": 3230,
+            "height": 0
+          },
+          "instruction": "Move north-west from the courtyard."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3212,
+            "y": 3246,
+            "height": 0
+          },
+          "instruction": "Arrive at the general store; use open_nearest_shop before buying or selling."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "lumbridge_courtyard_to_axe_shop",
+      "name": "Lumbridge Courtyard to Bob's Axes",
+      "from": "lumbridge_castle_courtyard",
+      "to": "lumbridge_axe_shop",
+      "status": "derived-from-existing-landmark",
+      "confidence": 0.72,
+      "bidirectional": true,
+      "source": "AgentKnowledgeBase.lumbridgeAxeShopRoute",
+      "summary": "Short route from Lumbridge courtyard to Bob's Axes.",
+      "tags": [
+        "lumbridge",
+        "shop",
+        "axes",
+        "woodcutting"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 20,
+        "notes": "Run is safe for this short route."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "low",
+        "avoidHazards": [],
+        "notes": "Low-risk route south-east of the castle."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3222,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Start from Lumbridge courtyard."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3231,
+            "y": 3203,
+            "height": 0
+          },
+          "instruction": "Walk south-east to Bob's Axes and observe the shop/NPC before opening it."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "lumbridge_courtyard_to_fishing_spot",
+      "name": "Lumbridge Courtyard to Fishing Spot",
+      "from": "lumbridge_castle_courtyard",
+      "to": "lumbridge_fishing_spot",
+      "status": "derived-from-existing-landmark",
+      "confidence": 0.68,
+      "bidirectional": true,
+      "source": "AgentKnowledgeBase.lumbridgeFishingSpotRoute simplified from Lumbridge",
+      "summary": "Food-gathering route from Lumbridge courtyard to the river fishing spot.",
+      "tags": [
+        "lumbridge",
+        "fishing",
+        "food"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 35,
+        "notes": "Run the road sections if energy is available; conserve some energy for the return if carrying food."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "items": [
+          "small fishing net for fishing"
+        ],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "low",
+        "avoidHazards": [],
+        "notes": "Longer but low-risk route. Observe if pathing approaches Al Kharid gate or unknown NPCs."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3222,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Start from Lumbridge courtyard."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3239,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Move east from the castle."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3260,
+            "y": 3220,
+            "height": 0
+          },
+          "instruction": "Follow the east road."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 3274,
+            "y": 3195,
+            "height": 0
+          },
+          "instruction": "Turn south before the Al Kharid gate area."
+        },
+        {
+          "order": 5,
+          "type": "walk",
+          "to": {
+            "x": 3274,
+            "y": 3179,
+            "height": 0
+          },
+          "instruction": "Continue south along the river road."
+        },
+        {
+          "order": 6,
+          "type": "walk",
+          "to": {
+            "x": 3268,
+            "y": 3164,
+            "height": 0
+          },
+          "instruction": "Move south-west toward the fishing spot."
+        },
+        {
+          "order": 7,
+          "type": "walk",
+          "to": {
+            "x": 3267,
+            "y": 3148,
+            "height": 0
+          },
+          "instruction": "Arrive at the fishing spot and observe before fishing."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "lumbridge_courtyard_to_al_kharid_furnace",
+      "name": "Lumbridge Courtyard to Al Kharid Furnace",
+      "from": "lumbridge_castle_courtyard",
+      "to": "al_kharid_furnace",
+      "status": "needs-verification",
+      "confidence": 0.58,
+      "bidirectional": false,
+      "source": "AgentKnowledgeBase.alKharidFurnaceRoute and AgentToolService gate handling",
+      "summary": "Route to the Al Kharid furnace through the toll gate. Needs live confirmation of the gate interaction and dialogue state.",
+      "tags": [
+        "al-kharid",
+        "furnace",
+        "gate",
+        "smithing"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 40,
+        "notes": "Run the road sections, but slow down and observe at the gate interaction."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 10
+      },
+      "safety": {
+        "risk": "low-medium",
+        "avoidHazards": [
+          "al_kharid_gate_toll"
+        ],
+        "notes": "Primary blocker is the toll gate. Do not continue if coins are missing."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3222,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Start from Lumbridge courtyard."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3260,
+            "y": 3220,
+            "height": 0
+          },
+          "instruction": "Follow the east road toward the Al Kharid gate."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3267,
+            "y": 3227,
+            "height": 0
+          },
+          "instruction": "Stand on the west side of the Al Kharid gate."
+        },
+        {
+          "order": 4,
+          "type": "interact_object",
+          "to": {
+            "x": 3268,
+            "y": 3227,
+            "height": 0
+          },
+          "instruction": "Pay the 10 coin toll or use the gate object through normal gate handling."
+        },
+        {
+          "order": 5,
+          "type": "walk",
+          "to": {
+            "x": 3274,
+            "y": 3195,
+            "height": 0
+          },
+          "instruction": "After the gate, walk south on the Al Kharid road."
+        },
+        {
+          "order": 6,
+          "type": "walk",
+          "to": {
+            "x": 3274,
+            "y": 3186,
+            "height": 0
+          },
+          "instruction": "Arrive at the furnace and observe before smelting."
+        }
+      ],
+      "evidence": [],
+      "knownBlockers": [
+        {
+          "tile": {
+            "x": 3267,
+            "y": 3227,
+            "height": 0
+          },
+          "kind": "toll-gate",
+          "status": "needs-live-confirmation",
+          "notes": "Requires 10 carried coins in the current tool implementation."
+        }
+      ]
+    },
+    {
+      "id": "lumbridge_courtyard_to_al_kharid_bank",
+      "name": "Lumbridge Courtyard to Al Kharid Bank",
+      "from": "lumbridge_castle_courtyard",
+      "to": "al_kharid_bank",
+      "status": "needs-verification",
+      "confidence": 0.55,
+      "bidirectional": false,
+      "source": "AgentKnowledgeBase.alKharidBankRoute and AgentToolService gate handling",
+      "summary": "Route to Al Kharid bank through the toll gate, extending the furnace route south to the bank.",
+      "tags": [
+        "al-kharid",
+        "bank",
+        "gate"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 45,
+        "notes": "Run safe road sections; observe at the gate and after crossing."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 10
+      },
+      "safety": {
+        "risk": "low-medium",
+        "avoidHazards": [
+          "al_kharid_gate_toll"
+        ],
+        "notes": "Do not try this route without 10 coins until an alternate unlock is recorded."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3222,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Start from Lumbridge courtyard."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3267,
+            "y": 3227,
+            "height": 0
+          },
+          "instruction": "Reach the west side of the Al Kharid gate."
+        },
+        {
+          "order": 3,
+          "type": "interact_object",
+          "to": {
+            "x": 3268,
+            "y": 3227,
+            "height": 0
+          },
+          "instruction": "Pay the toll or handle the gate through normal object interaction."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 3274,
+            "y": 3186,
+            "height": 0
+          },
+          "instruction": "Use the furnace as a safe intermediate landmark."
+        },
+        {
+          "order": 5,
+          "type": "walk",
+          "to": {
+            "x": 3274,
+            "y": 3179,
+            "height": 0
+          },
+          "instruction": "Continue south from the furnace."
+        },
+        {
+          "order": 6,
+          "type": "walk",
+          "to": {
+            "x": 3269,
+            "y": 3167,
+            "height": 0
+          },
+          "instruction": "Arrive at Al Kharid bank."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "al_kharid_furnace_to_bank",
+      "name": "Al Kharid Furnace to Bank",
+      "from": "al_kharid_furnace",
+      "to": "al_kharid_bank",
+      "status": "derived-from-existing-landmark",
+      "confidence": 0.72,
+      "bidirectional": true,
+      "source": "AgentKnowledgeBase.alKharidBankRoute tail",
+      "summary": "Short banking route between Al Kharid furnace and bank.",
+      "tags": [
+        "al-kharid",
+        "bank",
+        "furnace",
+        "smithing"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Walking is fine; this is a short production loop."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "low",
+        "avoidHazards": [],
+        "notes": "Low-risk production route."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3274,
+            "y": 3186,
+            "height": 0
+          },
+          "instruction": "Start at the furnace."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3274,
+            "y": 3179,
+            "height": 0
+          },
+          "instruction": "Move south."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3269,
+            "y": 3167,
+            "height": 0
+          },
+          "instruction": "Arrive at the bank."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "lumbridge_courtyard_to_varrock_east_bank",
+      "name": "Lumbridge Courtyard to Varrock East Bank",
+      "from": "lumbridge_castle_courtyard",
+      "to": "varrock_east_bank",
+      "status": "verified",
+      "confidence": 0.82,
+      "bidirectional": true,
+      "source": "AgentKnowledgeBase.lumbridgeToVarrockEastBankRoute",
+      "summary": "Verified chain from Lumbridge courtyard to Varrock east bank using the safe east mine road prefix plus the fast preview-corrected east bank tail.",
+      "tags": [
+        "lumbridge",
+        "varrock",
+        "surface",
+        "verified",
+        "road",
+        "preview-pathfinder"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 50,
+        "notes": "Run long road sections if energy is available; conserve some energy for recovery if route is interrupted."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-low",
+        "avoidHazards": [
+          "lumbridge_cows_field",
+          "lumbridge_goblins_field",
+          "varrock_south_dark_wizards_unverified"
+        ],
+        "notes": "Use the east-road bank tail through 3274,3375, 3288,3391, 3277,3408, and 3261,3420. Do not use the old south Varrock shortcut."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3222,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Start from Lumbridge courtyard."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3234,
+            "y": 3238,
+            "height": 0
+          },
+          "instruction": "Move north-east from Lumbridge."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3252,
+            "y": 3236,
+            "height": 0
+          },
+          "instruction": "Pass the goblin field without starting combat."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 3255,
+            "y": 3266,
+            "height": 0
+          },
+          "instruction": "Pass the cow area; observe if attacked or inventory is valuable."
+        },
+        {
+          "order": 5,
+          "type": "walk",
+          "to": {
+            "x": 3237,
+            "y": 3295,
+            "height": 0
+          },
+          "instruction": "Follow the north road toward Varrock."
+        },
+        {
+          "order": 6,
+          "type": "walk",
+          "to": {
+            "x": 3261,
+            "y": 3322,
+            "height": 0
+          },
+          "instruction": "Continue along the east road."
+        },
+        {
+          "order": 7,
+          "type": "walk",
+          "to": {
+            "x": 3285,
+            "y": 3365,
+            "height": 0
+          },
+          "instruction": "Pass near Varrock east mine."
+        },
+        {
+          "order": 8,
+          "type": "walk",
+          "to": {
+            "x": 3274,
+            "y": 3375,
+            "height": 0
+          },
+          "instruction": "Follow the fast preview-verified Varrock east bank tail."
+        },
+        {
+          "order": 9,
+          "type": "walk",
+          "to": {
+            "x": 3288,
+            "y": 3391,
+            "height": 0
+          },
+          "instruction": "Follow the fast preview-verified Varrock east bank tail."
+        },
+        {
+          "order": 10,
+          "type": "walk",
+          "to": {
+            "x": 3277,
+            "y": 3408,
+            "height": 0
+          },
+          "instruction": "Follow the fast preview-verified Varrock east bank tail."
+        },
+        {
+          "order": 11,
+          "type": "walk",
+          "to": {
+            "x": 3261,
+            "y": 3420,
+            "height": 0
+          },
+          "instruction": "Follow the fast preview-verified Varrock east bank tail."
+        },
+        {
+          "order": 12,
+          "type": "walk",
+          "to": {
+            "x": 3254,
+            "y": 3420,
+            "height": 0
+          },
+          "instruction": "Follow the fast preview-verified Varrock east bank tail."
+        }
+      ],
+      "evidence": [],
+      "observations": [
+        "2026-05-24: safe prefix to 3285,3365 verified; north/east bank tail via 3274,3417/3253,3420 failed with oscillation and Dark wizard hazard context.",
+        "2026-05-24 preview-route repair: bank tail from 3285,3365 to 3254,3420 completed with HP 10 and no combat after avoiding the old south Varrock shortcut.",
+        "2026-05-24 fast tail repair: second mine-to-bank run reached 3254,3420 from 3285,3365 in five preview-guided batches with HP 10 and no combat."
+      ]
+    },
+    {
+      "id": "varrock_east_bank_to_lumbridge_courtyard",
+      "name": "Varrock East Bank to Lumbridge Courtyard",
+      "from": "varrock_east_bank",
+      "to": "lumbridge_castle_courtyard",
+      "status": "derived-from-existing-landmark",
+      "confidence": 0.7,
+      "bidirectional": true,
+      "source": "AgentKnowledgeBase.varrockEastBankToLumbridgeRoute",
+      "summary": "Return route from Varrock east bank to Lumbridge courtyard.",
+      "tags": [
+        "varrock",
+        "lumbridge",
+        "return",
+        "long-route"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 50,
+        "notes": "Run road sections when energy is available; observe at the cow/goblin transition."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-low",
+        "avoidHazards": [
+          "lumbridge_cows_field",
+          "lumbridge_goblins_field"
+        ],
+        "notes": "Long route with low-level NPC areas near Lumbridge."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3253,
+            "y": 3420,
+            "height": 0
+          },
+          "instruction": "Start at Varrock east bank."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3285,
+            "y": 3365,
+            "height": 0
+          },
+          "instruction": "Leave Varrock by the eastern road."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3261,
+            "y": 3322,
+            "height": 0
+          },
+          "instruction": "Follow the road south."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 3237,
+            "y": 3295,
+            "height": 0
+          },
+          "instruction": "Continue south toward Lumbridge."
+        },
+        {
+          "order": 5,
+          "type": "walk",
+          "to": {
+            "x": 3252,
+            "y": 3266,
+            "height": 0
+          },
+          "instruction": "Pass the cow area."
+        },
+        {
+          "order": 6,
+          "type": "walk",
+          "to": {
+            "x": 3252,
+            "y": 3236,
+            "height": 0
+          },
+          "instruction": "Pass the goblin field."
+        },
+        {
+          "order": 7,
+          "type": "walk",
+          "to": {
+            "x": 3222,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Return to Lumbridge courtyard."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "varrock_east_bank_to_east_mine",
+      "name": "Varrock East Bank to East Mine Preview Verified",
+      "from": "varrock_east_bank",
+      "to": "varrock_east_mine",
+      "status": "verified",
+      "confidence": 0.74,
+      "bidirectional": true,
+      "source": "route-runner-preview-local-path-2026-05-24",
+      "summary": "Reverse route from Varrock east bank to the east mine road verified by route_runner using learned traces and preview-local-path settlement tiles.",
+      "tags": [
+        "varrock",
+        "surface",
+        "verified",
+        "preview-pathfinder",
+        "bank-route",
+        "reverse-route"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 20,
+        "notes": "Completed with run enabled, no combat, and no food."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-low",
+        "avoidHazards": [
+          "varrock_south_dark_wizards_unverified"
+        ],
+        "notes": "Use the east-road settlement route. The first preview-final tile from the bank side may be 3271,3410 rather than the nominal 3275,3410 graph node."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3271,
+            "y": 3410,
+            "height": 0
+          },
+          "instruction": "Leave the east bank area through the clipped street edge."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3288,
+            "y": 3394,
+            "height": 0
+          },
+          "instruction": "Use the preview-final temple-wall edge."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3274,
+            "y": 3375,
+            "height": 0
+          },
+          "instruction": "Return to the east road partial checkpoint."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 3285,
+            "y": 3365,
+            "height": 0
+          },
+          "instruction": "Arrive at the Varrock east mine road."
+        }
+      ],
+      "evidence": [],
+      "observations": [
+        "2026-05-24 live reverse proof: route_runner moved 3254,3420 -> 3271,3410 -> 3288,3394 -> 3274,3375 -> 3285,3365 with HP 10 and no combat."
+      ]
+    },
+    {
+      "id": "varrock_east_mine_to_east_bank",
+      "name": "Varrock East Mine to East Bank",
+      "from": "varrock_east_mine",
+      "to": "varrock_east_bank",
+      "status": "derived-from-existing-landmark",
+      "confidence": 0.76,
+      "bidirectional": true,
+      "source": "reverse of Varrock east bank to mine route",
+      "summary": "Return route from Varrock east mine to the east bank for ore banking.",
+      "tags": [
+        "varrock",
+        "mine",
+        "bank",
+        "mining"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 25,
+        "notes": "Run if inventory is full or carrying valuables."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "low",
+        "avoidHazards": [],
+        "notes": "Low-risk ore banking route."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3285,
+            "y": 3365,
+            "height": 0
+          },
+          "instruction": "Start at Varrock east mine."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3289,
+            "y": 3388,
+            "height": 0
+          },
+          "instruction": "Return north along the road."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3274,
+            "y": 3417,
+            "height": 0
+          },
+          "instruction": "Enter eastern Varrock."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 3253,
+            "y": 3420,
+            "height": 0
+          },
+          "instruction": "Arrive at Varrock east bank."
+        }
+      ],
+      "evidence": []
+    },
+    {
+      "id": "lumbridge_courtyard_to_al_kharid_general_store",
+      "name": "Lumbridge Courtyard to Al Kharid General Store",
+      "from": "lumbridge_castle_courtyard",
+      "to": "al_kharid_general_store",
+      "status": "needs-verification",
+      "confidence": 0.55,
+      "bidirectional": false,
+      "source": "AgentKnowledgeBase.alKharidGeneralStoreRoute",
+      "summary": "Route to the Al Kharid general store through the toll gate.",
+      "tags": [
+        "al-kharid",
+        "shop",
+        "gate"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 45,
+        "notes": "Run road sections; observe at the Al Kharid gate before crossing."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 10
+      },
+      "safety": {
+        "risk": "low-medium",
+        "avoidHazards": [
+          "al_kharid_gate_toll"
+        ],
+        "notes": "Requires the Al Kharid gate toll until an alternate unlock is learned."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3222,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Start from Lumbridge courtyard."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3239,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Move east from the castle."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3260,
+            "y": 3220,
+            "height": 0
+          },
+          "instruction": "Follow the east road toward Al Kharid."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 3267,
+            "y": 3227,
+            "height": 0
+          },
+          "instruction": "Stand at the west side of the gate."
+        },
+        {
+          "order": 5,
+          "type": "interact_object",
+          "to": {
+            "x": 3268,
+            "y": 3227,
+            "height": 0
+          },
+          "instruction": "Pay the toll or handle the gate through object interaction."
+        },
+        {
+          "order": 6,
+          "type": "walk",
+          "to": {
+            "x": 3274,
+            "y": 3195,
+            "height": 0
+          },
+          "instruction": "After crossing, move south on the Al Kharid road."
+        },
+        {
+          "order": 7,
+          "type": "walk",
+          "to": {
+            "x": 3289,
+            "y": 3189,
+            "height": 0
+          },
+          "instruction": "Pass the scimitar shop landmark."
+        },
+        {
+          "order": 8,
+          "type": "walk",
+          "to": {
+            "x": 3305,
+            "y": 3186,
+            "height": 0
+          },
+          "instruction": "Continue east toward the store."
+        },
+        {
+          "order": 9,
+          "type": "walk",
+          "to": {
+            "x": 3313,
+            "y": 3183,
+            "height": 0
+          },
+          "instruction": "Arrive at the Al Kharid general store."
+        }
+      ],
+      "evidence": [
+        "obs_2026_05_24_static_agent_knowledge_routes"
+      ]
+    },
+    {
+      "id": "lumbridge_courtyard_to_al_kharid_scimitar_shop",
+      "name": "Lumbridge Courtyard to Al Kharid Scimitar Shop",
+      "from": "lumbridge_castle_courtyard",
+      "to": "al_kharid_scimitar_shop",
+      "status": "needs-verification",
+      "confidence": 0.55,
+      "bidirectional": false,
+      "source": "AgentKnowledgeBase.alKharidScimitarShopRoute",
+      "summary": "Route to the Al Kharid scimitar shop through the toll gate.",
+      "tags": [
+        "al-kharid",
+        "shop",
+        "weapons",
+        "gate"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 40,
+        "notes": "Run road sections; slow down at the gate."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 10
+      },
+      "safety": {
+        "risk": "low-medium",
+        "avoidHazards": [
+          "al_kharid_gate_toll"
+        ],
+        "notes": "Primary blocker is the toll gate."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3222,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Start from Lumbridge courtyard."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3239,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Move east from the castle."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3260,
+            "y": 3220,
+            "height": 0
+          },
+          "instruction": "Follow the road to the gate."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 3267,
+            "y": 3227,
+            "height": 0
+          },
+          "instruction": "Stand at the west side of the gate."
+        },
+        {
+          "order": 5,
+          "type": "interact_object",
+          "to": {
+            "x": 3268,
+            "y": 3227,
+            "height": 0
+          },
+          "instruction": "Pay the toll or handle the gate through object interaction."
+        },
+        {
+          "order": 6,
+          "type": "walk",
+          "to": {
+            "x": 3274,
+            "y": 3195,
+            "height": 0
+          },
+          "instruction": "Move south into Al Kharid."
+        },
+        {
+          "order": 7,
+          "type": "walk",
+          "to": {
+            "x": 3289,
+            "y": 3189,
+            "height": 0
+          },
+          "instruction": "Arrive at the scimitar shop."
+        }
+      ],
+      "evidence": [
+        "obs_2026_05_24_static_agent_knowledge_routes"
+      ]
+    },
+    {
+      "id": "lumbridge_courtyard_to_al_kharid_kebab_shop",
+      "name": "Lumbridge Courtyard to Al Kharid Kebab Shop",
+      "from": "lumbridge_castle_courtyard",
+      "to": "al_kharid_kebab_shop",
+      "status": "needs-verification",
+      "confidence": 0.52,
+      "bidirectional": false,
+      "source": "AgentKnowledgeBase.alKharidKebabShopRoute simplified from Lumbridge",
+      "summary": "Food shop route through the Al Kharid gate.",
+      "tags": [
+        "al-kharid",
+        "shop",
+        "food",
+        "gate"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 40,
+        "notes": "Run road sections if energy is available; observe at the gate."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 10
+      },
+      "safety": {
+        "risk": "low-medium",
+        "avoidHazards": [
+          "al_kharid_gate_toll"
+        ],
+        "notes": "Useful restock target, but not safe without gate coins."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3222,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Start from Lumbridge courtyard."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3239,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Move east from the castle."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3260,
+            "y": 3220,
+            "height": 0
+          },
+          "instruction": "Follow the road to the gate."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 3267,
+            "y": 3227,
+            "height": 0
+          },
+          "instruction": "Stand at the west side of the gate."
+        },
+        {
+          "order": 5,
+          "type": "interact_object",
+          "to": {
+            "x": 3268,
+            "y": 3227,
+            "height": 0
+          },
+          "instruction": "Pay the toll or handle the gate."
+        },
+        {
+          "order": 6,
+          "type": "walk",
+          "to": {
+            "x": 3274,
+            "y": 3195,
+            "height": 0
+          },
+          "instruction": "Move south into Al Kharid."
+        },
+        {
+          "order": 7,
+          "type": "walk",
+          "to": {
+            "x": 3275,
+            "y": 3180,
+            "height": 0
+          },
+          "instruction": "Arrive at the kebab shop."
+        }
+      ],
+      "evidence": [
+        "obs_2026_05_24_static_agent_knowledge_routes"
+      ]
+    },
+    {
+      "id": "lumbridge_courtyard_to_al_kharid_legs_shop",
+      "name": "Lumbridge Courtyard to Al Kharid Legs Shop",
+      "from": "lumbridge_castle_courtyard",
+      "to": "al_kharid_legs_shop",
+      "status": "needs-verification",
+      "confidence": 0.52,
+      "bidirectional": false,
+      "source": "AgentKnowledgeBase.alKharidLegsShopRoute",
+      "summary": "Armour shop route through the Al Kharid gate.",
+      "tags": [
+        "al-kharid",
+        "shop",
+        "armour",
+        "gate"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 45,
+        "notes": "Run road sections if energy is available; observe at the gate."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 10
+      },
+      "safety": {
+        "risk": "low-medium",
+        "avoidHazards": [
+          "al_kharid_gate_toll"
+        ],
+        "notes": "Requires gate toll and live shop verification."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3222,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Start from Lumbridge courtyard."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3260,
+            "y": 3220,
+            "height": 0
+          },
+          "instruction": "Follow the east road."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3267,
+            "y": 3227,
+            "height": 0
+          },
+          "instruction": "Stand at the west side of the gate."
+        },
+        {
+          "order": 4,
+          "type": "interact_object",
+          "to": {
+            "x": 3268,
+            "y": 3227,
+            "height": 0
+          },
+          "instruction": "Pay the toll or handle the gate."
+        },
+        {
+          "order": 5,
+          "type": "walk",
+          "to": {
+            "x": 3274,
+            "y": 3195,
+            "height": 0
+          },
+          "instruction": "Move south into Al Kharid."
+        },
+        {
+          "order": 6,
+          "type": "walk",
+          "to": {
+            "x": 3289,
+            "y": 3189,
+            "height": 0
+          },
+          "instruction": "Pass the scimitar shop landmark."
+        },
+        {
+          "order": 7,
+          "type": "walk",
+          "to": {
+            "x": 3305,
+            "y": 3186,
+            "height": 0
+          },
+          "instruction": "Continue east."
+        },
+        {
+          "order": 8,
+          "type": "walk",
+          "to": {
+            "x": 3315,
+            "y": 3175,
+            "height": 0
+          },
+          "instruction": "Arrive at the legs shop."
+        }
+      ],
+      "evidence": [
+        "obs_2026_05_24_static_agent_knowledge_routes"
+      ]
+    },
+    {
+      "id": "lumbridge_courtyard_to_varrock_square",
+      "name": "Lumbridge Courtyard to Varrock Square",
+      "from": "lumbridge_castle_courtyard",
+      "to": "varrock_square",
+      "status": "derived-from-existing-landmark",
+      "confidence": 0.68,
+      "bidirectional": true,
+      "source": "AgentKnowledgeBase.varrockRoute simplified from Lumbridge",
+      "summary": "Long eastern road route from Lumbridge to central Varrock.",
+      "tags": [
+        "lumbridge",
+        "varrock",
+        "long-route"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 50,
+        "notes": "Run long road sections and observe at region transitions."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-low",
+        "avoidHazards": [
+          "lumbridge_goblins_field",
+          "lumbridge_cows_field",
+          "varrock_south_dark_wizards_unverified"
+        ],
+        "notes": "Uses the east road to avoid the most dangerous south Varrock approach."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3222,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Start from Lumbridge courtyard."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3234,
+            "y": 3238,
+            "height": 0
+          },
+          "instruction": "Move north-east from Lumbridge."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3252,
+            "y": 3236,
+            "height": 0
+          },
+          "instruction": "Pass the goblin field."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 3255,
+            "y": 3266,
+            "height": 0
+          },
+          "instruction": "Pass the cow field."
+        },
+        {
+          "order": 5,
+          "type": "walk",
+          "to": {
+            "x": 3237,
+            "y": 3295,
+            "height": 0
+          },
+          "instruction": "Follow the road north."
+        },
+        {
+          "order": 6,
+          "type": "walk",
+          "to": {
+            "x": 3261,
+            "y": 3322,
+            "height": 0
+          },
+          "instruction": "Continue north-east."
+        },
+        {
+          "order": 7,
+          "type": "walk",
+          "to": {
+            "x": 3285,
+            "y": 3365,
+            "height": 0
+          },
+          "instruction": "Pass near Varrock east mine."
+        },
+        {
+          "order": 8,
+          "type": "walk",
+          "to": {
+            "x": 3274,
+            "y": 3417,
+            "height": 0
+          },
+          "instruction": "Enter eastern Varrock."
+        },
+        {
+          "order": 9,
+          "type": "walk",
+          "to": {
+            "x": 3238,
+            "y": 3420,
+            "height": 0
+          },
+          "instruction": "Cross toward central Varrock."
+        },
+        {
+          "order": 10,
+          "type": "walk",
+          "to": {
+            "x": 3210,
+            "y": 3424,
+            "height": 0
+          },
+          "instruction": "Arrive at Varrock square."
+        }
+      ],
+      "evidence": [
+        "obs_2026_05_24_static_agent_knowledge_routes"
+      ]
+    },
+    {
+      "id": "lumbridge_courtyard_to_varrock_west_bank",
+      "name": "Lumbridge Courtyard to Varrock West Bank",
+      "from": "lumbridge_castle_courtyard",
+      "to": "varrock_west_bank",
+      "status": "derived-from-existing-landmark",
+      "confidence": 0.64,
+      "bidirectional": true,
+      "source": "AgentKnowledgeBase.varrockWestBankRoute simplified from Lumbridge",
+      "summary": "Long route from Lumbridge to Varrock west bank.",
+      "tags": [
+        "lumbridge",
+        "varrock",
+        "bank",
+        "long-route"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 55,
+        "notes": "Run long road sections and observe on arrival."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-low",
+        "avoidHazards": [
+          "lumbridge_goblins_field",
+          "lumbridge_cows_field",
+          "varrock_south_dark_wizards_unverified"
+        ],
+        "notes": "Safe once inside Varrock, but the long road needs food for low-level accounts."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3222,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Start from Lumbridge courtyard."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3252,
+            "y": 3236,
+            "height": 0
+          },
+          "instruction": "Pass the Lumbridge goblin field."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3255,
+            "y": 3266,
+            "height": 0
+          },
+          "instruction": "Pass the cow field."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 3237,
+            "y": 3295,
+            "height": 0
+          },
+          "instruction": "Follow the north road."
+        },
+        {
+          "order": 5,
+          "type": "walk",
+          "to": {
+            "x": 3285,
+            "y": 3365,
+            "height": 0
+          },
+          "instruction": "Pass near Varrock east mine."
+        },
+        {
+          "order": 6,
+          "type": "walk",
+          "to": {
+            "x": 3274,
+            "y": 3417,
+            "height": 0
+          },
+          "instruction": "Enter eastern Varrock."
+        },
+        {
+          "order": 7,
+          "type": "walk",
+          "to": {
+            "x": 3210,
+            "y": 3424,
+            "height": 0
+          },
+          "instruction": "Reach Varrock square."
+        },
+        {
+          "order": 8,
+          "type": "walk",
+          "to": {
+            "x": 3194,
+            "y": 3430,
+            "height": 0
+          },
+          "instruction": "Move west from the square."
+        },
+        {
+          "order": 9,
+          "type": "walk",
+          "to": {
+            "x": 3185,
+            "y": 3436,
+            "height": 0
+          },
+          "instruction": "Arrive at Varrock west bank."
+        }
+      ],
+      "evidence": [
+        "obs_2026_05_24_static_agent_knowledge_routes"
+      ]
+    },
+    {
+      "id": "lumbridge_courtyard_to_varrock_west_anvils",
+      "name": "Lumbridge Courtyard to Varrock West Anvils",
+      "from": "lumbridge_castle_courtyard",
+      "to": "varrock_west_anvils",
+      "status": "derived-from-existing-landmark",
+      "confidence": 0.62,
+      "bidirectional": true,
+      "source": "AgentKnowledgeBase.varrockWestAnvilRoute simplified from Lumbridge",
+      "summary": "Long route from Lumbridge to Varrock west anvils.",
+      "tags": [
+        "lumbridge",
+        "varrock",
+        "smithing",
+        "anvil"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 55,
+        "notes": "Run long road sections if energy is available."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-low",
+        "avoidHazards": [
+          "lumbridge_goblins_field",
+          "lumbridge_cows_field"
+        ],
+        "notes": "Production route; check inventory before walking."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3222,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Start from Lumbridge courtyard."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3252,
+            "y": 3236,
+            "height": 0
+          },
+          "instruction": "Pass the Lumbridge goblin field."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3255,
+            "y": 3266,
+            "height": 0
+          },
+          "instruction": "Pass the cow field."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 3237,
+            "y": 3295,
+            "height": 0
+          },
+          "instruction": "Follow the north road."
+        },
+        {
+          "order": 5,
+          "type": "walk",
+          "to": {
+            "x": 3285,
+            "y": 3365,
+            "height": 0
+          },
+          "instruction": "Pass near Varrock east mine."
+        },
+        {
+          "order": 6,
+          "type": "walk",
+          "to": {
+            "x": 3274,
+            "y": 3417,
+            "height": 0
+          },
+          "instruction": "Enter eastern Varrock."
+        },
+        {
+          "order": 7,
+          "type": "walk",
+          "to": {
+            "x": 3210,
+            "y": 3424,
+            "height": 0
+          },
+          "instruction": "Reach Varrock square."
+        },
+        {
+          "order": 8,
+          "type": "walk",
+          "to": {
+            "x": 3196,
+            "y": 3428,
+            "height": 0
+          },
+          "instruction": "Move west toward the anvils."
+        },
+        {
+          "order": 9,
+          "type": "walk",
+          "to": {
+            "x": 3188,
+            "y": 3425,
+            "height": 0
+          },
+          "instruction": "Arrive at the anvils."
+        }
+      ],
+      "evidence": [
+        "obs_2026_05_24_static_agent_knowledge_routes"
+      ]
+    },
+    {
+      "id": "lumbridge_courtyard_to_varrock_sword_shop",
+      "name": "Lumbridge Courtyard to Varrock Sword Shop",
+      "from": "lumbridge_castle_courtyard",
+      "to": "varrock_sword_shop",
+      "status": "derived-from-existing-landmark",
+      "confidence": 0.58,
+      "bidirectional": false,
+      "source": "AgentKnowledgeBase.varrockSwordShopRoute simplified from Lumbridge",
+      "summary": "Route to Varrock sword shop, with a caution near south Varrock.",
+      "tags": [
+        "lumbridge",
+        "varrock",
+        "shop",
+        "weapons"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 55,
+        "notes": "Run the long road sections; slow down south of Varrock square."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 2,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium",
+        "avoidHazards": [
+          "varrock_south_dark_wizards_unverified"
+        ],
+        "notes": "South Varrock routes need live verification before low-HP travel."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3222,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Start from Lumbridge courtyard."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3252,
+            "y": 3236,
+            "height": 0
+          },
+          "instruction": "Pass the Lumbridge goblin field."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3255,
+            "y": 3266,
+            "height": 0
+          },
+          "instruction": "Pass the cow field."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 3285,
+            "y": 3365,
+            "height": 0
+          },
+          "instruction": "Use the east road north."
+        },
+        {
+          "order": 5,
+          "type": "walk",
+          "to": {
+            "x": 3274,
+            "y": 3417,
+            "height": 0
+          },
+          "instruction": "Enter eastern Varrock."
+        },
+        {
+          "order": 6,
+          "type": "walk",
+          "to": {
+            "x": 3210,
+            "y": 3424,
+            "height": 0
+          },
+          "instruction": "Reach Varrock square."
+        },
+        {
+          "order": 7,
+          "type": "walk",
+          "to": {
+            "x": 3206,
+            "y": 3399,
+            "height": 0
+          },
+          "instruction": "Walk south to the sword shop and observe for hostile NPCs."
+        }
+      ],
+      "evidence": [
+        "obs_2026_05_24_static_agent_knowledge_routes"
+      ]
+    },
+    {
+      "id": "lumbridge_courtyard_to_varrock_armour_shop",
+      "name": "Lumbridge Courtyard to Varrock Armour Shop",
+      "from": "lumbridge_castle_courtyard",
+      "to": "varrock_armour_shop",
+      "status": "derived-from-existing-landmark",
+      "confidence": 0.62,
+      "bidirectional": false,
+      "source": "AgentKnowledgeBase.varrockArmourShopRoute simplified from Lumbridge",
+      "summary": "Long route from Lumbridge to the Varrock armour shop.",
+      "tags": [
+        "lumbridge",
+        "varrock",
+        "shop",
+        "armour"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 55,
+        "notes": "Run long road sections and observe on arrival."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-low",
+        "avoidHazards": [
+          "lumbridge_goblins_field",
+          "lumbridge_cows_field"
+        ],
+        "notes": "Safer Varrock shop target than south-side shops."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3222,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Start from Lumbridge courtyard."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3252,
+            "y": 3236,
+            "height": 0
+          },
+          "instruction": "Pass the Lumbridge goblin field."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3255,
+            "y": 3266,
+            "height": 0
+          },
+          "instruction": "Pass the cow field."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 3285,
+            "y": 3365,
+            "height": 0
+          },
+          "instruction": "Use the east road north."
+        },
+        {
+          "order": 5,
+          "type": "walk",
+          "to": {
+            "x": 3274,
+            "y": 3417,
+            "height": 0
+          },
+          "instruction": "Enter eastern Varrock."
+        },
+        {
+          "order": 6,
+          "type": "walk",
+          "to": {
+            "x": 3238,
+            "y": 3420,
+            "height": 0
+          },
+          "instruction": "Cross central Varrock."
+        },
+        {
+          "order": 7,
+          "type": "walk",
+          "to": {
+            "x": 3229,
+            "y": 3438,
+            "height": 0
+          },
+          "instruction": "Arrive at the armour shop."
+        }
+      ],
+      "evidence": [
+        "obs_2026_05_24_static_agent_knowledge_routes"
+      ]
+    },
+    {
+      "id": "lumbridge_courtyard_to_champions_guild_stairs",
+      "name": "Lumbridge Courtyard to Champions' Guild Stairs",
+      "from": "lumbridge_castle_courtyard",
+      "to": "champions_guild_stairs",
+      "status": "learned-partial",
+      "confidence": 0.64,
+      "bidirectional": false,
+      "source": "AgentKnowledgeBase.championsGuildStairsRoute simplified from Lumbridge",
+      "summary": "Long south-west Varrock route to the Champions' Guild stairs. The south Varrock tail from Varrock square to the guild stairs is live-verified with run enabled; the full Lumbridge start still needs a single end-to-end run.",
+      "tags": [
+        "lumbridge",
+        "varrock",
+        "guild",
+        "stairs"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 60,
+        "requiresRun": true,
+        "notes": "Run long road sections and keep at least 20 run energy for the south Varrock hazard band."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 2,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium",
+        "avoidHazards": [
+          "varrock_south_dark_wizards_unverified",
+          "varrock_south_shop_route_unverified"
+        ],
+        "notes": "South Varrock tail survived at 10 HP with run enabled. Do not enter the tail with low run energy, disabled run, or no food."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3222,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Start from Lumbridge courtyard."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3252,
+            "y": 3236,
+            "height": 0
+          },
+          "instruction": "Pass the Lumbridge goblin field."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3255,
+            "y": 3266,
+            "height": 0
+          },
+          "instruction": "Pass the cow field."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 3285,
+            "y": 3365,
+            "height": 0
+          },
+          "instruction": "Use the east road north."
+        },
+        {
+          "order": 5,
+          "type": "walk",
+          "to": {
+            "x": 3210,
+            "y": 3424,
+            "height": 0
+          },
+          "instruction": "Reach Varrock square."
+        },
+        {
+          "order": 6,
+          "type": "walk",
+          "to": {
+            "x": 3206,
+            "y": 3399,
+            "height": 0
+          },
+          "instruction": "Move south toward the sword shop landmark."
+        },
+        {
+          "order": 7,
+          "type": "walk",
+          "to": {
+            "x": 3198,
+            "y": 3384,
+            "height": 0
+          },
+          "instruction": "Continue south-west."
+        },
+        {
+          "order": 8,
+          "type": "walk",
+          "to": {
+            "x": 3191,
+            "y": 3363,
+            "height": 0
+          },
+          "instruction": "Arrive at the Champions' Guild stairs and observe before using stairs."
+        }
+      ],
+      "evidence": [
+        "obs_2026_05_24_static_agent_knowledge_routes",
+        "obs_2026_05_24_mrflame_varrock_square_to_champions_run"
+      ]
+    },
+    {
+      "id": "varrock_square_to_champions_guild_stairs",
+      "name": "Varrock Square to Champions' Guild Stairs",
+      "from": "varrock_square",
+      "to": "champions_guild_stairs",
+      "status": "verified",
+      "confidence": 0.86,
+      "bidirectional": false,
+      "source": "live-agent-run-2026-05-24",
+      "summary": "Verified south Varrock route from the square to Champions' Guild stairs. MrFlame enabled run at Varrock square, crossed the south Varrock hazard band, arrived at the stairs with 10/10 HP, and was not pulled into combat.",
+      "tags": [
+        "varrock",
+        "guild",
+        "stairs",
+        "verified",
+        "run-required"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "requiresRun": true,
+        "minEnergy": 20,
+        "notes": "Enable run before leaving Varrock square and do not start the southbound leg below 20 run energy."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 2,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium",
+        "avoidHazards": [
+          "varrock_south_dark_wizards_unverified",
+          "varrock_south_shop_route_unverified"
+        ],
+        "notes": "Live test saw nearby guards only at the destination, no combat, and no damage. Keep this as a fast transit route, not a place to loiter."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3210,
+            "y": 3424,
+            "height": 0
+          },
+          "instruction": "Start at Varrock square and verify HP, food, and run energy before entering south Varrock."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3206,
+            "y": 3399,
+            "height": 0
+          },
+          "instruction": "Enable run and move south toward the sword shop landmark."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3198,
+            "y": 3384,
+            "height": 0
+          },
+          "instruction": "Keep running through the hazard band; do not stop to interact."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 3191,
+            "y": 3363,
+            "height": 0
+          },
+          "instruction": "Arrive at the Champions' Guild stairs and observe before any stair or object interaction."
+        }
+      ],
+      "evidence": [
+        "obs_2026_05_24_mrflame_varrock_square_to_champions_run"
+      ]
+    },
+    {
+      "id": "champions_guild_stairs_to_varrock_east_bank",
+      "name": "Champions' Guild Stairs to Varrock East Bank",
+      "from": "champions_guild_stairs",
+      "to": "varrock_east_bank",
+      "status": "verified",
+      "confidence": 0.82,
+      "bidirectional": false,
+      "source": "live-agent-run-2026-05-24",
+      "summary": "Verified retreat route from Champions' Guild stairs back through Varrock square to the east bank. The route completed safely after the southbound run drained most energy.",
+      "tags": [
+        "varrock",
+        "bank",
+        "retreat",
+        "verified"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Run is useful if available, but the live return completed safely even after energy dropped to 4 near Varrock square."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-low",
+        "avoidHazards": [
+          "varrock_south_dark_wizards_unverified"
+        ],
+        "notes": "Use as the default safe reset after testing south Varrock; continue to observe if HP drops or combat starts."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3191,
+            "y": 3363,
+            "height": 0
+          },
+          "instruction": "Start at the Champions' Guild stairs and check HP before leaving."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3198,
+            "y": 3384,
+            "height": 0
+          },
+          "instruction": "Move north-east out of the south Varrock band."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3206,
+            "y": 3399,
+            "height": 0
+          },
+          "instruction": "Pass the sword shop landmark without interacting."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 3210,
+            "y": 3424,
+            "height": 0
+          },
+          "instruction": "Return to Varrock square."
+        },
+        {
+          "order": 5,
+          "type": "walk",
+          "to": {
+            "x": 3253,
+            "y": 3420,
+            "height": 0
+          },
+          "instruction": "Walk east to Varrock east bank and stop there for recovery or banking."
+        }
+      ],
+      "evidence": [
+        "obs_2026_05_24_mrflame_champions_to_varrock_east_bank"
+      ]
+    },
+    {
+      "id": "lumbridge_courtyard_to_barbarian_village",
+      "name": "Lumbridge Courtyard to Barbarian Village",
+      "from": "lumbridge_castle_courtyard",
+      "to": "barbarian_village",
+      "status": "derived-from-existing-landmark",
+      "confidence": 0.54,
+      "bidirectional": false,
+      "source": "AgentKnowledgeBase.barbarianVillageRoute simplified from Lumbridge",
+      "summary": "Long road route from Lumbridge through Varrock to Barbarian Village.",
+      "tags": [
+        "lumbridge",
+        "varrock",
+        "barbarian-village",
+        "long-route"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 60,
+        "notes": "Run long road sections and observe before entering the village."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 2,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium",
+        "avoidHazards": [
+          "lumbridge_goblins_field",
+          "lumbridge_cows_field"
+        ],
+        "notes": "Long travel route; food is required for low-level accounts."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3222,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Start from Lumbridge courtyard."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3252,
+            "y": 3236,
+            "height": 0
+          },
+          "instruction": "Pass the Lumbridge goblin field."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3255,
+            "y": 3266,
+            "height": 0
+          },
+          "instruction": "Pass the cow field."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 3285,
+            "y": 3365,
+            "height": 0
+          },
+          "instruction": "Use the east road north."
+        },
+        {
+          "order": 5,
+          "type": "walk",
+          "to": {
+            "x": 3210,
+            "y": 3424,
+            "height": 0
+          },
+          "instruction": "Reach Varrock square."
+        },
+        {
+          "order": 6,
+          "type": "walk",
+          "to": {
+            "x": 3194,
+            "y": 3430,
+            "height": 0
+          },
+          "instruction": "Leave Varrock west."
+        },
+        {
+          "order": 7,
+          "type": "walk",
+          "to": {
+            "x": 3154,
+            "y": 3426,
+            "height": 0
+          },
+          "instruction": "Continue west on the road."
+        },
+        {
+          "order": 8,
+          "type": "walk",
+          "to": {
+            "x": 3124,
+            "y": 3429,
+            "height": 0
+          },
+          "instruction": "Continue toward Barbarian Village."
+        },
+        {
+          "order": 9,
+          "type": "walk",
+          "to": {
+            "x": 3092,
+            "y": 3429,
+            "height": 0
+          },
+          "instruction": "Approach the village."
+        },
+        {
+          "order": 10,
+          "type": "walk",
+          "to": {
+            "x": 3081,
+            "y": 3429,
+            "height": 0
+          },
+          "instruction": "Arrive at Barbarian Village and observe NPCs."
+        }
+      ],
+      "evidence": [
+        "obs_2026_05_24_static_agent_knowledge_routes"
+      ]
+    },
+    {
+      "id": "lumbridge_courtyard_to_dwarven_mine_ladder",
+      "name": "Lumbridge Courtyard to Dwarven Mine Ladder",
+      "from": "lumbridge_castle_courtyard",
+      "to": "dwarven_mine_ladder",
+      "status": "needs-verification",
+      "confidence": 0.45,
+      "bidirectional": false,
+      "source": "AgentKnowledgeBase.dwarvenMineLadderRoute simplified from Lumbridge",
+      "summary": "Very long surface route from Lumbridge to the Dwarven Mine ladder via Barbarian Village.",
+      "tags": [
+        "lumbridge",
+        "barbarian-village",
+        "dwarven-mine",
+        "long-route"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 65,
+        "notes": "Run long road sections, but stop to observe before ladder interaction."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 2,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium",
+        "avoidHazards": [],
+        "notes": "Surface route only. Do not descend until underground route hazards are recorded."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3222,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Start from Lumbridge courtyard."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3255,
+            "y": 3266,
+            "height": 0
+          },
+          "instruction": "Use the north road past cows."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3285,
+            "y": 3365,
+            "height": 0
+          },
+          "instruction": "Use the east road north."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 3210,
+            "y": 3424,
+            "height": 0
+          },
+          "instruction": "Reach Varrock square."
+        },
+        {
+          "order": 5,
+          "type": "walk",
+          "to": {
+            "x": 3154,
+            "y": 3426,
+            "height": 0
+          },
+          "instruction": "Travel west from Varrock."
+        },
+        {
+          "order": 6,
+          "type": "walk",
+          "to": {
+            "x": 3081,
+            "y": 3429,
+            "height": 0
+          },
+          "instruction": "Pass Barbarian Village."
+        },
+        {
+          "order": 7,
+          "type": "walk",
+          "to": {
+            "x": 3040,
+            "y": 3428,
+            "height": 0
+          },
+          "instruction": "Continue west on the road."
+        },
+        {
+          "order": 8,
+          "type": "walk",
+          "to": {
+            "x": 3023,
+            "y": 3420,
+            "height": 0
+          },
+          "instruction": "Move to the mine approach."
+        },
+        {
+          "order": 9,
+          "type": "walk",
+          "to": {
+            "x": 3024,
+            "y": 3450,
+            "height": 0
+          },
+          "instruction": "Arrive at the Dwarven Mine ladder; observe before descending."
+        }
+      ],
+      "evidence": [
+        "obs_2026_05_24_static_agent_knowledge_routes"
+      ]
+    },
+    {
+      "id": "lumbridge_courtyard_to_edgeville_monastery",
+      "name": "Lumbridge Courtyard to Edgeville Monastery",
+      "from": "lumbridge_castle_courtyard",
+      "to": "edgeville_monastery",
+      "status": "needs-verification",
+      "confidence": 0.43,
+      "bidirectional": false,
+      "source": "AgentKnowledgeBase.edgevilleMonasteryRoute simplified from Lumbridge",
+      "summary": "Very long route from Lumbridge to Edgeville Monastery via Barbarian Village.",
+      "tags": [
+        "lumbridge",
+        "barbarian-village",
+        "edgeville",
+        "long-route"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 65,
+        "notes": "Run long road sections; do not drift north into unsafe areas."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 2,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium",
+        "avoidHazards": [],
+        "notes": "Needs live verification and safety check near northern roads."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3222,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Start from Lumbridge courtyard."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3255,
+            "y": 3266,
+            "height": 0
+          },
+          "instruction": "Use the north road past cows."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3285,
+            "y": 3365,
+            "height": 0
+          },
+          "instruction": "Use the east road north."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 3210,
+            "y": 3424,
+            "height": 0
+          },
+          "instruction": "Reach Varrock square."
+        },
+        {
+          "order": 5,
+          "type": "walk",
+          "to": {
+            "x": 3154,
+            "y": 3426,
+            "height": 0
+          },
+          "instruction": "Travel west from Varrock."
+        },
+        {
+          "order": 6,
+          "type": "walk",
+          "to": {
+            "x": 3081,
+            "y": 3429,
+            "height": 0
+          },
+          "instruction": "Pass Barbarian Village."
+        },
+        {
+          "order": 7,
+          "type": "walk",
+          "to": {
+            "x": 3078,
+            "y": 3440,
+            "height": 0
+          },
+          "instruction": "Turn north."
+        },
+        {
+          "order": 8,
+          "type": "walk",
+          "to": {
+            "x": 3068,
+            "y": 3455,
+            "height": 0
+          },
+          "instruction": "Continue north-west."
+        },
+        {
+          "order": 9,
+          "type": "walk",
+          "to": {
+            "x": 3059,
+            "y": 3472,
+            "height": 0
+          },
+          "instruction": "Approach the monastery."
+        },
+        {
+          "order": 10,
+          "type": "walk",
+          "to": {
+            "x": 3052,
+            "y": 3484,
+            "height": 0
+          },
+          "instruction": "Arrive at Edgeville Monastery and observe."
+        }
+      ],
+      "evidence": [
+        "obs_2026_05_24_static_agent_knowledge_routes"
+      ]
+    },
+    {
+      "id": "lumbridge_courtyard_to_falador_shield_shop",
+      "name": "Lumbridge Courtyard to Falador Shield Shop",
+      "from": "lumbridge_castle_courtyard",
+      "to": "falador_shield_shop",
+      "status": "needs-verification",
+      "confidence": 0.42,
+      "bidirectional": false,
+      "source": "AgentKnowledgeBase.faladorShieldShopRoute simplified from Lumbridge",
+      "summary": "Very long westward route from Lumbridge to the Falador shield shop.",
+      "tags": [
+        "lumbridge",
+        "varrock",
+        "falador",
+        "shop",
+        "long-route"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 70,
+        "notes": "Run long road sections and stop for observations before entering Falador."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 2,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium",
+        "avoidHazards": [
+          "lumbridge_goblins_field",
+          "lumbridge_cows_field"
+        ],
+        "notes": "Long, unverified surface route. Carry food and avoid starting combat."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3222,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Start from Lumbridge courtyard."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3255,
+            "y": 3266,
+            "height": 0
+          },
+          "instruction": "Use the north road past cows."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3285,
+            "y": 3365,
+            "height": 0
+          },
+          "instruction": "Use the east road north."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 3210,
+            "y": 3424,
+            "height": 0
+          },
+          "instruction": "Reach Varrock square."
+        },
+        {
+          "order": 5,
+          "type": "walk",
+          "to": {
+            "x": 3154,
+            "y": 3426,
+            "height": 0
+          },
+          "instruction": "Travel west from Varrock."
+        },
+        {
+          "order": 6,
+          "type": "walk",
+          "to": {
+            "x": 3081,
+            "y": 3429,
+            "height": 0
+          },
+          "instruction": "Pass Barbarian Village."
+        },
+        {
+          "order": 7,
+          "type": "walk",
+          "to": {
+            "x": 3040,
+            "y": 3428,
+            "height": 0
+          },
+          "instruction": "Continue west."
+        },
+        {
+          "order": 8,
+          "type": "walk",
+          "to": {
+            "x": 3023,
+            "y": 3420,
+            "height": 0
+          },
+          "instruction": "Follow the road south-west."
+        },
+        {
+          "order": 9,
+          "type": "walk",
+          "to": {
+            "x": 3005,
+            "y": 3404,
+            "height": 0
+          },
+          "instruction": "Approach Falador from the east."
+        },
+        {
+          "order": 10,
+          "type": "walk",
+          "to": {
+            "x": 2974,
+            "y": 3383,
+            "height": 0
+          },
+          "instruction": "Arrive at the Falador shield shop and observe before shopping."
+        }
+      ],
+      "evidence": [
+        "obs_2026_05_24_static_agent_knowledge_routes"
+      ]
+    },
+    {
+      "id": "varrock_east_bank_to_varrock_square",
+      "name": "Varrock East Bank to Varrock Square",
+      "from": "varrock_east_bank",
+      "to": "varrock_square",
+      "status": "verified",
+      "confidence": 0.88,
+      "bidirectional": false,
+      "source": "live-agent-run-2026-05-24",
+      "summary": "Verified city route from Varrock east bank to the square. MrFlame ran the route with two food items, arrived at 10/10 HP, and entered no combat.",
+      "tags": [
+        "varrock",
+        "bank",
+        "hub",
+        "verified"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 20,
+        "notes": "Run is useful but not required; the route is inside Varrock and low risk."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "low",
+        "avoidHazards": [],
+        "notes": "No hostile contact observed. Nearby guards are non-aggressive."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3253,
+            "y": 3420,
+            "height": 0
+          },
+          "instruction": "Start at Varrock east bank."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3238,
+            "y": 3420,
+            "height": 0
+          },
+          "instruction": "Move west through eastern Varrock."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3210,
+            "y": 3424,
+            "height": 0
+          },
+          "instruction": "Arrive at Varrock square."
+        }
+      ],
+      "evidence": [
+        "obs_2026_05_24_mrflame_varrock_east_bank_to_square"
+      ]
+    },
+    {
+      "id": "varrock_square_to_varrock_west_bank",
+      "name": "Varrock Square to Varrock West Bank",
+      "from": "varrock_square",
+      "to": "varrock_west_bank",
+      "status": "verified",
+      "confidence": 0.88,
+      "bidirectional": false,
+      "source": "live-agent-run-2026-05-24",
+      "summary": "Verified safe city route from Varrock square to the west bank.",
+      "tags": [
+        "varrock",
+        "bank",
+        "verified"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 15,
+        "notes": "Run saves time but walking is safe."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "low",
+        "avoidHazards": [],
+        "notes": "No combat or damage observed; west-bank guards were non-aggressive."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3210,
+            "y": 3424,
+            "height": 0
+          },
+          "instruction": "Start at Varrock square."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3194,
+            "y": 3430,
+            "height": 0
+          },
+          "instruction": "Move west from the square."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3185,
+            "y": 3436,
+            "height": 0
+          },
+          "instruction": "Arrive at Varrock west bank."
+        }
+      ],
+      "evidence": [
+        "obs_2026_05_24_mrflame_square_to_varrock_west_bank"
+      ]
+    },
+    {
+      "id": "varrock_west_bank_to_varrock_west_anvils",
+      "name": "Varrock West Bank to Varrock West Anvils",
+      "from": "varrock_west_bank",
+      "to": "varrock_west_anvils",
+      "status": "verified",
+      "confidence": 0.86,
+      "bidirectional": false,
+      "source": "live-agent-run-2026-05-24",
+      "summary": "Verified short production route from Varrock west bank to the west anvils.",
+      "tags": [
+        "varrock",
+        "bank",
+        "smithing",
+        "anvil",
+        "verified"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Short enough to walk during smithing loops."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "low",
+        "avoidHazards": [],
+        "notes": "No combat or damage observed."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3185,
+            "y": 3436,
+            "height": 0
+          },
+          "instruction": "Start at Varrock west bank."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3188,
+            "y": 3425,
+            "height": 0
+          },
+          "instruction": "Walk south to the west anvils."
+        }
+      ],
+      "evidence": [
+        "obs_2026_05_24_mrflame_west_bank_to_west_anvils"
+      ]
+    },
+    {
+      "id": "varrock_west_anvils_to_varrock_armour_shop",
+      "name": "Varrock West Anvils to Varrock Armour Shop",
+      "from": "varrock_west_anvils",
+      "to": "varrock_armour_shop",
+      "status": "verified",
+      "confidence": 0.84,
+      "bidirectional": false,
+      "source": "live-agent-run-2026-05-24",
+      "summary": "Verified cross-city route from the west anvils to the Varrock armour shop.",
+      "tags": [
+        "varrock",
+        "smithing",
+        "shop",
+        "armour",
+        "verified"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 20,
+        "notes": "Run is helpful across the city but not required for safety."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "low",
+        "avoidHazards": [],
+        "notes": "No hostile contact observed."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3188,
+            "y": 3425,
+            "height": 0
+          },
+          "instruction": "Start at the Varrock west anvils."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3210,
+            "y": 3424,
+            "height": 0
+          },
+          "instruction": "Cross back through Varrock square."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3229,
+            "y": 3438,
+            "height": 0
+          },
+          "instruction": "Arrive at the Varrock armour shop."
+        }
+      ],
+      "evidence": [
+        "obs_2026_05_24_mrflame_west_anvils_to_armour_shop"
+      ]
+    },
+    {
+      "id": "varrock_armour_shop_to_varrock_east_bank",
+      "name": "Varrock Armour Shop to Varrock East Bank",
+      "from": "varrock_armour_shop",
+      "to": "varrock_east_bank",
+      "status": "verified",
+      "confidence": 0.86,
+      "bidirectional": false,
+      "source": "live-agent-run-2026-05-24",
+      "summary": "Verified safe reset route from the Varrock armour shop to the east bank.",
+      "tags": [
+        "varrock",
+        "shop",
+        "bank",
+        "verified"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 15,
+        "notes": "Run is convenient but this is a safe city route."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "low",
+        "avoidHazards": [],
+        "notes": "No combat or damage observed."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3229,
+            "y": 3438,
+            "height": 0
+          },
+          "instruction": "Start at the Varrock armour shop."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3238,
+            "y": 3420,
+            "height": 0
+          },
+          "instruction": "Move south-east through central Varrock."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3253,
+            "y": 3420,
+            "height": 0
+          },
+          "instruction": "Arrive at Varrock east bank."
+        }
+      ],
+      "evidence": [
+        "obs_2026_05_24_mrflame_armour_shop_to_east_bank"
+      ]
+    },
+    {
+      "id": "varrock_east_bank_to_barbarian_village",
+      "name": "Varrock East Bank to Barbarian Village",
+      "from": "varrock_east_bank",
+      "to": "barbarian_village",
+      "status": "verified",
+      "confidence": 0.8,
+      "bidirectional": false,
+      "source": "live-agent-run-2026-05-24",
+      "summary": "Verified long west-road route from Varrock east bank to Barbarian Village. MrFlame started with 21 run energy and two food, arrived with full HP, no combat, and both food items still carried.",
+      "tags": [
+        "varrock",
+        "barbarian-village",
+        "long-route",
+        "verified"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 20,
+        "notes": "Run helps leave Varrock quickly, but expect to walk much of the route if starting near 20 energy."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 2,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-low",
+        "avoidHazards": [
+          "barbarian_village_unverified_combat_zone"
+        ],
+        "notes": "No combat occurred in the live test, but low-level accounts should still carry food and avoid lingering near barbarians."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3253,
+            "y": 3420,
+            "height": 0
+          },
+          "instruction": "Start at Varrock east bank with food and check run energy."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3238,
+            "y": 3420,
+            "height": 0
+          },
+          "instruction": "Move west toward Varrock square."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3210,
+            "y": 3424,
+            "height": 0
+          },
+          "instruction": "Reach Varrock square."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 3194,
+            "y": 3430,
+            "height": 0
+          },
+          "instruction": "Leave central Varrock to the west."
+        },
+        {
+          "order": 5,
+          "type": "walk",
+          "to": {
+            "x": 3185,
+            "y": 3436,
+            "height": 0
+          },
+          "instruction": "Use the observed west-road transition split before the long west road leg."
+        },
+        {
+          "order": 6,
+          "type": "walk",
+          "to": {
+            "x": 3154,
+            "y": 3426,
+            "height": 0
+          },
+          "instruction": "Follow the west road."
+        },
+        {
+          "order": 7,
+          "type": "walk",
+          "to": {
+            "x": 3124,
+            "y": 3429,
+            "height": 0
+          },
+          "instruction": "Continue along the road toward Barbarian Village."
+        },
+        {
+          "order": 8,
+          "type": "walk",
+          "to": {
+            "x": 3092,
+            "y": 3429,
+            "height": 0
+          },
+          "instruction": "Approach the village from the east."
+        },
+        {
+          "order": 9,
+          "type": "walk",
+          "to": {
+            "x": 3081,
+            "y": 3429,
+            "height": 0
+          },
+          "instruction": "Arrive at Barbarian Village and observe before interacting."
+        }
+      ],
+      "evidence": [
+        "obs_2026_05_24_mrflame_east_bank_to_barbarian_village"
+      ],
+      "observations": [
+        "2026-05-24 planner repair: split 3194,3430 -> 3154,3426 with observed frontier 3185,3436 so route legs remain <=32 tiles."
+      ]
+    },
+    {
+      "id": "barbarian_village_to_varrock_east_bank",
+      "name": "Barbarian Village to Varrock East Bank",
+      "from": "barbarian_village",
+      "to": "varrock_east_bank",
+      "status": "verified",
+      "confidence": 0.8,
+      "bidirectional": false,
+      "source": "live-agent-run-2026-05-24",
+      "summary": "Verified retreat route from Barbarian Village back to Varrock east bank. The return completed with run disabled, no combat, no damage, and food still unused.",
+      "tags": [
+        "barbarian-village",
+        "varrock",
+        "bank",
+        "retreat",
+        "verified"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Walking completed safely in the live return; enable run only if threatened or carrying valuables."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-low",
+        "avoidHazards": [
+          "barbarian_village_unverified_combat_zone"
+        ],
+        "notes": "Use this as the safe reset route after testing west of Varrock."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3081,
+            "y": 3429,
+            "height": 0
+          },
+          "instruction": "Start at Barbarian Village and check HP before leaving."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3092,
+            "y": 3429,
+            "height": 0
+          },
+          "instruction": "Leave the village eastbound."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3124,
+            "y": 3429,
+            "height": 0
+          },
+          "instruction": "Follow the road east."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 3154,
+            "y": 3426,
+            "height": 0
+          },
+          "instruction": "Continue east toward Varrock."
+        },
+        {
+          "order": 5,
+          "type": "walk",
+          "to": {
+            "x": 3185,
+            "y": 3436,
+            "height": 0
+          },
+          "instruction": "Use the observed west-road transition split before central Varrock."
+        },
+        {
+          "order": 6,
+          "type": "walk",
+          "to": {
+            "x": 3194,
+            "y": 3430,
+            "height": 0
+          },
+          "instruction": "Re-enter western Varrock."
+        },
+        {
+          "order": 7,
+          "type": "walk",
+          "to": {
+            "x": 3210,
+            "y": 3424,
+            "height": 0
+          },
+          "instruction": "Pass Varrock square."
+        },
+        {
+          "order": 8,
+          "type": "walk",
+          "to": {
+            "x": 3238,
+            "y": 3420,
+            "height": 0
+          },
+          "instruction": "Continue east through Varrock."
+        },
+        {
+          "order": 9,
+          "type": "walk",
+          "to": {
+            "x": 3253,
+            "y": 3420,
+            "height": 0
+          },
+          "instruction": "Arrive at Varrock east bank."
+        }
+      ],
+      "evidence": [
+        "obs_2026_05_24_mrflame_barbarian_to_east_bank"
+      ],
+      "observations": [
+        "2026-05-24 planner repair: added 3185,3436 split for the reverse route to keep static legs <=32 tiles."
+      ]
+    },
+    {
+      "id": "lumbridge_castle_trapdoor_to_basement",
+      "name": "Lumbridge Castle Trapdoor to Basement",
+      "from": "lumbridge_kitchen_approach",
+      "to": "lumbridge_basement_entry",
+      "status": "verified",
+      "confidence": 0.92,
+      "bidirectional": false,
+      "source": "live-normal-gameplay-2026-05-24",
+      "summary": "Verified descent into Lumbridge basement. Route requires reaching the interior west-side trapdoor approach, opening closed trapdoor 14879, then using open trapdoor 10698. This is a two-object chain; the first click alone is not arrival proof.",
+      "tags": [
+        "lumbridge",
+        "castle",
+        "basement",
+        "trapdoor",
+        "object-chain",
+        "verified"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Very short indoor leg; conserve run. Use run only for longer surface transit to the castle."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium",
+        "avoidHazards": [
+          "lumbridge_basement_rockslugs_level_29"
+        ],
+        "notes": "Rockslugs level 29 observed in basement, non-aggressive and distant from entry. Do not explore deeper south on low combat without a retreat plan."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3208,
+            "y": 3216,
+            "height": 0
+          },
+          "instruction": "Stand west of the Lumbridge trapdoor; do not try to stand on the trapdoor tile itself."
+        },
+        {
+          "order": 2,
+          "type": "object_transition",
+          "objectId": 14879,
+          "objectName": "Trapdoor",
+          "objectTile": {
+            "x": 3209,
+            "y": 3216,
+            "height": 0
+          },
+          "preTile": {
+            "x": 3208,
+            "y": 3216,
+            "height": 0
+          },
+          "approachSide": "west",
+          "postCondition": "Open trapdoor object 10698 appears at 3209,3216,0.",
+          "instruction": "Open the closed trapdoor from the west side.",
+          "near": {
+            "x": 3208,
+            "y": 3216,
+            "height": 0
+          },
+          "to": {
+            "x": 3208,
+            "y": 3216,
+            "height": 0
+          }
+        },
+        {
+          "order": 3,
+          "type": "object_transition",
+          "objectId": 10698,
+          "objectName": "Trapdoor",
+          "objectTile": {
+            "x": 3209,
+            "y": 3216,
+            "height": 0
+          },
+          "preTile": {
+            "x": 3208,
+            "y": 3216,
+            "height": 0
+          },
+          "approachSide": "west",
+          "postTile": {
+            "x": 3208,
+            "y": 9616,
+            "height": 0
+          },
+          "instruction": "Use the open trapdoor to descend into Lumbridge basement.",
+          "near": {
+            "x": 3208,
+            "y": 3216,
+            "height": 0
+          },
+          "to": {
+            "x": 3208,
+            "y": 9616,
+            "height": 0
+          }
+        }
+      ],
+      "observations": [
+        "2026-05-24 live route reached 3208,9616,0 with HP 10, run 81, one bread. Screenshot lumbridge-basement-arrival-20260524T070644Z.png is 3060x2068 client-window capture."
+      ]
+    },
+    {
+      "id": "lumbridge_basement_entry_to_north_safe_spur",
+      "name": "Lumbridge Basement Entry to North Safe Spur",
+      "from": "lumbridge_basement_entry",
+      "to": "lumbridge_basement_north_safe_spur",
+      "status": "verified",
+      "confidence": 0.88,
+      "bidirectional": true,
+      "source": "live-normal-gameplay-2026-05-24",
+      "summary": "Short safe basement movement from trapdoor arrival tile to north spur. No NPCs nearby at arrival; avoids the south Rockslug area.",
+      "tags": [
+        "lumbridge",
+        "basement",
+        "verified",
+        "safe-spur"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Short safe underground leg; conserve run."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "low",
+        "avoidHazards": [
+          "lumbridge_basement_rockslugs_level_29"
+        ],
+        "notes": "Stay north of the entry; do not continue south toward Rockslugs on a level-3 account without food/run."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3208,
+            "y": 9620,
+            "height": 0
+          },
+          "instruction": "Walk north from the trapdoor arrival area to the safe spur."
+        }
+      ],
+      "observations": [
+        "2026-05-24 live probe reached 3208,9620 with HP 10 and run 92; nearbyNpcs empty."
+      ]
+    },
+    {
+      "id": "lumbridge_basement_north_safe_spur_to_entry",
+      "name": "Lumbridge Basement North Safe Spur to Entry",
+      "from": "lumbridge_basement_north_safe_spur",
+      "to": "lumbridge_basement_entry",
+      "status": "verified",
+      "confidence": 0.88,
+      "bidirectional": true,
+      "source": "derived-from-live-reverse-2026-05-24",
+      "summary": "Reverse of the verified short safe basement spur, represented explicitly because current planner does not synthesize reverse single-step routes.",
+      "tags": [
+        "lumbridge",
+        "basement",
+        "verified",
+        "safe-spur"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Short safe underground leg; conserve run."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "low",
+        "avoidHazards": [
+          "lumbridge_basement_rockslugs_level_29"
+        ],
+        "notes": "Stay near the entry; avoid going south toward Rockslugs."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3208,
+            "y": 9616,
+            "height": 0
+          },
+          "instruction": "Walk south from the north safe spur back to the basement entry."
+        }
+      ],
+      "observations": [
+        "Created from verified 2026-05-24 entry-to-spur walk; same corridor, reverse direction."
+      ]
+    },
+    {
+      "id": "lumbridge_courtyard_to_churchyard_approach",
+      "name": "Lumbridge Courtyard to Churchyard Approach",
+      "from": "lumbridge_castle_courtyard",
+      "to": "lumbridge_churchyard_approach",
+      "status": "verified",
+      "confidence": 0.86,
+      "bidirectional": true,
+      "source": "heartbeat-live-normal-gameplay-2026-05-24",
+      "summary": "Short safe surface leg from Lumbridge courtyard to the churchyard/gravestone approach. Verified by MrFlame through normal walking; no combat or damage observed.",
+      "tags": [
+        "lumbridge",
+        "surface",
+        "churchyard",
+        "verified",
+        "safe-spur"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Short safe leg; conserve run unless chaining into longer travel."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "low",
+        "avoidHazards": [
+          "lumbridge_goblins_field"
+        ],
+        "notes": "Nearby goblins are avoidable; stop and observe if combat starts or user manually attacks."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3238,
+            "y": 3208,
+            "height": 0
+          },
+          "instruction": "Walk south-east from Lumbridge courtyard toward the churchyard/gravestone approach."
+        }
+      ],
+      "observations": [
+        "2026-05-24 heartbeat: walked from 3222,3218,0 to 3238,3208,0 with HP 10, run 96, one bread, no combat."
+      ]
+    },
+    {
+      "id": "lumbridge_churchyard_approach_to_west_castle_exterior",
+      "name": "Lumbridge Churchyard Approach to West Castle Exterior",
+      "from": "lumbridge_churchyard_approach",
+      "to": "lumbridge_west_castle_exterior",
+      "status": "verified",
+      "confidence": 0.82,
+      "bidirectional": true,
+      "source": "heartbeat-live-normal-gameplay-2026-05-24",
+      "summary": "Short safe westward surface leg from the churchyard approach to the west exterior of Lumbridge Castle. The attempted 3205,3218 target oscillated, but final normal-gameplay position at 3204,3218 is a useful verified checkpoint.",
+      "tags": [
+        "lumbridge",
+        "surface",
+        "verified",
+        "westward-frontier"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Short safe leg; conserve run unless chaining into a longer westward route."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "low",
+        "avoidHazards": [
+          "lumbridge_giant_rats_west_exterior"
+        ],
+        "notes": "Low-level rats nearby were non-aggressive in the live observation. Do not target exact wall-adjacent blocked tiles without reachability evidence."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3204,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Walk west from the churchyard approach around the castle exterior to the 3204,3218 checkpoint; avoid treating adjacent wall tiles as precise arrival targets."
+        }
+      ],
+      "observations": [
+        "2026-05-24 heartbeat: attempted 3205,3218 from 3238,3208; batch ended at 3204,3218 with HP 10, run enabled, one bread, no combat. Exact target caused oscillation, so 3204,3218 is the verified checkpoint."
+      ]
+    },
+    {
+      "id": "lumbridge_west_castle_exterior_to_west_rat_fence_approach",
+      "name": "Lumbridge West Castle Exterior to West Rat Fence Approach",
+      "from": "lumbridge_west_castle_exterior",
+      "to": "lumbridge_west_rat_fence_approach",
+      "status": "verified",
+      "confidence": 0.84,
+      "bidirectional": true,
+      "source": "heartbeat-live-normal-gameplay-2026-05-24",
+      "summary": "Short safe westward surface leg from 3204,3218 to 3188,3220. This avoids the earlier wall-adjacent oscillation and reaches a useful rat/fence frontier checkpoint.",
+      "tags": [
+        "lumbridge",
+        "surface",
+        "verified",
+        "westward-frontier",
+        "rats"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Short safe leg; conserve run unless chaining into a longer westward route."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "low",
+        "avoidHazards": [
+          "lumbridge_west_exterior_rats"
+        ],
+        "notes": "Observed rats were non-aggressive; stop and handle survival if user/player manually attacks or combat starts."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3188,
+            "y": 3220,
+            "height": 0
+          },
+          "instruction": "Walk west/northwest from the west castle exterior to the rat fence approach checkpoint."
+        }
+      ],
+      "observations": [
+        "2026-05-24 heartbeat: walked from 3204,3218,0 to 3188,3220,0 through normal gameplay. Arrived/idle with HP 10, run enabled, one bread, no combat. Nearby Giant rats level 3 and Rats level 1 were aggressive=false."
+      ]
+    },
+    {
+      "id": "lumbridge_west_rat_fence_approach_to_west_goblin_edge",
+      "name": "Lumbridge West Rat Fence Approach to West Goblin Edge",
+      "from": "lumbridge_west_rat_fence_approach",
+      "to": "lumbridge_west_goblin_edge",
+      "status": "verified",
+      "confidence": 0.84,
+      "bidirectional": true,
+      "source": "heartbeat-live-normal-gameplay-2026-05-24",
+      "summary": "Short westward frontier leg from the rat fence checkpoint to the edge of a west Lumbridge goblin field. Verified through normal walking with no combat or damage.",
+      "tags": [
+        "lumbridge",
+        "surface",
+        "verified",
+        "westward-frontier",
+        "goblins"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Short leg; conserve run. Enable run if chaining through the goblin field or if combat starts."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-low",
+        "avoidHazards": [
+          "lumbridge_west_goblin_field"
+        ],
+        "notes": "Goblins level 2 were non-aggressive in the live observation. Stop route learning if combat starts."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3168,
+            "y": 3224,
+            "height": 0
+          },
+          "instruction": "Walk west from the rat fence approach to the goblin-field edge checkpoint."
+        }
+      ],
+      "observations": [
+        "2026-05-24 heartbeat: walked from 3188,3220,0 to 3168,3224,0. Arrived/idle with HP 10, run enabled, one bread, no combat. Goblins level 2 nearby were aggressive=false."
+      ]
+    },
+    {
+      "id": "lumbridge_west_goblin_edge_to_west_goblin_field_center",
+      "name": "Lumbridge West Goblin Edge to West Goblin Field Center",
+      "from": "lumbridge_west_goblin_edge",
+      "to": "lumbridge_west_goblin_field_center",
+      "status": "verified",
+      "confidence": 0.84,
+      "bidirectional": true,
+      "source": "heartbeat-live-normal-gameplay-2026-05-24",
+      "summary": "Short westward leg through the Lumbridge goblin field. Verified with no combat, damage, door/object interaction, or stall.",
+      "tags": [
+        "lumbridge",
+        "surface",
+        "verified",
+        "westward-frontier",
+        "goblins"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Short observed leg; conserve run. Keep run available if crossing farther west toward guards or Draynor."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-low",
+        "avoidHazards": [
+          "lumbridge_west_goblin_field",
+          "draynor_jail_guard_edge"
+        ],
+        "notes": "Goblins were non-aggressive in the live observation. Jail Guards are higher-level and should not be approached casually on level-3 accounts."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3148,
+            "y": 3228,
+            "height": 0
+          },
+          "instruction": "Walk west from the goblin edge to the central west-goblin-field checkpoint."
+        }
+      ],
+      "observations": [
+        "2026-05-24 heartbeat: walked from 3168,3224,0 to 3148,3228,0. Arrived/idle with HP 10, run enabled, one bread, no combat. Goblins level 2 at distance 5-6 were aggressive=false; Jail Guards level 26 were seen 21+ tiles away, aggressive=false."
+      ]
+    },
+    {
+      "id": "lumbridge_west_goblin_field_center_to_draynor_southeast_unicorn_edge",
+      "name": "Lumbridge West Goblin Field Center to Draynor Southeast Unicorn Edge",
+      "from": "lumbridge_west_goblin_field_center",
+      "to": "draynor_southeast_unicorn_edge",
+      "status": "verified",
+      "confidence": 0.83,
+      "bidirectional": true,
+      "source": "heartbeat-live-normal-gameplay-2026-05-24",
+      "summary": "Short southwest leg that bends around the Draynor jail guard edge while continuing westward. Verified with no combat, damage, object interaction, or stall.",
+      "tags": [
+        "lumbridge",
+        "draynor-edge",
+        "surface",
+        "verified",
+        "westward-frontier"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Short observed leg; conserve run. Keep run available around guards/wizards/unicorns if combat starts."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-low",
+        "avoidHazards": [
+          "draynor_jail_guard_edge",
+          "draynor_southeast_unicorns",
+          "draynor_southeast_wizard_edge"
+        ],
+        "notes": "NPCs were non-aggressive in live observation, but nearby levels exceed MrFlame level 3. Route is safe as transit only; do not stop to fight."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3134,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Walk southwest from the goblin-field center to the Draynor southeast unicorn-edge checkpoint, keeping distance from the jail guard cluster."
+        }
+      ],
+      "observations": [
+        "2026-05-24 heartbeat: walked from 3148,3228,0 to 3134,3218,0. Arrived/idle with HP 10, run enabled, one bread, no combat. Unicorn level 15 was adjacent and aggressive=false; Jail Guards level 26 and Wizard level 9 were nearby and aggressive=false."
+      ]
+    },
+    {
+      "id": "draynor_southeast_unicorn_edge_to_crate_edge",
+      "name": "Draynor Southeast Unicorn Edge to Crate Edge",
+      "from": "draynor_southeast_unicorn_edge",
+      "to": "draynor_southeast_crate_edge",
+      "status": "verified",
+      "confidence": 0.78,
+      "bidirectional": true,
+      "source": "heartbeat-live-normal-gameplay-2026-05-24",
+      "summary": "Southwest movement from the unicorn edge reached a useful crate-edge checkpoint at 3115,3202. The intended 3118,3202 target caused oscillation, so route consumers should use 3115,3202 as the verified checkpoint and avoid exact object-adjacent target 3118,3202 until a cleaner local path is learned.",
+      "tags": [
+        "draynor-edge",
+        "surface",
+        "verified",
+        "westward-frontier",
+        "oscillation-evidence"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Short leg; conserve run, but keep run enabled if continuing around Black Knight or Wizard proximity."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-for-new-accounts",
+        "avoidHazards": [
+          "draynor_southeast_black_knight_edge",
+          "draynor_southeast_wizard_edge",
+          "draynor_southeast_unicorns"
+        ],
+        "notes": "No combat occurred, but a level-33 Black Knight was visible at distance 27. This checkpoint should be treated as transit, not a place to idle."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3115,
+            "y": 3202,
+            "height": 0
+          },
+          "instruction": "Walk southwest from the unicorn edge to the crate-edge checkpoint. Do not target 3118,3202 directly; the live batch oscillated and settled at 3115,3202."
+        }
+      ],
+      "observations": [
+        "2026-05-24 heartbeat: attempted 3118,3202 from 3134,3218; batch ended at 3115,3202 with oscillation. HP 10, run enabled, one bread, no combat. Nearby Crate/Crates objects 12547/12548 were reachable; Black Knight level 33 was 27 tiles away and aggressive=false."
+      ]
+    },
+    {
+      "id": "draynor_southeast_crate_edge_to_south_wizard_north_edge",
+      "name": "Draynor Southeast Crate Edge to South Wizard North Edge",
+      "from": "draynor_southeast_crate_edge",
+      "to": "draynor_south_wizard_north_edge",
+      "status": "verified",
+      "confidence": 0.84,
+      "bidirectional": true,
+      "source": "heartbeat-live-normal-gameplay-2026-05-24",
+      "summary": "Short southward escape leg from the Draynor southeast crate edge to 3115,3186, increasing distance from the Black Knight and jail guard cluster while staying north of Wizards.",
+      "tags": [
+        "draynor-edge",
+        "surface",
+        "verified",
+        "westward-frontier",
+        "hazard-skirt"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Short leg; conserve run while hazards remain distant. Enable run immediately if combat starts."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-for-new-accounts",
+        "avoidHazards": [
+          "draynor_south_wizard_group",
+          "draynor_southeast_black_knight_edge"
+        ],
+        "notes": "No combat occurred; Wizards level 9 were aggressive=false at distance 26-29. Do not push farther south into the wizard group on a level-3 account without more food."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3115,
+            "y": 3186,
+            "height": 0
+          },
+          "instruction": "Walk south along the reachable edge from the crate checkpoint to 3115,3186, away from the Black Knight/guard cluster and north of the wizard group."
+        }
+      ],
+      "observations": [
+        "2026-05-24 heartbeat: walked from 3115,3202,0 to 3115,3186,0. Arrived/idle with HP 10, run enabled, one bread, no combat. Wizards level 9 were 26-29 tiles south and aggressive=false."
+      ]
+    },
+    {
+      "id": "draynor_south_wizard_north_edge_to_west_heather_probe_blocked",
+      "name": "Draynor South Wizard North Edge to West Heather Probe Blocked",
+      "from": "draynor_south_wizard_north_edge",
+      "to": "draynor_west_heather_probe_target",
+      "status": "blocked",
+      "confidence": 0.72,
+      "bidirectional": false,
+      "source": "heartbeat-live-normal-gameplay-2026-05-24",
+      "summary": "Attempted westward move from 3115,3186 to 3098,3188 failed immediately with oscillation around 3115,3186. Do not use this direct west vector until a passable intermediate tile or object transition is found.",
+      "tags": [
+        "draynor-edge",
+        "surface",
+        "blocked",
+        "oscillation-evidence",
+        "westward-frontier"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Blocked before meaningful travel; do not spend run here."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "blocked",
+        "avoidHazards": [
+          "draynor_south_wizard_group"
+        ],
+        "notes": "No combat occurred; blockers are pathing/terrain, not NPC aggression. Wizards level 9 remained 26-30 tiles south and aggressive=false."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3098,
+            "y": 3188,
+            "height": 0
+          },
+          "instruction": "Do not use directly. Live attempt oscillated at 3115,3186 and did not progress west.",
+          "blocker": "Movement batch oscillated around 3115,3186,0 before leaving the checkpoint."
+        }
+      ],
+      "observations": [
+        "2026-05-24 heartbeat: attempted 3098,3188 from 3115,3186; batchStatus=oscillation after 5 ticks at 3115,3186. HP 10, run 101, one bread, no combat. Screenshot draynor-west-oscillation-20260524T131824Z.png was full-screen fallback due unavailable client bounds."
+      ]
+    },
+    {
+      "id": "draynor_south_wizard_north_edge_to_wizard_heather_edge",
+      "name": "Draynor South Wizard North Edge to Wizard Heather Edge",
+      "from": "draynor_south_wizard_north_edge",
+      "to": "draynor_wizard_heather_edge",
+      "status": "verified",
+      "confidence": 0.82,
+      "bidirectional": true,
+      "source": "heartbeat-live-normal-gameplay-2026-05-24",
+      "summary": "Verified alternate west/southwest intermediate after the direct 3098,3188 probe failed. Reached 3102,3171 safely while staying north of the closest Wizards.",
+      "tags": [
+        "draynor-edge",
+        "surface",
+        "verified",
+        "westward-frontier",
+        "hazard-skirt"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 20,
+        "notes": "Short but hazard-adjacent; keep run enabled or ready because Wizards are within 11-17 tiles."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-for-new-accounts",
+        "avoidHazards": [
+          "draynor_south_wizard_group"
+        ],
+        "notes": "No combat occurred; Wizards level 9 were aggressive=false. This leg is preferable to the blocked direct west vector but should not be extended south without more food."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3102,
+            "y": 3171,
+            "height": 0
+          },
+          "instruction": "Walk west/southwest from 3115,3186 to the heather-edge checkpoint at 3102,3171; this is the verified alternate around the blocked direct west probe."
+        }
+      ],
+      "observations": [
+        "2026-05-24 heartbeat: walked from 3115,3186,0 to 3102,3171,0. Arrived/idle with HP 10, run enabled, one bread, no combat. Wizards level 9 were 11-17 tiles away and aggressive=false."
+      ]
+    },
+    {
+      "id": "draynor_wizard_heather_edge_to_wizard_west_edge",
+      "name": "Draynor Wizard Heather Edge to Wizard West Edge",
+      "from": "draynor_wizard_heather_edge",
+      "to": "draynor_wizard_west_edge",
+      "status": "verified",
+      "confidence": 0.76,
+      "bidirectional": true,
+      "source": "heartbeat-live-normal-gameplay-2026-05-24",
+      "summary": "Hazard-adjacent westward movement from 3102,3171 settled at useful checkpoint 3096,3169. Intended 3088,3176 target was not reached, but normal gameplay safely advanced west with no combat or damage.",
+      "tags": [
+        "draynor-edge",
+        "surface",
+        "verified",
+        "westward-frontier",
+        "hazard-skirt",
+        "oscillation-evidence"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 20,
+        "notes": "Hazard-adjacent; keep run enabled/readied due nearby Wizards."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-for-new-accounts",
+        "avoidHazards": [
+          "draynor_south_wizard_group"
+        ],
+        "notes": "Nearest Wizard level 9 was distance 8-10 and aggressive=false. Do not linger or push south/east into the Wizard group on one bread. West/northwest probes from 3096,3169 to 3088,3176 and 3088,3172 both oscillated; backtrack before further westward routing."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3096,
+            "y": 3169,
+            "height": 0
+          },
+          "instruction": "Walk west/northwest from the heather edge to the wizard-west edge checkpoint. Do not assume 3088,3176 is reachable from here; live path settled at 3096,3169."
+        }
+      ],
+      "observations": [
+        "2026-05-24 heartbeat: attempted 3088,3176 from 3102,3171; batch settled at 3096,3169 with oscillation. HP 10, run enabled, one bread, no combat. Wizards level 9 were 8-16 tiles away and aggressive=false."
+      ]
+    },
+    {
+      "id": "draynor_wizard_heather_edge_to_west_probe_blocked",
+      "name": "Draynor Wizard Heather Edge to West Probe Blocked",
+      "from": "draynor_wizard_heather_edge",
+      "to": "draynor_wizard_west_probe_target",
+      "status": "blocked",
+      "confidence": 0.72,
+      "bidirectional": false,
+      "source": "heartbeat-live-normal-gameplay-2026-05-24",
+      "summary": "Direct target 3088,3176 was not reached from 3102,3171; movement oscillated around 3096,3169. Use the verified 3096,3169 checkpoint instead.",
+      "tags": [
+        "draynor-edge",
+        "surface",
+        "blocked",
+        "oscillation-evidence"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Blocked as direct target; use learned intermediate instead."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "blocked",
+        "avoidHazards": [
+          "draynor_south_wizard_group"
+        ],
+        "notes": "Pathing blocker; no combat occurred."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3088,
+            "y": 3176,
+            "height": 0
+          },
+          "instruction": "Do not use directly. Live attempt from 3102,3171 settled at 3096,3169 and oscillated.",
+          "blocker": "Movement batch oscillated around 3096,3169,0 before reaching 3088,3176."
+        }
+      ],
+      "observations": [
+        "2026-05-24 heartbeat: 3088,3176 target not reached; final 3096,3169, batchStatus=oscillation, no combat."
+      ]
+    },
+    {
+      "id": "draynor_wizard_west_edge_to_west_pocket_probe_blocked",
+      "name": "Draynor Wizard West Edge to West Pocket Probe Blocked",
+      "from": "draynor_wizard_west_edge",
+      "to": "draynor_wizard_west_pocket_probe_target",
+      "status": "blocked",
+      "confidence": 0.78,
+      "bidirectional": false,
+      "source": "heartbeat-live-normal-gameplay-2026-05-24",
+      "summary": "Second direct west/northwest probe from the 3096,3169 wizard-west edge failed immediately. Treat this local pocket as blocked for westward progress until a different approach or object transition is found.",
+      "tags": [
+        "draynor-edge",
+        "surface",
+        "blocked",
+        "oscillation-evidence",
+        "wizard-pocket"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Blocked before travel; do not spend run on this direct vector."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "blocked",
+        "avoidHazards": [
+          "draynor_south_wizard_group"
+        ],
+        "notes": "Pathing blocker near Wizards; no combat occurred, but continued probing here is not worth the risk with one bread."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3088,
+            "y": 3172,
+            "height": 0
+          },
+          "instruction": "Do not use directly. Live attempt from 3096,3169 oscillated at 3096,3169 and made no progress.",
+          "blocker": "Movement batch oscillated around 3096,3169,0 before reaching 3088,3172."
+        }
+      ],
+      "observations": [
+        "2026-05-24 heartbeat: direct west/northwest target 3088,3172 failed from 3096,3169; batchStatus=oscillation after 5 ticks, HP 10, no combat, Wizards level 9 at distance 10-15 aggressive=false."
+      ]
+    },
+    {
+      "id": "draynor_south_wizard_north_edge_to_north_crate_edge",
+      "name": "Draynor South Wizard North Edge to North Crate Edge",
+      "from": "draynor_south_wizard_north_edge",
+      "to": "draynor_southeast_north_crate_edge",
+      "status": "verified",
+      "confidence": 0.78,
+      "bidirectional": true,
+      "source": "heartbeat-live-normal-gameplay-2026-05-24",
+      "summary": "Northwest arc probe away from Wizards settled at useful crate-edge checkpoint 3112,3198. Exact target 3106,3198 was not reached, but the move increased distance from the wizard group without combat.",
+      "tags": [
+        "draynor-edge",
+        "surface",
+        "verified",
+        "westward-frontier",
+        "hazard-skirt",
+        "oscillation-evidence"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Short local leg; conserve run. Do not continue north/west toward Black Knight without more food."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-for-new-accounts",
+        "avoidHazards": [
+          "draynor_southeast_black_knight_edge",
+          "draynor_southeast_unicorns"
+        ],
+        "notes": "No combat occurred. Black Knight level 33 remained distance 30 and aggressive=false; use this as transit only."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3112,
+            "y": 3198,
+            "height": 0
+          },
+          "instruction": "Walk northwest from the south wizard north edge to the crate-edge checkpoint. Do not assume exact 3106,3198 target is reachable from here; live movement settled at 3112,3198."
+        }
+      ],
+      "observations": [
+        "2026-05-24 heartbeat: attempted 3106,3198 from 3115,3186; settled at 3112,3198 with oscillation. HP 10, run enabled, one bread, no combat. Unicorn level 15 distance 23 and Black Knight level 33 distance 30 were aggressive=false."
+      ]
+    },
+    {
+      "id": "draynor_south_wizard_north_edge_to_northwest_arc_probe_blocked",
+      "name": "Draynor South Wizard North Edge to Northwest Arc Probe Blocked",
+      "from": "draynor_south_wizard_north_edge",
+      "to": "draynor_northwest_arc_probe_target",
+      "status": "blocked",
+      "confidence": 0.72,
+      "bidirectional": false,
+      "source": "heartbeat-live-normal-gameplay-2026-05-24",
+      "summary": "Exact 3106,3198 target was not reached from 3115,3186; movement settled at 3112,3198 with oscillation.",
+      "tags": [
+        "draynor-edge",
+        "surface",
+        "blocked",
+        "oscillation-evidence"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Blocked as exact target; use 3112,3198 checkpoint instead."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "blocked",
+        "avoidHazards": [
+          "draynor_southeast_black_knight_edge"
+        ],
+        "notes": "Pathing/object boundary blocker; no combat occurred."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3106,
+            "y": 3198,
+            "height": 0
+          },
+          "instruction": "Do not use directly. Live attempt settled at 3112,3198 and oscillated.",
+          "blocker": "Movement batch oscillated around 3112,3198,0 before reaching 3106,3198."
+        }
+      ],
+      "observations": [
+        "2026-05-24 heartbeat: 3106,3198 target not reached; final 3112,3198, batchStatus=oscillation, no combat."
+      ]
+    },
+    {
+      "id": "draynor_southeast_north_crate_edge_to_guard_skirt",
+      "name": "Draynor Southeast North Crate Edge to Guard Skirt",
+      "from": "draynor_southeast_north_crate_edge",
+      "to": "draynor_southeast_guard_skirt",
+      "status": "verified",
+      "confidence": 0.83,
+      "bidirectional": true,
+      "source": "live-normal-gameplay-2026-05-24",
+      "summary": "Short northeast arc from the crate edge to 3120,3208, backing away from the blocked wizard pocket while staying south of the guard/goblin cluster. Completed safely with no combat.",
+      "tags": [
+        "draynor-edge",
+        "surface",
+        "verified",
+        "hazard-skirt",
+        "westward-frontier"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Short leg; conserve run unless combat starts."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-for-new-accounts",
+        "avoidHazards": [
+          "draynor_jail_guard_edge",
+          "draynor_southeast_unicorns",
+          "draynor_southeast_black_knight_edge",
+          "draynor_southeast_ranged_npc_cluster"
+        ],
+        "notes": "Safe in live transit, but nearby high-level NPCs mean do not idle or fight here on one bread."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3120,
+            "y": 3208,
+            "height": 0
+          },
+          "instruction": "Walk northeast from the north crate-edge checkpoint to the Draynor southeast guard-skirt checkpoint, avoiding the blocked wizard pocket and not interacting with nearby NPCs."
+        }
+      ],
+      "observations": [
+        "2026-05-24 live route: walked from 3112,3198,0 to 3120,3208,0. Arrived/idle with HP 10, run enabled, one bread, no combat. Unicorn 15 dist 15, Jail Guard 26 dist 27, Archer 42 dist 26, Wizard 9 dist 28, Monk 5 dist 28, Goblins 2 dist 20-28, all aggressive=false."
+      ]
+    },
+    {
+      "id": "draynor_southeast_guard_skirt_to_unicorn_edge",
+      "name": "Draynor Southeast Guard Skirt to Unicorn Edge",
+      "from": "draynor_southeast_guard_skirt",
+      "to": "draynor_southeast_unicorn_edge",
+      "status": "verified",
+      "confidence": 0.84,
+      "bidirectional": true,
+      "source": "live-normal-gameplay-2026-05-24",
+      "summary": "Safe northeast/east reset from the guard-skirt checkpoint back to the unicorn-edge checkpoint, avoiding the blocked wizard pocket before wider route probing.",
+      "tags": [
+        "draynor-edge",
+        "surface",
+        "verified",
+        "hazard-skirt",
+        "westward-frontier"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Short reset leg; conserve run unless combat starts."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-for-new-accounts",
+        "avoidHazards": [
+          "draynor_southeast_unicorns",
+          "draynor_jail_guard_edge",
+          "draynor_southeast_ranged_npc_cluster"
+        ],
+        "notes": "No combat occurred. Unicorn level 15 was adjacent at the destination; route is transit only."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3134,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Walk from the guard-skirt checkpoint back to the unicorn-edge checkpoint before taking safer east or north-east arcs."
+        }
+      ],
+      "observations": [
+        "2026-05-24 live route: walked from 3120,3208,0 to 3134,3218,0. Arrived with HP 10, run enabled, one bread, no combat. Unicorn level 15 was adjacent and aggressive=false."
+      ]
+    },
+    {
+      "id": "lumbridge_west_goblin_field_center_to_draynor_southeast_tree_line",
+      "name": "Lumbridge West Goblin Field Center to Draynor Southeast Tree Line",
+      "from": "lumbridge_west_goblin_field_center",
+      "to": "draynor_southeast_tree_line",
+      "status": "verified",
+      "confidence": 0.82,
+      "bidirectional": true,
+      "source": "live-normal-gameplay-2026-05-24",
+      "summary": "Short west leg from the goblin-field center to the Draynor tree line, keeping south of the jail guard cluster.",
+      "tags": [
+        "lumbridge",
+        "draynor-edge",
+        "surface",
+        "verified",
+        "tree-line",
+        "westward-frontier"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Short observed leg; conserve run."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-for-new-accounts",
+        "avoidHazards": [
+          "draynor_jail_guard_edge",
+          "lumbridge_west_goblin_field"
+        ],
+        "notes": "Jail Guards level 26 were visible at 16-20 tiles by the end of the leg and aggressive=false. Avoid pushing north on low food."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3132,
+            "y": 3228,
+            "height": 0
+          },
+          "instruction": "Walk west from the goblin-field center to the tree-line checkpoint."
+        }
+      ],
+      "observations": [
+        "2026-05-24 live route: walked from 3148,3228,0 to 3132,3228,0. Arrived with HP 10, run 91, one bread, no combat. Jail Guards level 26 at 16-20 tiles, Goblins level 2 nearby, all aggressive=false."
+      ]
+    },
+    {
+      "id": "draynor_southeast_tree_line_to_southwest_tree_opening",
+      "name": "Draynor Southeast Tree Line to Southwest Tree Opening",
+      "from": "draynor_southeast_tree_line",
+      "to": "draynor_southwest_tree_opening",
+      "status": "verified",
+      "confidence": 0.82,
+      "bidirectional": true,
+      "source": "live-normal-gameplay-2026-05-24",
+      "summary": "Southwest bend along the tree line that opens a safer approach below the jail guard cluster.",
+      "tags": [
+        "draynor-edge",
+        "surface",
+        "verified",
+        "tree-line",
+        "hazard-skirt",
+        "westward-frontier"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Short leg; conserve run but keep it enabled because high-level NPCs are visible."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-for-new-accounts",
+        "avoidHazards": [
+          "draynor_jail_guard_edge",
+          "draynor_southeast_ranged_npc_cluster"
+        ],
+        "notes": "No combat occurred. High-level cluster east/southeast remained non-aggressive but visible."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3122,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Walk southwest from 3132,3228 to the tree opening at 3122,3218."
+        }
+      ],
+      "observations": [
+        "2026-05-24 live route: walked from 3132,3228,0 to 3122,3218,0. Arrived with HP 10, run 91, one bread, no combat. Warrior level 48, Monk level 5, Wizard level 9, Jail Guards level 26, and Unicorn level 15 were all aggressive=false."
+      ]
+    },
+    {
+      "id": "draynor_southwest_tree_opening_to_jail_south_skirt",
+      "name": "Draynor Southwest Tree Opening to Jail South Skirt",
+      "from": "draynor_southwest_tree_opening",
+      "to": "draynor_jail_south_skirt",
+      "status": "verified",
+      "confidence": 0.8,
+      "bidirectional": true,
+      "source": "live-normal-gameplay-2026-05-24",
+      "summary": "Westward leg below the jail/guard area. It reveals the Black Knight and Dark wizard route risks without starting combat.",
+      "tags": [
+        "draynor-edge",
+        "surface",
+        "verified",
+        "hazard-skirt",
+        "westward-frontier"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 20,
+        "notes": "Keep run enabled because Black Knight, Dark wizard, and guard hazards enter view."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "high-for-new-accounts",
+        "avoidHazards": [
+          "draynor_black_knight_dark_wizard_crossroads",
+          "draynor_jail_guard_edge"
+        ],
+        "notes": "No combat occurred, but the next western area is high-risk for level-3 accounts. Do not idle or attack NPCs here."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3110,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Walk west to the jail-south skirt, then choose southward detours rather than pushing northwest toward the Black Knight/Dark wizard pocket."
+        }
+      ],
+      "observations": [
+        "2026-05-24 live route: walked from 3122,3218,0 to 3110,3218,0. Arrived with HP 10, run 89, one bread, no combat. Dark wizards level 7, Market Guard level 20, Jail Guards level 26, and Black Knight level 33 were visible and aggressive=false."
+      ]
+    },
+    {
+      "id": "draynor_jail_south_skirt_to_black_knight_south_skirt",
+      "name": "Draynor Jail South Skirt to Black Knight South Skirt",
+      "from": "draynor_jail_south_skirt",
+      "to": "draynor_black_knight_south_skirt",
+      "status": "learned-partial",
+      "confidence": 0.64,
+      "bidirectional": false,
+      "source": "live-normal-gameplay-2026-05-24",
+      "summary": "Southwest probe toward 3098,3208 did not land exactly but discovered a useful 3099,3209 checkpoint south of the Black Knight/Dark wizard pocket.",
+      "tags": [
+        "draynor-edge",
+        "surface",
+        "learned-partial",
+        "hazard-skirt",
+        "oscillation-evidence",
+        "westward-frontier"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 30,
+        "notes": "Use run if crossing; hazards become closer and this should not be an idle point."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "high-for-new-accounts",
+        "avoidHazards": [
+          "draynor_black_knight_dark_wizard_crossroads"
+        ],
+        "notes": "No combat occurred, but Black Knight level 33 was 21 tiles away and Dark wizard level 7 was 28 tiles away at the checkpoint."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3099,
+            "y": 3209,
+            "height": 0
+          },
+          "instruction": "Use the observed 3099,3209 settlement tile instead of exact 3098,3208 until a cleaner western route is proven."
+        }
+      ],
+      "observations": [
+        "2026-05-24 live route: target 3098,3208 from 3110,3218 settled at 3099,3209 with batchStatus=oscillation after 12 ticks. HP 10, run 86, one bread, no combat."
+      ]
+    },
+    {
+      "id": "draynor_black_knight_south_skirt_to_west_probe_blocked",
+      "name": "Draynor Black Knight South Skirt to West Probe Blocked",
+      "from": "draynor_black_knight_south_skirt",
+      "to": "draynor_black_knight_west_probe_target",
+      "status": "blocked",
+      "confidence": 0.72,
+      "bidirectional": false,
+      "source": "live-normal-gameplay-2026-05-24",
+      "summary": "Direct west target 3088,3208 from 3099,3209 failed to reach the target and settled closer to the Black Knight pocket. Avoid this vector on low food.",
+      "tags": [
+        "draynor-edge",
+        "surface",
+        "blocked",
+        "hazard-skirt",
+        "oscillation-evidence"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Do not spend run repeating this direct west vector."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 2,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "blocked-high-risk",
+        "avoidHazards": [
+          "draynor_black_knight_dark_wizard_crossroads"
+        ],
+        "notes": "The final tile was nearer to Black Knight and Dark wizard hazards. Prefer a larger south or east recovery route."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3088,
+            "y": 3208,
+            "height": 0
+          },
+          "instruction": "Do not use directly from 3099,3209. Live movement settled at 3092,3213 and oscillated.",
+          "blocker": "Movement batch oscillated around 3092,3213,0 before reaching 3088,3208."
+        }
+      ],
+      "observations": [
+        "2026-05-24 live route: target 3088,3208 from 3099,3209 settled at 3092,3213 with batchStatus=oscillation after 9 ticks. HP 10, run 87, one bread, no combat. Black Knight level 33 was later observed 16 tiles away; Dark wizards level 7 were 23-26 tiles away."
+      ]
+    },
+    {
+      "id": "draynor_black_knight_close_skirt_to_south_crate_line_recovery",
+      "name": "Draynor Black Knight Close Skirt to South Crate Line Recovery",
+      "from": "draynor_black_knight_close_skirt",
+      "to": "draynor_south_crate_line_recovery",
+      "status": "learned-partial",
+      "confidence": 0.66,
+      "bidirectional": false,
+      "source": "live-normal-gameplay-2026-05-24",
+      "summary": "South/east recovery from the close Black Knight skirt returned to the crate-line edge without combat, but the exact 3108,3197 target was not reached.",
+      "tags": [
+        "draynor-edge",
+        "surface",
+        "learned-partial",
+        "recovery",
+        "oscillation-evidence"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 20,
+        "notes": "Use run for recovery away from the Black Knight/Dark wizard pocket."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-for-new-accounts",
+        "avoidHazards": [
+          "draynor_black_knight_dark_wizard_crossroads",
+          "draynor_south_wizard_group"
+        ],
+        "notes": "No combat occurred. This route is useful as recovery back toward known crate-line checkpoints, not as westward progress."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3112,
+            "y": 3197,
+            "height": 0
+          },
+          "instruction": "Recover south/east to the crate-line settlement tile; avoid trying to force exact 3108,3197."
+        }
+      ],
+      "observations": [
+        "2026-05-24 live route: target 3108,3197 from 3092,3213 settled at 3112,3197 with batchStatus=oscillation after 22 ticks. HP 10, run 79, one bread, no combat."
+      ]
+    },
+    {
+      "id": "draynor_south_crate_line_to_west_probe_blocked",
+      "name": "Draynor South Crate Line to West Probe Blocked",
+      "from": "draynor_south_crate_line_recovery",
+      "to": "draynor_south_crate_west_probe_target",
+      "status": "blocked",
+      "confidence": 0.78,
+      "bidirectional": false,
+      "source": "live-normal-gameplay-2026-05-24",
+      "summary": "Direct west movement from the 3112,3197 crate-line recovery checkpoint to 3100,3197 failed immediately, confirming the crate-line west edge is blocked for this vector.",
+      "tags": [
+        "draynor-edge",
+        "surface",
+        "blocked",
+        "oscillation-evidence",
+        "screenshot-evidence"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Blocked before travel; do not spend run repeating this vector."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "blocked",
+        "avoidHazards": [
+          "draynor_black_knight_dark_wizard_crossroads",
+          "draynor_south_wizard_group"
+        ],
+        "notes": "No combat occurred and HP stayed 10. This is a pathing/object boundary blocker; use a larger detour rather than repeated local west probes."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3100,
+            "y": 3197,
+            "height": 0
+          },
+          "instruction": "Do not use directly. Live attempt oscillated at 3112,3197 and made no westward progress.",
+          "blocker": "Movement batch oscillated around 3112,3197,0 before reaching 3100,3197."
+        }
+      ],
+      "observations": [
+        "2026-05-24 live route: target 3100,3197 from 3112,3197 failed immediately with batchStatus=oscillation after 5 ticks. HP 10, run 101, one bread, no combat. Screenshot: agent-navigation/screenshots/captures/2026-05-24/blocked-crate-west-20260524T165253Z.png (client-window capture 765x503)."
+      ]
+    },
+    {
+      "id": "draynor_south_crate_line_to_lumbridge_west_wall_recovery",
+      "name": "Draynor South Crate Line to Lumbridge West Wall Recovery",
+      "from": "draynor_south_crate_line_recovery",
+      "to": "lumbridge_west_wall_exterior",
+      "status": "learned-partial",
+      "confidence": 0.68,
+      "bidirectional": false,
+      "source": "live-normal-gameplay-2026-05-24",
+      "summary": "Long recovery travel from the Draynor crate-line blocker toward Lumbridge courtyard safely returned to the Lumbridge west wall, but the landmark batch did not reach the courtyard and settled at 3200,3218.",
+      "tags": [
+        "draynor-edge",
+        "lumbridge",
+        "surface",
+        "learned-partial",
+        "recovery",
+        "oscillation-evidence"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 30,
+        "notes": "Useful long recovery; run was consumed from roughly 101 to 71 during the batch."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 1,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-low",
+        "avoidHazards": [
+          "draynor_black_knight_dark_wizard_crossroads",
+          "draynor_south_wizard_group",
+          "lumbridge_west_exterior_rats"
+        ],
+        "notes": "No combat or damage occurred. The west wall endpoint is safe but wall-adjacent and should continue through the churchyard arc."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3200,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Recover east from the Draynor crate-line area to the Lumbridge west wall. Do not assume this reaches the courtyard."
+        }
+      ],
+      "observations": [
+        "2026-05-24 live route: travel_to_landmark_until_arrived lumbridge_castle_courtyard from 3112,3197 settled at 3200,3218 with batchStatus=oscillation after 66 ticks. HP 10, run 71, one bread, no combat."
+      ]
+    },
+    {
+      "id": "lumbridge_west_wall_to_courtyard_direct_blocked",
+      "name": "Lumbridge West Wall to Courtyard Direct Blocked",
+      "from": "lumbridge_west_wall_exterior",
+      "to": "lumbridge_castle_courtyard",
+      "status": "blocked",
+      "confidence": 0.82,
+      "bidirectional": false,
+      "source": "live-normal-gameplay-2026-05-24",
+      "summary": "Direct east/courtyard targeting from 3200,3218 failed twice, confirming this west-wall position cannot route directly through the castle wall.",
+      "tags": [
+        "lumbridge",
+        "surface",
+        "blocked",
+        "wall-adjacent",
+        "oscillation-evidence"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Blocked before movement; do not spend run repeating."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "blocked",
+        "avoidHazards": [
+          "lumbridge_west_exterior_rats"
+        ],
+        "notes": "No combat occurred; blocker is the west castle wall/pathing boundary."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3222,
+            "y": 3218,
+            "height": 0
+          },
+          "instruction": "Do not use directly from 3200,3218. Go via lumbridge_churchyard_approach instead.",
+          "blocker": "Movement to 3222,3218 and 3204,3218 both oscillated at 3200,3218."
+        }
+      ],
+      "observations": [
+        "2026-05-24 live route: target 3222,3218 from 3200,3218 oscillated after 5 ticks. Follow-up target 3204,3218 also oscillated after 5 ticks. HP 10, no combat."
+      ]
+    },
+    {
+      "id": "lumbridge_west_wall_to_churchyard_approach",
+      "name": "Lumbridge West Wall to Churchyard Approach",
+      "from": "lumbridge_west_wall_exterior",
+      "to": "lumbridge_churchyard_approach",
+      "status": "verified",
+      "confidence": 0.86,
+      "bidirectional": true,
+      "source": "live-normal-gameplay-2026-05-24",
+      "summary": "Reliable south/east arc around the Lumbridge west wall to the churchyard approach, avoiding the blocked direct wall-adjacent east target.",
+      "tags": [
+        "lumbridge",
+        "surface",
+        "verified",
+        "recovery",
+        "wall-detour"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Safe local detour; conserve run unless chaining long travel."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "low",
+        "avoidHazards": [
+          "lumbridge_west_exterior_rats"
+        ],
+        "notes": "No combat occurred. Men, goblins, rats, and giant rats visible nearby were aggressive=false."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3238,
+            "y": 3208,
+            "height": 0
+          },
+          "instruction": "From the west wall exterior, route south/east around the castle wall to the churchyard approach."
+        }
+      ],
+      "observations": [
+        "2026-05-24 live route: walked from 3200,3218,0 to 3238,3208,0. Arrived with HP 10, run 38, one bread, no combat."
+      ]
+    },
+    {
+      "id": "draynor_jail_south_skirt_to_black_knight_boulder_frontier",
+      "name": "Draynor Jail South Skirt to Black Knight Boulder Frontier",
+      "from": "draynor_jail_south_skirt",
+      "to": "draynor_black_knight_boulder_frontier",
+      "status": "learned-partial",
+      "confidence": 0.58,
+      "bidirectional": false,
+      "source": "live-normal-gameplay-2026-05-24",
+      "summary": "Aggressive westward probe targeted 3068,3215 and discovered a farther 3087,3220 frontier, but the batch settled with oscillation near Black Knight/Dark wizard hazards.",
+      "tags": [
+        "draynor-edge",
+        "surface",
+        "learned-partial",
+        "hazard-skirt",
+        "oscillation-evidence",
+        "westward-frontier"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 30,
+        "notes": "Use only for evidence-backed risk analysis; later probes from the frontier caused combat/death."
+      },
+      "requirements": {
+        "minCombatLevel": 25,
+        "minFood": 3,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "death-adjacent-for-new-accounts",
+        "avoidHazards": [
+          "draynor_black_knight_dark_wizard_crossroads",
+          "draynor_jail_guard_edge"
+        ],
+        "notes": "The leg itself did not cause combat or damage, but follow-up moves from the settlement were blocked or deadly. Do not use as a normal level-3 route to Draynor/Port Sarim."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3087,
+            "y": 3220,
+            "height": 0
+          },
+          "instruction": "This is the observed settlement tile from target 3068,3215; stop here only to back out, not to continue northwest."
+        }
+      ],
+      "observations": [
+        "2026-05-24 relaunch exploration: target 3068,3215 from 3110,3218 settled at 3087,3220 with batchStatus=oscillation. HP 10, run 13, no food, no combat. Black Knight level 33, Dark wizards level 7, and Market Guards level 20 were nearby."
+      ]
+    },
+    {
+      "id": "draynor_black_knight_boulder_frontier_to_southwest_probe_blocked",
+      "name": "Draynor Black Knight Boulder Frontier to Southwest Probe Blocked",
+      "from": "draynor_black_knight_boulder_frontier",
+      "to": "draynor_black_knight_boulder_southwest_probe_target",
+      "status": "blocked",
+      "confidence": 0.76,
+      "bidirectional": false,
+      "source": "live-normal-gameplay-2026-05-24",
+      "summary": "Southwest probe from 3087,3220 toward 3075,3215 failed immediately and made no progress around the boulder/rock boundary.",
+      "tags": [
+        "draynor-edge",
+        "surface",
+        "blocked",
+        "oscillation-evidence",
+        "hazard-skirt"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Do not spend run repeating this blocked vector."
+      },
+      "requirements": {
+        "minCombatLevel": 25,
+        "minFood": 3,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "blocked-high-risk",
+        "avoidHazards": [
+          "draynor_black_knight_dark_wizard_crossroads"
+        ],
+        "notes": "No combat occurred on this blocked vector, but the tile is inside a death-confirmed hazard pocket."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3075,
+            "y": 3215,
+            "height": 0
+          },
+          "instruction": "Do not use directly. Live movement oscillated at 3087,3220 and made no southwest progress.",
+          "blocker": "Movement batch oscillated around 3087,3220,0 before reaching 3075,3215."
+        }
+      ],
+      "observations": [
+        "2026-05-24 relaunch exploration: target 3075,3215 from 3087,3220 failed immediately with batchStatus=oscillation. HP 10, run 13, no food, no combat."
+      ]
+    },
+    {
+      "id": "draynor_black_knight_boulder_frontier_to_market_probe_death",
+      "name": "Draynor Black Knight Boulder Frontier to Market Probe Death",
+      "from": "draynor_black_knight_boulder_frontier",
+      "to": "draynor_market_northwest_probe_target",
+      "status": "blocked",
+      "confidence": 0.9,
+      "bidirectional": false,
+      "source": "live-normal-gameplay-2026-05-24",
+      "summary": "Northwest/market probe from 3087,3220 toward 3079,3246 entered Dark wizard combat and killed level-3 MrFlame before reaching the target.",
+      "tags": [
+        "draynor-edge",
+        "surface",
+        "blocked",
+        "death-evidence",
+        "hazard-contact",
+        "westward-frontier"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 40,
+        "notes": "Even with run enabled during the probe, the route entered Dark wizard combat. Avoid as a navigation route."
+      },
+      "requirements": {
+        "minCombatLevel": 25,
+        "minFood": 3,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "death-confirmed-for-new-accounts",
+        "avoidHazards": [
+          "draynor_black_knight_dark_wizard_crossroads"
+        ],
+        "notes": "Dark wizard level 7 contact occurred around 3090,3236/3088,3236. HP dropped from 10 to 3 with no food, then death/respawn occurred. Do not route level-3 characters northwest from 3087,3220."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3079,
+            "y": 3246,
+            "height": 0
+          },
+          "instruction": "Do not use. Live route entered Dark wizard combat before reaching this target.",
+          "blocker": "Dark wizard combat/death before arrival; target 3079,3246 was not reached."
+        }
+      ],
+      "observations": [
+        "2026-05-24 relaunch exploration: target 3079,3246 from 3087,3220 triggered Dark wizard level 7 combat near 3090,3236/3088,3236. HP fell from 10 to 3, no food remained, and MrFlame died/respawned at Lumbridge. Gear was re-equipped afterward with equip_best_items."
+      ]
+    },
+    {
+      "id": "draynor_goblin_field_center_to_jail_guard_contact_blocked",
+      "name": "Draynor Goblin Field Center to Jail Guard Contact Blocked",
+      "from": "lumbridge_west_goblin_field_center",
+      "to": "draynor_jail_guard_contact_tile",
+      "status": "blocked",
+      "confidence": 0.82,
+      "bidirectional": false,
+      "source": "live-normal-gameplay-2026-05-24",
+      "summary": "Northwest push from the goblin field toward the jail/market edge contacted a level-26 Jail Guard and required retreat/eating.",
+      "tags": [
+        "draynor-edge",
+        "surface",
+        "blocked",
+        "combat-evidence",
+        "hazard-contact"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 40,
+        "notes": "Run helped retreat, but this vector is not a recommended exploration path for low-level routing."
+      },
+      "requirements": {
+        "minCombatLevel": 15,
+        "minFood": 2,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "combat-contact-for-new-accounts",
+        "avoidHazards": [
+          "draynor_jail_guard_edge"
+        ],
+        "notes": "Jail Guard level 26 combat started near 3116,3236/3116,3237 while probing toward 3106,3248. HP later dropped to 7 before bread was eaten; route retreated to 3131,3228 then 3188,3220."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3106,
+            "y": 3248,
+            "height": 0
+          },
+          "instruction": "Do not use directly from the goblin field/jail south edge; contact occurred with a Jail Guard before a safe northwest checkpoint was found.",
+          "blocker": "Jail Guard combat contact at roughly 3116,3236/3116,3237 before reaching the intended northwest target."
+        }
+      ],
+      "observations": [
+        "2026-05-24 relaunch exploration: after reaching 3120,3239 from 3148,3228, target 3106,3248 entered Jail Guard level 26 combat near 3116,3236. Retreat to 3148,3228 left combat ongoing and HP dropped to 7; eat_best_food consumed the only bread and ended at 3131,3228, then recovery to 3188,3220 succeeded."
+      ]
+    },
+    {
+      "id": "lumbridge_courtyard_to_varrock_east_mine_road",
+      "name": "Lumbridge Courtyard to Varrock East Mine Road",
+      "from": "lumbridge_castle_courtyard",
+      "to": "varrock_east_mine_road",
+      "status": "verified",
+      "confidence": 0.82,
+      "bidirectional": false,
+      "source": "live-normal-gameplay-2026-05-24",
+      "summary": "Safe prefix of the old Lumbridge to Varrock east bank route, ending at the east mine road before the unverified bank tail.",
+      "tags": [
+        "lumbridge",
+        "varrock",
+        "surface",
+        "verified",
+        "route-prefix",
+        "road"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 50,
+        "notes": "Run long road sections if energy is high; the verified run used most energy by arrival."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-low",
+        "avoidHazards": [
+          "lumbridge_cows_field",
+          "lumbridge_goblins_field",
+          "varrock_south_dark_wizards_unverified"
+        ],
+        "notes": "No combat or damage occurred on this prefix. Do not continue north/west from 3285,3365 without a separate frontier proof for the bank tail."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3234,
+            "y": 3238,
+            "height": 0
+          },
+          "instruction": "Move north-east from Lumbridge courtyard."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3252,
+            "y": 3236,
+            "height": 0
+          },
+          "instruction": "Pass the goblin field without starting combat."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3252,
+            "y": 3266,
+            "height": 0
+          },
+          "instruction": "Use the road-side settlement near the cow field rather than pushing into the pen."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 3237,
+            "y": 3295,
+            "height": 0
+          },
+          "instruction": "Follow the north road."
+        },
+        {
+          "order": 5,
+          "type": "walk",
+          "to": {
+            "x": 3261,
+            "y": 3322,
+            "height": 0
+          },
+          "instruction": "Continue along the east road."
+        },
+        {
+          "order": 6,
+          "type": "walk",
+          "to": {
+            "x": 3269,
+            "y": 3354,
+            "height": 0
+          },
+          "instruction": "Use the live-settled approach checkpoint before Varrock east mine road."
+        },
+        {
+          "order": 7,
+          "type": "walk",
+          "to": {
+            "x": 3285,
+            "y": 3365,
+            "height": 0
+          },
+          "instruction": "Arrive at the Varrock east mine road frontier and stop before bank-tail routing."
+        }
+      ],
+      "observations": [
+        "2026-05-24 Catherby workflow retry: exact segmented route from Lumbridge to 3285,3365 completed with HP 10 and no combat; run energy dropped from 100 to the mid-30s on the first pass and to 17 after retreat/recovery.",
+        "2026-05-24 route repair: split the 3261,3322 -> 3285,3365 static leg with live-settled checkpoint 3269,3354 to keep planner legs at 32 tiles or less."
+      ]
+    },
+    {
+      "id": "varrock_east_mine_road_to_north_probe_partial",
+      "name": "Varrock East Mine Road to East Road North Partial",
+      "from": "varrock_east_mine_road",
+      "to": "varrock_east_road_north_partial",
+      "status": "verified",
+      "confidence": 0.74,
+      "bidirectional": false,
+      "source": "live-normal-gameplay-2026-05-24",
+      "summary": "Preview-checked route-runner leg from 3285,3365 to 3274,3375 completed with HP 10 and no combat.",
+      "tags": [
+        "varrock",
+        "surface",
+        "verified",
+        "preview-pathfinder",
+        "frontier"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 30,
+        "notes": "Run was low during the live attempt; do not continue with low energy/no food."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-low",
+        "avoidHazards": [
+          "varrock_south_dark_wizards_unverified"
+        ],
+        "notes": "Keep to the east-road side and continue through the preview-verified bank tail; do not use the old south/west shortcut."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3274,
+            "y": 3375,
+            "height": 0
+          },
+          "instruction": "Observed settlement from target 3274,3417; do not assume the target itself is reachable from 3285,3365."
+        }
+      ],
+      "observations": [
+        "2026-05-24: target 3274,3417 from 3285,3365 settled at 3274,3375 with oscillation, HP 10, no damage.",
+        "2026-05-24 route-runner live proof: 3285,3365 -> 3274,3375 arrived with HP 10, no combat, run enabled."
+      ]
+    },
+    {
+      "id": "varrock_east_road_partial_to_east_bank_blocked",
+      "name": "Varrock East Road Partial to East Bank Blocked",
+      "from": "varrock_east_road_north_partial",
+      "to": "varrock_east_bank",
+      "status": "blocked",
+      "confidence": 0.84,
+      "bidirectional": false,
+      "source": "live-normal-gameplay-2026-05-24",
+      "summary": "Follow-up target 3253,3420 from the 3274,3375 partial settlement entered unsafe Dark wizard route context and was aborted/recovered.",
+      "tags": [
+        "varrock",
+        "surface",
+        "blocked",
+        "hazard-contact",
+        "frontier"
+      ],
+      "runPolicy": {
+        "preferRun": false,
+        "minEnergy": 0,
+        "notes": "Do not repeat this target from the partial settlement."
+      },
+      "requirements": {
+        "minCombatLevel": 20,
+        "minFood": 4,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "blocked-lethal-adjacent",
+        "avoidHazards": [
+          "varrock_south_dark_wizards_unverified"
+        ],
+        "notes": "The route did not lose HP in the retry, but it entered combat state/context around 3260,3375/3252,3381 near the Dark wizard zone. Earlier south shortcut from 3252,3381 caused death."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3253,
+            "y": 3420,
+            "height": 0
+          },
+          "instruction": "Do not use directly from 3274,3375. Re-plan with shorter road-aligned proof legs or choose another macro route.",
+          "blocker": "Unexpected combat/hazard context before reaching Varrock east bank."
+        }
+      ],
+      "observations": [
+        "2026-05-24: target 3253,3420 from 3274,3375 stopped with unexpected combat context around 3260,3375/3252,3381. Cancelled and recovered to 3285,3365 with HP 10."
+      ]
+    },
+    {
+      "id": "varrock_east_road_partial_to_east_bank_preview_verified",
+      "name": "Varrock East Road Partial to East Bank Preview Verified",
+      "from": "varrock_east_road_north_partial",
+      "to": "varrock_east_bank",
+      "status": "verified",
+      "confidence": 0.8,
+      "bidirectional": false,
+      "source": "route-runner-preview-local-path-2026-05-24",
+      "summary": "Fast preview-verified route-runner tail from the east road partial checkpoint into Varrock east bank.",
+      "tags": [
+        "varrock",
+        "surface",
+        "verified",
+        "preview-pathfinder",
+        "bank-route"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 20,
+        "notes": "Run is useful but not required; route was completed with high run energy and no food."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-low",
+        "avoidHazards": [
+          "varrock_south_dark_wizards_unverified"
+        ],
+        "notes": "Nearby Guards level 21 were observed non-aggressive near the north bank approach. Avoid south/west probes back into dark-wizard context."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3288,
+            "y": 3391,
+            "height": 0
+          },
+          "instruction": "Follow the fast preview-verified Varrock east bank tail."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3277,
+            "y": 3408,
+            "height": 0
+          },
+          "instruction": "Follow the fast preview-verified Varrock east bank tail."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3261,
+            "y": 3420,
+            "height": 0
+          },
+          "instruction": "Follow the fast preview-verified Varrock east bank tail."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 3254,
+            "y": 3420,
+            "height": 0
+          },
+          "instruction": "Follow the fast preview-verified Varrock east bank tail."
+        }
+      ],
+      "observations": [
+        "obs_2026_05_24T18_29_14Z_7a62be78",
+        "2026-05-24 live route-runner sequence: 3274,3375 -> 3288,3393 (old nominal target oscillated here but no combat), then preview-final legs to 3275,3410, 3274,3417, 3257,3420, and 3254,3420. HP stayed 10; no combat.",
+        "2026-05-24 second live proof: route_runner completed 3274,3375 -> 3288,3391 -> 3277,3408 -> 3261,3420 -> 3254,3420 with HP 10 and no combat."
+      ]
+    },
+    {
+      "id": "varrock_east_mine_road_to_east_bank_preview_verified",
+      "name": "Varrock East Mine Road to East Bank Preview Verified",
+      "from": "varrock_east_mine_road",
+      "to": "varrock_east_bank",
+      "status": "verified",
+      "confidence": 0.82,
+      "bidirectional": false,
+      "source": "route-runner-preview-local-path-2026-05-24",
+      "summary": "Fast preview-verified route-runner chain from Varrock east mine road to Varrock east bank using server-clipped final tiles.",
+      "tags": [
+        "varrock",
+        "surface",
+        "verified",
+        "preview-pathfinder",
+        "bank-route"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "minEnergy": 20,
+        "notes": "Completed with run enabled, high energy, HP 10, and no food."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "medium-low",
+        "avoidHazards": [
+          "varrock_south_dark_wizards_unverified"
+        ],
+        "notes": "Stay on the east-road path. Avoid the old south/west shortcut through dark-wizard context."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 3274,
+            "y": 3375,
+            "height": 0
+          },
+          "instruction": "Follow the fast preview-verified Varrock east mine road to east bank chain."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 3288,
+            "y": 3391,
+            "height": 0
+          },
+          "instruction": "Follow the fast preview-verified Varrock east mine road to east bank chain."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 3277,
+            "y": 3408,
+            "height": 0
+          },
+          "instruction": "Follow the fast preview-verified Varrock east mine road to east bank chain."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 3261,
+            "y": 3420,
+            "height": 0
+          },
+          "instruction": "Follow the fast preview-verified Varrock east mine road to east bank chain."
+        },
+        {
+          "order": 5,
+          "type": "walk",
+          "to": {
+            "x": 3254,
+            "y": 3420,
+            "height": 0
+          },
+          "instruction": "Follow the fast preview-verified Varrock east mine road to east bank chain."
+        }
+      ],
+      "observations": [
+        "obs_2026_05_24T18_29_14Z_7a62be78",
+        "2026-05-24 live proof: route_runner reached 3254,3420 from 3285,3365 via clipped preview batches with HP 10 and no combat.",
+        "2026-05-24 second live proof: route_runner completed 3285,3365 -> 3274,3375 -> 3288,3391 -> 3277,3408 -> 3261,3420 -> 3254,3420 with HP 10 and no combat."
+      ]
+    }
+  ]
+}

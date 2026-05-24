@@ -1,0 +1,106 @@
+# Agent Navigation Database
+
+This folder is the repo-local memory system for safe movement, route learning, screenshots, and map knowledge. It is separate from the current Java `AgentKnowledgeBase` so route evidence can be collected, reviewed, and improved without changing gameplay code on every discovery.
+
+For the reliable server/client/login/bridge startup flow used before route exploration, see [Local Agent Startup](../docs/local-agent-startup.md).
+
+## Layout
+
+- `data/places.json`: named places, aliases, arrival radii, safety notes, and canonical tiles.
+- `data/routes.json`: route memories between places, including walk tiles, door/gate/floor interactions, blockers, run policy, and evidence links.
+- `data/hazards.json`: known danger zones, NPC risk, requirements, and avoidance notes.
+- `data/observations.jsonl`: ignored local append-only route-learning observations from `rs.observe_state`, screenshots, and manual notes.
+- `data/movement_traces*.jsonl`: ignored optional legacy/dev movement trace streams from `tools/route_recorder.py`.
+- `data/route_tests.json`: regression checks for expected route selection, next steps, and safety warnings.
+- `screenshots/`: ignored local copied screenshots used as evidence. Commit only curated metadata, not bulk PNG captures.
+- `schema/`: JSON Schemas for the data files.
+- `cache-world-map.md`: notes on the cache-backed world map renderer and how to reuse it in other tools.
+- `tools/navdb.py`: dependency-free CLI for validation, route lookup, hazard checks, and recording observations.
+- `tools/capture-client-screenshot.sh`: macOS helper that captures the running Java client window and prints the screenshot path as JSON.
+- `tools/capture-cardinal-screenshots.sh`: compact four-angle screenshot helper for north/east/south/west visual route debugging.
+- `tools/rs-tool.sh`: small bridge wrapper for calling `rs` tools through the active local session without hand-writing `curl` each time.
+- `tools/refresh_active_maps.py`: continuous refresher for canonical `surface-routes`, profile movement, `Heat Map`, and profile fog exports. It writes status/temp files under ignored `.local/map-refresh/` and does not refresh the static full cache map unless missing or requested.
+
+## Unified Movement Telemetry
+
+The primary movement telemetry producer is server-side passive logging. When the server includes `AgentPassiveTraceLog`, each active player emits route-consumable JSONL under:
+
+```text
+2006Scape Server/data/logs/player-movement-traces/<yyyy-MM-dd>/<player>.jsonl
+```
+
+The passive stream records authoritative post-movement tiles, previous tiles, run state and energy deltas, hitpoint deltas, death/combat flags, inventory food count, interface/activity flags, object clicks, and a normalized `activity` object. It writes movement, teleport, combat, HP-loss, death, object interaction, activity-change, and periodic idle heartbeat events without requiring an AI model or bridge tool request.
+
+Object interaction records use `event: "object_interaction"` with `objectInteractionPhase: "queued"` for the raw click target and `"completed"` for the reached/post-handler state. They include `objectId`, `objectName` when definitions are available, `objectTile`, `option`, `objectOption`, `packetOpcode`, and a compact `object` metadata block. The route graph preserves object metadata on edges and does not infer reverse edges across object-backed transitions.
+
+`tools/navdb.py`, `tools/router.py`, and the movement topology renderers read one unified trace iterator. It prefers the passive player trace stream by default and avoids double-counting bridge batch or fallback polling traces when passive traces exist.
+
+- passive server player traces in `2006Scape Server/data/logs/player-movement-traces/` are the default source;
+- agent batch movement traces in `2006Scape Server/data/logs/agent-movement-traces/` are diagnostics and fallback input;
+- optional fallback/dev traces in `agent-navigation/data/movement_traces*.jsonl` are used only when server traces are unavailable or explicitly requested.
+
+Set `NAVDB_INCLUDE_AGENT_BATCH_TRACES=1` or `NAVDB_INCLUDE_LEGACY_RECORDER_TRACES=1` only when deliberately inspecting those secondary streams.
+Stationary `event:"state"` idle heartbeat records are also ignored by route/map consumers unless `NAVDB_INCLUDE_IDLE_STATE_TRACES=1` is set for diagnostics.
+
+For multi-character work, set `RS_PROFILE=<name>` or pass `--trace-profile <name>` so route planning and maps use only that profile's trace evidence. Legacy unscoped traces are excluded when a trace profile is active unless `--include-unscoped-traces` is explicitly passed.
+
+The shared schema is `schema/movement_trace.schema.json`. New producers should keep the common fields stable: `schemaVersion`, `timestamp`, `event`, `tile`, `previousTile`, `moved`, `runEnabled`, `runEnergy`, `runEnergySpent`, `hitpoints`, `hitpointsLost`, `isInCombat`, `isDead`, `tool`, `traceId`, and object fields for object interactions.
+
+## Learning Workflow
+
+1. Observe the game state with `rs.observe_state` and note the player tile, nearby NPCs, objects, inventory, run energy, HP, and active interfaces.
+
+```sh
+agent-navigation/tools/rs-tool.sh observe_state '{}'
+RS_PROFILE=MrGem agent-navigation/tools/rs-tool.sh observe_state '{}'
+```
+2. Capture or locate screenshots when API state is not enough. Prefer the four-angle helper for route geometry:
+
+```sh
+agent-navigation/tools/capture-cardinal-screenshots.sh --prefix blocked-door
+```
+
+It captures north/east/south/west client-window PNGs at compact native client size and prints a JSON summary. For a single angle, use the direct capture helper:
+
+```sh
+agent-navigation/tools/capture-client-screenshot.sh --prefix blocked-door --native-size
+```
+
+The helper focuses the running Java client, captures its window rectangle when possible, and falls back to full-screen capture if macOS cannot report the window. Full-screen fallback may include other desktop content, so use it only for route evidence that needs visual review. The existing client can also save screenshots under `~/2006Scape/screenshots/`; copy either source into this database through `record-observation`.
+3. Record the observation with metadata. `--state-json` accepts either a path to a JSON file or a short inline JSON object:
+
+```sh
+python3 agent-navigation/tools/navdb.py record-observation \
+  --player mrflame \
+  --x 3204 --y 3215 --height 0 \
+  --place lumbridge_kitchen_approach \
+  --route lumbridge_courtyard_to_kitchen_range \
+  --screenshot agent-navigation/screenshots/captures/2026-05-24/blocked-door-20260524T042700Z.png \
+  --note "Reached kitchen approach but exact range tile still needs a door/object check. Screenshot shows which side of the wall/door the player is standing on."
+```
+
+4. Update `data/routes.json` with the learned route step, interaction, or blocker. Use `validate` before relying on it.
+5. Query movement before acting:
+
+```sh
+python3 agent-navigation/tools/navdb.py next-step --from 3222,3218,0 --to lumbridge_kitchen_range --combat-level 3 --food 2 --run-energy 50 --run-enabled false
+python3 agent-navigation/tools/navdb.py next-step --trace-profile MrGem --from 3222,3218,0 --to lumbridge_kitchen_range --combat-level 3 --food 2 --run-energy 50 --run-enabled false
+python3 agent-navigation/tools/navdb.py hazards --near 3204,3215,0 --radius 20 --combat-level 3 --food 2 --run-energy 50 --run-enabled false
+python3 agent-navigation/tools/navdb.py route-risk lumbridge_courtyard_to_al_kharid_bank --combat-level 3 --food 1 --coins 0 --run-energy 50 --run-enabled false
+python3 agent-navigation/tools/navdb.py run-areas --query lumbridge
+python3 agent-navigation/tools/navdb.py self-test
+python3 agent-navigation/tools/navdb.py coverage
+```
+
+## Safety Model
+
+Routes should include:
+
+- tile waypoints and the reason each exists;
+- required interactions such as doors, gates, stairs, ladders, and dialogue choices;
+- risk level and minimum combat/food requirements;
+- run policy, including when to enable run and where to conserve energy;
+- evidence links to observations and screenshots;
+- known blockers and recovery steps.
+
+Do not mark a route `verified` until it has been completed from start to destination using normal gameplay mechanics. Use `learned-partial` or `needs-verification` while the route still depends on assumptions.

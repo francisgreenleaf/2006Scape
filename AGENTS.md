@@ -79,6 +79,10 @@ cd "2006Scape Server"
 java -jar target/server-1.0-jar-with-dependencies.jar -c ServerConfig.json
 ```
 
+For active local development, prefer `./scripts/start-server.sh` from the repo root. It runs a copied jar from `/tmp/2006scape-run/` so Maven package builds do not replace the jar under a running Java 8 process. Do not rebuild `target/server-1.0-jar-with-dependencies.jar` while a live server is running directly from that same path; this previously caused a native `libzip` crash during lazy class loading after an object/bank click.
+
+For the reliable Codex-controlled server/client/login/bridge startup flow, use `docs/local-agent-startup.md`. The default local profile is `MrFlame`, but the helper is profile-aware: pass `--profile MrGem` or set `RS_PROFILE=MrGem` to use that character's saved password file, session file, client pid file, and route trace filter. Never print or inspect bridge tokens.
+
 The server listens on:
 
 - `43594`: game service for world 1.
@@ -98,6 +102,7 @@ Useful client flags include:
 - `-s <host>`: set server host.
 - `-u <username>` and `-p <password>`: prefill login details.
 - `-w <world>`: set world id.
+- `-scale <n>` or `-double-size`: scale the client canvas for visibility; use `-scale 2 -no-nav` for the current larger testing window.
 
 ## Codex RuneScape Agent
 
@@ -110,12 +115,21 @@ Client controls:
 - `/agent stop`: interrupts the active Codex turn and clears the current server-side action.
 - `/agent <task>`: starts a Codex turn for gameplay tasks such as `travel to varrock`, `attack goblin`, or `mine iron ore`.
 
-Agent testing account:
+Agent testing profiles:
 
-- When running agent sessions or acting inside the client for testing, use one shared player profile named `MrGem`.
-- Do not create or switch to alternate testing profiles for agent work unless the user explicitly asks for a different account.
-- When launching the local client for agent testing, prefer `-u "MrGem"` so the intended profile is prefilled.
-- Do not stack up multiple idle clients. Before launching an agent client, check for an existing `target/client-1.0-jar-with-dependencies.jar` process; reuse it if it is logged in, or terminate stale/no-login client and child `codex app-server --listen stdio://` processes before starting a fresh one.
+- The default local testing profile is `MrFlame`. Use another profile only when the user asks or when validating multi-character behavior.
+- Keep repo-side tool calls scoped to the intended character. Use `RS_PROFILE=<name>` or `runtime_doctor.py --profile <name>` so `rs-tool.sh`, route traces, recorder output, and context maps use the matching session/profile.
+- `MrFlame` keeps the legacy session file `agent-navigation/.local/rsbridge-session.json`; other profiles use `agent-navigation/.local/rsbridge-session-<profile>.json`.
+- For unattended agent relaunches, prefer the documented startup flow in `docs/local-agent-startup.md`; it uses `-password-character-save`, `-agent-auto-login`, and `-agent-claim` so the local bridge session is claimed without manual typing.
+- Do not stop, replace, or relaunch an active client/server owned by another agent unless the user explicitly asks. Profile-specific launches should avoid clobbering the default client.
+
+Navigation project:
+
+- Repo-local route memory lives in `agent-navigation/`.
+- For repo-side gameplay control, prefer `agent-navigation/tools/rs-tool.sh <tool> '<json-args>'`; it reads the active profile session file and posts to the local bridge.
+- Use `agent-navigation/tools/navdb.py validate`, `self-test`, `next-step`, `route-risk`, and `record-observation` while learning routes.
+- Use `agent-navigation/tools/capture-client-screenshot.sh --prefix <short-reason>` when route state is visually ambiguous, especially doors, walls, gates, stairs, blocked movement, wrong side of an object, or unexpected HP/combat changes. Record useful screenshots through `record-observation --screenshot`.
+- Current focus: safe routing with hazards, food/combat checks, run-energy checks, and verified south Varrock movement around the dark-wizard approach.
 
 Runtime bridge:
 
@@ -143,6 +157,7 @@ Agent session logging:
 Dynamic tools currently supported:
 
 - `rs.observe_state`
+- `rs.send_public_chat`
 - `rs.plan_combat_training`
 - `rs.continue_dialogue`
 - `rs.select_dialogue_option`

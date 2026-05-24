@@ -14,6 +14,11 @@ if [[ ! -f "$CLIENT_JAR" ]]; then
     "$SCRIPT_DIR/build-local.sh"
 fi
 
+CLIENT_JAVA_OPTS_ARRAY=()
+if [[ -n "${CLIENT_JAVA_OPTS:-}" ]]; then
+    read -r -a CLIENT_JAVA_OPTS_ARRAY <<< "$CLIENT_JAVA_OPTS"
+fi
+
 if [[ "${CLIENT_SINGLE_INSTANCE:-1}" != "0" ]] && command -v pgrep >/dev/null 2>&1; then
     CLIENT_JAR_PATTERN="[$(printf '%s' "${CLIENT_JAR:0:1}")]${CLIENT_JAR:1}"
     EXISTING_CLIENT_PIDS="$(pgrep -f "$CLIENT_JAR_PATTERN" || true)"
@@ -35,4 +40,7 @@ fi
 
 cd "$CLIENT_DIR"
 echo "Launching 2006Scape client against localhost..."
+if (( ${#CLIENT_JAVA_OPTS_ARRAY[@]} > 0 )); then
+    exec "$JAVA_BIN" "${CLIENT_JAVA_OPTS_ARRAY[@]}" -jar "$CLIENT_JAR" -local -s localhost "$@"
+fi
 exec "$JAVA_BIN" -jar "$CLIENT_JAR" -local -s localhost "$@"

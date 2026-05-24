@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.UUID;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -121,6 +122,8 @@ public class AgentActionService {
     private static final int MAX_STATIONARY_MOVING_WAIT_STEPS = 4;
     private static final int MAX_ROUTE_OSCILLATION_REVERSALS = 2;
     private static final int MAX_ROUTE_STALE_STEPS = 4;
+    private static final int MAX_MOVEMENT_BATCH_STALE_TICKS = 8;
+    private static final int MAX_MOVEMENT_BATCH_OSCILLATION_REVERSALS = 3;
     private static final int MAX_PICKAXE_ROUTE_NO_MOVE_ATTEMPTS = 8;
     private static final int PICKAXE_ROUTE_DEFER_ACTIONS = 200;
     private static final int MIN_GEAR_MONEY_ITEMS_BEFORE_SELLING = 27;
@@ -310,7 +313,10 @@ public class AgentActionService {
                 if (player == null) {
                     return AgentToolService.failure("The claimed player is no longer online.");
                 }
-                return AgentToolService.handle(player, tool, arguments == null ? new JsonObject() : arguments);
+                JsonObject safeArguments = arguments == null ? new JsonObject() : arguments;
+                JsonObject result = AgentToolService.handle(player, tool, safeArguments);
+                recordObjectTransition(session, tool, safeArguments, result);
+                return result;
             }
         });
     }
@@ -321,9 +327,13 @@ public class AgentActionService {
         final int y = getInt(arguments, "y", -1);
         final int height = getInt(arguments, "height", 0);
         final int stopDistance = Math.max(0, Math.min(20, getInt(arguments, "stopDistance", 0)));
+        final boolean stopOnCombat = getBoolean(arguments, "stopOnCombat", true);
+        final boolean stopOnStall = getBoolean(arguments, "stopOnStall", true);
         if (x < 0 || y < 0) {
             return AgentToolService.failure("x and y are required.");
         }
+        MovementBatchTrace trace = new MovementBatchTrace("walk_to_tile_until_arrived", arguments,
+                serverTick.get());
         JsonObject lastResult = null;
         for (int tick = 0; tick < maxTicks; tick++) {
             lastResult = submitOnGameTick(token, new Callable<JsonObject>() {
@@ -352,23 +362,54 @@ public class AgentActionService {
                     return result;
                 }
             });
+            AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
+            trace.record(session, tick + 1, serverTick.get(), lastResult, "tick");
             if (!isSuccess(lastResult)) {
-                return addBatchStatus(lastResult, "blocked", tick + 1);
+                return finishMovementBatch(trace, session, arguments, lastResult, "blocked", tick + 1);
             }
             if (getBoolean(lastResult, "complete", false)) {
-                return addBatchStatus(lastResult, "arrived", tick + 1);
+                return finishMovementBatch(trace, session, arguments, lastResult, "arrived", tick + 1);
             }
-            JsonObject player = playerObject(lastResult);
+            JsonObject player = resultPlayer(lastResult);
             if (player != null && getBoolean(player, "isDead", false)) {
-                return addBatchStatus(lastResult, "player_dead", tick + 1);
+                return finishMovementBatch(trace, session, arguments, lastResult, "player_dead", tick + 1);
+            }
+            if (stopOnCombat && player != null && getBoolean(player, "isInCombat", false)) {
+                JsonObject stopped = AgentToolService.failure("Unexpected combat during movement batch.");
+                if (player != null) {
+                    stopped.add("player", player);
+                }
+                return finishMovementBatch(trace, session, arguments, stopped, "unexpected_combat", tick + 1);
+            }
+            if (stopOnStall && trace.isStalled()) {
+                JsonObject stopped = AgentToolService.failure("Movement batch stalled at "
+                        + trace.currentTileText() + ".");
+                if (player != null) {
+                    stopped.add("player", player);
+                }
+                return finishMovementBatch(trace, session, arguments, stopped, "stalled", tick + 1);
+            }
+            if (stopOnStall && trace.isOscillating()) {
+                JsonObject stopped = AgentToolService.failure("Movement batch oscillated around "
+                        + trace.currentTileText() + ".");
+                if (player != null) {
+                    stopped.add("player", player);
+                }
+                return finishMovementBatch(trace, session, arguments, stopped, "oscillation", tick + 1);
             }
         }
-        return addBatchStatus(lastResult == null ? AgentToolService.failure("No walk action was attempted.") : lastResult,
+        AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
+        return finishMovementBatch(trace, session, arguments,
+                lastResult == null ? AgentToolService.failure("No walk action was attempted.") : lastResult,
                 "max_ticks_reached", maxTicks);
     }
 
     private JsonObject travelToLandmarkUntilArrived(final String token, final JsonObject arguments) {
         int maxTicks = Math.max(1, Math.min(250, getInt(arguments, "maxTicks", 120)));
+        final boolean stopOnCombat = getBoolean(arguments, "stopOnCombat", true);
+        final boolean stopOnStall = getBoolean(arguments, "stopOnStall", true);
+        MovementBatchTrace trace = new MovementBatchTrace("travel_to_landmark_until_arrived", arguments,
+                serverTick.get());
         JsonObject lastResult = null;
         for (int tick = 0; tick < maxTicks; tick++) {
             lastResult = submitOnGameTick(token, new Callable<JsonObject>() {
@@ -388,18 +429,45 @@ public class AgentActionService {
                     return AgentToolService.handle(player, "travel_to_landmark", arguments);
                 }
             });
+            AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
+            trace.record(session, tick + 1, serverTick.get(), lastResult, "tick");
             if (!isSuccess(lastResult)) {
-                return addBatchStatus(lastResult, "blocked", tick + 1);
+                return finishMovementBatch(trace, session, arguments, lastResult, "blocked", tick + 1);
             }
             if (getBoolean(lastResult, "complete", false)) {
-                return addBatchStatus(lastResult, "arrived", tick + 1);
+                return finishMovementBatch(trace, session, arguments, lastResult, "arrived", tick + 1);
             }
-            JsonObject player = playerObject(lastResult);
+            JsonObject player = resultPlayer(lastResult);
             if (player != null && getBoolean(player, "isDead", false)) {
-                return addBatchStatus(lastResult, "player_dead", tick + 1);
+                return finishMovementBatch(trace, session, arguments, lastResult, "player_dead", tick + 1);
+            }
+            if (stopOnCombat && player != null && getBoolean(player, "isInCombat", false)) {
+                JsonObject stopped = AgentToolService.failure("Unexpected combat during landmark travel.");
+                if (player != null) {
+                    stopped.add("player", player);
+                }
+                return finishMovementBatch(trace, session, arguments, stopped, "unexpected_combat", tick + 1);
+            }
+            if (stopOnStall && trace.isStalled()) {
+                JsonObject stopped = AgentToolService.failure("Landmark travel stalled at "
+                        + trace.currentTileText() + ".");
+                if (player != null) {
+                    stopped.add("player", player);
+                }
+                return finishMovementBatch(trace, session, arguments, stopped, "stalled", tick + 1);
+            }
+            if (stopOnStall && trace.isOscillating()) {
+                JsonObject stopped = AgentToolService.failure("Landmark travel oscillated around "
+                        + trace.currentTileText() + ".");
+                if (player != null) {
+                    stopped.add("player", player);
+                }
+                return finishMovementBatch(trace, session, arguments, stopped, "oscillation", tick + 1);
             }
         }
-        return addBatchStatus(lastResult == null ? AgentToolService.failure("No travel action was attempted.") : lastResult,
+        AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
+        return finishMovementBatch(trace, session, arguments,
+                lastResult == null ? AgentToolService.failure("No travel action was attempted.") : lastResult,
                 "max_ticks_reached", maxTicks);
     }
 
@@ -6508,6 +6576,54 @@ public class AgentActionService {
         return output;
     }
 
+    private static JsonObject finishMovementBatch(MovementBatchTrace trace, AgentSession session,
+            JsonObject arguments, JsonObject result, String status, int ticks) {
+        JsonObject output = addBatchStatus(result, status, ticks);
+        if (trace != null) {
+            trace.record(session, ticks, -1L, output, status);
+        }
+        return output;
+    }
+
+    private static void recordObjectTransition(AgentSession session, String tool, JsonObject arguments, JsonObject result) {
+        if (!"interact_object".equals(tool) || session == null || result == null || !isSuccess(result)) {
+            return;
+        }
+        JsonObject player = resultPlayer(result);
+        JsonObject object = jsonObject(result, "object");
+        if (player == null || object == null) {
+            return;
+        }
+        int x = getInt(player, "x", Integer.MIN_VALUE);
+        int y = getInt(player, "y", Integer.MIN_VALUE);
+        int height = getInt(player, "height", Integer.MIN_VALUE);
+        if (x == Integer.MIN_VALUE || y == Integer.MIN_VALUE || height == Integer.MIN_VALUE) {
+            return;
+        }
+        JsonObject event = new JsonObject();
+        event.addProperty("traceId", UUID.randomUUID().toString());
+        event.addProperty("event", "object_interaction");
+        event.addProperty("tool", tool);
+        event.add("arguments", arguments == null ? new JsonObject() : arguments);
+        event.add("tile", tile(x, y, height));
+        event.add("object", object);
+        if (result.has("objectReachable")) {
+            event.addProperty("objectReachable", getBoolean(result, "objectReachable", false));
+        } else if (object.has("reachable")) {
+            event.addProperty("objectReachable", getBoolean(object, "reachable", false));
+        }
+        if (result.has("objectWalkTarget")) {
+            event.add("objectWalkTarget", result.get("objectWalkTarget"));
+        }
+        event.addProperty("success", true);
+        event.addProperty("message", getString(result, "message", ""));
+        event.addProperty("runEnabled", getBoolean(player, "runEnabled", false));
+        event.addProperty("runEnergy", getInt(player, "runEnergy", -1));
+        event.addProperty("hitpoints", getInt(player, "hitpoints", -1));
+        event.addProperty("isInCombat", getBoolean(player, "isInCombat", false));
+        AgentMovementTraceLog.INSTANCE.record(session, event);
+    }
+
     private static boolean tileArrived(Player player, int x, int y, int height, int stopDistance) {
         if (player.heightLevel != height) {
             return false;
@@ -6556,6 +6672,162 @@ public class AgentActionService {
             }
         }
         return fallback;
+    }
+
+    private static final class MovementBatchTrace {
+        private final String traceId = UUID.randomUUID().toString();
+        private final String tool;
+        private final JsonObject arguments;
+        private final long submittedTick;
+        private int previousX = Integer.MIN_VALUE;
+        private int previousY = Integer.MIN_VALUE;
+        private int previousHeight = Integer.MIN_VALUE;
+        private int previousRunEnergy = Integer.MIN_VALUE;
+        private int previousHitpoints = Integer.MIN_VALUE;
+        private int beforePreviousX = Integer.MIN_VALUE;
+        private int beforePreviousY = Integer.MIN_VALUE;
+        private int staleTicks;
+        private int oscillationReversals;
+
+        MovementBatchTrace(String tool, JsonObject arguments, long submittedTick) {
+            this.tool = tool;
+            this.arguments = arguments == null ? new JsonObject() : arguments;
+            this.submittedTick = submittedTick;
+        }
+
+        void record(AgentSession session, int tickIndex, long currentServerTick, JsonObject result, String event) {
+            JsonObject player = resultPlayer(result);
+            if (player == null) {
+                return;
+            }
+            int x = getInt(player, "x", Integer.MIN_VALUE);
+            int y = getInt(player, "y", Integer.MIN_VALUE);
+            int height = getInt(player, "height", Integer.MIN_VALUE);
+            if (x == Integer.MIN_VALUE || y == Integer.MIN_VALUE || height == Integer.MIN_VALUE) {
+                return;
+            }
+            int runEnergy = getInt(player, "runEnergy", -1);
+            int hitpoints = getInt(player, "hitpoints", -1);
+            updateMovementState(x, y, height);
+
+            JsonObject trace = new JsonObject();
+            trace.addProperty("traceId", traceId);
+            trace.addProperty("event", event);
+            trace.addProperty("tool", tool);
+            trace.addProperty("tickIndex", tickIndex);
+            trace.addProperty("submittedServerTick", submittedTick);
+            if (currentServerTick >= 0L) {
+                trace.addProperty("serverTick", currentServerTick);
+            }
+            trace.add("arguments", arguments);
+            if (result != null) {
+                trace.addProperty("success", getBoolean(result, "success", false));
+                trace.addProperty("complete", getBoolean(result, "complete", false));
+                trace.addProperty("message", getString(result, "message", ""));
+                trace.addProperty("batchStatus", getString(result, "batchStatus", ""));
+                copyObject(result, trace, "target");
+                copyObject(result, trace, "walkTarget");
+                copyObject(result, trace, "nextWaypoint");
+                if (result.has("landmark") && result.get("landmark").isJsonPrimitive()) {
+                    trace.addProperty("landmark", result.get("landmark").getAsString());
+                }
+            }
+            if (previousX != Integer.MIN_VALUE) {
+                JsonObject previous = tile(previousX, previousY, previousHeight);
+                trace.add("previousTile", previous);
+                trace.addProperty("edgeKey", tileKey(previousX, previousY, previousHeight)
+                        + "->" + tileKey(x, y, height));
+            }
+            trace.add("tile", tile(x, y, height));
+            trace.addProperty("moved", previousX != Integer.MIN_VALUE
+                    && (previousX != x || previousY != y || previousHeight != height));
+            trace.addProperty("staleTicks", staleTicks);
+            trace.addProperty("oscillationReversals", oscillationReversals);
+            trace.addProperty("runEnabled", getBoolean(player, "runEnabled", false));
+            trace.addProperty("runEnergy", runEnergy);
+            trace.addProperty("hitpoints", hitpoints);
+            trace.addProperty("maxHitpoints", getInt(player, "maxHitpoints", -1));
+            trace.addProperty("isMoving", getBoolean(player, "isMoving", false));
+            trace.addProperty("isDead", getBoolean(player, "isDead", false));
+            trace.addProperty("isInCombat", getBoolean(player, "isInCombat", false));
+            trace.addProperty("npcIndex", getInt(player, "npcIndex", 0));
+            trace.addProperty("killingNpcIndex", getInt(player, "killingNpcIndex", 0));
+            trace.addProperty("underAttackBy", getInt(player, "underAttackBy", 0));
+            trace.addProperty("underAttackBy2", getInt(player, "underAttackBy2", 0));
+            if (previousRunEnergy >= 0 && runEnergy >= 0) {
+                trace.addProperty("runEnergyDelta", runEnergy - previousRunEnergy);
+                trace.addProperty("runEnergySpent", Math.max(0, previousRunEnergy - runEnergy));
+            }
+            if (previousHitpoints >= 0 && hitpoints >= 0) {
+                trace.addProperty("hitpointsDelta", hitpoints - previousHitpoints);
+                trace.addProperty("hitpointsLost", Math.max(0, previousHitpoints - hitpoints));
+            }
+            AgentMovementTraceLog.INSTANCE.record(session, trace);
+
+            beforePreviousX = previousX;
+            beforePreviousY = previousY;
+            previousX = x;
+            previousY = y;
+            previousHeight = height;
+            previousRunEnergy = runEnergy;
+            previousHitpoints = hitpoints;
+        }
+
+        boolean isStalled() {
+            return staleTicks >= MAX_MOVEMENT_BATCH_STALE_TICKS;
+        }
+
+        boolean isOscillating() {
+            return oscillationReversals >= MAX_MOVEMENT_BATCH_OSCILLATION_REVERSALS;
+        }
+
+        String currentTileText() {
+            if (previousX == Integer.MIN_VALUE) {
+                return "unknown";
+            }
+            return previousX + "," + previousY + "," + previousHeight;
+        }
+
+        private void updateMovementState(int x, int y, int height) {
+            if (previousX == Integer.MIN_VALUE) {
+                staleTicks = 0;
+                oscillationReversals = 0;
+                return;
+            }
+            boolean sameTile = previousX == x && previousY == y && previousHeight == height;
+            if (sameTile) {
+                staleTicks++;
+            } else {
+                staleTicks = 0;
+            }
+            boolean reversed = beforePreviousX != Integer.MIN_VALUE
+                    && beforePreviousX == x && beforePreviousY == y
+                    && previousHeight == height;
+            if (reversed) {
+                oscillationReversals++;
+            } else if (!sameTile) {
+                oscillationReversals = 0;
+            }
+        }
+    }
+
+    private static JsonObject tile(int x, int y, int height) {
+        JsonObject tile = new JsonObject();
+        tile.addProperty("x", x);
+        tile.addProperty("y", y);
+        tile.addProperty("height", height);
+        return tile;
+    }
+
+    private static String tileKey(int x, int y, int height) {
+        return x + "," + y + "," + height;
+    }
+
+    private static void copyObject(JsonObject source, JsonObject destination, String name) {
+        JsonObject child = jsonObject(source, name);
+        if (child != null) {
+            destination.add(name, child);
+        }
     }
 
     static final class TargetAcquisitionPlan {

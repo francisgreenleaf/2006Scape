@@ -1,0 +1,295 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "2006Scape Unified Movement Trace Event",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "timestamp",
+    "event",
+    "tile"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "source": {
+      "type": "string"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "timestampMs": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "sessionId": {
+      "type": "string"
+    },
+    "playerId": {
+      "type": "integer"
+    },
+    "playerName": {
+      "type": "string"
+    },
+    "profile": {
+      "type": "string"
+    },
+    "traceId": {
+      "type": "string"
+    },
+    "event": {
+      "type": "string",
+      "enum": [
+        "state",
+        "movement",
+        "teleport",
+        "combat",
+        "hitpoints_lost",
+        "player_dead",
+        "tick",
+        "arrived",
+        "timeout",
+        "blocked",
+        "unexpected_combat",
+        "stalled",
+        "oscillation",
+        "max_ticks_reached",
+        "movement_tick",
+        "object_interaction"
+      ]
+    },
+    "tool": {
+      "type": "string"
+    },
+    "controlSource": {
+      "type": "string"
+    },
+    "arguments": {
+      "type": "object"
+    },
+    "tickIndex": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "submittedServerTick": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "serverTick": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "success": {
+      "type": "boolean"
+    },
+    "complete": {
+      "type": "boolean"
+    },
+    "batchStatus": {
+      "type": "string",
+      "enum": [
+        "moving",
+        "arrived",
+        "timeout",
+        "unexpected_combat",
+        "stalled",
+        "oscillation",
+        "blocked",
+        "max_ticks_reached"
+      ]
+    },
+    "message": {
+      "type": "string"
+    },
+    "target": {
+      "$ref": "#/$defs/tile"
+    },
+    "walkTarget": {
+      "$ref": "#/$defs/tile"
+    },
+    "nextWaypoint": {
+      "$ref": "#/$defs/tile"
+    },
+    "objectTile": {
+      "$ref": "#/$defs/tile"
+    },
+    "objectReachable": {
+      "type": "boolean"
+    },
+    "objectWalkTarget": {
+      "$ref": "#/$defs/tile"
+    },
+    "previousTile": {
+      "$ref": "#/$defs/tile"
+    },
+    "tile": {
+      "$ref": "#/$defs/tile"
+    },
+    "edgeKey": {
+      "type": "string",
+      "pattern": "^-?\\d+,-?\\d+,-?\\d+->-?\\d+,-?\\d+,-?\\d+$"
+    },
+    "moved": {
+      "type": "boolean"
+    },
+    "teleported": {
+      "type": "boolean"
+    },
+    "mapRegionChanged": {
+      "type": "boolean"
+    },
+    "dir1": {
+      "type": "integer"
+    },
+    "dir2": {
+      "type": "integer"
+    },
+    "staleTicks": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "oscillationReversals": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "runEnabled": {
+      "type": "boolean"
+    },
+    "runEnergy": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "runEnergyDelta": {
+      "type": "integer"
+    },
+    "runEnergySpent": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "hitpoints": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "maxHitpoints": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "hitpointsDelta": {
+      "type": "integer"
+    },
+    "hitpointsLost": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "isMoving": {
+      "type": "boolean"
+    },
+    "isDead": {
+      "type": "boolean"
+    },
+    "isInCombat": {
+      "type": "boolean"
+    },
+    "npcIndex": {
+      "type": "integer"
+    },
+    "killingNpcIndex": {
+      "type": "integer"
+    },
+    "underAttackBy": {
+      "type": "integer"
+    },
+    "underAttackBy2": {
+      "type": "integer"
+    },
+    "foodCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "freeInventorySlots": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "combatLevel": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "fightMode": {
+      "type": "integer"
+    },
+    "activityHash": {
+      "type": "string"
+    },
+    "activity": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "boolean"
+      }
+    },
+    "nearbyNpcs": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "objectId": {
+      "type": "integer"
+    },
+    "objectName": {
+      "type": "string"
+    },
+    "objectInteractionPhase": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "completed"
+      ]
+    },
+    "objectOption": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "packetOpcode": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "objectDistance": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "object": {
+      "type": "object"
+    },
+    "option": {
+      "type": "string"
+    },
+    "landmark": {
+      "type": "string"
+    }
+  },
+  "$defs": {
+    "tile": {
+      "type": "object",
+      "required": [
+        "x",
+        "y",
+        "height"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "type": "integer"
+        },
+        "y": {
+          "type": "integer"
+        },
+        "height": {
+          "type": "integer"
+        }
+      }
+    }
+  }
+}

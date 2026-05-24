@@ -8,10 +8,22 @@
 .DS_Store
 2006Scape Server/data/logs
 *.class
+__pycache__/
+*.py[cod]
 *.project
 2006Scape Client/bin/
 *.prefs
 *.classpath
+hs_err_pid*.log
+**/hs_err_pid*.log
+agent-navigation/.local/
+agent-navigation/data/marathons/
+agent-navigation/data/movement_traces*.jsonl
+agent-navigation/data/observations.jsonl
+agent-navigation/screenshots/**
+!agent-navigation/screenshots/
+!agent-navigation/screenshots/.gitkeep
+agent-navigation/analysis/walk-distance-estimate/latest-result.json
 
 # Ignore any json files in the server root (should only be config files, the sample file should still be updated)
 2006Scape Server/*.json

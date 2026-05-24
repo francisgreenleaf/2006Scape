@@ -15,6 +15,7 @@ import com.rs2.game.content.quests.impl.ShieldArrav;
 import com.rs2.game.content.quests.impl.VampyreSlayer;
 import com.rs2.game.content.quests.impl.WitchsPotion;
 import com.rs2.game.content.quests.impl.LostCity;
+import com.rs2.game.content.quests.custom.lumbridge.pantrypanic.PantryPanic;
 import com.rs2.game.players.Player;
 
 /**
@@ -24,7 +25,7 @@ import com.rs2.game.players.Player;
 
 public class QuestAssistant {
 
-	public static final int MAXIMUM_QUESTPOINTS = 26;
+	public static final int MAXIMUM_QUESTPOINTS = 27;
 
 	public static void sendStages(Player player) {
 		player.getPacketSender().sendString("QP: " + player.questPoints + " ", 3985);
@@ -140,6 +141,7 @@ public class QuestAssistant {
 		} else {
 			player.getPacketSender().sendString("@yel@Lost City", 7367);
 		}
+		PantryPanic.sendQuestTab(player);
 	}
 
 	public enum Quests {
@@ -204,7 +206,7 @@ public class QuestAssistant {
 		LOST_TRIBE(52077, 13389, "The Lost Tribe", false), 
 		MAKING_HISTORY(60127, 15487, "Making History", false), 
 		MONKEY_MADNESS(43124, 11132, "Monkey Madness", false), 
-		MERLINS_CRYSTAL(28200, 7368, "Merlins Crystal", false), 
+		PANTRY_PANIC(PantryPanic.QUEST_BUTTON, PantryPanic.QUEST_TAB_LINE, PantryPanic.NAME, true),
 		MONKS_FRIEND(28201, 7369, "Monks Friend", false), 
 		MOUNTAIN_DAUGHTER(48101, 12389, "Mountain Daughter", false), 
 		MOURNINGS_END_1(54150, 13974, "Mourning's Ends Part 1", false), 
@@ -332,6 +334,9 @@ public class QuestAssistant {
 			break;
 		case 28199:
 			LostCity.showInformation(player);
+			break;
+		case PantryPanic.QUEST_BUTTON:
+			PantryPanic.showInformation(player);
 			break;
 
 

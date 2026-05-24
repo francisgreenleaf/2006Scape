@@ -3,6 +3,7 @@ package com.rs2.game.npcs;
 import com.rs2.Constants;
 import com.rs2.game.content.StaticNpcList;
 import com.rs2.game.content.quests.QuestAssistant;
+import com.rs2.game.content.quests.custom.lumbridge.pantrypanic.PantryPanic;
 import com.rs2.game.content.skills.core.Fishing;
 import com.rs2.game.content.skills.crafting.Tanning;
 import com.rs2.game.content.traveling.Sailing;
@@ -39,6 +40,9 @@ public class NpcActions {
             } else {
                 player.getPacketSender().sendMessage("This is not your pet.");
             }
+        }
+        if (PantryPanic.handleNpcClick(player, npcType)) {
+            return;
         }
         switch (npcType) {
             case THORMAC:

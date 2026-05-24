@@ -1,0 +1,4 @@
+interface:
+  display_name: "2006Scape Route Agent"
+  short_description: "Navigate a 2006Scape profile"
+  default_prompt: "Use the 2006Scape route-agent skill to observe the selected profile with the slim state wrapper, continue safe exploration, solve route blockers, update agent-navigation data, and render the canonical surface route map."

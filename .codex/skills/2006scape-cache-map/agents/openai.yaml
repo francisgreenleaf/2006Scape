@@ -1,0 +1,4 @@
+interface:
+  display_name: "2006Scape Cache Map"
+  short_description: "Render cache-backed RuneScape maps"
+  default_prompt: "Use $2006scape-cache-map to inspect or document the cache-backed world map renderer."

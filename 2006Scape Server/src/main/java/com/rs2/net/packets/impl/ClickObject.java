@@ -2,6 +2,7 @@ package com.rs2.net.packets.impl;
 
 import java.util.function.Consumer;
 import com.rs2.GameEngine;
+import com.rs2.agent.AgentPassiveTraceLog;
 import com.rs2.event.CycleEvent;
 import com.rs2.event.CycleEventContainer;
 import com.rs2.event.CycleEventHandler;
@@ -34,16 +35,7 @@ public class ClickObject implements PacketType {
 		final int objectY = player.objectY;
 		final int objectId = player.objectId;
 
-		Objects object = Region.getObject(objectId, objectX, objectY, player.heightLevel);
-		if (object == null) {
-			// Since most content is coded poorly we will have to assume the object is valid
-			// but we won't know the face direction, so some objects will behave incorrectly
-			// if the object size is not equal on both axes and the face
-			// is not set to zero. The proper fix would be when an object is removed or added
-			// they are added into the region configuration properly so we can retrieve
-			// the object at runtime. This will suffice for now.
-			object = new Objects(objectId, objectX, objectY, player.heightLevel, 0, 10, 0);
-		}
+		Objects object = traceObject(player, objectId, objectX, objectY, player.heightLevel);
 
 		int[] size = object.getObjectSize();
 
@@ -91,43 +83,71 @@ public class ClickObject implements PacketType {
 				player.objectX = packet.readSignedWordBigEndianA();
 				player.objectId = packet.readUnsignedWord();
 				player.objectY = packet.readUnsignedWordA();
-				onObjectReached(player, (p) -> completeObjectClick(p, 1));
+				queueObjectClick(player, 1, packet.getOpcode());
 				break;
 
 			case SECOND_CLICK:
 				player.objectId = packet.readUnsignedWordBigEndianA();
 				player.objectY = packet.readSignedWordBigEndian();
 				player.objectX = packet.readUnsignedWordA();
-				onObjectReached(player, (p) -> completeObjectClick(p, 2));
+				queueObjectClick(player, 2, packet.getOpcode());
 				break;
 
 			case THIRD_CLICK: // 'F'
 				player.objectX = packet.readSignedWordBigEndian();
 				player.objectY = packet.readUnsignedWord();
 				player.objectId = packet.readUnsignedWordBigEndianA();
-				onObjectReached(player, (p) -> completeObjectClick(p, 3));
+				queueObjectClick(player, 3, packet.getOpcode());
 				break;
-
 
 			case FOURTH_CLICK:
 				player.objectX = packet.readSignedWordBigEndianA();
 				player.objectId = packet.readUnsignedWordA();
 				player.objectY = packet.readUnsignedWordBigEndianA();
-				onObjectReached(player, (p) -> completeObjectClick(p, 4));
+				queueObjectClick(player, 4, packet.getOpcode());
 				break;
 			case FIFTH_CLICK:
 				player.objectId = packet.readUnsignedWordA();
 				player.objectY = packet.readUnsignedWordA();
 				player.objectX = packet.readUnsignedWord();
-				onObjectReached(player, (p) -> completeObjectClick(p, 5));
+				queueObjectClick(player, 5, packet.getOpcode());
 				break;
 		}
 	}
 
-	public void completeObjectClick(final Player player, int objectOption) {
-		player.turnPlayerTo(player.objectX, player.objectY);
+	private void queueObjectClick(Player player, int objectOption, int packetOpcode) {
+		Objects object = traceObject(player, player.objectId, player.objectX, player.objectY, player.heightLevel);
+		AgentPassiveTraceLog.INSTANCE.recordObjectClickQueued(player, objectOption, packetOpcode, object);
+		onObjectReached(player, (p) -> completeObjectClick(p, objectOption));
+	}
 
-		switch (objectOption) {
+	private Objects traceObject(Player player, int objectId, int objectX, int objectY, int objectHeight) {
+		Objects object = Region.getObject(objectId, objectX, objectY, objectHeight);
+		if (object != null) {
+			return object;
+		}
+		// Since most content is coded poorly we will have to assume the object is valid
+		// but we won't know the face direction, so some objects will behave incorrectly
+		// if the object size is not equal on both axes and the face
+		// is not set to zero. The proper fix would be when an object is removed or added
+		// they are added into the region configuration properly so we can retrieve
+		// the object at runtime. This will suffice for now.
+		return new Objects(objectId, objectX, objectY, objectHeight, 0, 10, 0);
+	}
+
+	public void completeObjectClick(final Player player, int objectOption) {
+		final int objectId = player.objectId;
+		final int objectX = player.objectX;
+		final int objectY = player.objectY;
+		final int objectHeight = player.heightLevel;
+		final int beforeX = player.absX;
+		final int beforeY = player.absY;
+		final int beforeHeight = player.heightLevel;
+		final Objects object = traceObject(player, objectId, objectX, objectY, objectHeight);
+		try {
+			player.turnPlayerTo(player.objectX, player.objectY);
+
+			switch (objectOption) {
 		case 1:
 			if (player.playerRights == 3 || player.debugMode) {
 				player.getPacketSender().sendMessage("ObjectId: " + player.objectId + " ObjectX: " + player.objectX + " ObjectY: " + player.objectY + " Objectclick = 1, Xoff: " + (player.getX() - player.objectX) + " Yoff: " + (player.getY() - player.objectY));
@@ -455,7 +475,11 @@ public class ClickObject implements PacketType {
 			
 			player.getObjects().fourthClickObject(player.objectId, player.objectX, player.objectY);
 			player.post(new ObjectFourthClickEvent(player.objectId));
-			break;
+				break;
+			}
+		} finally {
+			AgentPassiveTraceLog.INSTANCE.recordObjectClickCompleted(player, objectId, objectX, objectY,
+					objectHeight, objectOption, beforeX, beforeY, beforeHeight, object);
 		}
 	}
 }

@@ -22,7 +22,7 @@ public class RSApplet extends Applet implements Runnable, MouseListener, MouseWh
 	final void createClientFrame(int i, int j) {
 		myWidth = j;
 		myHeight = i;
-		this.setPreferredSize(new Dimension(this.myWidth, this.myHeight));
+		this.setPreferredSize(new Dimension(scaled(this.myWidth), scaled(this.myHeight)));
 
 		gameFrame = new RSFrame(this);
 		graphics = getGameComponent().getGraphics();
@@ -405,18 +405,18 @@ public class RSApplet extends Applet implements Runnable, MouseListener, MouseWh
 
 	@Override
 	public final void mousePressed(MouseEvent mouseevent) {
-		int i = mouseevent.getX();
-		int j = mouseevent.getY();
+		int i = unscaled(mouseevent.getX());
+		int j = unscaled(mouseevent.getY());
 		idleTime = 0;
 		clickX = i;
 		clickY = j;
 		clickTime = System.currentTimeMillis();
-		if (mouseevent.getButton() == MouseEvent.BUTTON2) {
-			mouseWheelDown = true;
-			mouseWheelX = mouseevent.getX();
-			mouseWheelY = mouseevent.getY();
-			return;
-		}
+			if (mouseevent.getButton() == MouseEvent.BUTTON2) {
+				mouseWheelDown = true;
+				mouseWheelX = i;
+				mouseWheelY = j;
+				return;
+			}
 
 		if (mouseevent.getButton() == MouseEvent.BUTTON3) {
 			clickMode1 = 2;
@@ -451,14 +451,14 @@ public class RSApplet extends Applet implements Runnable, MouseListener, MouseWh
 	}
 
 	public final void mouseDragged(MouseEvent e) {
-		int x = e.getX();
-		int y = e.getY();
+		int x = unscaled(e.getX());
+		int y = unscaled(e.getY());
 		if (mouseWheelDown) {
-			y = mouseWheelX - e.getX();
-			int k = mouseWheelY - e.getY();
-			mouseWheelDragged(y, -k);
-			mouseWheelX = e.getX();
-			mouseWheelY = e.getY();
+			int deltaX = mouseWheelX - x;
+			int deltaY = mouseWheelY - y;
+			mouseWheelDragged(deltaX, -deltaY);
+			mouseWheelX = x;
+			mouseWheelY = y;
 			return;
 		}
 		idleTime = 0;
@@ -471,11 +471,23 @@ public class RSApplet extends Applet implements Runnable, MouseListener, MouseWh
 
 	@Override
 	public void mouseMoved(MouseEvent mouseevent) {
-		int i = mouseevent.getX();
-		int j = mouseevent.getY();
+		int i = unscaled(mouseevent.getX());
+		int j = unscaled(mouseevent.getY());
 		idleTime = 0;
 		mouseX = i;
 		mouseY = j;
+	}
+
+	private int scaled(int value) {
+		return value * clientScale();
+	}
+
+	private int unscaled(int value) {
+		return value / clientScale();
+	}
+
+	private int clientScale() {
+		return Math.max(1, ClientSettings.CLIENT_SCALE);
 	}
 
 	@Override
