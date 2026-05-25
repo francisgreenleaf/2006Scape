@@ -7,6 +7,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import java.util.Map;
 
+import com.rs2.game.content.custom.CustomContent;
 import com.rs2.util.Misc;
 
 public class PlayerSave {
@@ -79,6 +80,9 @@ public class PlayerSave {
 						}
 						break;
 					case 2:
+						if (CustomContent.loadPlayerSaveValue(player, token, token2)) {
+							break;
+						}
 						switch (token) {
 							case "character-height":
 								player.heightLevel = Integer.parseInt(token2);
@@ -305,9 +309,6 @@ public class PlayerSave {
 								break;
 							case "impsC":
 								player.impsC = Integer.parseInt(token2);
-								break;
-							case "pantryPanic":
-								player.pantryPanic = Integer.parseInt(token2);
 								break;
 							case "knightS":
 								player.knightS = Integer.parseInt(token2);
@@ -781,8 +782,7 @@ public class PlayerSave {
 			characterfile.newLine();
 			characterfile.write("impsC = " + player.impsC);
 			characterfile.newLine();
-			characterfile.write("pantryPanic = " + player.pantryPanic);
-			characterfile.newLine();
+			CustomContent.savePlayerQuestStages(characterfile, player);
 			characterfile.write("knightS = " + player.knightS);
 			characterfile.newLine();
 			characterfile.write("sheepShear = " + player.sheepShear);

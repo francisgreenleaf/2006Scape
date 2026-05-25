@@ -2,6 +2,7 @@ package com.rs2.agent;
 
 import com.google.gson.JsonObject;
 import com.rs2.Constants;
+import com.rs2.game.content.quests.QuestAssistant;
 import com.rs2.game.players.Player;
 import org.junit.Test;
 
@@ -273,9 +274,10 @@ public class AgentActionServiceTest {
 
     @Test
     public void durableGoalDoesNotSaveForChampionsGuildGearBeforeQuestPoints() {
+        int requiredQuestPoints = Math.min(32, QuestAssistant.MAXIMUM_QUESTPOINTS);
         assertFalse(AgentActionService.isChampionsGuildGearAvailable(1289, 0));
-        assertFalse(AgentActionService.isChampionsGuildGearAvailable(1289, 26));
-        assertTrue(AgentActionService.isChampionsGuildGearAvailable(1289, 27));
+        assertFalse(AgentActionService.isChampionsGuildGearAvailable(1289, requiredQuestPoints - 1));
+        assertTrue(AgentActionService.isChampionsGuildGearAvailable(1289, requiredQuestPoints));
         assertEquals(-1, AgentActionService.recommendedGearMoneyUpgradeId(41, 32, 30, 21710,
                 4, 3, 4, 4, 3, 60, false)); // already has the reachable upgrades
         assertEquals(1289, AgentActionService.recommendedGearMoneyUpgradeId(41, 32, 30, 21710,

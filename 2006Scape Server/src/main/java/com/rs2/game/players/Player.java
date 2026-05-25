@@ -78,6 +78,7 @@ public abstract class Player {
 	private long lastHomeTeleport = 0;
 	public String lastConnectedFrom;
 	public int xpRate = 1;
+	public Map<String, Integer> customQuestStages = new HashMap<String, Integer>();
 	public String discordCode;
 	private Compost compost = new Compost(this);
 	private Allotments allotment = new Allotments(this);
@@ -1400,7 +1401,7 @@ public abstract class Player {
 
 	public int votePoints, saveDelay, playerKilled, gertCat, restGhost,
 			romeojuliet, runeMist, lostCity, vampSlayer, cookAss, doricQuest, blackKnight, shieldArrav,
-			sheepShear, impsC, pantryPanic, randomActions,
+			sheepShear, impsC, randomActions,
 			totalPlayerDamageDealt, killedBy, lastChatId = 1, privateChat,
 			dialogueId, randomCoffin, newLocation, specEffect,
 			specBarId, attackLevelReq, defenceLevelReq, strengthLevelReq,

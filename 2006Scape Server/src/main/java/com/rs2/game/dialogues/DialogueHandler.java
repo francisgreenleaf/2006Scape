@@ -4,9 +4,9 @@ import com.rs2.Constants;
 import com.rs2.GameEngine;
 import com.rs2.game.bots.Bot;
 import com.rs2.game.bots.BotHandler;
+import com.rs2.game.content.custom.CustomContent;
 import com.rs2.game.content.quests.QuestAssistant;
 import com.rs2.game.content.quests.QuestRewards;
-import com.rs2.game.content.quests.custom.lumbridge.pantrypanic.PantryPanic;
 import com.rs2.game.content.randomevents.FreakyForester;
 import com.rs2.game.content.randomevents.RandomEventHandler;
 import com.rs2.game.content.skills.SkillHandler;
@@ -46,7 +46,7 @@ public class DialogueHandler {
 
 	public void sendDialogues(int dialogue, int npcId) {
 		player.talkingNpc = npcId;
-		if (PantryPanic.handleDialogue(player, dialogue, npcId)) {
+		if (CustomContent.handleDialogue(player, dialogue, npcId)) {
 			return;
 		}
 		switch (dialogue) {
