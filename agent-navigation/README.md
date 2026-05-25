@@ -13,6 +13,7 @@ For the reliable server/client/login/bridge startup flow used before route explo
 - `data/agility_courses.json`: agility course obstacle definitions for `tools/agility_runner.py`.
 - `data/agility/policies/*.policy.json`: ignored local adaptive course timing/failure state.
 - `data/agility/runs/`: ignored local agility smoke/lap JSONL evidence and summaries.
+- `data/mining/runs/`: ignored local mining runner JSONL evidence for site choice, routing, mining batches, and banking.
 - `data/observations.jsonl`: ignored local append-only route-learning observations from `rs.observe_state`, screenshots, and manual notes.
 - `data/movement_traces*.jsonl`: ignored optional legacy/dev movement trace streams from `tools/route_recorder.py`.
 - `data/route_tests.json`: regression checks for expected route selection, next steps, and safety warnings.
@@ -25,6 +26,7 @@ For the reliable server/client/login/bridge startup flow used before route explo
 - `tools/rs-tool.sh`: small bridge wrapper for calling `rs` tools through the active local session without hand-writing `curl` each time.
 - `tools/script_registry.py`: lightweight script catalog for listing, wildcard searching, inspecting, and running registered helper scripts by fuzzy name.
 - `tools/agility_runner.py`: bridge-backed agility course runner that keeps obstacle execution and timing evidence out of the AI token loop.
+- `tools/mining_runner.py`: bridge-backed mining runner that discovers cache-backed mine clusters, routes between banks and rocks, chooses live ore targets, mines through batch bridge tools, and banks ores.
 - `tools/active_map_refresher.py`: background controller for keeping canonical `surface-routes`, profile movement, `Heat Map`, and profile fog exports current. Use it for `start`, `status`, `logs`, `stop`, and `restart`; V4/profile movement is a continuous hot loop.
 - `tools/refresh_active_maps.py`: lower-level foreground worker used by `active_map_refresher.py`. It writes status/temp files under ignored `.local/map-refresh/` and does not refresh the static full cache map unless missing or requested.
 
@@ -61,6 +63,7 @@ Use the registry when you know what you want to do but not the exact helper scri
 python3 agent-navigation/tools/script_registry.py list
 python3 agent-navigation/tools/script_registry.py search "route*"
 python3 agent-navigation/tools/script_registry.py show agility --json
+python3 agent-navigation/tools/script_registry.py show mining --json
 python3 agent-navigation/tools/script_registry.py run navdb -- validate
 ```
 
@@ -137,3 +140,15 @@ RS_PROFILE=MrGem python3 agent-navigation/tools/agility_runner.py --course gnome
 ```
 
 Course definitions are shareable JSON in `data/agility_courses.json`. Run logs and adaptive policy stats are local generated data under `data/agility/` and should stay ignored unless a user explicitly asks to curate a specific artifact.
+
+## Mining Runner
+
+`tools/mining_runner.py` runs normal-gameplay mining loops with route learning and banking. It uses the cache-backed world map to discover ore clusters near known bank places, scores sites by bank distance, current distance, rock density, ore XP, and respawn cost, routes with `route_runner.py`, chooses the best currently reachable ore with `find_nearest_rock`, mines with `mine_ore_until_inventory_full`, then routes back to a bank and deposits ores.
+
+```sh
+python3 agent-navigation/tools/mining_runner.py --list-sites --ores copper,tin,iron
+python3 agent-navigation/tools/mining_runner.py --target-mining-level 20 --auto-buy-bronze-pickaxe
+python3 agent-navigation/tools/script_registry.py run mining -- --target-mining-level 20 --auto-buy-bronze-pickaxe
+```
+
+Use `--list-sites` for read-only site planning. For live training, the runner writes generated JSONL evidence under `data/mining/runs/`, relies on passive movement telemetry for route learning, and keeps bridge tokens hidden behind `tools/rs-tool.sh`.

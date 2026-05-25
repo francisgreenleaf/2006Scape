@@ -12,9 +12,12 @@ Commands:
 ```sh
 python3 agent-navigation/tools/script_registry.py list
 python3 agent-navigation/tools/script_registry.py search "agility"
+python3 agent-navigation/tools/script_registry.py search "mining"
 python3 agent-navigation/tools/script_registry.py search "route*"
 python3 agent-navigation/tools/script_registry.py show agility_runner --json
+python3 agent-navigation/tools/script_registry.py show mining_runner --json
 python3 agent-navigation/tools/script_registry.py run agility -- --target-agility-level 25
+python3 agent-navigation/tools/script_registry.py run mining -- --target-mining-level 20 --auto-buy-bronze-pickaxe
 ```
 
 The catalog lives at `agent-navigation/data/script_registry.json`. Keep this skill context-light: add script metadata there, not here.
