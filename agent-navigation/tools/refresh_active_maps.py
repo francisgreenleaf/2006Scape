@@ -39,6 +39,7 @@ class MapJob:
     command_name: str
     args: tuple[str, ...]
     render_cache_namespace: str | None = None
+    continuous: bool = False
 
 
 WORLD_MAP = MapJob(
@@ -67,6 +68,7 @@ ACTIVE_JOBS = (
         command_name="render_movement_topology_v4.py",
         args=("--output", "{output}", "--summary", "{summary}", "--coverage-cache-dir", "{render_cache_dir}"),
         render_cache_namespace="mr-flame",
+        continuous=True,
     ),
     MapJob(
         job_id="heat-map",
@@ -181,6 +183,7 @@ def update_status(status_file: Path, job: MapJob, **fields) -> None:
             "label": job.label,
             "output": str(job.output),
             "summary": str(job.summary) if job.summary is not None else None,
+            "continuous": job.continuous,
         }).update(fields)
         write_status(status_file)
 
@@ -369,7 +372,7 @@ def worker(job: MapJob, args, initial_delay: float) -> None:
         if args.once or stop_event.is_set():
             return
         elapsed = time.monotonic() - start
-        wait_seconds = max(0.0, args.interval_seconds - elapsed)
+        wait_seconds = 0.0 if job.continuous else max(0.0, args.interval_seconds - elapsed)
         log(f"next {job.label}: {wait_seconds:.1f}s")
         stop_event.wait(wait_seconds)
 
@@ -384,7 +387,7 @@ def run_serial(jobs: list[MapJob], args) -> None:
         if args.once or stop_event.is_set():
             return
         elapsed = time.monotonic() - start
-        wait_seconds = max(0.0, args.interval_seconds - elapsed)
+        wait_seconds = 0.0 if all(job.continuous for job in jobs) else max(0.0, args.interval_seconds - elapsed)
         log(f"next serial cycle: {wait_seconds:.1f}s")
         stop_event.wait(wait_seconds)
 
@@ -467,10 +470,11 @@ def main() -> int:
     signal.signal(signal.SIGTERM, handle_signal)
 
     log(
-        "refresh active maps: interval={:.1f}s mode={} jobs={}".format(
+        "refresh active maps: interval={:.1f}s mode={} jobs={} continuous={}".format(
             args.interval_seconds,
             "serial" if args.serial else "parallel",
             ",".join(job.job_id for job in selected),
+            ",".join(job.job_id for job in selected if job.continuous) or "none",
         )
     )
     ensure_world_map(args)

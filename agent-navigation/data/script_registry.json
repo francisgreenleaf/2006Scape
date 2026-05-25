@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 1,
+  "scripts": [
+    {
+      "id": "agility_runner",
+      "name": "Adaptive Agility Runner",
+      "path": "agent-navigation/tools/agility_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Runs agility course laps through normal bridge gameplay, records per-step evidence, learns faster obstacle variants, and can stop at a target Agility level.",
+      "aliases": [
+        "agility",
+        "agility course",
+        "gnome agility",
+        "gnome course",
+        "course runner"
+      ],
+      "tags": [
+        "gameplay",
+        "agility",
+        "training",
+        "runner",
+        "adaptive"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/script_registry.py run agility -- --target-agility-level 25 --continue-on-failure",
+        "python3 agent-navigation/tools/agility_runner.py --laps 10"
+      ]
+    },
+    {
+      "id": "route_runner",
+      "name": "Route Runner",
+      "path": "agent-navigation/tools/route_runner.py",
+      "kind": "navigation_runner",
+      "description": "Runs learned routes and frontier probes using graph planning, local clipped previews, hazard checks, and run-energy policy.",
+      "aliases": [
+        "route",
+        "navigate",
+        "travel",
+        "routing"
+      ],
+      "tags": [
+        "navigation",
+        "routing",
+        "frontier",
+        "runner"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/script_registry.py run route -- --to ardougne --allow-frontier --direct-if-preview --probe-toward-target --run-reserve auto",
+        "python3 agent-navigation/tools/route_runner.py --to PLACE --orient --json --run-reserve auto"
+      ]
+    },
+    {
+      "id": "marathon_runner",
+      "name": "Marathon Runner",
+      "path": "agent-navigation/tools/marathon_runner.py",
+      "kind": "navigation_runner",
+      "description": "Runs repeated route/exploration laps with route-eval preflight and suspicious-detour context maps.",
+      "aliases": [
+        "marathon",
+        "route marathon",
+        "exploration marathon"
+      ],
+      "tags": [
+        "navigation",
+        "routing",
+        "exploration",
+        "runner"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/script_registry.py run marathon -- --laps 10 --run-reserve auto"
+      ]
+    },
+    {
+      "id": "runtime_doctor",
+      "name": "Runtime Doctor",
+      "path": "agent-navigation/tools/runtime_doctor.py",
+      "kind": "runtime_tool",
+      "description": "Checks, restarts, claims, verifies, and inspects the local server/client/bridge runtime without printing bridge tokens.",
+      "aliases": [
+        "runtime",
+        "doctor",
+        "restart",
+        "bridge"
+      ],
+      "tags": [
+        "runtime",
+        "bridge",
+        "startup",
+        "diagnostics"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/script_registry.py run runtime -- status --observe",
+        "python3 agent-navigation/tools/runtime_doctor.py restart --replace-runtime --build --verify"
+      ]
+    },
+    {
+      "id": "context_map",
+      "name": "Agent Context Map",
+      "path": "agent-navigation/tools/render_agent_context_map.py",
+      "kind": "map_tool",
+      "description": "Renders bounded current-location or route-segment cache maps with nearby markers and machine-readable JSON summaries.",
+      "aliases": [
+        "context map",
+        "context-map",
+        "map context",
+        "local map",
+        "segment map"
+      ],
+      "tags": [
+        "map",
+        "context",
+        "routing",
+        "visualization"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/script_registry.py run context-map -- --center latest",
+        "python3 agent-navigation/tools/render_agent_context_map.py --segment-from FROM_PLACE --segment-to TO_PLACE"
+      ]
+    },
+    {
+      "id": "navdb",
+      "name": "Navigation Database CLI",
+      "path": "agent-navigation/tools/navdb.py",
+      "kind": "data_tool",
+      "description": "Validates and queries navigation places, routes, hazards, passive traces, coverage, and route graph summaries.",
+      "aliases": [
+        "navigation db",
+        "nav database",
+        "routes database",
+        "navdb"
+      ],
+      "tags": [
+        "navigation",
+        "database",
+        "validation",
+        "routes",
+        "hazards"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/script_registry.py run navdb -- validate",
+        "python3 agent-navigation/tools/navdb.py graph-summary"
+      ]
+    }
+  ]
+}

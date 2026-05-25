@@ -121,15 +121,19 @@ def observe_with_tick():
     return player_from(result), int(result.get("serverTick", 0) or 0)
 
 
-def ensure_run(player, args):
+def response_tick(result, fallback=0):
+    return int(result.get("serverTick", fallback) or fallback)
+
+
+def ensure_run(player, args, current_tick=0):
     if args.no_run:
-        return player
+        return player, current_tick
     if int(player.get("runEnergy", 0) or 0) < args.min_run_energy:
-        return player
+        return player, current_tick
     if bool(player.get("runEnabled", False)):
-        return player
+        return player, current_tick
     result = call_tool("set_run", {"enabled": True})
-    return player_from(result)
+    return player_from(result), response_tick(result, current_tick)
 
 
 def write_event(handle, event, data):
@@ -298,12 +302,12 @@ def wait_idle(max_ticks):
     })
 
 
-def wait_for_post_state(step, max_ticks):
+def wait_for_post_state(step, max_ticks, poll_ticks):
     deadline = time.monotonic() + max(1, int(max_ticks)) * 0.75 + 1.0
     last_result = None
     last_player = None
     while time.monotonic() <= deadline:
-        last_result = wait_idle(min(3, max(1, int(max_ticks))))
+        last_result = wait_idle(min(max(1, int(poll_ticks)), max(1, int(max_ticks))))
         last_player = player_from(last_result)
         if in_post_state(step, tile_from_player(last_player)):
             return last_result, last_player
@@ -404,9 +408,13 @@ def recover_to_course(course, args, handle, run_id, lap, reason):
     return proc.returncode == 0
 
 
-def run_step(course, step, policy, args, handle, run_id, lap, step_number):
-    player, start_tick = observe_with_tick()
-    player = ensure_run(player, args)
+def run_step(course, step, policy, args, handle, run_id, lap, step_number, current_player=None, current_tick=0):
+    if current_player is None:
+        player, start_tick = observe_with_tick()
+    else:
+        player = current_player
+        start_tick = current_tick
+    player, start_tick = ensure_run(player, args, start_tick)
     variant, decision = choose_variant(policy, step, args)
     variant = nearby_object_override(player, variant)
     approach = variant["approachTile"]
@@ -414,6 +422,7 @@ def run_step(course, step, policy, args, handle, run_id, lap, step_number):
     start_tile = start_player["tile"]
     start_time = time.monotonic()
     reason = None
+    last_tool_result = None
 
     if player.get("isDead") or player.get("isInCombat"):
         reason = "dead_or_combat"
@@ -421,6 +430,7 @@ def run_step(course, step, policy, args, handle, run_id, lap, step_number):
         reason = "wrong_height"
     elif tile_distance(start_tile, approach) > args.approach_radius:
         walk_result = walk_to(approach, args)
+        last_tool_result = walk_result
         player = player_from(walk_result)
         if player.get("isDead") or player.get("isInCombat"):
             reason = "walk_interrupted"
@@ -437,12 +447,15 @@ def run_step(course, step, policy, args, handle, run_id, lap, step_number):
             "height": int(obj_tile.get("height", 0)),
             "option": "first",
         })
+        last_tool_result = interact_result
         if not interact_result.get("success"):
             reason = "interact_failed"
 
     idle_result = None
     if reason is None:
-        idle_result, player = wait_for_post_state(step, step.get("maxTicks", args.step_max_ticks))
+        idle_result, player = wait_for_post_state(
+            step, step.get("maxTicks", args.step_max_ticks), args.post_poll_ticks)
+        last_tool_result = idle_result
 
     end_player = compact_player(player)
     end_tile = end_player["tile"]
@@ -450,7 +463,7 @@ def run_step(course, step, policy, args, handle, run_id, lap, step_number):
     if not success and reason is None:
         reason = "post_state_not_proven"
     duration = time.monotonic() - start_time
-    end_tick = int((idle_result or interact_result or {}).get("serverTick", player.get("serverTick", 0)) or 0)
+    end_tick = response_tick(last_tool_result or {}, start_tick)
     ticks = max(0, end_tick - start_tick)
     result = {
         "runId": run_id,
@@ -478,12 +491,13 @@ def run_step(course, step, policy, args, handle, run_id, lap, step_number):
     }
     update_variant(policy, step, variant, success, result)
     write_event(handle, "step_end", result)
-    return success, result
+    return success, result, player, end_tick
 
 
 def run_lap(course, policy, args, handle, run_id, lap):
     start_time = time.monotonic()
-    start_state = compact_player(observe())
+    current_player, current_tick = observe_with_tick()
+    start_state = compact_player(current_player)
     write_event(handle, "lap_start", {
         "runId": run_id,
         "courseId": course["id"],
@@ -491,13 +505,15 @@ def run_lap(course, policy, args, handle, run_id, lap):
         "startState": start_state,
         "isAgilityCourse": True,
     })
-    step_index = step_index_from_state(course, observe())
+    step_index = step_index_from_state(course, current_player)
     step_results = []
     failure_counts = {}
     success = True
     while step_index < len(course["steps"]):
         step = course["steps"][step_index]
-        ok, result = run_step(course, step, policy, args, handle, run_id, lap, step_index + 1)
+        ok, result, current_player, current_tick = run_step(
+            course, step, policy, args, handle, run_id, lap, step_index + 1,
+            current_player=current_player, current_tick=current_tick)
         step_results.append(result)
         if ok:
             step_index += 1
@@ -507,17 +523,18 @@ def run_lap(course, policy, args, handle, run_id, lap):
             break
         step_failures = failure_counts.get(step["id"], 0) + 1
         failure_counts[step["id"]] = step_failures
-        inferred = step_index_from_state(course, observe())
+        inferred = step_index_from_state(course, current_player)
         if inferred > step_index:
             step_index = inferred
             success = True
             continue
         if step_failures <= args.max_step_retries:
             recover_to_course(course, args, handle, run_id, lap, result.get("reason") or "step_failed")
-            step_index = step_index_from_state(course, observe())
+            current_player, current_tick = observe_with_tick()
+            step_index = step_index_from_state(course, current_player)
             continue
         break
-    end_state = compact_player(observe())
+    end_state = compact_player(current_player)
     duration = time.monotonic() - start_time
     lap_success = success and step_index >= len(course["steps"]) and not end_state["isDead"] and not end_state["isInCombat"]
     lap_result = {
@@ -537,6 +554,49 @@ def run_lap(course, policy, args, handle, run_id, lap):
     }
     write_event(handle, "lap_end", lap_result)
     return lap_result
+
+
+def target_reached(args, player_state):
+    if args.target_agility_level is None:
+        return False
+    return int(player_state.get("agilityLevel", 0) or 0) >= int(args.target_agility_level)
+
+
+def run_route_after_target(args, handle, run_id):
+    if not args.route_after_target:
+        return None
+    command = [
+        sys.executable,
+        str(ROUTE_RUNNER),
+        "--to",
+        args.route_after_target,
+        "--allow-frontier",
+        "--direct-if-preview",
+        "--probe-toward-target",
+        "--max-batches",
+        str(args.route_max_batches),
+        "--run-reserve",
+        args.route_run_reserve,
+    ]
+    if RUN_PROFILE:
+        command.extend(["--profile", RUN_PROFILE])
+    proc = subprocess.run(
+        command,
+        cwd=str(ROOT),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    result = {
+        "runId": run_id,
+        "target": args.route_after_target,
+        "command": command[1:],
+        "returncode": proc.returncode,
+        "stdoutTail": proc.stdout.strip().splitlines()[-20:],
+        "stderr": proc.stderr.strip()[:1200],
+    }
+    write_event(handle, "route_after_target", result)
+    return result
 
 
 def write_summary(path, summary):
@@ -567,6 +627,7 @@ def run(args):
 
     laps = []
     best_lap = None
+    route_result = None
     with log_path.open("a", encoding="utf-8") as handle:
         write_event(handle, "run_start", {
             "runId": run_id,
@@ -588,6 +649,9 @@ def run(args):
                 run_lap(course, policy, args, handle, run_id, 0)
             recover_to_course(course, args, handle, run_id, 0, "preposition")
         for lap in range(1, args.laps + 1):
+            current_state = compact_player(observe())
+            if target_reached(args, current_state):
+                break
             result = run_lap(course, policy, args, handle, run_id, lap)
             laps.append(result)
             if result["success"]:
@@ -599,6 +663,8 @@ def run(args):
                 "lapsRequested": args.laps,
                 "lapsCompleted": len([lap_result for lap_result in laps if lap_result["success"]]),
                 "bestLapSeconds": best_lap,
+                "targetAgilityLevel": args.target_agility_level,
+                "targetReached": target_reached(args, result["endState"]),
                 "logPath": str(log_path),
                 "policyPath": str(policy_path(course["id"])),
                 "laps": laps,
@@ -615,8 +681,29 @@ def run(args):
                 break
             if result["endState"]["isDead"] and args.stop_on_death:
                 break
+            if target_reached(args, result["endState"]):
+                break
         final_state = compact_player(observe())
-        success = len(laps) == args.laps and all(item["success"] for item in laps)
+        target_success = target_reached(args, final_state)
+        success = (
+            (args.target_agility_level is not None and target_success)
+            or (len(laps) == args.laps and all(item["success"] for item in laps))
+        )
+        if success and target_success and args.route_after_target:
+            route_result = run_route_after_target(args, handle, run_id)
+            write_summary(summary_path, {
+                "runId": run_id,
+                "courseId": course["id"],
+                "lapsRequested": args.laps,
+                "lapsCompleted": len([lap_result for lap_result in laps if lap_result["success"]]),
+                "bestLapSeconds": best_lap,
+                "targetAgilityLevel": args.target_agility_level,
+                "targetReached": target_success,
+                "routeAfterTarget": route_result,
+                "logPath": str(log_path),
+                "policyPath": str(policy_path(course["id"])),
+                "laps": laps,
+            })
         write_event(handle, "run_end", {
             "runId": run_id,
             "courseId": course["id"],
@@ -624,6 +711,9 @@ def run(args):
             "lapsRequested": args.laps,
             "lapsCompleted": len([lap_result for lap_result in laps if lap_result["success"]]),
             "bestLapSeconds": best_lap,
+            "targetAgilityLevel": args.target_agility_level,
+            "targetReached": target_success,
+            "routeAfterTarget": route_result,
             "finalState": final_state,
             "logPath": str(log_path),
             "summaryPath": str(summary_path),
@@ -639,6 +729,10 @@ def main(argv=None):
     parser.add_argument("--profile", default=os.environ.get("RS_PROFILE") or os.environ.get("RSBRIDGE_PROFILE") or "")
     parser.add_argument("--course", default="gnome_agility_course")
     parser.add_argument("--laps", type=int, default=10)
+    parser.add_argument("--target-agility-level", type=int)
+    parser.add_argument("--route-after-target")
+    parser.add_argument("--route-run-reserve", default="auto")
+    parser.add_argument("--route-max-batches", type=int, default=80)
     parser.add_argument("--run-id")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--preposition", action="store_true", default=True)
@@ -651,10 +745,11 @@ def main(argv=None):
     parser.add_argument("--approach-radius", type=int, default=0)
     parser.add_argument("--walk-max-ticks", type=int, default=60)
     parser.add_argument("--step-max-ticks", type=int, default=24)
+    parser.add_argument("--post-poll-ticks", type=int, default=1)
     parser.add_argument("--max-walk-distance", type=int, default=48)
     parser.add_argument("--local-recovery-distance", type=int, default=96)
     parser.add_argument("--max-step-retries", type=int, default=1)
-    parser.add_argument("--explore-rate", type=float, default=0.08)
+    parser.add_argument("--explore-rate", type=float, default=0.0)
     parser.add_argument("--untried-bonus", type=float, default=20.0)
     parser.add_argument("--default-step-ticks", type=float, default=24.0)
     parser.add_argument("--failure-penalty", type=float, default=18.0)

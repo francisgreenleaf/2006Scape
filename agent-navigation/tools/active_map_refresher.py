@@ -64,6 +64,7 @@ def status_payload(pid=None):
                 job_id: {
                     "label": job.get("label"),
                     "state": job.get("state"),
+                    "continuous": job.get("continuous"),
                     "lastFinishedAt": job.get("lastFinishedAt"),
                     "lastDurationSeconds": job.get("lastDurationSeconds"),
                     "lastReturnCode": job.get("lastReturnCode"),

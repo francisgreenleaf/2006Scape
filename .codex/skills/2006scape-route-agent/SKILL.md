@@ -176,6 +176,7 @@ Non-aggressive NPCs can still become route-contact risks if the player/user atta
 - Check orient `frontierScore` for coordinate targets; if the proposed frontier's first step goes away from the target, prefer a target-directed probe or local preview.
 - Use `--run-reserve auto` when moving through long or hazard-adjacent routes so normal travel does not drain energy needed for hazards.
 - Use `render_agent_context_map.py` to inspect current location, recent movement, and route segments before replaying inefficient detours. Its default artifacts are timestamped under `.local/context-maps`.
+- Do not treat `Bank table` objects as proof of a bank; they are often decorative. Prefer minimap bank symbols from context maps, actual Bank booth/chest/Banker evidence, `inBankArea=true`, or a proven bank interface.
 - Always re-observe after user intervention.
 - Door routes need multi-object chain proof.
 - Keep topology PNGs canonical: replace `agent-navigation/topology/surface-routes.png`, do not create timestamp/version clutter.

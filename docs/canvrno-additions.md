@@ -21,6 +21,7 @@ This fork adds a local Codex agent layer, route-learning tools, and documentatio
 - Added `agent-navigation/` as the repo-local movement memory system.
 - Added route data for places, routes, hazards, and route regression tests.
 - Added `navdb.py`, `router.py`, `route_runner.py`, `route_eval.py`, and `marathon_runner.py` for validating routes, planning paths, running learned routes, and evaluating route behavior.
+- Added `script_registry.py` and `agent-navigation/data/script_registry.json` so agents can find helper scripts by fuzzy name, wildcard, tag, description, or alias without loading broad docs.
 - Added screenshot helpers and compact observation tools for route debugging.
 
 ## Movement Telemetry And Maps

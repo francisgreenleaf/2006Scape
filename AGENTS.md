@@ -128,6 +128,7 @@ Navigation project:
 - Repo-local route memory lives in `agent-navigation/`.
 - For repo-side gameplay control, prefer `agent-navigation/tools/rs-tool.sh <tool> '<json-args>'`; it reads the active profile session file and posts to the local bridge.
 - Use `agent-navigation/tools/navdb.py validate`, `self-test`, `next-step`, `route-risk`, and `record-observation` while learning routes.
+- Use `agent-navigation/tools/script_registry.py search <query>` to find helper scripts by fuzzy name, wildcard, tag, or description before guessing filenames.
 - Use `agent-navigation/tools/capture-client-screenshot.sh --prefix <short-reason>` when route state is visually ambiguous, especially doors, walls, gates, stairs, blocked movement, wrong side of an object, or unexpected HP/combat changes. Record useful screenshots through `record-observation --screenshot`.
 - Current focus: safe routing with hazards, food/combat checks, run-energy checks, and verified south Varrock movement around the dark-wizard approach.
 

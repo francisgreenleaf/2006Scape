@@ -122,6 +122,13 @@ Agent sessions are local gameplay runs. The model is expected to observe first, 
 
 Current navigation work is tracked in `agent-navigation/`. That folder stores places, route memories, hazards, route tests, and live observations. The most recent focus is safe travel, including run-energy requirements around south Varrock and the verified Varrock square to Champions' Guild stairs route.
 
+To discover repo helper scripts without knowing exact filenames, use the lightweight registry:
+
+```sh
+python3 agent-navigation/tools/script_registry.py search "route*"
+python3 agent-navigation/tools/script_registry.py show agility --json
+```
+
 Useful checks while developing the bridge:
 
 ```sh

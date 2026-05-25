@@ -1,6 +1,6 @@
 ---
 name: 2006scape
-description: "Use as the single entry skill for work in /Users/kevin/Documents/2006Scape, especially when a task broadly mentions 2006Scape or the right specialized workflow is unclear. Provides routing guidance, boundaries, starter commands, and child-skill pointers for runtime/bridge sessions, route exploration, route-planner/ML graph development, object transitions, frontier exploration, compact screenshots, gameplay progression, cache maps, map visualization, session logs, bridge-tool development, and general repo editing without preloading every specialized skill body."
+description: "Use as the single entry skill for work in /Users/kevin/Documents/2006Scape, especially when a task broadly mentions 2006Scape or the right specialized workflow is unclear. Provides routing guidance, boundaries, starter commands, and child-skill pointers for runtime/bridge sessions, script discovery, route exploration, route-planner/ML graph development, object transitions, frontier exploration, compact screenshots, gameplay progression, cache maps, map visualization, session logs, bridge-tool development, and general repo editing without preloading every specialized skill body."
 ---
 
 # 2006Scape
@@ -28,6 +28,7 @@ Always keep bridge tokens, API keys, saved-character secrets, passwords, and non
 | Live unknown-area expansion, short probes, frontier naming, coordinate targets, and hazard/death evidence | `.codex/skills/2006scape-frontier-exploration/SKILL.md` | Dry-run `route_runner.py --to X,Y,H --allow-frontier --direct-if-preview --probe-toward-target` before moving | Avoid destination gambling; every probe should produce reusable route, blocker, hazard, or frontier evidence |
 | Compact visual debugging of the live Java client | `.codex/skills/2006scape-screenshot-capture/SKILL.md` | `agent-navigation/tools/capture-cardinal-screenshots.sh --prefix reason` | Prefer `765x503` client captures; do not load full desktop screenshots unless compact capture fails |
 | Normal gameplay progression through in-game mechanics | `.codex/skills/2006scape-gameplay-progression/SKILL.md` | `agent-navigation/tools/observe-slim.sh`, then use batch `rs` tools through `agent-navigation/tools/rs-tool.sh` | Not for route DB schema edits, bridge source changes, spawned items, or direct player-state edits |
+| Discovering or running repo helper scripts by fuzzy name, wildcard, tag, or metadata | `.codex/skills/2006scape-script-registry/SKILL.md` | `python3 agent-navigation/tools/script_registry.py search QUERY` | Keep script descriptions in `agent-navigation/data/script_registry.json`, not in this umbrella skill |
 | Static cache-backed world map decoding/rendering, GameCache terrain/water/object/mapscene layers, bounded context maps, or map data export | `.codex/skills/2006scape-cache-map/SKILL.md` | For agent context, use `python3 agent-navigation/tools/render_agent_context_map.py --center latest` | Do not recreate the retired screenshot/minimap fog sampler or require a live client for static map work |
 | Map presentation, route overlays, topology styling, labels, legends, visual QA, recent-path/segment context maps, or sharing map images | `.codex/skills/2006scape-map-visualization/SKILL.md` | For agent segment context, use `python3 agent-navigation/tools/render_agent_context_map.py --segment-from FROM_PLACE --segment-to TO_PLACE` | Do not restart gameplay runtime for visual-only work; use `cache-map` for renderer internals |
 | Agent session logs, rollout transcript enrichment, Markdown summaries, reports, redaction, or profile/personality artifacts | `.codex/skills/2006scape-agent-session-logs/SKILL.md` | Read targeted `2006Scape Server/data/logs/agent-sessions/...` files and matching `~/.codex/sessions/.../rollout-*.jsonl` | Treat logs as evidence, not controls; do not expose secrets or mutate live gameplay |
@@ -90,6 +91,12 @@ agent-navigation/tools/capture-client-screenshot.sh --prefix reason --native-siz
 agent-navigation/tools/observe-slim.sh
 agent-navigation/tools/rs-tool.sh plan_combat_training '{"targetLevel":10}'
 agent-navigation/tools/rs-tool.sh train_combat '{"npc":"goblin"}'
+
+# 2006scape-script-registry: discover or run known helper scripts
+python3 agent-navigation/tools/script_registry.py list
+python3 agent-navigation/tools/script_registry.py search "agility"
+python3 agent-navigation/tools/script_registry.py show route --json
+python3 agent-navigation/tools/script_registry.py run agility -- --laps 10
 
 # 2006scape-cache-map: static cache-backed map rendering
 agent-navigation/tools/cache_world_map.py --bounds 3200,3200,3210,3210 --output /tmp/2006scape-cache-map-smoke.png --summary /tmp/2006scape-cache-map-smoke.json

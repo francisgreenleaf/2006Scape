@@ -9,6 +9,7 @@ For the reliable server/client/login/bridge startup flow used before route explo
 - `data/places.json`: named places, aliases, arrival radii, safety notes, and canonical tiles.
 - `data/routes.json`: route memories between places, including walk tiles, door/gate/floor interactions, blockers, run policy, and evidence links.
 - `data/hazards.json`: known danger zones, NPC risk, requirements, and avoidance notes.
+- `data/script_registry.json`: searchable metadata for repo helper scripts, their aliases, tags, descriptions, and examples.
 - `data/agility_courses.json`: agility course obstacle definitions for `tools/agility_runner.py`.
 - `data/agility/policies/*.policy.json`: ignored local adaptive course timing/failure state.
 - `data/agility/runs/`: ignored local agility smoke/lap JSONL evidence and summaries.
@@ -22,8 +23,9 @@ For the reliable server/client/login/bridge startup flow used before route explo
 - `tools/capture-client-screenshot.sh`: macOS helper that captures the running Java client window and prints the screenshot path as JSON.
 - `tools/capture-cardinal-screenshots.sh`: compact four-angle screenshot helper for north/east/south/west visual route debugging.
 - `tools/rs-tool.sh`: small bridge wrapper for calling `rs` tools through the active local session without hand-writing `curl` each time.
+- `tools/script_registry.py`: lightweight script catalog for listing, wildcard searching, inspecting, and running registered helper scripts by fuzzy name.
 - `tools/agility_runner.py`: bridge-backed agility course runner that keeps obstacle execution and timing evidence out of the AI token loop.
-- `tools/active_map_refresher.py`: background controller for keeping canonical `surface-routes`, profile movement, `Heat Map`, and profile fog exports current. Use it for `start`, `status`, `logs`, `stop`, and `restart`.
+- `tools/active_map_refresher.py`: background controller for keeping canonical `surface-routes`, profile movement, `Heat Map`, and profile fog exports current. Use it for `start`, `status`, `logs`, `stop`, and `restart`; V4/profile movement is a continuous hot loop.
 - `tools/refresh_active_maps.py`: lower-level foreground worker used by `active_map_refresher.py`. It writes status/temp files under ignored `.local/map-refresh/` and does not refresh the static full cache map unless missing or requested.
 
 ## Unified Movement Telemetry
@@ -50,6 +52,19 @@ Stationary `event:"state"` idle heartbeat records are also ignored by route/map 
 For multi-character work, set `RS_PROFILE=<name>` or pass `--trace-profile <name>` so route planning and maps use only that profile's trace evidence. Legacy unscoped traces are excluded when a trace profile is active unless `--include-unscoped-traces` is explicitly passed.
 
 The shared schema is `schema/movement_trace.schema.json`. New producers should keep the common fields stable: `schemaVersion`, `timestamp`, `event`, `tile`, `previousTile`, `moved`, `runEnabled`, `runEnergy`, `runEnergySpent`, `hitpoints`, `hitpointsLost`, `isInCombat`, `isDead`, `tool`, `traceId`, and object fields for object interactions.
+
+## Script Registry
+
+Use the registry when you know what you want to do but not the exact helper script name. It searches ids, names, aliases, descriptions, tags, and wildcard patterns without loading broad repo context.
+
+```sh
+python3 agent-navigation/tools/script_registry.py list
+python3 agent-navigation/tools/script_registry.py search "route*"
+python3 agent-navigation/tools/script_registry.py show agility --json
+python3 agent-navigation/tools/script_registry.py run navdb -- validate
+```
+
+Keep durable descriptions and examples in `data/script_registry.json` so skills can stay short and point agents to the registry instead of duplicating script docs.
 
 ## Learning Workflow
 
@@ -117,6 +132,7 @@ Do not mark a route `verified` until it has been completed from start to destina
 ```sh
 python3 agent-navigation/tools/agility_runner.py --course gnome_agility_course --laps 1 --dry-run
 python3 agent-navigation/tools/agility_runner.py --course gnome_agility_course --laps 10
+python3 agent-navigation/tools/agility_runner.py --course gnome_agility_course --target-agility-level 25 --continue-on-failure
 RS_PROFILE=MrGem python3 agent-navigation/tools/agility_runner.py --course gnome_agility_course --laps 10
 ```
 
