@@ -128,7 +128,8 @@ Navigation project:
 - Repo-local route memory lives in `agent-navigation/`.
 - For repo-side gameplay control, prefer `agent-navigation/tools/rs-tool.sh <tool> '<json-args>'`; it reads the active profile session file and posts to the local bridge.
 - For new gameplay automation, read `agent-navigation/scripting-primitives.md` and compose stable bridge primitives in Python instead of adding new bespoke Java `rs.*` tools. Keep Java changes for missing general primitives only.
-- Use `agent-navigation/tools/navdb.py validate`, `self-test`, `next-step`, `route-risk`, and `record-observation` while learning routes.
+- Use ML1 `python3 agent-navigation/ml-routing/route_ml.py define --from X,Y,H --to PLACE_OR_TILE --combat-level N --food N --run-energy N --run-enabled` for normal A-to-B route selection. Bare `route_runner.py --to ...`, `navdb.py next-step`, and `router.py plan` are legacy diagnostics/fallback debugging, not the preferred agent route method.
+- Use `agent-navigation/tools/navdb.py validate`, `self-test`, `next-step`, `route-risk`, and `record-observation` while learning or validating route data.
 - Use `agent-navigation/tools/script_registry.py search <query>` to find helper scripts by fuzzy name, wildcard, tag, or description before guessing filenames.
 - Use `agent-navigation/tools/character_memory.py show --profile <name> --json` at the start of long gameplay/progression turns when durable profile context could matter. Write sparse memories/goals only for noteworthy, future-useful lessons such as equipment upgrades, strategic preferences, or recurring blockers. The files are profile-scoped under ignored `agent-navigation/.local/character-memory/<profile>/`; route facts belong in `agent-navigation/data/`, and routine progress belongs in session logs.
 - Use `agent-navigation/tools/capture-client-screenshot.sh --prefix <short-reason>` when route state is visually ambiguous, especially doors, walls, gates, stairs, blocked movement, wrong side of an object, or unexpected HP/combat changes. Record useful screenshots through `record-observation --screenshot`.
@@ -150,16 +151,17 @@ Agent session logging:
 - Write the Markdown summary as a short, readable story of the session: what the agent set out to do, what it tried, where the world pushed back, how it adapted, and where the player ended up.
 - When available, read the corresponding Codex rollout transcript under `~/.codex/sessions/<yyyy>/<MM>/<dd>/` and weave the agent's reasoning process into the story. Use the visible transcript events: user goal, assistant updates, tool calls, tool results, retries, course corrections, and final outcome.
 - Summarize the reasoning process as an observable decision trail, not as raw hidden chain-of-thought. It should explain why the agent chose each major step, what evidence changed its plan, and how it interpreted tool results.
-- Include a brief reflection on how the session felt from inside the harness, grounded in observable events rather than exaggerated emotion. It should describe confidence, uncertainty, friction, surprise, or satisfaction when those reactions help explain the agent's behavior.
-- Include a concise assessment of what the agent appears to be learning over time in the harness: which patterns are becoming easier, which failures repeated, and what would make the next session more capable.
+- Include a concise operational reflection only when it explains a decision, blocker, or future safety constraint. Keep the tone serious and factual; do not add persona, self-talk, or emotional color for routine progress.
+- Include a concise assessment of what the harness is learning over time: which patterns are becoming easier, which failures repeated, and what would make the next session more capable.
 - Logs and summaries must explicitly capture in-game failures and blockers, including player death, missing required tools or equipment, insufficient inventory space, missing skill requirements, unreachable targets, unavailable objects/NPCs/items, closed or wrong interfaces, and any state that prevented normal gameplay execution.
 - Do not write session tokens, API keys, passwords, secrets, or other credentials to either log format; redact sensitive fields before logging.
 - Use `com.rs2.agent.AgentSessionReport` for rollups over existing JSONL logs. It writes short reports to `2006Scape Server/data/logs/agent-sessions/reports/<yyyy-MM-dd>/summary-<HHMMSS>Z.md` and keeps `2006Scape Server/data/logs/agent-sessions/reports/canonical-agent-log-index.md` as the canonical index. Reports should call out new or interesting behavior, top tools, repeated blockers, death/failure observations, connected multi-day sessions, and concrete harness improvements.
-- Every logged-in profile should also maintain a derived personality artifact under `2006Scape Server/data/logs/agent-sessions/profiles/<profile>/agent-personality.md`. This is first-person profile memory, not a raw transcript: durable beliefs, slow personality drift, self-formed goals, and a short bounded self-talk log synthesized from repeated sanitized session events. The self-talk should let the agent talk to itself like a person about progress, mistakes, confidence, caution, and retrospectives, while staying grounded in observable events. Keep it account-scoped, redact secrets, and expose it through `rs.observe_state` as `agentPersonality` so autonomous turns can let it gently guide preparation, caution, route choice, self-reflection, and goal suggestions without overriding the player's command. This memory is available after `rs.observe_state`; it is not a separate preloaded `AGENTS.md`-style instruction file.
+- Every logged-in profile should also maintain a derived profile-memory artifact under `2006Scape Server/data/logs/agent-sessions/profiles/<profile>/agent-personality.md`. This is operational profile memory, not a raw transcript or character voice: durable risk notes, preparation habits, repeated blockers, and bounded recent notes synthesized from sanitized session events. Keep it account-scoped, redact secrets, and expose it through `rs.observe_state` as `agentPersonality` so autonomous turns can use it for preparation, caution, and route choice without quoting it, roleplaying it, or overriding the player's command. This memory is available after `rs.observe_state`; it is not a separate preloaded `AGENTS.md`-style instruction file.
 
 Dynamic tools currently supported:
 
 - `rs.observe_state`
+- `rs.observe_state_XS`
 - `rs.set_run`
 - `rs.send_public_chat`
 - `rs.plan_combat_training`
@@ -172,10 +174,14 @@ Dynamic tools currently supported:
 - `rs.select_interface_item`
 - `rs.walk_to_tile`
 - `rs.walk_to_tile_until_arrived`
+- `rs.walk_to_tile_until_arrived_XS`
 - `rs.travel_to_landmark`
 - `rs.travel_to_landmark_until_arrived`
+- `rs.travel_to_landmark_until_arrived_XS`
 - `rs.wait_ticks`
+- `rs.wait_ticks_XS`
 - `rs.wait_until_idle`
+- `rs.wait_until_idle_XS`
 - `rs.find_nearest_npc`
 - `rs.find_training_npc`
 - `rs.interact_npc`
@@ -183,11 +189,14 @@ Dynamic tools currently supported:
 - `rs.train_combat`
 - `rs.train_smithing_profit`
 - `rs.find_nearest_object`
+- `rs.find_nearest_object_XS`
 - `rs.find_nearest_rock`
 - `rs.find_nearest_tree`
 - `rs.set_combat_style`
 - `rs.equip_item`
 - `rs.unequip_item`
+- `rs.unequip_item_XS`
+- `rs.unequip_items_XS`
 - `rs.equip_best_items`
 - `rs.eat_item`
 - `rs.eat_best_food`
@@ -206,7 +215,9 @@ Dynamic tools currently supported:
 - `rs.fletch_logs_until_inventory_empty`
 - `rs.drop_inventory_items`
 - `rs.deposit_inventory_items`
+- `rs.deposit_inventory_items_XS`
 - `rs.withdraw_bank_items`
+- `rs.food_bank_XS`
 - `rs.deposit_excess_coins`
 - `rs.mine_ore`
 - `rs.mine_ore_until_inventory_full`
@@ -220,7 +231,9 @@ Gameplay guardrails:
 
 - Keep actions server-authoritative and routed through existing mechanics such as `PlayerAssistant.playerWalk`, `CombatAssistant.attackNpc`, `ClickObject`, and `Mining.startMining`.
 - Prefer primitive-backed external scripts for new skill loops. Use `use_item_on_item`, `use_item_on_object`, `click_interface_button`, `select_interface_item`, `interact_object`, `interact_npc`, bank/shop tools, combat tools, and `wait_until_idle` before adding Java skill-specific tools. Existing legacy tools stay for compatibility.
-- Prefer server-side batch tools for long-running actions. Use `travel_to_landmark_until_arrived` or `walk_to_tile_until_arrived` instead of travel/walk plus repeated one-tick waits, `mine_ore_until_inventory_full` or `chop_tree_until_inventory_full` instead of polling per resource, and `wait_until_idle` after production actions such as smelting, smithing, cooking, fishing, or combat waits.
+- Prefer XS dynamic tools when their compact result is enough: `observe_state_XS`, `walk_to_tile_until_arrived_XS`, `travel_to_landmark_until_arrived_XS`, `wait_ticks_XS`, `wait_until_idle_XS`, `find_nearest_object_XS`, `deposit_inventory_items_XS`, `unequip_items_XS`, and `food_bank_XS`. Use full tools only when XS omits a field needed for debugging, complete evidence, or a new workflow.
+- Prefer server-side batch tools for long-running actions. Use `travel_to_landmark_until_arrived_XS` or `walk_to_tile_until_arrived_XS` instead of travel/walk plus repeated one-tick waits, `mine_ore_until_inventory_full` or `chop_tree_until_inventory_full` instead of polling per resource, and `wait_until_idle_XS` after production actions such as smelting, smithing, cooking, fishing, or combat waits.
+- For banking and equipment cleanup, batch intent into one call. `deposit_inventory_items_XS` accepts `itemIds` to deposit multiple item types at once and `keepFoodCount` to preserve food; `unequip_items_XS` accepts `equipmentSlots`, `slotNames`, `itemIds`, `names`/`items`, or `all=true` to unequip several items without looping.
 - Treat a batch tool response as the next observation; do not immediately call `observe_state` unless the returned state is missing needed context. When waiting on a long-running batch command, estimate the likely completion interval from `maxTicks` or the action loop and poll near that time instead of every few seconds, unless combat, death, a blocker, or near-term completion is likely.
 - Do not add screen automation, admin teleports, item spawning, or direct player state edits for agent behavior.
 - Preserve session scoping: reject offline, disconnected, dead, expired-token, and wrong-player sessions.

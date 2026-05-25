@@ -110,7 +110,7 @@
       "name": "Cowhide Combat Runner",
       "path": "agent-navigation/tools/cowhide_combat_runner.py",
       "kind": "gameplay_runner",
-      "description": "Runs tight normal-gameplay cow combat for MrFlame-style early melee training: stays local inside the Lumbridge cow pen while reachable cows exist, handles the timed cow-pen gate transition, uses short fight/drop polling for fast Cowhide pickup, banks hides at Al Kharid through the compact bank-loadout policy, buys/eats kebabs as needed, records JSONL evidence, and uses route_runner.py only for real travel legs.",
+      "description": "Runs tight normal-gameplay cow combat for MrFlame-style early melee training: stays local inside the Lumbridge cow pen while reachable cows exist, handles the timed cow-pen gate transition, uses short fight/drop polling for fast Cowhide pickup, banks hides at Al Kharid through the compact bank-loadout policy, buys/eats kebabs as needed, can buy/equip Mithril scimitar when Attack allows, records JSONL evidence, exposes cooperative --status/--request-stop control files, and currently uses legacy route_runner.py compatibility paths only for real travel legs.",
       "aliases": [
         "cowhide",
         "cow combat",
@@ -130,6 +130,8 @@
         "routing"
       ],
       "examples": [
+        "python3 agent-navigation/tools/cowhide_combat_runner.py --status",
+        "python3 agent-navigation/tools/cowhide_combat_runner.py --request-stop",
         "python3 agent-navigation/tools/script_registry.py run cowhide -- --target-attack 20 --target-strength 20 --target-defence 5 --quiet",
         "python3 agent-navigation/tools/cowhide_combat_runner.py --stop-when-inventory-full --no-final-bank --quiet",
         "python3 agent-navigation/tools/cowhide_combat_runner.py --target-attack 20 --target-strength 20 --target-defence 5 --max-cycles 25"
@@ -214,6 +216,132 @@
       ]
     },
     {
+      "id": "catherby_food_runner",
+      "name": "Catherby Food Runner",
+      "path": "agent-navigation/tools/catherby_food_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Runs Catherby fish, cook, drop-burnt, and bank cycles with proven local shore/range/bank fast paths plus ML1 fallback, Catherby south range-house door handling, fishing-spot reacquisition, level-aware method selection (shrimp, rod+bait sardine/herring, shrimp/anchovies, tuna, lobster, tuna/swordfish), Catherby fishing-shop supply buying, progress checks, compact bank policy deposits, cooperative status/stop controls, passive-trace efficiency reporting, and stale-runtime cook_food fallback only when primitive cooking makes no progress.",
+      "aliases": [
+        "catherby-food",
+        "catherby food",
+        "catherby fishing",
+        "catherby cooking",
+        "fish cook bank",
+        "fish-cook-bank"
+      ],
+      "tags": [
+        "gameplay",
+        "fishing",
+        "cooking",
+        "banking",
+        "catherby",
+        "runner",
+        "ml-routing"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/catherby_food_runner.py --cycles 1 --quiet",
+        "python3 agent-navigation/tools/script_registry.py run catherby-food -- --target-fishing-level 20 --target-cooking-level 20 --quiet",
+        "python3 agent-navigation/tools/catherby_food_runner.py --status --quiet",
+        "python3 agent-navigation/tools/catherby_food_runner.py --efficiency-report --quiet",
+        "python3 agent-navigation/tools/catherby_food_runner.py --request-stop --quiet"
+      ]
+    },
+    {
+      "id": "catherby_food_runner_XS",
+      "name": "Catherby Food Runner XS",
+      "path": "agent-navigation/tools/catherby_food_runner_XS.py",
+      "kind": "gameplay_support",
+      "description": "Extra-slim status/control wrapper for the Catherby fish/cook/bank runner. Combines cooperative status and passive-trace efficiency into one compact JSON response; delegates request-stop/clear-stop safely.",
+      "aliases": [
+        "catherby-food-xs",
+        "catherby xs",
+        "catherby status xs",
+        "fish cook bank xs"
+      ],
+      "tags": [
+        "gameplay",
+        "fishing",
+        "cooking",
+        "banking",
+        "catherby",
+        "runner",
+        "xs"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/catherby_food_runner_XS.py --profile MrFlame",
+        "python3 agent-navigation/tools/catherby_food_runner_XS.py --request-stop --profile MrFlame"
+      ]
+    },
+    {
+      "id": "runner_status_XS",
+      "name": "Runner Status XS",
+      "path": "agent-navigation/tools/runner_status_XS.py",
+      "kind": "gameplay_support",
+      "description": "Compact status reader for cooperative gameplay runners. For Catherby food runs it reports state, reason, player, stop files, route evidence path, and passive-trace efficiency without touching the live game.",
+      "aliases": [
+        "runner-status-xs",
+        "runner xs",
+        "status xs",
+        "active runner"
+      ],
+      "tags": [
+        "gameplay",
+        "runner",
+        "status",
+        "xs"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/runner_status_XS.py --profile MrFlame",
+        "python3 agent-navigation/tools/runner_status_XS.py --list"
+      ]
+    },
+    {
+      "id": "food_bank_XS",
+      "name": "Food Bank XS",
+      "path": "agent-navigation/tools/food_bank_XS.py",
+      "kind": "gameplay_support",
+      "description": "Compact food, bank, equipment, and inventory summary for cooking, fishing, banking, and combat-prep decisions without loading a full observe_state payload.",
+      "aliases": [
+        "food-bank-xs",
+        "bank food xs",
+        "food inventory xs",
+        "bank summary xs"
+      ],
+      "tags": [
+        "gameplay",
+        "banking",
+        "food",
+        "inventory",
+        "xs"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/food_bank_XS.py"
+      ]
+    },
+    {
+      "id": "object_search_XS",
+      "name": "Object Search XS",
+      "path": "agent-navigation/tools/object_search_XS.py",
+      "kind": "gameplay_support",
+      "description": "Compact object search wrapper. On failed object lookup it returns nearby object candidates so agents can adjust name, id, or reachability without a full observation.",
+      "aliases": [
+        "object-search-xs",
+        "find object xs",
+        "nearest object xs",
+        "object candidates"
+      ],
+      "tags": [
+        "gameplay",
+        "objects",
+        "debugging",
+        "xs"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/object_search_XS.py --name range --max-distance 20",
+        "python3 agent-navigation/tools/object_search_XS.py --object-ids 1530,2728"
+      ]
+    },
+    {
       "id": "smithing_runner",
       "name": "Primitive Smithing Runner",
       "path": "agent-navigation/tools/smithing_runner.py",
@@ -240,25 +368,100 @@
       ]
     },
     {
-      "id": "route_runner",
-      "name": "Route Runner",
-      "path": "agent-navigation/tools/route_runner.py",
+      "id": "ml_route",
+      "name": "ML1 Route Definition",
+      "path": "agent-navigation/ml-routing/route_ml.py",
       "kind": "navigation_runner",
-      "description": "Runs learned routes and frontier probes using graph planning, local clipped previews, hazard checks, run-energy policy, per-batch run diagnostics, and optional JSONL run-efficiency evidence.",
+      "description": "Preferred ML1 route API for normal A-to-B routing. Returns compact routeSteps, runPlan/runSegments, safety review fields, persisted route-definition artifacts, and feedback commands. Use define before live travel; bare route_runner.py is deprecated for normal agent routing.",
       "aliases": [
+        "ml-route",
+        "ml1",
+        "ai route",
+        "ai router",
         "route",
-        "navigate",
+        "route ml",
         "travel",
         "routing"
       ],
       "tags": [
         "navigation",
         "routing",
-        "frontier",
-        "runner"
+        "ml",
+        "preferred"
       ],
       "examples": [
-        "python3 agent-navigation/tools/script_registry.py run route -- --to ardougne --allow-frontier --direct-if-preview --probe-toward-target --run-reserve auto",
+        "python3 agent-navigation/tools/script_registry.py run ml1 -- define --from X,Y,H --to PLACE --combat-level N --food N --run-energy N --run-enabled",
+        "python3 agent-navigation/ml-routing/route_ml.py define --from X,Y,H --to PLACE --combat-level N --food N --run-energy N --run-enabled"
+      ]
+    },
+    {
+      "id": "execute_route_definition",
+      "name": "ML1 Route Step Executor",
+      "path": "agent-navigation/tools/execute_route_definition.py",
+      "kind": "navigation_runner",
+      "description": "Executes a persisted ML1 route definition by following routeSteps through normal bridge walk primitives, eating at a safer default HP threshold, observing nearby NPC context on combat or HP loss, and writing route_batch plus route_outcome evidence for future ML exports.",
+      "aliases": [
+        "ml-route-executor",
+        "route-definition-executor",
+        "execute-route-definition",
+        "follow-route-steps"
+      ],
+      "tags": [
+        "navigation",
+        "routing",
+        "ml",
+        "executor",
+        "evidence"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/execute_route_definition.py --route-definition agent-navigation/.local/ml-route-definitions/ROUTE.json --run-mode auto --eat-at 10",
+        "python3 agent-navigation/tools/execute_route_definition.py --route-definition agent-navigation/.local/ml-route-definitions/ROUTE.json --run-mode never --eat-at 10"
+      ]
+    },
+    {
+      "id": "route_failure_XS",
+      "name": "Route Failure XS",
+      "path": "agent-navigation/tools/route_failure_XS.py",
+      "kind": "navigation_support",
+      "description": "Compact reader for ML1 route executor evidence. Reports latest route outcome, last batch, combat/death/HP-loss failures, final tile, and route evidence path without loading full executor logs.",
+      "aliases": [
+        "route-failure-xs",
+        "route evidence xs",
+        "route status xs",
+        "route recovery"
+      ],
+      "tags": [
+        "navigation",
+        "routing",
+        "evidence",
+        "failure",
+        "xs"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/route_failure_XS.py",
+        "python3 agent-navigation/tools/route_failure_XS.py --evidence-jsonl agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+      ]
+    },
+    {
+      "id": "route_runner",
+      "name": "Route Runner (Deprecated)",
+      "path": "agent-navigation/tools/route_runner.py",
+      "kind": "navigation_runner",
+      "description": "Deprecated standalone route method. Keep for legacy diagnostics and compatibility executor checks only; normal agent routing should use ML1 route_ml.py define and follow routeSteps.",
+      "aliases": [
+        "legacy-route",
+        "navigate",
+        "route-runner"
+      ],
+      "tags": [
+        "navigation",
+        "routing",
+        "frontier",
+        "runner",
+        "deprecated"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/script_registry.py run legacy-route -- --to ardougne --orient --json --run-reserve auto",
         "python3 agent-navigation/tools/route_runner.py --to PLACE --orient --json --run-reserve auto"
       ]
     },
@@ -307,26 +510,101 @@
       ]
     },
     {
+      "id": "agent_session_XS",
+      "name": "Agent Session XS",
+      "path": "agent-navigation/tools/agent_session_XS.py",
+      "kind": "log_tool",
+      "description": "Compact latest/current agent-session log reader. Summarizes top tools, recent outcomes, failures, current player state, and log paths without loading large JSONL or Markdown files into context.",
+      "aliases": [
+        "agent-session-xs",
+        "session xs",
+        "latest rollout xs",
+        "tool usage xs"
+      ],
+      "tags": [
+        "logs",
+        "agent-session",
+        "usage",
+        "xs"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/agent_session_XS.py --profile MrFlame --latest",
+        "python3 agent-navigation/tools/agent_session_XS.py --profile MrFlame --date 2026-05-25 --recent 6"
+      ]
+    },
+    {
+      "id": "server_tick_report",
+      "name": "Server Tick Report",
+      "path": "agent-navigation/tools/server_tick_report.py",
+      "kind": "runtime_tool",
+      "description": "Summarizes recent /tmp/2006scape-server.log cycle-duration warnings, sampled slow cycles, and tick health in compact JSON without restarting or touching the live JVM.",
+      "aliases": [
+        "server-tick",
+        "server tick",
+        "tick report",
+        "cycle warnings",
+        "server warnings",
+        "server log"
+      ],
+      "tags": [
+        "runtime",
+        "diagnostics",
+        "server",
+        "logs"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/script_registry.py run server-tick -- --json",
+        "python3 agent-navigation/tools/server_tick_report.py --json"
+      ]
+    },
+    {
+      "id": "map_grid",
+      "name": "Map Grid API",
+      "path": "agent-navigation/tools/map_grid.py",
+      "kind": "map_tool",
+      "description": "Converts level-0 world tiles to 32-tile reference grid cells, returns cell bounds, and lists grid cells visible in bounded maps.",
+      "aliases": [
+        "map grid",
+        "grid cell",
+        "grid reference",
+        "tile to cell"
+      ],
+      "tags": [
+        "map",
+        "grid",
+        "context",
+        "routing"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/map_grid.py locate --tile 3222,3218,0",
+        "python3 agent-navigation/tools/map_grid.py bounds --cell AU21 --padding-tiles 4"
+      ]
+    },
+    {
       "id": "context_map",
       "name": "Agent Context Map",
       "path": "agent-navigation/tools/render_agent_context_map.py",
       "kind": "map_tool",
-      "description": "Renders bounded current-location or route-segment cache maps with nearby markers and machine-readable JSON summaries.",
+      "description": "Renders bounded current-location, grid-cell, or route-segment cache maps with nearby markers, the level-0 reference grid, and machine-readable JSON summaries.",
       "aliases": [
         "context map",
         "context-map",
         "map context",
         "local map",
+        "grid map",
+        "grid cell map",
         "segment map"
       ],
       "tags": [
         "map",
         "context",
+        "grid",
         "routing",
         "visualization"
       ],
       "examples": [
         "python3 agent-navigation/tools/script_registry.py run context-map -- --center latest",
+        "python3 agent-navigation/tools/render_agent_context_map.py --grid-cell AU21 --grid-padding-tiles 4",
         "python3 agent-navigation/tools/render_agent_context_map.py --segment-from FROM_PLACE --segment-to TO_PLACE"
       ]
     },

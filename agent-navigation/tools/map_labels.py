@@ -52,10 +52,10 @@ STATIC_LABELS = [
         "color": "yellow",
     },
     {
-        "text": "Ice Mountain",
-        "tile": {"x": 3008, "y": 3478, "height": 0},
-        "dx": -64,
-        "dy": -30,
+        "text": "White Wolf Mountain",
+        "tile": {"x": 2870, "y": 3437, "height": 0},
+        "dx": -88,
+        "dy": -24,
         "color": "white",
         "outline": True,
     },
@@ -107,6 +107,22 @@ STATIC_LABELS = [
         "dx": -28,
         "dy": -18,
         "color": "yellow",
+    },
+    {
+        "text": "Dark Wizards",
+        "tile": {"x": 3222, "y": 3372, "height": 0},
+        "dx": -50,
+        "dy": -18,
+        "color": "white",
+        "outline": True,
+    },
+    {
+        "text": "Highwayman",
+        "tile": {"x": 3006, "y": 3275, "height": 0},
+        "dx": -48,
+        "dy": -18,
+        "color": "white",
+        "outline": True,
     },
 ]
 

@@ -15,7 +15,13 @@ import sys
 import textwrap
 from pathlib import Path
 
-from cache_world_map import CACHE_DIR, draw_world_map, load_background_sprites, load_cache_world_map
+from cache_world_map import (
+    CACHE_DIR,
+    LEVEL0_SURFACE_BOUNDS,
+    draw_world_map,
+    load_background_sprites,
+    load_cache_world_map,
+)
 from map_labels import (
     MAP_LABELS_PATH,
     PLACES_PATH,
@@ -1829,6 +1835,154 @@ def filter_fogged_pois(pois, nodes, args):
     return visible, len(pois) - len(visible), seen_radius
 
 
+def reference_grid_column_label(index):
+    index = int(index)
+    label = ""
+    while True:
+        label = chr(ord("A") + (index % 26)) + label
+        index = index // 26 - 1
+        if index < 0:
+            return label
+
+
+def reference_grid_datum(args, bounds):
+    origin = getattr(args, "reference_grid_origin", "local")
+    if origin == "level0":
+        return dict(LEVEL0_SURFACE_BOUNDS), "level0"
+    return dict(bounds), "local"
+
+
+def reference_grid_row_label(row_index, total_rows, row_origin):
+    if row_origin == "south":
+        return str(int(row_index) + 1)
+    return str(max(1, int(total_rows) - int(row_index)))
+
+
+def draw_reference_grid(canvas, bounds, map_x0, map_y0, map_w, map_h, work_scale, args):
+    if not getattr(args, "reference_grid", False):
+        return {"referenceGrid": False}
+    cell_tiles = max(8, int(round(float(args.reference_grid_cell_tiles))))
+    major_every = max(1, int(args.reference_grid_major_every))
+    datum_bounds, datum_name = reference_grid_datum(args, bounds)
+    datum_span_y = int(datum_bounds["maxY"] - datum_bounds["minY"] + 1)
+    datum_rows = max(1, int(math.ceil(datum_span_y / float(cell_tiles))))
+    min_x = int(bounds["minX"])
+    max_x = int(bounds["maxX"])
+    min_y = int(bounds["minY"])
+    max_y = int(bounds["maxY"])
+    origin_x = int(datum_bounds["minX"])
+    origin_y = int(datum_bounds["minY"])
+    col_start = int(math.floor((min_x - origin_x) / float(cell_tiles)))
+    col_end = int(math.floor((max_x - origin_x) / float(cell_tiles)))
+    row_start = int(math.floor((min_y - origin_y) / float(cell_tiles)))
+    row_end = int(math.floor((max_y - origin_y) / float(cell_tiles)))
+    columns = max(1, col_end - col_start + 1)
+    rows = max(1, row_end - row_start + 1)
+    ss = max(1, int(args.supersample))
+    line_width = max(1, ss // 2)
+    major_width = max(1, ss)
+    labels = []
+    right = map_x0 + map_w - 1
+    bottom = map_y0 + map_h - 1
+
+    def screen_x(world_x):
+        return int(round(map_x0 + (world_x - min_x) * work_scale))
+
+    def screen_y(world_y):
+        return int(round(map_y0 + map_h - 1 - (world_y - min_y) * work_scale))
+
+    for col in range(col_start, col_end + 2):
+        world_x = origin_x + col * cell_tiles
+        x = screen_x(world_x)
+        if x < map_x0 - major_width or x > right + major_width:
+            continue
+        major = col % major_every == 0
+        alpha = args.reference_grid_major_alpha if major else args.reference_grid_alpha
+        color = PALETTE["grid_major"] if major else PALETTE["grid"]
+        width_px = major_width if major else line_width
+        blend_line(canvas, x, map_y0, x, bottom, color, alpha, width_px)
+
+    for row in range(row_start, row_end + 2):
+        world_y = origin_y + row * cell_tiles
+        y = screen_y(world_y)
+        if y < map_y0 - major_width or y > bottom + major_width:
+            continue
+        major = row % major_every == 0
+        alpha = args.reference_grid_major_alpha if major else args.reference_grid_alpha
+        color = PALETTE["grid_major"] if major else PALETTE["grid"]
+        width_px = major_width if major else line_width
+        blend_line(canvas, map_x0, y, right, y, color, alpha, width_px)
+
+    inset_x = 10 * ss
+    inset_y = 19 * ss
+    edge_y = map_y0 + 22 * ss
+    edge_x = map_x0 + 12 * ss
+    for col in range(col_start, col_end + 1):
+        world_x0 = max(min_x, origin_x + col * cell_tiles)
+        world_x1 = min(max_x + 1, origin_x + (col + 1) * cell_tiles)
+        x0 = map_x0 + (world_x0 - min_x) * work_scale
+        x1 = map_x0 + (world_x1 - min_x) * work_scale
+        label = reference_grid_column_label(col)
+        labels.append({
+            "text": label,
+            "x": int(round(((x0 + x1) * 0.5) / ss - 8)),
+            "y": int(round(edge_y / ss)),
+            "size": args.reference_grid_label_pointsize,
+            "alpha": args.reference_grid_label_alpha,
+            "align": "axis",
+        })
+    row_origin = getattr(args, "reference_grid_row_origin", "north")
+    for row in range(row_start, row_end + 1):
+        world_y0 = max(min_y, origin_y + row * cell_tiles)
+        world_y1 = min(max_y + 1, origin_y + (row + 1) * cell_tiles)
+        y0 = screen_y(world_y1)
+        y1 = screen_y(world_y0)
+        labels.append({
+            "text": reference_grid_row_label(row, datum_rows, row_origin),
+            "x": int(round(edge_x / ss)),
+            "y": int(round(((y0 + y1) * 0.5) / ss + 7)),
+            "size": args.reference_grid_label_pointsize,
+            "alpha": args.reference_grid_label_alpha,
+            "align": "axis",
+        })
+
+    if args.reference_grid_cell_labels != "none":
+        step = 1 if args.reference_grid_cell_labels == "all" else major_every
+        cell_alpha = min(args.reference_grid_label_alpha, args.reference_grid_cell_label_alpha)
+        first_row = row_start + ((step - row_start % step) % step)
+        first_col = col_start + ((step - col_start % step) % step)
+        for row in range(first_row, row_end + 1, step):
+            row_text = reference_grid_row_label(row, datum_rows, row_origin)
+            cell_top_y = min(max_y + 1, origin_y + (row + 1) * cell_tiles)
+            y = screen_y(cell_top_y) + inset_y
+            for col in range(first_col, col_end + 1, step):
+                cell_left_x = max(min_x, origin_x + col * cell_tiles)
+                labels.append({
+                    "text": "%s%s" % (reference_grid_column_label(col), row_text),
+                    "x": int(round((screen_x(cell_left_x) + inset_x) / ss)),
+                    "y": int(round(y / ss)),
+                    "size": args.reference_grid_cell_label_pointsize,
+                    "alpha": cell_alpha,
+                    "align": "cell",
+                })
+
+    return {
+        "referenceGrid": True,
+        "referenceGridOrigin": datum_name,
+        "referenceGridRowOrigin": row_origin,
+        "referenceGridDatumBounds": datum_bounds,
+        "referenceGridCellTiles": cell_tiles,
+        "referenceGridColumns": columns,
+        "referenceGridRows": rows,
+        "referenceGridColumnStart": col_start,
+        "referenceGridColumnEnd": col_end,
+        "referenceGridRowStart": row_start,
+        "referenceGridRowEnd": row_end,
+        "referenceGridMajorEvery": major_every,
+        "referenceGridLabels": labels,
+    }
+
+
 def legend_items(args):
     if getattr(args, "running_overlay", False):
         return [
@@ -1905,6 +2059,15 @@ def draw_footer_decoration(canvas, x, y, stats, args):
 def add_annotation(command, x, y, pointsize, color, text):
     command.extend([
         "-fill", color_hex(color),
+        "-pointsize", str(int(pointsize)),
+        "-annotate", "+%d+%d" % (int(x), int(y)),
+        str(text),
+    ])
+
+
+def add_alpha_annotation(command, x, y, pointsize, color, alpha, text):
+    command.extend([
+        "-fill", color_rgba(color, alpha),
         "-pointsize", str(int(pointsize)),
         "-annotate", "+%d+%d" % (int(x), int(y)),
         str(text),
@@ -2072,6 +2235,16 @@ def apply_runescape_text(path, width, footer_top, stats, args):
         add_shadow_text(command, note_x, 98, args.meta_pointsize,
                         "gray = unvisited map context", PALETTE["muted"])
 
+    for label in stats.get("referenceGridLabels", []):
+        alpha = clamp(float(label.get("alpha", 0.0)), 0.0, 1.0)
+        if alpha <= 0.0:
+            continue
+        x = int(label["x"])
+        y = int(label["y"])
+        pointsize = int(label.get("size", 18))
+        add_alpha_annotation(command, x + 1, y + 1, pointsize, PALETTE["text_shadow"], min(0.38, alpha), label["text"])
+        add_alpha_annotation(command, x, y, pointsize, PALETTE["grid_major"], alpha, label["text"])
+
     for label in stats.get("poiLabels", []):
         color = PALETTE["white"] if label.get("color") == "white" else PALETTE["osrs_yellow"]
         if label.get("outline"):
@@ -2188,6 +2361,18 @@ def write_summary(path, topology, render_info, png_path, args):
             "backgroundMute": args.background_mute,
             "gridAlpha": args.grid_alpha,
             "majorGridAlpha": args.major_grid_alpha,
+            "referenceGrid": args.reference_grid,
+            "referenceGridOrigin": args.reference_grid_origin,
+            "referenceGridRowOrigin": args.reference_grid_row_origin,
+            "referenceGridCellTiles": args.reference_grid_cell_tiles,
+            "referenceGridAlpha": args.reference_grid_alpha,
+            "referenceGridMajorAlpha": args.reference_grid_major_alpha,
+            "referenceGridMajorEvery": args.reference_grid_major_every,
+            "referenceGridLabelAlpha": args.reference_grid_label_alpha,
+            "referenceGridLabelPointsize": args.reference_grid_label_pointsize,
+            "referenceGridCellLabels": args.reference_grid_cell_labels,
+            "referenceGridCellLabelAlpha": args.reference_grid_cell_label_alpha,
+            "referenceGridCellLabelPointsize": args.reference_grid_cell_label_pointsize,
             "supersample": args.supersample,
             "routeWidth": args.route_width,
             "nodeAlpha": args.node_alpha,
@@ -2214,6 +2399,21 @@ def write_summary(path, topology, render_info, png_path, args):
         summary["style"]["runningOverlay"] = True
         summary["style"]["runningLabel"] = "RUN"
         summary["style"]["runningColor"] = "#%02X%02X%02X" % PALETTE["run"]
+    if getattr(args, "reference_grid", False):
+        summary.update({
+            "referenceGrid": True,
+            "referenceGridOrigin": render_info.get("referenceGridOrigin", args.reference_grid_origin),
+            "referenceGridRowOrigin": render_info.get("referenceGridRowOrigin", args.reference_grid_row_origin),
+            "referenceGridDatumBounds": render_info.get("referenceGridDatumBounds", {}),
+            "referenceGridCellTiles": render_info.get("referenceGridCellTiles", 0),
+            "referenceGridColumns": render_info.get("referenceGridColumns", 0),
+            "referenceGridRows": render_info.get("referenceGridRows", 0),
+            "referenceGridColumnStart": render_info.get("referenceGridColumnStart", 0),
+            "referenceGridColumnEnd": render_info.get("referenceGridColumnEnd", 0),
+            "referenceGridRowStart": render_info.get("referenceGridRowStart", 0),
+            "referenceGridRowEnd": render_info.get("referenceGridRowEnd", 0),
+            "referenceGridMajorEvery": render_info.get("referenceGridMajorEvery", 0),
+        })
     if getattr(args, "coverage_heatmap", False):
         summary.update({
             "coverageHeatmap": True,
@@ -2383,6 +2583,9 @@ def render(topology, args):
                                  work_map_w, work_map_h, work_scale, args, bounds=bounds)
     heat_info = draw_coverage_heatmap(canvas, nodes, project, work_map_x0, work_map_y0,
                                       work_map_w, work_map_h, work_scale, args, bounds=bounds)
+    reference_grid_info = draw_reference_grid(
+        canvas, bounds, work_map_x0, work_map_y0, work_map_w, work_map_h, work_scale, args
+    )
 
     grid_start_x = int(min_x // 10 * 10)
     grid_start_y = int(min_y // 10 * 10)
@@ -2513,6 +2716,7 @@ def render(topology, args):
         "bounds": bounds,
         "latestSeen": current.get("lastSeen") if current is not None else "",
         "poiLabels": rendered_poi_labels,
+        "referenceGridLabels": reference_grid_info.get("referenceGridLabels", []),
         "currentMarker": current_marker,
     }
     if getattr(args, "running_overlay", False):
@@ -2556,6 +2760,7 @@ def render(topology, args):
         "poiLabelCount": len(rendered_poi_labels),
         "pois": pois,
         "fontApplied": font_applied,
+        **reference_grid_info,
         **fog_info,
         **heat_info,
     }
@@ -2569,6 +2774,14 @@ def main(default_output=None, default_summary=None, default_map_version="V2",
          default_hide_fogged_pois=False, default_coverage_fog_poi_extra_tiles=30.0,
          default_coverage_heat_radius_tiles=18.0, default_coverage_heat_alpha=0.12,
          default_coverage_heat_high_percentile=0.98, default_coverage_heat_gamma=1.25,
+         default_reference_grid=False, default_reference_grid_cell_tiles=64.0,
+         default_reference_grid_alpha=0.08, default_reference_grid_major_alpha=0.16,
+         default_reference_grid_major_every=4, default_reference_grid_label_alpha=0.50,
+         default_reference_grid_origin="local", default_reference_grid_row_origin="north",
+         default_reference_grid_label_pointsize=20,
+         default_reference_grid_cell_labels="major",
+         default_reference_grid_cell_label_alpha=0.28,
+         default_reference_grid_cell_label_pointsize=16,
          default_title_text=None, default_title_paragraph=None,
          default_title_paragraph_x=-1, default_title_paragraph_y=35,
          default_title_paragraph_lines=5, default_title_paragraph_align="left",
@@ -2605,6 +2818,25 @@ def main(default_output=None, default_summary=None, default_map_version="V2",
     parser.add_argument("--background-mute", type=float, default=0.18)
     parser.add_argument("--grid-alpha", type=float, default=0.0)
     parser.add_argument("--major-grid-alpha", type=float, default=0.0)
+    parser.add_argument("--reference-grid", action="store_true", default=default_reference_grid,
+                        help="Draw a subtle chessboard-style map reference grid.")
+    parser.add_argument("--no-reference-grid", dest="reference_grid", action="store_false")
+    parser.add_argument("--reference-grid-origin", choices=("local", "level0"),
+                        default=default_reference_grid_origin)
+    parser.add_argument("--reference-grid-row-origin", choices=("north", "south"),
+                        default=default_reference_grid_row_origin)
+    parser.add_argument("--reference-grid-cell-tiles", type=float, default=default_reference_grid_cell_tiles)
+    parser.add_argument("--reference-grid-alpha", type=float, default=default_reference_grid_alpha)
+    parser.add_argument("--reference-grid-major-alpha", type=float, default=default_reference_grid_major_alpha)
+    parser.add_argument("--reference-grid-major-every", type=int, default=default_reference_grid_major_every)
+    parser.add_argument("--reference-grid-label-alpha", type=float, default=default_reference_grid_label_alpha)
+    parser.add_argument("--reference-grid-label-pointsize", type=int, default=default_reference_grid_label_pointsize)
+    parser.add_argument("--reference-grid-cell-labels", choices=("none", "major", "all"),
+                        default=default_reference_grid_cell_labels)
+    parser.add_argument("--reference-grid-cell-label-alpha", type=float,
+                        default=default_reference_grid_cell_label_alpha)
+    parser.add_argument("--reference-grid-cell-label-pointsize", type=int,
+                        default=default_reference_grid_cell_label_pointsize)
     parser.add_argument("--route-width", type=float, default=2.2)
     parser.add_argument("--node-alpha", type=float, default=0.28)
     parser.add_argument("--map-version", default=default_map_version)
@@ -2679,6 +2911,14 @@ def main(default_output=None, default_summary=None, default_map_version="V2",
     args.background_mute = clamp(args.background_mute, 0.0, 0.85)
     args.grid_alpha = clamp(args.grid_alpha, 0.0, 1.0)
     args.major_grid_alpha = clamp(args.major_grid_alpha, 0.0, 1.0)
+    args.reference_grid_cell_tiles = clamp(args.reference_grid_cell_tiles, 16.0, 256.0)
+    args.reference_grid_alpha = clamp(args.reference_grid_alpha, 0.0, 0.40)
+    args.reference_grid_major_alpha = clamp(args.reference_grid_major_alpha, 0.0, 0.60)
+    args.reference_grid_major_every = max(1, min(12, int(args.reference_grid_major_every)))
+    args.reference_grid_label_alpha = clamp(args.reference_grid_label_alpha, 0.0, 0.95)
+    args.reference_grid_cell_label_alpha = clamp(args.reference_grid_cell_label_alpha, 0.0, 0.80)
+    args.reference_grid_label_pointsize = max(8, min(42, int(args.reference_grid_label_pointsize)))
+    args.reference_grid_cell_label_pointsize = max(8, min(36, int(args.reference_grid_cell_label_pointsize)))
     args.node_alpha = clamp(args.node_alpha, 0.0, 1.0)
     args.coverage_heat_radius_tiles = clamp(args.coverage_heat_radius_tiles, 0.5, 20.0)
     args.coverage_heat_alpha = clamp(args.coverage_heat_alpha, 0.0, 0.5)

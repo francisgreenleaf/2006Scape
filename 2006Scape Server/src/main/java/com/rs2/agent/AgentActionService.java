@@ -244,30 +244,38 @@ public class AgentActionService {
     private final ConcurrentHashMap<Integer, CombatGoal> combatGoals = new ConcurrentHashMap<Integer, CombatGoal>();
 
     public JsonObject submitTool(String token, String tool, JsonObject arguments) {
-        if ("walk_to_tile_until_arrived".equals(tool)) {
-            return walkToTileUntilArrived(token, arguments == null ? new JsonObject() : arguments);
+        final boolean xs = AgentToolService.isXsTool(tool);
+        final String effectiveTool = AgentToolService.baseToolName(tool);
+        if ("walk_to_tile_until_arrived".equals(effectiveTool)) {
+            JsonObject result = walkToTileUntilArrived(token, arguments == null ? new JsonObject() : arguments);
+            return xs ? AgentToolService.compactXsResult(effectiveTool, result) : result;
         }
-        if ("travel_to_landmark_until_arrived".equals(tool)) {
-            return travelToLandmarkUntilArrived(token, arguments == null ? new JsonObject() : arguments);
+        if ("travel_to_landmark_until_arrived".equals(effectiveTool)) {
+            JsonObject result = travelToLandmarkUntilArrived(token, arguments == null ? new JsonObject() : arguments);
+            return xs ? AgentToolService.compactXsResult(effectiveTool, result) : result;
         }
-        if ("mine_ore_until_inventory_full".equals(tool)) {
-            return mineOreUntilInventoryFull(token, arguments == null ? new JsonObject() : arguments);
+        if ("mine_ore_until_inventory_full".equals(effectiveTool)) {
+            JsonObject result = mineOreUntilInventoryFull(token, arguments == null ? new JsonObject() : arguments);
+            return xs ? AgentToolService.compactXsResult(effectiveTool, result) : result;
         }
-        if ("chop_tree_until_inventory_full".equals(tool)) {
-            return chopTreeUntilInventoryFull(token, arguments == null ? new JsonObject() : arguments);
+        if ("chop_tree_until_inventory_full".equals(effectiveTool)) {
+            JsonObject result = chopTreeUntilInventoryFull(token, arguments == null ? new JsonObject() : arguments);
+            return xs ? AgentToolService.compactXsResult(effectiveTool, result) : result;
         }
-        if ("fletch_logs_until_inventory_empty".equals(tool)) {
-            return fletchLogsUntilInventoryEmpty(token, arguments == null ? new JsonObject() : arguments);
+        if ("fletch_logs_until_inventory_empty".equals(effectiveTool)) {
+            JsonObject result = fletchLogsUntilInventoryEmpty(token, arguments == null ? new JsonObject() : arguments);
+            return xs ? AgentToolService.compactXsResult(effectiveTool, result) : result;
         }
-        if ("wait_until_idle".equals(tool)) {
-            return waitUntilIdle(token, arguments == null ? new JsonObject() : arguments);
+        if ("wait_until_idle".equals(effectiveTool)) {
+            JsonObject result = waitUntilIdle(token, arguments == null ? new JsonObject() : arguments);
+            return xs ? AgentToolService.compactXsResult(effectiveTool, result) : result;
         }
-        if ("wait_ticks".equals(tool)) {
+        if ("wait_ticks".equals(effectiveTool)) {
             int ticks = Math.max(1, Math.min(25, getInt(arguments, "ticks", 1)));
             final long submittedTick = serverTick.get();
             final long targetTick = submittedTick + ticks;
             long timeoutMs = Math.max(ACTION_TIMEOUT_MS, (long) (ticks + 2) * Constants.CYCLE_TIME);
-            return submitForTick(targetTick, new Callable<JsonObject>() {
+            JsonObject result = submitForTick(targetTick, new Callable<JsonObject>() {
                 @Override
                 public JsonObject call() {
                     AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
@@ -281,9 +289,11 @@ public class AgentActionService {
                     return result;
                 }
             }, timeoutMs);
+            return xs ? AgentToolService.compactXsResult(effectiveTool, result) : result;
         }
-        if ("start_combat_goal".equals(tool) || "observe_goal".equals(tool) || "stop_goal".equals(tool)) {
-            return submitOnGameTick(token, new Callable<JsonObject>() {
+        if ("start_combat_goal".equals(effectiveTool) || "observe_goal".equals(effectiveTool)
+                || "stop_goal".equals(effectiveTool)) {
+            JsonObject result = submitOnGameTick(token, new Callable<JsonObject>() {
                 @Override
                 public JsonObject call() {
                     AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
@@ -295,15 +305,16 @@ public class AgentActionService {
                         return AgentToolService.failure("The claimed player is no longer online.");
                     }
                     JsonObject safeArguments = arguments == null ? new JsonObject() : arguments;
-                    if ("start_combat_goal".equals(tool)) {
+                    if ("start_combat_goal".equals(effectiveTool)) {
                         return startCombatGoal(session, player, safeArguments);
                     }
-                    if ("stop_goal".equals(tool)) {
+                    if ("stop_goal".equals(effectiveTool)) {
                         return stopGoal(session, player);
                     }
                     return observeGoal(player);
                 }
             });
+            return xs ? AgentToolService.compactXsResult(effectiveTool, result) : result;
         }
         return submitOnGameTick(token, new Callable<JsonObject>() {
             @Override
@@ -317,9 +328,9 @@ public class AgentActionService {
                     return AgentToolService.failure("The claimed player is no longer online.");
                 }
                 JsonObject safeArguments = arguments == null ? new JsonObject() : arguments;
-                JsonObject result = AgentToolService.handle(player, tool, safeArguments);
-                recordObjectTransition(session, tool, safeArguments, result);
-                return result;
+                JsonObject result = AgentToolService.handle(player, effectiveTool, safeArguments);
+                recordObjectTransition(session, effectiveTool, safeArguments, result);
+                return xs ? AgentToolService.compactXsResult(effectiveTool, result, player, safeArguments) : result;
             }
         });
     }

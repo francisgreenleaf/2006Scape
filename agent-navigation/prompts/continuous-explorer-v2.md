@@ -116,6 +116,7 @@ Do not spend a whole session bumping into walls or scenery.
 Use known route data and topology:
 
 ```sh
+python3 agent-navigation/ml-routing/route_ml.py define --from X,Y,H --to PLACE_OR_TILE --combat-level N --food N --run-energy N --run-enabled
 python3 agent-navigation/tools/navdb.py coverage
 python3 agent-navigation/tools/navdb.py routes --status needs-verification
 python3 agent-navigation/tools/navdb.py routes --status learned-partial
@@ -123,7 +124,7 @@ python3 agent-navigation/tools/navdb.py next-step --from X,Y,H --to PLACE --comb
 python3 agent-navigation/tools/navdb.py hazards --near X,Y,H --radius 40 --combat-level N --food N --run-energy N --run-enabled true
 ```
 
-Do not blindly obey `next-step` if the recent rollout proved the area is a blocked pocket. Use learned blockers and choose a larger detour.
+ML1 `route_ml.py define` is preferred for route choice. Treat `next-step` as a legacy route DB diagnostic, and do not blindly obey it if the recent rollout proved the area is a blocked pocket. Use learned blockers and choose a larger detour.
 
 Use run intelligently. Run on long safe crossings, hazard-adjacent crossings, and retreats. Walk/conserve run on short safe legs.
 

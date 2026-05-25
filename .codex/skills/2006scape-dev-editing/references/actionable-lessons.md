@@ -27,6 +27,13 @@ These notes are repo-specific operational memory from actual agent experience. A
 - **Use instead:** Treat `mvn -q -DskipTests package` as compile validation only. Restart the server/client through `agent-navigation/tools/runtime_doctor.py` before testing new bridge tools through `agent-navigation/tools/rs-tool.sh`.
 - **Validation:** After restart, call the new tool through `rs-tool.sh` and confirm the response shape matches the source change.
 
+### Make primitive item-on-object start cooking interfaces
+
+- **Observed:** `catherby_food_runner.py` could cook tuna through `use_item_on_object` plus `click_interface_button`, but the first lobster inventory logged `cook_primitive_round madeProgress:false` before falling back to `cook_food`.
+- **Cause:** `AgentToolService.useItemOnObject` delegated to `UseItem.itemOnObject`, which does not open the Cooking interface for raw cookable food on ranges; previous tuna success depended on stale `player.cookingItem` state.
+- **Use instead:** For raw cookable items used on known cooking objects, have `use_item_on_object` call `Cooking.startCooking(...)` before `click_interface_button` starts the selected amount.
+- **Validation:** `mvn -q -pl "2006Scape Server" -Dtest=AgentToolServiceTest test` compiles the bridge surface; live proof still requires a runtime restart before bridge calls use the new code.
+
 ### Use the documented agent-owned relaunch for clean bridge sessions
 
 - **Observed:** Stale clients, old `codex app-server --listen stdio://` children, and expired `agent-navigation/.local/rsbridge-session.json` files make fresh bridge testing unreliable after server restarts.
@@ -49,6 +56,20 @@ These notes are repo-specific operational memory from actual agent experience. A
 - **Validation:** Re-check that old server/client/app-server/recorder processes are gone before launching a fresh runtime.
 
 ## Navigation Tooling
+
+### Gate Catherby fishing methods by Cooking level
+
+- **Observed:** `agent-navigation/tools/catherby_food_runner.py` switched from harpoon tuna to lobster at Fishing 40, filled an inventory of raw lobsters, then failed with `cooking made no progress for 2 rounds` at Cooking 37.
+- **Cause:** The method policy considered Fishing unlocks but not Cooking requirements; this server requires Cooking 40 for lobster and Cooking 50 for swordfish.
+- **Use instead:** Choose Catherby fishing methods by both Fishing and Cooking levels, and bank any uncookable raw fish during recovery before resuming a cookable method.
+- **Validation:** A recovery run with raw lobsters at Cooking 37 logs `cook_uncookable_raw_deferred`, banks the raw lobsters, deposits the lobster pot, withdraws the harpoon, and resumes harpoon tuna.
+
+### Let Catherby fishing waits run to useful boundaries
+
+- **Observed:** `catherby_food_runner.py` accepted `--max-fish-ticks 900`, but each fish wait was hard-capped at 120 ticks, so one lobster inventory produced several extra `find_nearest_npc`/`interact_npc`/status cycles.
+- **Cause:** The wait loop used `min(120, ...)`, which woke the script even while passive telemetry showed the player was still actively fishing with no idle spans.
+- **Use instead:** Use the configurable `--fish-round-max-ticks` long wait and rely on `wait_until_idle` returning early when the spot moves, the inventory fills, a level-up interrupts skilling, or the player becomes idle.
+- **Validation:** The patched runner log includes `maxWaitTicks:900` and `maxWaitTicks:650` fish rounds while `catherby_food_runner.py --efficiency-report --quiet` still reports `idlePct:0.0`.
 
 ### Treat `PathFinder` as a local clip oracle, not the global router
 

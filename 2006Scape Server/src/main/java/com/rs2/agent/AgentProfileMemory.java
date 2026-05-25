@@ -50,6 +50,7 @@ public class AgentProfileMemory {
                 state.playerName = playerName;
                 state.lastUpdated = string(entry, "timestamp", iso(System.currentTimeMillis()));
                 state.consume(entry);
+                state.normalizeSelfTalkLog();
                 writeState(profileDirectory, state);
                 writeMarkdown(profileDirectory, state);
             } catch (IOException e) {
@@ -122,6 +123,7 @@ public class AgentProfileMemory {
             if (!profileDirectory.exists() && !profileDirectory.mkdirs()) {
                 throw new IOException("Unable to create profile memory directory: " + profileDirectory.getAbsolutePath());
             }
+            entry.getValue().normalizeSelfTalkLog();
             writeState(profileDirectory, entry.getValue());
             writeMarkdown(profileDirectory, entry.getValue());
         }
@@ -190,22 +192,22 @@ public class AgentProfileMemory {
 
     private String renderMarkdown(ProfileState state) {
         StringBuilder builder = new StringBuilder();
-        builder.append("# Agent Personality - ").append(state.playerName == null ? "unknown" : state.playerName).append("\n\n");
+        builder.append("# Agent Profile Memory - ").append(state.playerName == null ? "unknown" : state.playerName).append("\n\n");
         builder.append("- Last updated: ").append(state.lastUpdated == null ? "unknown" : state.lastUpdated).append("\n");
         builder.append("- Sessions noticed: ").append(state.sessionsRegistered).append("\n");
         builder.append("- Tool successes: ").append(state.toolSuccesses).append("\n");
         builder.append("- Tool failures/blockers: ").append(state.toolFailures).append("\n\n");
 
-        builder.append("## Character Memory\n\n");
+        builder.append("## Operational Memory\n\n");
         appendBullets(builder, beliefs(state));
 
-        builder.append("## Personality Drift\n\n");
+        builder.append("## Behavior Bias\n\n");
         appendBullets(builder, personality(state));
 
-        builder.append("## Goal Formation\n\n");
+        builder.append("## Suggested Priorities\n\n");
         appendBullets(builder, goals(state));
 
-        builder.append("## Self-Talk Log\n\n");
+        builder.append("## Recent Notes\n\n");
         appendBullets(builder, selfTalk(state));
 
         builder.append("## Pattern Counters\n\n");
@@ -222,7 +224,7 @@ public class AgentProfileMemory {
 
     private void appendBullets(StringBuilder builder, com.google.gson.JsonArray values) {
         if (values.size() == 0) {
-            builder.append("- I do not have enough repeated experience to form this yet.\n\n");
+            builder.append("- No repeated operational pattern recorded yet.\n\n");
             return;
         }
         for (int i = 0; i < values.size(); i++) {
@@ -234,22 +236,22 @@ public class AgentProfileMemory {
     private com.google.gson.JsonArray beliefs(ProfileState state) {
         com.google.gson.JsonArray values = new com.google.gson.JsonArray();
         if (state.cowMentions + state.lumbridgeMentions >= 2) {
-            values.add("I am becoming more familiar with the Lumbridge routine, especially early combat and nearby supplies.");
+            values.add("Lumbridge is a familiar fallback area for early combat, supplies, and recovery.");
         }
         if (state.cowMentions >= 2) {
-            values.add("I am becoming more confident fighting cows near Lumbridge, but I still need to respect food and retreat thresholds.");
+            values.add("Lumbridge cow combat is a known early-training routine; keep food, inventory, and retreat thresholds checked.");
         }
         if (state.inventoryPressure >= 2 || state.bankMentions >= 4) {
-            values.add("I often run into inventory pressure before I have banked properly.");
+            values.add("Inventory pressure recurs before banking is handled.");
         }
         if (state.varrockMentions > 0 && (state.toolFailures > 0 || state.gearMentions > 0 || state.coinMentions > 0)) {
-            values.add("Varrock feels useful but risky because I often arrive there underprepared or mid-plan.");
+            values.add("Varrock trips are useful but should start with food, coins, gear, and a clear route.");
         }
         if (state.foodMentions >= 2 || state.hasDeathExperience()) {
-            values.add("Food is becoming part of how I survive longer trips.");
+            values.add("Food is a required preparation item for longer trips or retrying dangerous areas.");
         }
         if (state.pathingFailures >= 2) {
-            values.add("When a route or target is unclear, I should verify reachability before committing.");
+            values.add("Unclear routes need reachability checks before committing to repeated movement.");
         }
         return values;
     }
@@ -257,19 +259,19 @@ public class AgentProfileMemory {
     private com.google.gson.JsonArray personality(ProfileState state) {
         com.google.gson.JsonArray values = new com.google.gson.JsonArray();
         if (state.hasDeathExperience()) {
-            values.add("Cautious after deaths: I should check hitpoints, food, escape routes, and nearby threats before pushing deeper.");
+            values.add("Risk posture: check hitpoints, food, escape routes, and nearby threats before pushing deeper.");
         }
         if (state.goalCompleted > 0 || state.levelProgressMentions > 0) {
-            values.add("Proud after hard-won progress: successful goal progress makes me more willing to keep a steady routine.");
+            values.add("Progress posture: keep using steady routines after verified level or goal progress.");
         }
         if (state.pathingFailures > 0) {
-            values.add("Annoyed by failed pathing: I should prefer known landmarks and explicit reachability checks.");
+            values.add("Pathing posture: prefer known landmarks and explicit reachability checks.");
         }
         if (state.varrockMentions > 0) {
-            values.add("Curious about new areas: Varrock keeps pulling me outward, but I need better preparation.");
+            values.add("Expansion posture: prepare before leaving the safer Lumbridge area for Varrock.");
         }
         if (state.lumbridgeMentions + state.cowMentions >= 3) {
-            values.add("Attached to familiar routines: Lumbridge and cow training feel like a home base for rebuilding confidence.");
+            values.add("Fallback posture: use Lumbridge routines to recover from failed or unsafe plans.");
         }
         return values;
     }
@@ -277,19 +279,19 @@ public class AgentProfileMemory {
     private com.google.gson.JsonArray goals(ProfileState state) {
         com.google.gson.JsonArray values = new com.google.gson.JsonArray();
         if (state.hasDeathExperience()) {
-            values.add("I want revenge on the thing that killed me, but only after I prepare food and safer gear.");
+            values.add("Retry dangerous targets only after preparing food, gear, and an exit route.");
         }
         if (state.inventoryPressure >= 2 || state.bankMentions >= 3) {
-            values.add("I should learn a reliable banking route before long gathering or combat loops.");
+            values.add("Use a reliable banking route before long gathering or combat loops.");
         }
         if (state.gearMentions > 0 || state.coinMentions > 1) {
-            values.add("I want to earn enough coins for better armor and weapons without selling useful banked supplies.");
+            values.add("Keep enough coins for food and gear upgrades without selling useful banked supplies unnecessarily.");
         }
         if (state.varrockMentions > 0 && (state.foodMentions > 0 || state.toolFailures > 0)) {
-            values.add("I want to prepare better before leaving Lumbridge for Varrock.");
+            values.add("Restock before leaving Lumbridge for Varrock.");
         }
         if (state.pathingFailures > 0) {
-            values.add("I should choose routes and targets I can verify before acting.");
+            values.add("Choose routes and targets that can be verified before acting.");
         }
         return values;
     }
@@ -298,21 +300,78 @@ public class AgentProfileMemory {
         com.google.gson.JsonArray values = new com.google.gson.JsonArray();
         if (state.selfTalkLog != null) {
             for (String note : state.selfTalkLog) {
-                values.add(note);
+                String normalized = normalizeReflection(note);
+                if (!normalized.isEmpty()) {
+                    values.add(normalized);
+                }
             }
         }
         if (values.size() == 0) {
             if (state.goalCompleted > 0 || state.levelProgressMentions > 0) {
-                values.add("Note to self: I made real progress out there. Keep the routine steady and do not waste the lesson by rushing.");
+                values.add("Progress note: keep using the routine that produced verified progress.");
             }
             if (state.toolFailures > 0 || state.pathingFailures > 0) {
-                values.add("Note to self: the failed step is useful trail sense. Next time, look around before committing to the road.");
+                values.add("Route note: failed movement should trigger a fresh observation and reachability check.");
             }
             if (state.hasDeathExperience()) {
-                values.add("Note to self: remember the grave, but do not let it make me timid. Food, armour, and an exit path are the answer.");
+                values.add("Risk note: deaths require better food, gear, and an exit path before retrying.");
             }
         }
         return values;
+    }
+
+    private static String normalizeReflection(String note) {
+        if (note == null) {
+            return "";
+        }
+        String trimmed = note.trim();
+        if (trimmed.isEmpty()) {
+            return "";
+        }
+        String lower = trimmed.toLowerCase(Locale.ENGLISH);
+        if (lower.contains("full pack") || lower.contains("inventory")) {
+            return "Inventory note: bank or drop low-value items before long loops.";
+        }
+        if (lower.contains("bank")) {
+            return "Banking note: consolidate loot and supplies before leaving a safe area.";
+        }
+        if (lower.contains("death") || lower.contains("dead") || lower.contains("killed") || lower.contains("grave")
+                || lower.startsWith("risk note:")) {
+            return "Risk note: deaths require better food, gear, and an exit path before retrying.";
+        }
+        if (lower.contains("food") || lower.contains("fish") || lower.contains("cook") || lower.contains("eat")) {
+            return "Food note: carry enough healing before travel, combat, or retries.";
+        }
+        if (lower.contains("varrock")) {
+            return "Varrock note: restock before using Varrock shops, mines, or routes.";
+        }
+        if (lower.contains("lumbridge")) {
+            return "Lumbridge note: use Lumbridge as a safe fallback for early supplies and training.";
+        }
+        if (lower.contains("cow")) {
+            return "Training note: Lumbridge cows are a repeatable early combat target; monitor food and inventory.";
+        }
+        if (lower.contains("goblin")) {
+            return "Combat note: check hitpoints and food even for low-level targets.";
+        }
+        if (lower.contains("path") || lower.contains("route") || lower.contains("reach")
+                || lower.contains("road") || lower.contains("movement")) {
+            return "Route note: verify reachability before repeating failed movement.";
+        }
+        if (lower.contains("gear") || lower.contains("armor") || lower.contains("armour")
+                || lower.contains("weapon") || lower.contains("hammer") || lower.contains("smith")) {
+            return "Gear note: check equipment before riskier combat or production loops.";
+        }
+        if (lower.contains("coin") || lower.contains("money")) {
+            return "Coin note: preserve budget for food, gear, and travel costs.";
+        }
+        if (lower.contains("progress") || lower.contains("level")) {
+            return "Progress note: keep using routines that produce verified progress.";
+        }
+        if (lower.startsWith("note to self:")) {
+            return "";
+        }
+        return trimmed;
     }
 
     private File profileDirectory(File agentSessionLogDirectory, String playerName) {
@@ -395,28 +454,25 @@ public class AgentProfileMemory {
             } else if ("tool_completed".equals(event) || "tool_failed".equals(event)) {
                 if ("tool_completed".equals(event)) {
                     toolSuccesses++;
-                    if (toolSuccesses % 25 == 0) {
-                        addReflection("Note to self: I am getting steadier as an adventurer. Look around, choose the next move, and keep my boots moving.");
-                    }
                 } else {
                     toolFailures++;
+                    observeText(string(data, "tool", ""));
+                    JsonObject result = data.has("result") && data.get("result").isJsonObject()
+                            ? data.get("result").getAsJsonObject()
+                            : new JsonObject();
+                    observeText(string(result, "message", ""));
                 }
-                observeText(string(data, "tool", ""));
-                JsonObject result = data.has("result") && data.get("result").isJsonObject()
-                        ? data.get("result").getAsJsonObject()
-                        : new JsonObject();
-                observeText(string(result, "message", ""));
             } else if (event.startsWith("goal_")) {
                 if ("goal_started".equals(event)) {
                     goalStarted++;
                 } else if ("goal_progress".equals(event)) {
                     goalProgress++;
                     levelProgressMentions++;
-                    addReflection("Note to self: progress counts. Every level, hide, bone, ore, and coin is proof that I am becoming less fragile.");
+                    addReflection("Progress note: keep using routines that produce verified progress.");
                 } else if ("goal_completed".equals(event)) {
                     goalCompleted++;
                     levelProgressMentions++;
-                    addReflection("Note to self: I finished a goal. Good work, me. Remember the gear, food, and route that made it possible.");
+                    addReflection("Progress note: record the gear, food, and route that made the completed goal work.");
                 } else if ("goal_blocked".equals(event)) {
                     toolFailures++;
                 }
@@ -426,7 +482,7 @@ public class AgentProfileMemory {
                 String goalMessage = string(goal, "message", "");
                 if ("goal_blocked".equals(event) && containsDeath(goalMessage)) {
                     deaths++;
-                    addReflection("Note to self: I got killed. That stings, but the answer is not panic; it is food in my pack, safer gear on my back, and a cleaner escape route.");
+                    addReflection("Risk note: deaths require better food, gear, and an exit path before retrying.");
                 }
                 observeText(goalMessage);
                 JsonObject result = data.has("result") && data.get("result").isJsonObject()
@@ -447,44 +503,44 @@ public class AgentProfileMemory {
             }
             if (lower.contains("inventory") || lower.contains("space") || lower.contains("full")) {
                 inventoryPressure++;
-                addReflection("Note to self: a full pack turns adventure into stumbling. Bank the hides, bones, ore, or coins before I ask my legs for another trip.");
+                addReflection("Inventory note: bank or drop low-value items before long loops.");
             }
             if (lower.contains("bank")) {
                 bankMentions++;
-                addReflection("Note to self: the bank is not a detour; it is how I turn scraps from the road into preparation for the next outing.");
+                addReflection("Banking note: consolidate loot and supplies before leaving a safe area.");
             }
             if (lower.contains("food") || lower.contains("fish") || lower.contains("cook") || lower.contains("eat")) {
                 foodMentions++;
-                addReflection("Note to self: food is courage I can carry. Cooked fish or bought meals buy me another mistake and another swing.");
+                addReflection("Food note: carry enough healing before travel, combat, or retries.");
             }
             if (lower.contains("varrock")) {
                 varrockMentions++;
-                addReflection("Note to self: Varrock keeps calling with shops, anvils, mines, and money, but I should arrive stocked instead of hopeful.");
+                addReflection("Varrock note: restock before using Varrock shops, mines, or routes.");
             }
             if (lower.contains("lumbridge")) {
                 lumbridgeMentions++;
-                addReflection("Note to self: Lumbridge feels like my campfire. When plans go sideways, I can rebuild there with cows, banks, and simple routes.");
+                addReflection("Lumbridge note: use Lumbridge as a safe fallback for early supplies and training.");
             }
             if (lower.contains("cow")) {
                 cowMentions++;
-                addReflection("Note to self: cows are not glorious enemies, but they are honest teachers. Hides, bones, and steady combat practice all count.");
+                addReflection("Training note: Lumbridge cows are a repeatable early combat target; monitor food and inventory.");
             }
             if (lower.contains("goblin")) {
-                addReflection("Note to self: goblins are small, but they still deserve attention. I should not let easy fights make me careless.");
+                addReflection("Combat note: check hitpoints and food even for low-level targets.");
             }
             if (lower.contains("path") || lower.contains("route") || lower.contains("reach")
                     || lower.contains("nearby") || lower.contains("no matching object")) {
                 pathingFailures++;
-                addReflection("Note to self: the road argued with me again. Slow down, name the landmark, and choose something I can actually reach.");
+                addReflection("Route note: verify reachability before repeating failed movement.");
             }
             if (lower.contains("gear") || lower.contains("armor") || lower.contains("armour")
                     || lower.contains("weapon") || lower.contains("hammer") || lower.contains("smith")) {
                 gearMentions++;
-                addReflection("Note to self: gear changes the shape of a fight. Better armour, a better weapon, and even a hammer can turn fear into options.");
+                addReflection("Gear note: check equipment before riskier combat or production loops.");
             }
             if (lower.contains("coin") || lower.contains("money")) {
                 coinMentions++;
-                addReflection("Note to self: coins are future safety. Spend them like an adventurer who expects to come home alive.");
+                addReflection("Coin note: preserve budget for food, gear, and travel costs.");
             }
         }
 
@@ -493,18 +549,37 @@ public class AgentProfileMemory {
         }
 
         private void addReflection(String note) {
-            if (note == null || note.trim().isEmpty()) {
+            String trimmed = normalizeReflection(note);
+            if (trimmed.isEmpty()) {
                 return;
             }
             if (selfTalkLog == null) {
                 selfTalkLog = new ArrayList<String>();
             }
-            String trimmed = note.trim();
             selfTalkLog.remove(trimmed);
             selfTalkLog.add(trimmed);
-            while (selfTalkLog.size() > 12) {
+            while (selfTalkLog.size() > 6) {
                 selfTalkLog.remove(0);
             }
+        }
+
+        private void normalizeSelfTalkLog() {
+            if (selfTalkLog == null) {
+                selfTalkLog = new ArrayList<String>();
+                return;
+            }
+            List<String> normalized = new ArrayList<String>();
+            for (String note : selfTalkLog) {
+                String value = normalizeReflection(note);
+                if (!value.isEmpty()) {
+                    normalized.remove(value);
+                    normalized.add(value);
+                }
+            }
+            while (normalized.size() > 6) {
+                normalized.remove(0);
+            }
+            selfTalkLog = normalized;
         }
 
         private boolean containsDeath(String text) {

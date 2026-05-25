@@ -5,8 +5,10 @@ import static com.rs2.game.content.StaticItemList.KEBAB;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
@@ -23,6 +25,7 @@ import com.rs2.event.impl.ButtonActionEvent;
 import com.rs2.event.impl.NpcFirstClickEvent;
 import com.rs2.event.impl.NpcSecondClickEvent;
 import com.rs2.event.impl.NpcThirdClickEvent;
+import com.rs2.game.content.StaticItemList;
 import com.rs2.game.content.StaticObjectList;
 import com.rs2.game.content.consumables.Food;
 import com.rs2.game.content.consumables.Kebabs;
@@ -107,7 +110,26 @@ public class AgentToolService {
             StaticObjectList.FIRE, 11404, 11405, 11406
     };
     private static final int[] RAW_COOKABLE_FOOD_IDS = {
-            377, 335, 331, 321, 317, 2132, 2138
+            StaticItemList.RAW_SHRIMPS,
+            StaticItemList.RAW_ANCHOVIES,
+            StaticItemList.RAW_SARDINE,
+            StaticItemList.RAW_HERRING,
+            StaticItemList.RAW_TROUT,
+            StaticItemList.RAW_SALMON,
+            StaticItemList.RAW_PIKE,
+            StaticItemList.RAW_TUNA,
+            StaticItemList.RAW_LOBSTER,
+            StaticItemList.RAW_SWORDFISH,
+            StaticItemList.RAW_SHARK,
+            StaticItemList.RAW_MACKEREL,
+            StaticItemList.RAW_COD,
+            StaticItemList.RAW_BASS,
+            StaticItemList.RAW_MONKFISH,
+            StaticItemList.RAW_KARAMBWAN,
+            StaticItemList.RAW_BEEF,
+            StaticItemList.RAW_RAT_MEAT,
+            StaticItemList.RAW_BEAR_MEAT,
+            StaticItemList.RAW_CHICKEN
     };
     private static final int[] FLETCHING_PRODUCT_ITEM_IDS = {
             52, 50, 48, 54, 56, 60, 58, 64, 62, 68, 66, 72, 70
@@ -144,6 +166,9 @@ public class AgentToolService {
         }
         if ("observe_state".equals(tool)) {
             return observeState(player);
+        }
+        if ("food_bank".equals(tool)) {
+            return foodBankXs(player);
         }
         if ("plan_combat_training".equals(tool)) {
             return planCombatTraining(player, arguments);
@@ -229,6 +254,9 @@ public class AgentToolService {
         if ("unequip_item".equals(tool)) {
             return unequipItem(player, arguments);
         }
+        if ("unequip_items".equals(tool)) {
+            return unequipItems(player, arguments);
+        }
         if ("equip_best_items".equals(tool)) {
             return equipBestItems(player);
         }
@@ -301,6 +329,17 @@ public class AgentToolService {
         return failure("Unknown RuneScape agent tool: " + tool);
     }
 
+    static boolean isXsTool(String tool) {
+        return tool != null && tool.endsWith("_XS");
+    }
+
+    static String baseToolName(String tool) {
+        if (!isXsTool(tool)) {
+            return tool;
+        }
+        return tool.substring(0, tool.length() - 3);
+    }
+
     public static JsonObject observeState(Player player) {
         JsonObject result = success("Observed current game state.");
         addPlayerState(result, player);
@@ -310,6 +349,123 @@ public class AgentToolService {
         result.add("nearbyObjects", nearbyObjects(player, 20, 16));
         result.add("nearbyGroundItems", nearbyGroundItems(player, 20, 16));
         return result;
+    }
+
+    private static JsonObject foodBankXs(Player player) {
+        JsonObject result = success("Observed compact food and bank state.");
+        result.addProperty("compact", true);
+        result.addProperty("tool", "food_bank_XS");
+        result.add("player", compactPlayerState(player));
+        result.add("inventory", compactInventorySummary(inventory(player), 12));
+        result.add("equipment", compactItemArray(equipment(player), 10));
+        result.add("bank", compactBankSummary(bank(player), 12));
+        result.add("combat", compactCombatReadiness(combatReadiness(player)));
+        return result;
+    }
+
+    static JsonObject compactXsResult(String baseTool, JsonObject result) {
+        return compactXsResult(baseTool, result, null, null);
+    }
+
+    static JsonObject compactXsResult(String baseTool, JsonObject result, Player player, JsonObject arguments) {
+        if (result == null) {
+            return failure("No result was returned for " + baseTool + ".");
+        }
+        if (getBoolean(result, "compact", false)) {
+            return result;
+        }
+        JsonObject compact = new JsonObject();
+        boolean success = result.has("success") && result.get("success").isJsonPrimitive()
+                && result.get("success").getAsBoolean();
+        compact.addProperty("success", success);
+        compact.addProperty("compact", true);
+        compact.addProperty("tool", baseTool + "_XS");
+        copyIfPresent(result, compact, "message");
+        copyIfPresent(result, compact, "complete");
+        copyIfPresent(result, compact, "batchStatus");
+        copyIfPresent(result, compact, "status");
+        copyIfPresent(result, compact, "batchTicks");
+        copyIfPresent(result, compact, "waitedTicks");
+        copyIfPresent(result, compact, "submittedTick");
+        copyIfPresent(result, compact, "targetTick");
+        copyIfPresent(result, compact, "serverTick");
+        copyIfPresent(result, compact, "arrived");
+        copyIfPresent(result, compact, "reachable");
+        copyIfPresent(result, compact, "objectReachable");
+        copyIfPresent(result, compact, "approaching");
+        copyIfPresent(result, compact, "deposited");
+        copyIfPresent(result, compact, "depositedAmount");
+        copyIfPresent(result, compact, "withdrawn");
+        copyIfPresent(result, compact, "withdrawnAmount");
+        copyIfPresent(result, compact, "unequipped");
+        copyIfPresent(result, compact, "equipped");
+        copyIfPresent(result, compact, "dropped");
+        copyIfPresent(result, compact, "amount");
+        copyIfPresent(result, compact, "itemId");
+        copyCompactTileIfPresent(result, compact, "target");
+        copyCompactTileIfPresent(result, compact, "destination");
+        copyCompactTileIfPresent(result, compact, "finalTile");
+        copyCompactTileIfPresent(result, compact, "walkTarget");
+        copyCompactTileIfPresent(result, compact, "objectWalkTarget");
+        copyCompactTileIfPresent(result, compact, "nextWaypoint");
+        if (result.has("object") && result.get("object").isJsonObject()) {
+            compact.add("object", compactObject(result.get("object").getAsJsonObject()));
+        }
+        if (result.has("npc") && result.get("npc").isJsonObject()) {
+            compact.add("npc", compactNpc(result.get("npc").getAsJsonObject()));
+        }
+        if (result.has("groundItem") && result.get("groundItem").isJsonObject()) {
+            compact.add("groundItem", compactGroundItem(result.get("groundItem").getAsJsonObject()));
+        }
+        if (result.has("unequippedItems") && result.get("unequippedItems").isJsonArray()) {
+            compact.add("unequippedItems", compactItemArray(result.get("unequippedItems").getAsJsonArray(), 12));
+        }
+        JsonObject playerJson = result.has("player") && result.get("player").isJsonObject()
+                ? result.get("player").getAsJsonObject()
+                : null;
+        if (playerJson != null) {
+            compact.add("player", compactPlayerState(playerJson));
+            compact.add("inventory", compactInventorySummary(jsonArray(playerJson, "inventory"), 10));
+            boolean includeBank = "observe_state".equals(baseTool) || "deposit_inventory_items".equals(baseTool)
+                    || "withdraw_bank_items".equals(baseTool) || "food_bank".equals(baseTool)
+                    || getBoolean(playerJson, "inBankArea", false);
+            if (includeBank) {
+                compact.add("bank", compactBankSummary(jsonArray(playerJson, "bank"), 10));
+            }
+            if ("observe_state".equals(baseTool) || "unequip_item".equals(baseTool)
+                    || "unequip_items".equals(baseTool)) {
+                compact.add("equipment", compactItemArray(jsonArray(playerJson, "equipment"), 10));
+            }
+            if (playerJson.has("combatReadiness") && playerJson.get("combatReadiness").isJsonObject()) {
+                compact.add("combat", compactCombatReadiness(playerJson.get("combatReadiness").getAsJsonObject()));
+            }
+        } else if (player != null) {
+            compact.add("player", compactPlayerState(player));
+            compact.add("inventory", compactInventorySummary(inventory(player), 10));
+            if ("deposit_inventory_items".equals(baseTool) || "food_bank".equals(baseTool)
+                    || Boundary.isIn(player, Boundary.BANK_AREA)) {
+                compact.add("bank", compactBankSummary(bank(player), 10));
+            }
+        }
+        if ("observe_state".equals(baseTool) || "walk_to_tile_until_arrived".equals(baseTool)
+                || "wait_until_idle".equals(baseTool)) {
+            if (result.has("nearbyNpcs") && result.get("nearbyNpcs").isJsonArray()) {
+                compact.add("nearbyNpcs", compactNpcArray(result.get("nearbyNpcs").getAsJsonArray(), 8));
+            }
+            if (result.has("nearbyObjects") && result.get("nearbyObjects").isJsonArray()) {
+                compact.add("nearbyObjects", compactObjectArray(result.get("nearbyObjects").getAsJsonArray(), 8));
+            }
+            if (result.has("nearbyGroundItems") && result.get("nearbyGroundItems").isJsonArray()) {
+                compact.add("nearbyGroundItems", compactGroundItemArray(result.get("nearbyGroundItems").getAsJsonArray(), 8));
+            }
+        }
+        if ("find_nearest_object".equals(baseTool) && !success && player != null) {
+            int maxDistance = getInt(arguments, "maxDistance", DEFAULT_OBJECT_SCAN_DISTANCE);
+            compact.add("candidates", compactNearbyObjectCandidates(player, maxDistance, 8));
+        }
+        removeEmptyArrays(compact, "inventory", "bank", "equipment", "nearbyNpcs", "nearbyObjects",
+                "nearbyGroundItems", "candidates", "unequippedItems");
+        return compact;
     }
 
     private static JsonObject planCombatTraining(Player player, JsonObject arguments) {
@@ -436,8 +592,29 @@ public class AgentToolService {
         if (object == null) {
             object = new Objects(objectId, x, y, height, 0, 10, 0);
         }
+        player.turnPlayerTo(x, y);
+        player.objectX = x;
+        player.objectY = y;
+        player.endCurrentTask();
         int before = countInventoryItem(player, item.itemId);
-        UseItem.itemOnObject(player, objectId, x, y, item.itemId);
+        boolean openedCookingInterface = false;
+        if (isCookingObject(objectId) && isRawCookableFood(item.itemId)) {
+            openedCookingInterface = Cooking.startCooking(player, item.itemId, objectId);
+            if (!openedCookingInterface && !player.playerIsCooking) {
+                JsonObject result = failure("Unable to start cooking "
+                        + DeprecatedItems.getItemName(item.itemId) + " on object " + objectId + ".");
+                result.add("item", itemMatchJson(item));
+                result.add("object", objectJson(player, object,
+                        AgentKnowledgeBase.distance(player.absX, player.absY, x, y)));
+                result.addProperty("itemCountBefore", before);
+                result.addProperty("itemCountAfter", countInventoryItem(player, item.itemId));
+                result.addProperty("openedCookingInterface", false);
+                addPlayerState(result, player);
+                return result;
+            }
+        } else {
+            UseItem.itemOnObject(player, objectId, x, y, item.itemId);
+        }
         JsonObject result = success("Used " + DeprecatedItems.getItemName(item.itemId)
                 + " on object " + objectId + ".");
         result.add("item", itemMatchJson(item));
@@ -445,6 +622,7 @@ public class AgentToolService {
                 AgentKnowledgeBase.distance(player.absX, player.absY, x, y)));
         result.addProperty("itemCountBefore", before);
         result.addProperty("itemCountAfter", countInventoryItem(player, item.itemId));
+        result.addProperty("openedCookingInterface", openedCookingInterface);
         addPlayerState(result, player);
         return result;
     }
@@ -1027,7 +1205,7 @@ public class AgentToolService {
     }
 
     private static JsonObject findNearestNpc(Player player, JsonObject arguments) {
-        String name = normalize(getString(arguments, "name", ""));
+        String name = normalize(getString(arguments, "name", getString(arguments, "npc", "")));
         List<Integer> npcIds = getIntList(arguments, "npcIds");
         int npcId = getInt(arguments, "npcId", getInt(arguments, "type", -1));
         if (npcId >= 0) {
@@ -1556,6 +1734,9 @@ public class AgentToolService {
     }
 
     private static JsonObject unequipItem(Player player, JsonObject arguments) {
+        if (isMultiUnequipRequest(arguments)) {
+            return unequipItems(player, arguments);
+        }
         int slot = getInt(arguments, "equipmentSlot", getInt(arguments, "slot", -1));
         String slotName = normalize(getString(arguments, "slotName", getString(arguments, "equipment", "")));
         if (slot < 0 && !slotName.isEmpty()) {
@@ -1597,6 +1778,101 @@ public class AgentToolService {
         result.addProperty("unequipped", moved > 0 ? moved : 0);
         addPlayerState(result, player);
         return result;
+    }
+
+    private static JsonObject unequipItems(Player player, JsonObject arguments) {
+        List<Integer> slots = getIntList(arguments, "equipmentSlots");
+        slots.addAll(getIntList(arguments, "slots"));
+        int singleSlot = getInt(arguments, "equipmentSlot", getInt(arguments, "slot", -1));
+        if (singleSlot >= 0) {
+            slots.add(singleSlot);
+        }
+        List<Integer> itemIds = getIntList(arguments, "itemIds");
+        int requestedId = getInt(arguments, "itemId", -1);
+        if (requestedId >= 0) {
+            itemIds.add(requestedId);
+        }
+        List<String> names = normalizedStringList(arguments, "names");
+        names.addAll(normalizedStringList(arguments, "items"));
+        String name = normalize(getString(arguments, "name", getString(arguments, "item", "")));
+        if (!name.isEmpty()) {
+            names.add(name);
+        }
+        List<String> slotNames = normalizedStringList(arguments, "slotNames");
+        String slotName = normalize(getString(arguments, "slotName", getString(arguments, "equipment", "")));
+        if (!slotName.isEmpty()) {
+            slotNames.add(slotName);
+        }
+        for (String requestedSlotName : slotNames) {
+            int slot = equipmentSlotByName(requestedSlotName);
+            if (slot >= 0) {
+                slots.add(slot);
+            }
+        }
+        boolean all = getBoolean(arguments, "all", false);
+        if (!all && slots.isEmpty() && itemIds.isEmpty() && names.isEmpty()) {
+            return failure("No equipment slots, itemIds, names, or all=true were supplied to unequip.");
+        }
+
+        int unequipped = 0;
+        JsonArray unequippedItems = new JsonArray();
+        player.endCurrentTask();
+        SkillHandler.resetSkills(player);
+        for (int slot = 0; slot < player.playerEquipment.length; slot++) {
+            int equippedId = player.playerEquipment[slot];
+            if (equippedId < 0) {
+                continue;
+            }
+            if (!all && !slots.isEmpty() && !slots.contains(slot)) {
+                continue;
+            }
+            if (!itemIds.isEmpty() && !itemIds.contains(equippedId)) {
+                continue;
+            }
+            String equippedName = normalize(DeprecatedItems.getItemName(equippedId));
+            if (!names.isEmpty() && !matchesAnyName(equippedName, names)) {
+                continue;
+            }
+            if (!all && slots.isEmpty() && itemIds.isEmpty() && names.isEmpty()) {
+                continue;
+            }
+            if (player.getItemAssistant().freeSlots(equippedId, 1) <= 0) {
+                JsonObject result = failure("Not enough inventory space to unequip "
+                        + DeprecatedItems.getItemName(equippedId) + ".");
+                result.addProperty("unequipped", unequipped);
+                result.add("unequippedItems", unequippedItems);
+                addPlayerState(result, player);
+                return result;
+            }
+            int before = countInventoryItem(player, equippedId);
+            player.getItemAssistant().removeItem(equippedId, slot);
+            int moved = Math.max(0, countInventoryItem(player, equippedId) - before);
+            if (moved > 0 || player.playerEquipment[slot] < 0) {
+                JsonObject item = new JsonObject();
+                item.addProperty("slot", slot);
+                item.addProperty("slotName", equipmentSlotName(slot));
+                item.addProperty("id", equippedId);
+                item.addProperty("itemId", equippedId);
+                item.addProperty("name", DeprecatedItems.getItemName(equippedId));
+                item.addProperty("amount", Math.max(1, moved));
+                unequippedItems.add(item);
+                unequipped++;
+            }
+        }
+        JsonObject result = unequipped > 0
+                ? success("Unequipped " + unequipped + " equipped item" + (unequipped == 1 ? "." : "s."))
+                : failure("No matching equipped items were unequipped.");
+        result.addProperty("unequipped", unequipped);
+        result.add("unequippedItems", unequippedItems);
+        addPlayerState(result, player);
+        return result;
+    }
+
+    private static boolean isMultiUnequipRequest(JsonObject arguments) {
+        return hasArray(arguments, "equipmentSlots") || hasArray(arguments, "slots")
+                || hasArray(arguments, "itemIds") || hasArray(arguments, "names")
+                || hasArray(arguments, "items") || hasArray(arguments, "slotNames")
+                || getBoolean(arguments, "all", false);
     }
 
     private static JsonObject equipBestItems(Player player) {
@@ -1924,7 +2200,7 @@ public class AgentToolService {
     }
 
     private static JsonObject openNearestShop(Player player, JsonObject arguments) {
-        String name = normalize(getString(arguments, "name", ""));
+        String name = normalize(getString(arguments, "name", getString(arguments, "item", "")));
         int maxDistance = getInt(arguments, "maxDistance", 10);
         Npc nearest = null;
         Shops.Shop nearestShop = null;
@@ -2391,7 +2667,7 @@ public class AgentToolService {
         SkillHandler.resetSkills(player);
         player.getPacketSender().openUpBank();
 
-        String name = normalize(getString(arguments, "name", ""));
+        String name = normalize(getString(arguments, "name", getString(arguments, "item", "")));
         List<Integer> itemIds = getIntList(arguments, "itemIds");
         int requestedId = getInt(arguments, "itemId", -1);
         if (requestedId >= 0) {
@@ -4138,6 +4414,385 @@ public class AgentToolService {
         return json;
     }
 
+    private static String tileText(JsonObject value) {
+        if (value == null || !value.has("x") || !value.has("y")) {
+            return "";
+        }
+        return getInt(value, "x", 0) + "," + getInt(value, "y", 0) + ","
+                + getInt(value, "height", getInt(value, "h", 0));
+    }
+
+    private static JsonObject compactPlayerState(Player player) {
+        JsonObject playerJson = new JsonObject();
+        playerJson.addProperty("name", player.playerName);
+        playerJson.addProperty("tile", player.absX + "," + player.absY + "," + player.heightLevel);
+        playerJson.addProperty("hp", player.playerLevel[Constants.HITPOINTS]);
+        playerJson.addProperty("maxHp", player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.HITPOINTS]));
+        playerJson.addProperty("combatLevel", player.combatLevel);
+        playerJson.addProperty("runEnergy", (int) Math.ceil(player.playerEnergy));
+        playerJson.addProperty("runEnabled", player.isRunning2);
+        playerJson.addProperty("freeInventorySlots", player.getItemAssistant().freeSlots());
+        playerJson.addProperty("inBankArea", Boundary.isIn(player, Boundary.BANK_AREA));
+        JsonArray flags = playerFlags(player);
+        if (flags.size() > 0) {
+            playerJson.add("flags", flags);
+        }
+        playerJson.add("skills", compactSkills(skills(player)));
+        return playerJson;
+    }
+
+    private static JsonObject compactPlayerState(JsonObject player) {
+        JsonObject playerJson = new JsonObject();
+        copyIfPresent(player, playerJson, "name");
+        playerJson.addProperty("tile", tileText(player));
+        copyAs(player, playerJson, "hitpoints", "hp");
+        copyAs(player, playerJson, "maxHitpoints", "maxHp");
+        copyIfPresent(player, playerJson, "combatLevel");
+        copyIfPresent(player, playerJson, "runEnergy");
+        copyIfPresent(player, playerJson, "runEnabled");
+        copyIfPresent(player, playerJson, "freeInventorySlots");
+        copyIfPresent(player, playerJson, "inBankArea");
+        JsonArray flags = playerFlags(player);
+        if (flags.size() > 0) {
+            playerJson.add("flags", flags);
+        }
+        if (player.has("skills") && player.get("skills").isJsonObject()) {
+            playerJson.add("skills", compactSkills(player.get("skills").getAsJsonObject()));
+        }
+        return playerJson;
+    }
+
+    private static JsonArray playerFlags(Player player) {
+        JsonArray flags = new JsonArray();
+        if (player.isMoving) {
+            flags.add("moving");
+        }
+        if (isInCombat(player)) {
+            flags.add("combat");
+        }
+        if (player.isDead) {
+            flags.add("dead");
+        }
+        if (SkillHandler.isSkilling(player)) {
+            flags.add("skilling");
+        }
+        if (player.isShopping) {
+            flags.add("shopping");
+        }
+        return flags;
+    }
+
+    private static JsonArray playerFlags(JsonObject player) {
+        JsonArray flags = new JsonArray();
+        addFlag(flags, player, "isMoving", "moving");
+        addFlag(flags, player, "isInCombat", "combat");
+        addFlag(flags, player, "isDead", "dead");
+        addFlag(flags, player, "isSkilling", "skilling");
+        addFlag(flags, player, "isMining", "mining");
+        addFlag(flags, player, "isWoodcutting", "woodcutting");
+        addFlag(flags, player, "isFishing", "fishing");
+        addFlag(flags, player, "isCooking", "cooking");
+        addFlag(flags, player, "isFletching", "fletching");
+        addFlag(flags, player, "isSmithing", "smithing");
+        addFlag(flags, player, "isShopping", "shopping");
+        return flags;
+    }
+
+    private static void addFlag(JsonArray flags, JsonObject source, String field, String label) {
+        if (getBoolean(source, field, false)) {
+            flags.add(label);
+        }
+    }
+
+    private static JsonObject compactSkills(JsonObject skills) {
+        JsonObject compact = new JsonObject();
+        if (skills == null) {
+            return compact;
+        }
+        for (Map.Entry<String, JsonElement> entry : skills.entrySet()) {
+            String name = entry.getKey();
+            if (name == null || name.startsWith("unused") || !entry.getValue().isJsonObject()) {
+                continue;
+            }
+            JsonObject skill = entry.getValue().getAsJsonObject();
+            int level = getInt(skill, "level", 1);
+            int xp = getInt(skill, "xp", 0);
+            int base = getInt(skill, "baseLevel", level);
+            if (level <= 1 && xp <= 0) {
+                continue;
+            }
+            JsonObject compactSkill = new JsonObject();
+            compactSkill.addProperty("level", level);
+            compactSkill.addProperty("xp", xp);
+            if (base != level) {
+                compactSkill.addProperty("base", base);
+            }
+            compact.add(name, compactSkill);
+        }
+        return compact;
+    }
+
+    private static JsonObject compactInventorySummary(JsonArray items, int limit) {
+        JsonObject summary = new JsonObject();
+        int foodCount = 0;
+        int foodHeal = 0;
+        for (JsonElement element : items) {
+            if (!element.isJsonObject()) {
+                continue;
+            }
+            JsonObject item = element.getAsJsonObject();
+            int amount = Math.max(1, getInt(item, "amount", 1));
+            int heal = getInt(item, "foodHeal", getInt(item, "heal", 0));
+            if (heal > 0) {
+                foodCount += amount;
+                foodHeal += amount * heal;
+            }
+        }
+        summary.addProperty("food", foodCount);
+        summary.addProperty("heal", foodHeal);
+        summary.add("counts", compactItemCounts(items, limit));
+        summary.add("items", compactItemArray(items, Math.min(limit, 10)));
+        return summary;
+    }
+
+    private static JsonObject compactBankSummary(JsonArray items, int limit) {
+        JsonObject summary = new JsonObject();
+        int coins = 0;
+        int foodCount = 0;
+        int foodHeal = 0;
+        for (JsonElement element : items) {
+            if (!element.isJsonObject()) {
+                continue;
+            }
+            JsonObject item = element.getAsJsonObject();
+            int itemId = getInt(item, "id", getInt(item, "itemId", -1));
+            int amount = Math.max(1, getInt(item, "amount", 1));
+            if (itemId == COINS) {
+                coins += amount;
+            }
+            int heal = getInt(item, "foodHeal", getInt(item, "heal", 0));
+            if (heal > 0) {
+                foodCount += amount;
+                foodHeal += amount * heal;
+            }
+        }
+        summary.addProperty("slots", items.size());
+        summary.addProperty("coins", coins);
+        summary.addProperty("food", foodCount);
+        summary.addProperty("heal", foodHeal);
+        summary.add("items", compactItemArray(items, limit));
+        return summary;
+    }
+
+    private static JsonArray compactItemCounts(JsonArray items, int limit) {
+        LinkedHashMap<String, JsonObject> counts = new LinkedHashMap<String, JsonObject>();
+        for (JsonElement element : items) {
+            if (!element.isJsonObject()) {
+                continue;
+            }
+            JsonObject item = element.getAsJsonObject();
+            int itemId = getInt(item, "id", getInt(item, "itemId", -1));
+            String name = getString(item, "name", "");
+            int heal = getInt(item, "foodHeal", getInt(item, "heal", 0));
+            String key = itemId + "|" + name + "|" + heal;
+            JsonObject count = counts.get(key);
+            if (count == null) {
+                count = new JsonObject();
+                count.addProperty("id", itemId);
+                count.addProperty("name", name);
+                count.addProperty("amount", 0);
+                if (heal > 0) {
+                    count.addProperty("heal", heal);
+                }
+                counts.put(key, count);
+            }
+            count.addProperty("amount", getInt(count, "amount", 0) + Math.max(1, getInt(item, "amount", 1)));
+        }
+        JsonArray array = new JsonArray();
+        int index = 0;
+        for (JsonObject count : counts.values()) {
+            if (index >= limit) {
+                JsonObject more = new JsonObject();
+                more.addProperty("more", counts.size() - index);
+                array.add(more);
+                break;
+            }
+            array.add(count);
+            index++;
+        }
+        return array;
+    }
+
+    private static JsonArray compactItemArray(JsonArray items, int limit) {
+        JsonArray array = new JsonArray();
+        int count = 0;
+        for (JsonElement element : items) {
+            if (!element.isJsonObject()) {
+                continue;
+            }
+            if (count >= limit) {
+                JsonObject more = new JsonObject();
+                more.addProperty("more", items.size() - count);
+                array.add(more);
+                break;
+            }
+            array.add(compactItem(element.getAsJsonObject()));
+            count++;
+        }
+        return array;
+    }
+
+    private static JsonObject compactItem(JsonObject source) {
+        JsonObject item = new JsonObject();
+        copyIfPresent(source, item, "slot");
+        copyIfPresent(source, item, "slotName");
+        copyAs(source, item, "itemId", "id");
+        if (!item.has("id")) {
+            copyIfPresent(source, item, "id");
+        }
+        copyIfPresent(source, item, "name");
+        copyIfPresent(source, item, "amount");
+        copyAs(source, item, "foodHeal", "heal");
+        if (!item.has("heal")) {
+            copyIfPresent(source, item, "heal");
+        }
+        return item;
+    }
+
+    private static JsonObject compactCombatReadiness(JsonObject combat) {
+        JsonObject compact = new JsonObject();
+        copyAs(combat, compact, "eatAtHitpoints", "eatAt");
+        copyAs(combat, compact, "retreatAtHitpoints", "retreatAt");
+        copyAs(combat, compact, "inventoryFoodCount", "inventoryFood");
+        copyAs(combat, compact, "inventoryFoodHealing", "inventoryHeal");
+        copyAs(combat, compact, "bankFoodCount", "bankFood");
+        copyIfPresent(combat, compact, "inventoryCoins");
+        copyIfPresent(combat, compact, "bankCoins");
+        if (combat.has("recommendedArea") && combat.get("recommendedArea").isJsonObject()) {
+            JsonObject area = combat.get("recommendedArea").getAsJsonObject();
+            JsonObject compactArea = new JsonObject();
+            copyIfPresent(area, compactArea, "name");
+            copyAs(area, compactArea, "npcName", "npc");
+            copyIfPresent(area, compactArea, "maxHit");
+            copyAs(area, compactArea, "recommendedUntilLevel", "until");
+            compact.add("area", compactArea);
+        }
+        return compact;
+    }
+
+    private static JsonObject compactNpc(JsonObject source) {
+        JsonObject npc = new JsonObject();
+        copyAs(source, npc, "npcIndex", "index");
+        copyIfPresent(source, npc, "type");
+        copyIfPresent(source, npc, "name");
+        npc.addProperty("tile", tileText(source));
+        copyAs(source, npc, "combatLevel", "level");
+        copyAs(source, npc, "hitpoints", "hp");
+        copyAs(source, npc, "maxHitpoints", "maxHp");
+        copyIfPresent(source, npc, "distance");
+        copyIfPresent(source, npc, "maxHit");
+        copyIfPresent(source, npc, "aggressive");
+        copyIfPresent(source, npc, "underAttack");
+        return npc;
+    }
+
+    private static JsonArray compactNpcArray(JsonArray source, int limit) {
+        JsonArray array = new JsonArray();
+        for (int i = 0; i < source.size() && i < limit; i++) {
+            if (source.get(i).isJsonObject()) {
+                array.add(compactNpc(source.get(i).getAsJsonObject()));
+            }
+        }
+        if (source.size() > limit) {
+            JsonObject more = new JsonObject();
+            more.addProperty("more", source.size() - limit);
+            array.add(more);
+        }
+        return array;
+    }
+
+    private static JsonObject compactObject(JsonObject source) {
+        JsonObject object = new JsonObject();
+        copyIfPresent(source, object, "objectId");
+        copyIfPresent(source, object, "name");
+        object.addProperty("tile", tileText(source));
+        copyIfPresent(source, object, "distance");
+        copyIfPresent(source, object, "reachable");
+        copyIfPresent(source, object, "interactionInRange");
+        copyIfPresent(source, object, "resource");
+        copyIfPresent(source, object, "requiredLevel");
+        if (source.has("interactionWalkTarget") && source.get("interactionWalkTarget").isJsonObject()) {
+            object.addProperty("walkTarget", tileText(source.get("interactionWalkTarget").getAsJsonObject()));
+        } else if (source.has("nearestInteractionTile") && source.get("nearestInteractionTile").isJsonObject()) {
+            object.addProperty("nearestInteractionTile", tileText(source.get("nearestInteractionTile").getAsJsonObject()));
+        }
+        return object;
+    }
+
+    private static JsonArray compactObjectArray(JsonArray source, int limit) {
+        JsonArray array = new JsonArray();
+        for (int i = 0; i < source.size() && i < limit; i++) {
+            if (source.get(i).isJsonObject()) {
+                array.add(compactObject(source.get(i).getAsJsonObject()));
+            }
+        }
+        if (source.size() > limit) {
+            JsonObject more = new JsonObject();
+            more.addProperty("more", source.size() - limit);
+            array.add(more);
+        }
+        return array;
+    }
+
+    private static JsonObject compactGroundItem(JsonObject source) {
+        JsonObject item = new JsonObject();
+        copyIfPresent(source, item, "id");
+        copyIfPresent(source, item, "name");
+        copyIfPresent(source, item, "amount");
+        item.addProperty("tile", tileText(source));
+        copyIfPresent(source, item, "distance");
+        return item;
+    }
+
+    private static JsonArray compactGroundItemArray(JsonArray source, int limit) {
+        JsonArray array = new JsonArray();
+        for (int i = 0; i < source.size() && i < limit; i++) {
+            if (source.get(i).isJsonObject()) {
+                array.add(compactGroundItem(source.get(i).getAsJsonObject()));
+            }
+        }
+        if (source.size() > limit) {
+            JsonObject more = new JsonObject();
+            more.addProperty("more", source.size() - limit);
+            array.add(more);
+        }
+        return array;
+    }
+
+    private static JsonArray compactNearbyObjectCandidates(Player player, int maxDistance, int limit) {
+        ArrayList<JsonObject> objects = new ArrayList<JsonObject>();
+        for (Objects object : Region.getObjectsInRadius(player.absX, player.absY, player.heightLevel, maxDistance)) {
+            objects.add(objectJson(player, object,
+                    AgentKnowledgeBase.distance(player.absX, player.absY, object.objectX, object.objectY)));
+        }
+        Collections.sort(objects, new Comparator<JsonObject>() {
+            @Override
+            public int compare(JsonObject left, JsonObject right) {
+                return Integer.compare(getInt(left, "distance", 999999), getInt(right, "distance", 999999));
+            }
+        });
+        JsonArray array = new JsonArray();
+        for (int i = 0; i < objects.size() && i < limit; i++) {
+            array.add(compactObject(objects.get(i)));
+        }
+        if (objects.size() > limit) {
+            JsonObject more = new JsonObject();
+            more.addProperty("more", objects.size() - limit);
+            array.add(more);
+        }
+        return array;
+    }
+
     private static int optionToNumber(String option) {
         if ("second".equals(option) || "2".equals(option)) {
             return 2;
@@ -4189,6 +4844,73 @@ public class AgentToolService {
             }
         }
         return values;
+    }
+
+    private static List<String> normalizedStringList(JsonObject object, String name) {
+        ArrayList<String> values = new ArrayList<String>();
+        if (object == null || !object.has(name) || !object.get(name).isJsonArray()) {
+            return values;
+        }
+        for (JsonElement element : object.get(name).getAsJsonArray()) {
+            if (element.isJsonPrimitive()) {
+                String value = normalize(element.getAsString());
+                if (!value.isEmpty()) {
+                    values.add(value);
+                }
+            }
+        }
+        return values;
+    }
+
+    private static boolean hasArray(JsonObject object, String name) {
+        return object != null && object.has(name) && object.get(name).isJsonArray()
+                && object.get(name).getAsJsonArray().size() > 0;
+    }
+
+    private static boolean matchesAnyName(String candidate, List<String> names) {
+        for (String name : names) {
+            if (candidate.contains(name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static JsonArray jsonArray(JsonObject object, String name) {
+        if (object != null && object.has(name) && object.get(name).isJsonArray()) {
+            return object.get(name).getAsJsonArray();
+        }
+        return new JsonArray();
+    }
+
+    private static void copyIfPresent(JsonObject source, JsonObject target, String field) {
+        if (source != null && target != null && source.has(field)) {
+            target.add(field, source.get(field));
+        }
+    }
+
+    private static void copyAs(JsonObject source, JsonObject target, String sourceField, String targetField) {
+        if (source != null && target != null && source.has(sourceField)) {
+            target.add(targetField, source.get(sourceField));
+        }
+    }
+
+    private static void copyCompactTileIfPresent(JsonObject source, JsonObject target, String field) {
+        if (source != null && target != null && source.has(field) && source.get(field).isJsonObject()) {
+            target.addProperty(field, tileText(source.get(field).getAsJsonObject()));
+        }
+    }
+
+    private static void removeEmptyArrays(JsonObject object, String... fields) {
+        if (object == null) {
+            return;
+        }
+        for (String field : fields) {
+            if (object.has(field) && object.get(field).isJsonArray()
+                    && object.get(field).getAsJsonArray().size() == 0) {
+                object.remove(field);
+            }
+        }
     }
 
     private static String normalize(String value) {

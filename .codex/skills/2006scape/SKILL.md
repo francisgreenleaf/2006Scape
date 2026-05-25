@@ -46,42 +46,67 @@ mvn -q clean test
 # 2006scape-local-runtime: inspect or repair the local runtime/bridge
 python3 agent-navigation/tools/runtime_doctor.py status --observe
 python3 agent-navigation/tools/runtime_doctor.py status --profile PROFILE --observe
+python3 agent-navigation/tools/server_tick_report.py --json
 python3 agent-navigation/tools/runtime_doctor.py claim --verify
 python3 agent-navigation/tools/runtime_doctor.py restart --replace-runtime --build --verify
 
 # 2006scape-agent-bridge-dev: prove bridge tools through the wrapper
+agent-navigation/tools/observe_XS.sh
+RS_PROFILE=PROFILE agent-navigation/tools/observe_XS.sh
+agent-navigation/tools/rs-tool_XS.sh TOOL_NAME 'JSON_ARGS'
+agent-navigation/tools/rs-tool_XS.sh observe_state_XS '{}'
+agent-navigation/tools/rs-tool_XS.sh walk_to_tile_until_arrived_XS '{"x":X,"y":Y,"height":0,"maxTicks":95}'
+agent-navigation/tools/rs-tool_XS.sh travel_to_landmark_until_arrived_XS '{"name":"PLACE","maxTicks":95}'
+agent-navigation/tools/rs-tool_XS.sh wait_ticks_XS '{"ticks":5}'
+agent-navigation/tools/rs-tool_XS.sh wait_until_idle_XS '{"maxTicks":120}'
+agent-navigation/tools/rs-tool_XS.sh deposit_inventory_items_XS '{"itemIds":[ID1,ID2],"keepFoodCount":N}'
+agent-navigation/tools/rs-tool_XS.sh unequip_items_XS '{"slotNames":["weapon","shield"]}'
+python3 agent-navigation/tools/food_bank_XS.py
+python3 agent-navigation/tools/object_search_XS.py --name NAME --max-distance 20
+# Full outputs remain available when XS omits needed fields.
 agent-navigation/tools/observe-slim.sh
-RS_PROFILE=PROFILE agent-navigation/tools/observe-slim.sh
 agent-navigation/tools/rs-tool.sh observe_state '{}'
 agent-navigation/tools/rs-tool.sh TOOL_NAME 'JSON_ARGS'
 
 # 2006scape-route-agent: observe, route, validate, and render route topology
-agent-navigation/tools/observe-slim.sh
-python3 agent-navigation/tools/navdb.py next-step --from X,Y,H --to PLACE --combat-level N --food N --run-energy N --run-enabled true
-python3 agent-navigation/tools/navdb.py validate
-python3 agent-navigation/tools/navdb.py self-test
-python3 agent-navigation/tools/route_runner.py --to PLACE --orient --json --run-reserve auto
+agent-navigation/tools/observe_XS.sh
+python3 agent-navigation/ml-routing/route_ml_XS.py define --from X,Y,H --to PLACE --combat-level N --food N --run-energy N --run-enabled
+python3 agent-navigation/tools/execute_route_definition.py --route-definition agent-navigation/.local/ml-route-definitions/ROUTE.json --run-mode auto --eat-at 10
+# Legacy route DB diagnostics only; not normal travel.
+python3 agent-navigation/tools/navdb_XS.py next-step --from X,Y,H --to PLACE --combat-level N --food N --run-energy N --run-enabled true
+python3 agent-navigation/tools/navdb_XS.py validate
+python3 agent-navigation/tools/navdb_XS.py self-test
+python3 agent-navigation/tools/route_runner_XS.py --to PLACE --orient --json --run-reserve auto
+# Full Route Runner fallback only; not normal travel.
 agent-navigation/tools/route_runner.py --to PLACE --run-reserve auto
 agent-navigation/tools/render_navigation_png.py --region all --output agent-navigation/.local/map-summaries/surface-routes.png
 
 # 2006scape-route-planner-dev: graph planning and planner validation
+python3 agent-navigation/ml-routing/route_ml_XS.py define --from X,Y,H --to PLACE --combat-level N --food N --run-energy N --run-enabled
+python3 agent-navigation/tools/execute_route_definition.py --route-definition agent-navigation/.local/ml-route-definitions/ROUTE.json --run-mode auto --eat-at 10
+python3 agent-navigation/ml-routing/route_ml_XS.py route --from X,Y,H --to PLACE --combat-level N --food N --run-energy N --run-enabled --json
+# Legacy planner/debug commands; ML1 is preferred for agent routing.
 python3 agent-navigation/tools/router.py plan --from X,Y,H --to PLACE --combat-level N --food N --run-energy N --run-enabled
 python3 agent-navigation/tools/route_eval.py --from X,Y,H --to PLACE --combat-level N --food N --run-energy N --run-enabled
-python3 agent-navigation/tools/route_runner.py --to PLACE --orient --json --run-reserve auto
+python3 agent-navigation/tools/route_runner_XS.py --to PLACE --orient --json --run-reserve auto
 python3 agent-navigation/tools/route_runner.py --to PLACE --max-walk-distance 48 --max-batches 6 --dry-run
 python3 agent-navigation/tools/route_runner.py --to PLACE --run-reserve auto --evidence-jsonl agent-navigation/.local/run-evidence/route.routes.jsonl
 python3 agent-navigation/tools/marathon_runner.py --laps 10 --run-reserve auto
-python3 agent-navigation/tools/render_agent_context_map.py --center X,Y,H --radius-tiles 72 --pixels-per-tile 5 --recent-seconds 60
-python3 agent-navigation/tools/navdb.py graph-summary
-python3 agent-navigation/tools/navdb.py trace-tests
+python3 agent-navigation/ml-routing/route_ml_XS.py compare-maps --case CASE_NAME --combat-level N --food N --run-energy N --run-enabled
+python3 agent-navigation/ml-routing/route_ml_XS.py record-outcome --route-id ROUTE_ID --from X,Y,H --to PLACE --status blocked --final X,Y,H --problem-kind enemy_contact --enemy-name NAME --enemy-level N --enemy-tile X,Y,H
+python3 agent-navigation/tools/render_agent_context_map_XS.py --center X,Y,H --radius-tiles 72 --pixels-per-tile 5 --recent-seconds 60
+python3 agent-navigation/tools/navdb_XS.py graph-summary
+python3 agent-navigation/tools/navdb_XS.py trace-tests
 
 # 2006scape-object-transitions: prove object-chain blockers
-agent-navigation/tools/rs-tool.sh find_nearest_object '{"name":"gate","maxDistance":20}'
-agent-navigation/tools/rs-tool.sh preview_local_path '{"x":X,"y":Y,"height":0,"moveNear":true,"applyBounds":true,"maxWalkDistance":48}'
-agent-navigation/tools/rs-tool.sh interact_object '{"objectId":OBJECT_ID,"x":X,"y":Y,"option":"first"}'
+agent-navigation/tools/rs-tool_XS.sh find_nearest_object '{"name":"gate","maxDistance":20}'
+agent-navigation/tools/rs-tool_XS.sh preview_local_path '{"x":X,"y":Y,"height":0,"moveNear":true,"applyBounds":true,"maxWalkDistance":48}'
+agent-navigation/tools/rs-tool_XS.sh interact_object '{"objectId":OBJECT_ID,"x":X,"y":Y,"option":"first"}'
 
 # 2006scape-frontier-exploration: probe unknown graph edges
-python3 agent-navigation/tools/route_runner.py --to X,Y,H --allow-frontier --direct-if-preview --probe-toward-target --orient --json --run-reserve auto
+python3 agent-navigation/ml-routing/route_ml_XS.py define --from X,Y,H --to TARGET --combat-level N --food N --run-energy N --run-enabled
+# Legacy frontier diagnostics only; do not use as normal movement.
+python3 agent-navigation/tools/route_runner_XS.py --to X,Y,H --allow-frontier --direct-if-preview --probe-toward-target --orient --json --run-reserve auto
 python3 agent-navigation/tools/route_runner.py --to X,Y,H --allow-frontier --direct-if-preview --probe-toward-target --max-walk-distance 48 --max-batches 4 --dry-run
 python3 agent-navigation/tools/route_runner.py --to X,Y,H --allow-frontier --direct-if-preview --probe-toward-target --max-walk-distance 48 --max-batches 4 --run-reserve auto
 
@@ -90,12 +115,18 @@ agent-navigation/tools/capture-cardinal-screenshots.sh --prefix reason
 agent-navigation/tools/capture-client-screenshot.sh --prefix reason --native-size
 
 # 2006scape-gameplay-progression: normal gameplay through rs tools
-agent-navigation/tools/observe-slim.sh
+agent-navigation/tools/observe_XS.sh
 python3 agent-navigation/tools/script_registry.py search combat
+python3 agent-navigation/tools/cowhide_combat_runner.py --status
+python3 agent-navigation/tools/cowhide_combat_runner.py --request-stop
 python3 agent-navigation/tools/mining_runner.py --target-mining-level 20 --auto-buy-bronze-pickaxe
 python3 agent-navigation/tools/combat_runner.py --npc goblin --target-level 10 --quiet
 python3 agent-navigation/tools/bank_loadout.py --preset cowhide-trip --dry-run --json
 python3 agent-navigation/tools/food_runner.py --mode fish-cook --quiet
+python3 agent-navigation/tools/catherby_food_runner.py --cycles 1 --quiet
+python3 agent-navigation/tools/catherby_food_runner_XS.py --profile PROFILE
+python3 agent-navigation/tools/runner_status_XS.py --profile PROFILE
+python3 agent-navigation/tools/catherby_food_runner.py --efficiency-report --quiet
 python3 agent-navigation/tools/smithing_runner.py --mode smith --item sword --amount 10
 python3 agent-navigation/tools/woodcutting_runner.py --tree oak --stop-when-inventory-full --quiet
 
@@ -122,16 +153,19 @@ python3 agent-navigation/tools/script_registry.py run agility -- --laps 10
 # 2006scape-cache-map: static cache-backed map rendering
 agent-navigation/tools/cache_world_map.py --bounds 3200,3200,3210,3210 --output /tmp/2006scape-cache-map-smoke.png --summary /tmp/2006scape-cache-map-smoke.json
 agent-navigation/tools/cache_world_map.py --bounds all --pixels-per-tile 4 --labels --output agent-navigation/topology/cache-world-map-full.png --summary agent-navigation/.local/map-summaries/cache-world-map-full.json
-python3 agent-navigation/tools/render_agent_context_map.py --center latest
+python3 agent-navigation/tools/map_grid.py locate --tile X,Y,H
+python3 agent-navigation/tools/render_agent_context_map_XS.py --center latest
+python3 agent-navigation/tools/render_agent_context_map_XS.py --grid-cell AU21 --grid-padding-tiles 4
 
 # 2006scape-map-visualization: canonical map visuals
 agent-navigation/tools/render_profile_map.py
 agent-navigation/tools/render_heat_map.py
 agent-navigation/tools/render_fog_map.py
 agent-navigation/tools/active_map_refresher.py status
-python3 agent-navigation/tools/render_agent_context_map.py --segment-from FROM_PLACE --segment-to TO_PLACE
+python3 agent-navigation/tools/render_agent_context_map_XS.py --segment-from FROM_PLACE --segment-to TO_PLACE
 
 # 2006scape-agent-session-logs: inspect logs and summarize event types
+python3 agent-navigation/tools/agent_session_XS.py --profile PROFILE --latest
 find "2006Scape Server/data/logs/agent-sessions" -type f | sort
 sed -n '1,220p' "2006Scape Server/data/logs/agent-sessions/DATE/SESSION.md"
 jq -r '.event' "2006Scape Server/data/logs/agent-sessions/DATE/SESSION.jsonl" | sort | uniq -c
@@ -143,21 +177,23 @@ For read-only questions, inspect the relevant docs or source first and answer wi
 
 For file edits, use `2006scape-dev-editing` plus the subsystem skill. Keep edits away from unrelated dirty files and preserve generated/local-only files.
 
-For live navigation, use this context ladder before spending tokens: `observe-slim` for current state, `route_runner.py --to PLACE --orient --json --run-reserve auto` for non-moving A-to-B context, `render_agent_context_map.py` JSON/PNG for suspicious detours or static geometry, then compact screenshots only for live visual ambiguity such as gate/door state, wrong-side positioning, object failures, or API/map disagreement.
+For live navigation, use XS tool surfaces by default: `observe_XS.sh`, dynamic `rs.observe_state_XS`, dynamic `rs.walk_to_tile_until_arrived_XS`, dynamic `rs.travel_to_landmark_until_arrived_XS`, dynamic `rs.wait_ticks_XS`, dynamic `rs.wait_until_idle_XS`, `rs-tool_XS.sh`, `route_ml_XS.py`, `navdb_XS.py`, `route_runner_XS.py --orient`, `route_failure_XS.py`, and `render_agent_context_map_XS.py`. The full tools remain available when XS omits a field needed for debugging, evidence capture, or a new workflow. ML1 is the preferred A-to-B routing method: `route_ml_XS.py define --from X,Y,H --to PLACE_OR_TILE ...`. Use it after `observe_XS` whenever the character needs to travel to a known place or coordinate target. Treat the returned `2006scape.route-definition` as the routing contract: inspect `status`, `quality`, `evidence`, `safety`, `steps`, `run`, and `runSegments`, then run `cmd`/the persisted route definition path when live movement is intended. `quality` is a geometry/detour signal; if `evidence.proven=true`, trust `safety.review` rather than rejecting a route solely because `quality` is `bad`. That command uses `execute_route_definition.py --route-definition ...`, follows the selected route steps through normal bridge walking primitives, defaults to `--eat-at 10`, observes nearby NPC context on combat/HP loss, and writes route evidence. On movement failure or recovery, read `route_failure_XS.py` before loading full evidence JSONL. The old bare Route Runner method is deprecated for normal agent travel. Do not call `route_runner.py --to ...` as the routing API. Use `navdb_XS.py next-step`, `router.py plan`, `route_eval.py`, and `route_runner_XS.py --orient` for route DB development, validation, or fallback debugging rather than as the default live-routing interface. `define` uses current route/place anchors even when the trained model artifact is older. Context-map JSON includes level-0 grid fields; use `map_grid.py locate --tile X,Y,H` for shorthand such as `AU21` and `render_agent_context_map_XS.py --grid-cell CELL` to request that exact cell. Use compact screenshots only for live visual ambiguity such as gate/door state, wrong-side positioning, object failures, or API/map disagreement.
 
-For live gameplay, observe first and use repo-side bridge wrappers. Prefer batch tools and treat their returned state as the next observation. If a long batch command is already running, wait near the expected completion interval before polling output instead of short-polling every few seconds. For route/mining movement, `route_runner.py` refreshes `set_run true` before long run-approved legs, unless reserve policy says not to run. Batch lines expose `runReq`, `runBefore`, `runAfter`, `runSpent`, `expectedRunSpend`, `tps`, `tilesPerTick`, and `runWarn`; if `runWarn` is not `none`, treat it as evidence that run was requested but not effective. Use `--evidence-jsonl PATH` for structured route-batch run-efficiency evidence, and expect `mining_runner.py` to write a sibling `.routes.jsonl` automatically.
+For live gameplay, observe first and use XS bridge wrappers. The main dynamic-agent defaults are now `rs.observe_state_XS`, `rs.walk_to_tile_until_arrived_XS`, `rs.travel_to_landmark_until_arrived_XS`, `rs.wait_ticks_XS`, `rs.wait_until_idle_XS`, `rs.find_nearest_object_XS`, `rs.deposit_inventory_items_XS`, `rs.unequip_items_XS`, and `rs.food_bank_XS`; use legacy full tools only when XS omitted a field needed for evidence or debugging. `deposit_inventory_items_XS` accepts `itemIds` to deposit multiple item types at once and `keepFoodCount` to trim excess food safely. `unequip_items_XS` accepts `equipmentSlots`, `slotNames`, `itemIds`, `names`/`items`, or `all=true` to unequip several items in one action. Prefer batch tools and treat their returned state as the next observation. If a long batch command is already running, wait near the expected completion interval before polling output instead of short-polling every few seconds. For route/mining movement, request the route through ML1 first and record feedback with `route_ml_XS.py record-outcome` for route-level problems like enemy contact, death, stalls, blockers, bad run policy, or wrong destinations. For Catherby fishing/cooking/banking, prefer `catherby_food_runner.py` or the `catherby-food` registry entry; use `catherby_food_runner_XS.py` or `runner_status_XS.py` for compact status/control. It targets `catherby_fishing_shore`, `catherby_range`, and `catherby_bank`, handles south range-house Door 1530 between deeper range-house tiles and the shore/bank approach area, gates fish-method upgrades by Cooking requirements as well as Fishing unlocks, banks uncookable raw leftovers during recovery, and treats `inBankArea=true`/bank action success as arrival proof rather than chasing old exact bank coordinates. Use its `--efficiency-report --quiet` mode before assuming stale status means idle, because it reads passive server activity traces directly. `catherby_range` is anchored at the pathable cooking tile `2819,3443`; route to `catherby_fishing_shop` for Harry's Fishing Shop and open it with `open_nearest_shop` using name `harry` or `fishing`. Use `food_bank_XS.py` before cooking/banking decisions and `object_search_XS.py` after failed object searches. Legacy Route Runner batch diagnostics such as `runReq`, `runBefore`, `runAfter`, `runSpent`, `expectedRunSpend`, `tps`, `tilesPerTick`, and `runWarn` remain useful when a compatibility executor is deliberately used; treat non-`none` `runWarn` values as evidence that run was requested but not effective. Expect `mining_runner.py` to write a sibling `.routes.jsonl` automatically for its route legs until those runners migrate fully to ML1 execution.
 
-For new gameplay automation, keep strategy in Python scripts and data. Read `agent-navigation/scripting-primitives.md`; use stable primitives such as `use_item_on_item`, `use_item_on_object`, `click_interface_button`, `select_interface_item`, `interact_object`, `interact_npc`, bank/shop tools, combat tools, and `wait_until_idle` before adding Java. Existing Java skill tools are compatibility surfaces, not the default place for new loops. Current primitive-backed runners cover mining, woodcutting/fletching, food, smithing, combat, and compact bank loadout policies.
+For new gameplay automation, keep strategy in Python scripts and data. Read `agent-navigation/scripting-primitives.md`; use stable primitives such as `use_item_on_item`, `use_item_on_object`, `click_interface_button`, `select_interface_item`, `interact_object`, `interact_npc`, bank/shop tools, combat tools, and `wait_until_idle` before adding Java. Existing Java skill tools are compatibility surfaces, not the default place for new loops. Current primitive-backed runners cover mining, woodcutting/fletching, food, smithing, combat, and compact bank loadout policies. When a long runner exposes cooperative control, prefer its `--status` and `--request-stop` modes over process inspection or `pkill`; these modes use ignored files under `agent-navigation/.local/runners/` and let the runner stop at a safe boundary.
 
 For long autonomous gameplay or progression, load the selected character's sparse memory with `character_memory.py show --profile PROFILE --json`. Write new memory only for durable, decision-changing goals or lessons; do not log routine progress, temporary route details, secrets, or facts that belong in route data/session logs. Character memory is profile-scoped so `MrFlame` and `MrGem` stay separate.
 
 For visual route ambiguity, use compact screenshots through `agent-navigation/tools/capture-cardinal-screenshots.sh --prefix REASON`; open only the angle(s) needed to answer the question, and do not load oversized full-screen captures.
 
-For runtime management, prefer `agent-navigation/tools/runtime_doctor.py` plus `docs/local-agent-startup.md`, and avoid interrupting active agents unless the user asked for a restart or stop.
+For runtime management, prefer `agent-navigation/tools/runtime_doctor.py` plus `docs/local-agent-startup.md`, and avoid interrupting active agents unless the user asked for a restart or stop. Use `python3 agent-navigation/tools/server_tick_report.py --json` when the server log is noisy with cycle-duration warnings and you need a compact health summary instead of dumping the raw log.
 
-For maps, use cache-backed tools and keep the retired screenshot/minimap fog collector retired. Agents should use `render_agent_context_map.py` for current-tile and route-segment context; it draws all cache mapfunction icons in bounds, keeps nearby segment geometry such as docks/ports visible, and writes unique ignored PNG/JSON artifacts under `agent-navigation/.local/context-maps/<date>/` by default. Use the returned JSON path for marker/place labels instead of assuming a stable topology filename, and open the PNG only when visual geometry is needed. The active full movement maps are the profile movement map, `Heat Map`, and profile fog; they are user-facing analysis tools unless the user explicitly asks for them. Cache-map work is static and should not need a live client.
+For maps, use cache-backed tools and keep the retired screenshot/minimap fog collector retired. Agents should use `render_agent_context_map_XS.py` for current-tile, grid-cell, and route-segment context; it draws all cache mapfunction icons in bounds, overlays the level-0 32-tile grid, keeps nearby segment geometry such as docks/ports visible, and writes unique ignored PNG/JSON artifacts under `agent-navigation/.local/context-maps/<date>/` by default. Use the returned JSON path for marker/place/grid labels instead of assuming a stable topology filename, and open the PNG only when visual geometry is needed. Use the full `render_agent_context_map.py` only when the XS output omits a marker/count/path detail needed for debugging. For ML route-quality visuals, use `route_ml_XS.py compare-maps` for compact reports or full `route_ml.py compare-maps` when you need the full JSON; both reuse the same static context layers and write aggregate reports plus per-case marker sidecars under `agent-navigation/ml-routing/artifacts/comparisons/`. The active full movement maps are the profile movement map, `Heat Map`, and profile fog; they are user-facing analysis tools unless the user explicitly asks for them. Cache-map work is static and should not need a live client.
 
-For session logs, summarize observable events from logs and rollout transcripts. Do not invent hidden reasoning; describe decisions through visible messages, tool calls, retries, results, and outcomes.
+XS/full agent-facing CLI usage is logged out-of-band to ignored JSONL files under `agent-navigation/.local/usage/<yyyy-MM-dd>.jsonl`. XS wrappers mark delegated full-tool calls with `delegatedBy:"xs"` so direct full fallback usage can be counted separately. This log is for later auditing of which fields agents actually use; do not load it into context unless explicitly inspecting tool usage. Set `AGENT_NAV_USAGE_LOG=0` to disable it for a one-off command.
+
+For session logs, start with `agent_session_XS.py --profile PROFILE --latest`; it returns latest session id, top tools, recent outcomes, failures, current player state, and log paths without loading large logs. Load full Markdown/JSONL only when the compact reader omits a needed detail. Summarize observable events from logs and rollout transcripts. Do not invent hidden reasoning; describe decisions through visible messages, tool calls, retries, results, and outcomes.
 
 ## Skill Maintenance
 
