@@ -45,6 +45,10 @@ LUMBRIDGE_COW_PEN_EXIT_TILES = (
     (3251, 3266, 0),
     (3250, 3266, 0),  # clear outside anchor for route_runner
 )
+AL_KHARID_GATE_WEST_TILE = (3267, 3227, 0)
+AL_KHARID_GATE_EAST_TILE = (3268, 3227, 0)
+AL_KHARID_GATE_DIALOGUE_IDS = {1019, 1020, 1024, 1026, 1027}
+AL_KHARID_GATE_DIALOGUE_ACTIONS = {502, 508}
 KNOWN_FOOD_IDS = {
     KEBAB,
     1891,  # Cake
@@ -160,6 +164,11 @@ def tile_from_player(player):
     return tile(player.get("x", 0), player.get("y", 0), player.get("height", player.get("h", 0)))
 
 
+def same_tile(player, destination):
+    x, y, h = destination
+    return player_x(player) == int(x) and player_y(player) == int(y) and player_h(player) == int(h)
+
+
 def tile_string(value):
     return "{},{},{}".format(int(value["x"]), int(value["y"]), int(value.get("height", 0)))
 
@@ -209,6 +218,11 @@ def on_al_kharid_side(player):
     x = player_x(player)
     y = player_y(player)
     return player_h(player) == 0 and x >= 3268 and 3150 <= y <= 3232
+
+
+def is_al_kharid_bank_target(target):
+    normalized = str(target or "").strip().lower().replace("_", " ")
+    return normalized in {"al kharid bank", "al_kharid_bank", "3269,3167,0", "3270,3167,0"}
 
 
 def gate_object_is_lumbridge_cow_pen(gate):
@@ -334,6 +348,9 @@ def compact_player(player):
         "isMoving": bool(player.get("isMoving", False)),
         "isInCombat": bool(player.get("isInCombat", False)),
         "targetNpc": target,
+        "nextChat": int(player.get("nextChat", 0) or 0),
+        "dialogueAction": int(player.get("dialogueAction", 0) or 0),
+        "talkingNpc": int(player.get("talkingNpc", -1) or -1),
         "inBankArea": bool(player.get("inBankArea", False)),
         "isShopping": bool(player.get("isShopping", False)),
         "freeSlots": int(player.get("freeInventorySlots", player.get("freeSlots", 0)) or 0),
@@ -527,10 +544,16 @@ def route_to(target, args, handle, reason, run_path):
         "routeEvidencePath": evidence_path,
     })
     if proc.returncode != 0:
-        fallback = bridge_landmark_fallback(target)
+        fallback = bridge_landmark_fallback(target) if bool(getattr(args, "allow_java_landmark_fallback", False)) else None
         if fallback:
             log("route failed target={} reason={}; trying bridge landmark {}".format(target, reason, fallback), args, force=True)
             return travel_to_bridge_landmark(fallback, args, handle, reason, target)
+        if bridge_landmark_fallback(target):
+            write_event(handle, "bridge_landmark_fallback_skipped", {
+                "reason": reason,
+                "target": target,
+                "message": "Java landmark fallback disabled; route_runner/script primitives must handle this leg.",
+            })
         log("route failed target={} reason={}".format(target, reason), args, force=True)
         return False
     if not args.quiet:
@@ -607,67 +630,159 @@ def walk_short(player, destination, args, handle, reason, max_ticks=None, max_di
     return result, updated
 
 
-def cross_al_kharid_gate_to_lumbridge_side(player, args, handle, reason):
-    if not on_al_kharid_side(player):
+def route_to_al_kharid_gate_tile(player, destination, args, handle, run_path, reason):
+    if same_tile(player, destination):
         return player
-    player = ensure_run(player, args, handle, "al_kharid_gate_" + reason)
-    if player_x(player) != 3268 or player_y(player) not in (3227, 3228):
-        _walk, player = walk_short(
+    target = "{},{},{}".format(int(destination[0]), int(destination[1]), int(destination[2]))
+    _state, player = route_or_stop(target, args, handle, reason + "_route", run_path, player)
+    if same_tile(player, destination):
+        return player
+    _walk, player = walk_short(
+        player,
+        destination,
+        args,
+        handle,
+        reason + "_exact_tile",
+        max_ticks=max(24, int(args.cow_gate_approach_ticks)),
+        max_distance=max(12, int(args.cow_gate_approach_distance)),
+    )
+    return player
+
+
+def al_kharid_gate_object_for_player(player):
+    found = call_tool("find_nearest_object", {"name": "gate", "maxDistance": 4})
+    gate = found.get("object") if isinstance(found, dict) else None
+    if isinstance(gate, dict):
+        try:
+            object_id = int(gate.get("objectId", gate.get("id", -1)))
+            x = int(gate.get("x"))
+            y = int(gate.get("y"))
+            h = int(gate.get("height", gate.get("h", 0)) or 0)
+        except (TypeError, ValueError):
+            object_id = -1
+            x = y = h = 0
+        if object_id in (2882, 2883) and h == player_h(player) and 3267 <= x <= 3268 and y in (3227, 3228):
+            return {
+                "objectId": object_id,
+                "x": x,
+                "y": y,
+                "height": h,
+            }
+    y = player_y(player)
+    return {
+        "objectId": 2883 if y == 3228 else 2882,
+        "x": 3268,
+        "y": y,
+        "height": player_h(player),
+    }
+
+
+def al_kharid_gate_dialogue_active(player):
+    try:
+        next_chat = int(player.get("nextChat", 0) or 0)
+        dialogue_action = int(player.get("dialogueAction", 0) or 0)
+    except (TypeError, ValueError):
+        return False
+    return (
+        next_chat in AL_KHARID_GATE_DIALOGUE_IDS
+        or (dialogue_action == 502 and next_chat == 1020)
+        or (dialogue_action == 508 and next_chat == 1024)
+    )
+
+
+def al_kharid_gate_crossed(player, to_bank_side):
+    return on_al_kharid_side(player) if to_bank_side else not on_al_kharid_side(player)
+
+
+def advance_al_kharid_gate_dialogue(player):
+    next_chat = int(player.get("nextChat", 0) or 0)
+    dialogue_action = int(player.get("dialogueAction", 0) or 0)
+    if next_chat in (1026, 1027):
+        return "continue_dialogue", call_tool("continue_dialogue", {})
+    if (dialogue_action == 502 and next_chat == 1020) or (dialogue_action == 508 and next_chat == 1024):
+        return "select_dialogue_option", call_tool("select_dialogue_option", {"option": 1})
+    if next_chat in AL_KHARID_GATE_DIALOGUE_IDS:
+        return "continue_dialogue", call_tool("continue_dialogue", {})
+    return "none", {"success": False, "message": "No Al Kharid gate dialogue is active.", "player": player}
+
+
+def cross_al_kharid_gate_with_primitives(player, args, handle, reason, run_path, to_bank_side):
+    approach = AL_KHARID_GATE_WEST_TILE if to_bank_side else AL_KHARID_GATE_EAST_TILE
+    direction = "east" if to_bank_side else "west"
+    player = ensure_run(player, args, handle, "al_kharid_gate_" + direction + "_" + reason)
+    player = route_to_al_kharid_gate_tile(player, approach, args, handle, run_path, "al_kharid_gate_" + direction + "_" + reason)
+    try:
+        player = bridge.cross_al_kharid_toll_gate(
             player,
-            (3268, 3227, 0),
-            args,
-            handle,
-            "al_kharid_gate_approach_" + reason,
-            max_ticks=max(80, int(args.route_max_ticks)),
-            max_distance=max(80, int(args.route_max_walk_distance)),
+            to_east=to_bank_side,
+            profile=RUN_PROFILE,
+            handle=handle,
+            reason=reason,
+            attempts=int(args.al_kharid_gate_attempts),
+            dialogue_steps=int(args.al_kharid_gate_dialogue_steps),
+            approach_max_ticks=max(24, int(args.cow_gate_approach_ticks)),
+            approach_max_walk_distance=max(12, int(args.cow_gate_approach_distance)),
+            min_run_energy=int(args.min_run_energy),
+            compact_player_fn=compact_player,
         )
+    except bridge.ObjectTransitionError as exc:
+        raise RunnerStop(exc.reason, exc.message, exc.player)
+    state, observed = observe_state()
+    stop_if_unsafe(state, observed, args, handle, "al_kharid_gate_" + direction + "_after_cross")
+    if not al_kharid_gate_crossed(observed, to_bank_side):
+        raise RunnerStop("al_kharid_gate_cross_failed", "Could not prove crossing {} through the Al Kharid gate.".format(direction), observed)
+    return close_interfaces_if_needed(observed, handle, "after_al_kharid_gate_" + direction)
+
+
+def cross_al_kharid_gate_to_lumbridge_side(player, args, handle, reason, run_path):
     if not on_al_kharid_side(player):
         return player
-
-    for attempt in range(1, 4):
-        before = compact_player(player)
-        result = call_tool("travel_to_landmark", {"name": "lumbridge goblins"})
-        player = player_from_or(result, player)
-        write_event(handle, "al_kharid_gate_cross", {
-            "reason": reason,
-            "attempt": attempt,
-            "success": bool(result.get("success")),
-            "message": result.get("message"),
-            "coinsSpent": result.get("coinsSpent"),
-            "before": before,
-            "player": compact_player(player),
-        })
-        waited = call_tool("wait_until_idle", {
-            "maxTicks": int(args.cow_gate_cross_ticks),
-            "movement": True,
-            "skilling": False,
-            "combat": False,
-        })
-        player = player_from_or(waited, player)
-        write_event(handle, "al_kharid_gate_cross_wait", {
-            "reason": reason,
-            "attempt": attempt,
-            "success": bool(waited.get("success")),
-            "message": waited.get("message"),
-            "player": compact_player(player),
-        })
-        if not on_al_kharid_side(player):
-            return player
-        if inventory_coins(player) < 10:
-            raise RunnerStop("al_kharid_gate_toll_missing", "Could not pay the Al Kharid gate toll from the east side.", player)
-
-    raise RunnerStop("al_kharid_gate_cross_failed", "Could not prove crossing west through the Al Kharid gate.", player)
+    return cross_al_kharid_gate_with_primitives(player, args, handle, reason, run_path, to_bank_side=False)
 
 
-def horizontal_gate_steps(player, destination_x, y=3266):
-    if player_h(player) != 0 or player_y(player) != int(y):
+def cross_al_kharid_gate_to_bank_side(player, args, handle, reason, run_path):
+    if on_al_kharid_side(player):
+        return player
+    return cross_al_kharid_gate_with_primitives(player, args, handle, reason, run_path, to_bank_side=True)
+
+
+def route_to_al_kharid_bank_for_cow_trip(player, args, handle, run_path, reason):
+    if bool(player.get("inBankArea", False)):
+        return player
+    if in_lumbridge_cow_pen(player):
+        player = exit_lumbridge_cow_pen_gate(player, args, handle, "bank_hides_" + reason)
+    if not on_al_kharid_side(player):
+        player = cross_al_kharid_gate_to_bank_side(player, args, handle, reason, run_path)
+    if bool(player.get("inBankArea", False)):
+        return player
+    _state, player = route_or_stop(args.bank_target, args, handle, "al_kharid_bank_" + reason, run_path, player)
+    return player
+
+
+def cow_gate_transition_steps(player, destination_x, gate_x=3253, gate_y=3266):
+    if player_h(player) != 0:
         return []
     current_x = player_x(player)
+    current_y = player_y(player)
     destination_x = int(destination_x)
-    if current_x == destination_x:
+    gate_x = int(gate_x)
+    gate_y = int(gate_y)
+    if current_x == destination_x and current_y == gate_y:
         return []
+
+    steps = []
+    if current_y != gate_y:
+        if current_x != gate_x or abs(current_y - gate_y) != 1:
+            return []
+        steps.append((gate_x, gate_y, 0))
+        current_x = gate_x
+        current_y = gate_y
+
+    if current_x == destination_x:
+        return steps
     direction = 1 if destination_x > current_x else -1
-    return [(x, int(y), 0) for x in range(current_x + direction, destination_x + direction, direction)]
+    steps.extend((x, gate_y, 0) for x in range(current_x + direction, destination_x + direction, direction))
+    return steps
 
 
 def walk_gate_transition_steps(player, destinations, args, handle, reason):
@@ -806,7 +921,7 @@ def cross_lumbridge_cow_pen_gate(player, args, handle, reason):
             waited = call_tool("wait_ticks", {"ticks": int(args.cow_gate_open_wait_ticks)})
             player = player_from_or(waited, player)
 
-        destinations = horizontal_gate_steps(player, 3254)
+        destinations = cow_gate_transition_steps(player, 3254)
         if not destinations:
             destinations = LUMBRIDGE_COW_PEN_ENTRY_TILES
         player = walk_gate_transition_steps(
@@ -892,7 +1007,7 @@ def exit_lumbridge_cow_pen_gate(player, args, handle, reason):
             waited = call_tool("wait_ticks", {"ticks": int(args.cow_gate_open_wait_ticks)})
             player = player_from_or(waited, player)
 
-        destinations = horizontal_gate_steps(player, 3250)
+        destinations = cow_gate_transition_steps(player, 3250)
         if not destinations:
             destinations = LUMBRIDGE_COW_PEN_EXIT_TILES
         player = walk_gate_transition_steps(
@@ -949,7 +1064,7 @@ def ensure_cow_area(player, args, handle, run_path, reason):
 
     if not near_lumbridge_cow_pen_gate(player):
         if on_al_kharid_side(player):
-            player = cross_al_kharid_gate_to_lumbridge_side(player, args, handle, reason)
+            player = cross_al_kharid_gate_to_lumbridge_side(player, args, handle, reason, run_path)
             state, player = observe_state()
             stop_if_unsafe(state, player, args, handle, reason + "_after_al_kharid_gate")
         state, player = route_or_stop(
@@ -1173,9 +1288,12 @@ def bank_hides(player, args, handle, run_path, reason):
     if cowhide_count(player) <= 0:
         return prepare_bank_loadout(player, args, handle, run_path, "bank_loadout_no_hides_" + reason)
     if not bool(player.get("inBankArea", False)):
-        if is_lumbridge_cow_pen_target(args.cow_area_target) and in_lumbridge_cow_pen(player):
-            player = exit_lumbridge_cow_pen_gate(player, args, handle, "bank_hides_" + reason)
-        _state, player = route_or_stop(args.bank_target, args, handle, "bank_hides_" + reason, run_path, player)
+        if is_lumbridge_cow_pen_target(args.cow_area_target) and is_al_kharid_bank_target(args.bank_target):
+            player = route_to_al_kharid_bank_for_cow_trip(player, args, handle, run_path, "bank_hides_" + reason)
+        else:
+            if is_lumbridge_cow_pen_target(args.cow_area_target) and in_lumbridge_cow_pen(player):
+                player = exit_lumbridge_cow_pen_gate(player, args, handle, "bank_hides_" + reason)
+            _state, player = route_or_stop(args.bank_target, args, handle, "bank_hides_" + reason, run_path, player)
     carried_hides = cowhide_count(player)
     updated = prepare_bank_loadout(player, args, handle, run_path, "bank_hides_" + reason, deposit_hides=True)
     deposited = max(0, carried_hides - cowhide_count(updated))
@@ -1481,7 +1599,16 @@ def run(args):
             state, player = observe_state()
             stop_if_unsafe(state, player, args, handle, "before_fight")
             player = eat_if_needed(state, player, args, handle, "before_fight")
-            player = pickup_cowhides(player, args, handle, "before_fight")
+            pre_fight_interval = int(args.pre_fight_loot_interval)
+            if cycle == 1 or (pre_fight_interval > 0 and cycle % pre_fight_interval == 0):
+                player = pickup_cowhides(player, args, handle, "before_fight")
+            else:
+                write_event(handle, "pickup_cowhide_sweep_skipped", {
+                    "reason": "before_fight",
+                    "cycle": cycle,
+                    "preFightLootInterval": pre_fight_interval,
+                    "player": compact_player(player),
+                })
             if int(player.get("freeInventorySlots", 0) or 0) <= 0:
                 if args.stop_when_inventory_full:
                     stopped_reason = "inventory_full"
@@ -1495,7 +1622,15 @@ def run(args):
                 stopped_reason = "target_levels"
                 break
             fights_done += 1
-            player = pickup_cowhides(player, args, handle, "after_fight")
+            if fight_status == "fought":
+                write_event(handle, "pickup_cowhide_sweep_skipped", {
+                    "reason": "after_fight_already_picked",
+                    "cycle": cycle,
+                    "fightStatus": fight_status,
+                    "player": compact_player(player),
+                })
+            else:
+                player = pickup_cowhides(player, args, handle, "after_fight")
             after = compact_player(player)
             write_event(handle, "cycle_done", {
                 "cycle": cycle,
@@ -1586,6 +1721,8 @@ def main(argv=None):
     parser.add_argument("--loot-attempts", type=int, default=6)
     parser.add_argument("--loot-retry-ticks", type=int, default=1,
                         help="Ticks to wait between repeated cowhide pickup attempts after a queued pickup.")
+    parser.add_argument("--pre-fight-loot-interval", type=int, default=0,
+                        help="Run a broad pre-fight cowhide sweep on the first cycle and then every N cycles. Default 0 skips recurring sweeps for faster next-cow attacks.")
     parser.add_argument("--bank-at-hides", type=int, default=20)
     parser.add_argument("--bank-when-free-slots-at-or-below", type=int, default=2)
     parser.add_argument("--stop-when-inventory-full", action=argparse.BooleanOptionalAction, default=False,
@@ -1606,6 +1743,10 @@ def main(argv=None):
     parser.add_argument("--route-max-batch-distance", type=int, default=48)
     parser.add_argument("--route-max-ticks", type=int, default=180)
     parser.add_argument("--evidence-jsonl", help="Optional route_runner evidence JSONL path.")
+    parser.add_argument("--allow-java-landmark-fallback", action=argparse.BooleanOptionalAction, default=False,
+                        help="Emergency compatibility fallback to travel_to_landmark when route_runner fails. Disabled by default so the script uses route_runner plus primitives.")
+    parser.add_argument("--al-kharid-gate-attempts", type=int, default=3)
+    parser.add_argument("--al-kharid-gate-dialogue-steps", type=int, default=6)
     parser.add_argument("--quiet", action=argparse.BooleanOptionalAction, default=False)
     args = parser.parse_args(argv)
 
@@ -1616,6 +1757,12 @@ def main(argv=None):
         parser.error("--fight-poll-ticks must be between 1 and 25")
     if int(args.fight_poll_attempts) < 1:
         parser.error("--fight-poll-attempts must be at least 1")
+    if int(args.pre_fight_loot_interval) < 0:
+        parser.error("--pre-fight-loot-interval must be at least 0")
+    if int(args.al_kharid_gate_attempts) < 1:
+        parser.error("--al-kharid-gate-attempts must be at least 1")
+    if int(args.al_kharid_gate_dialogue_steps) < 1:
+        parser.error("--al-kharid-gate-dialogue-steps must be at least 1")
     if args.retreat_threshold > args.eat_threshold:
         parser.error("--retreat-threshold must be less than or equal to --eat-threshold")
     return run(args)
