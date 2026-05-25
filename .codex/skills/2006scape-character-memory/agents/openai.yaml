@@ -1,0 +1,5 @@
+interface:
+  display_name: "2006Scape Character Memory"
+  short_description: "Read and write sparse profile-scoped memories"
+  default_prompt: "Use $2006scape-character-memory to read or write sparse long-term memories and goals for the selected 2006Scape profile."
+

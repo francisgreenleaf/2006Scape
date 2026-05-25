@@ -20,6 +20,10 @@ agent-navigation/.local/
 agent-navigation/data/marathons/
 agent-navigation/data/mining/
 agent-navigation/data/fletching/runs/
+agent-navigation/data/combat/runs/
+agent-navigation/data/woodcutting/runs/
+agent-navigation/data/food/runs/
+agent-navigation/data/smithing/runs/
 agent-navigation/data/agility/policies/*.policy.json
 agent-navigation/data/agility/runs/
 agent-navigation/data/movement_traces*.jsonl

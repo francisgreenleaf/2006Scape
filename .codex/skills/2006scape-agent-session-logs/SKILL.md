@@ -5,7 +5,7 @@ description: "Use when reading, summarizing, debugging, or improving 2006Scape a
 
 # 2006Scape Agent Session Logs
 
-Use this skill for the local agent-session memory system. Treat the files as logs and derived artifacts, not gameplay controls.
+Use this skill for the local agent-session memory system. Treat the files as logs and derived artifacts, not gameplay controls. For deliberate profile-scoped notes or future goals that an agent writes intentionally, use `2006scape-character-memory` instead.
 
 ## Safety
 
@@ -21,6 +21,7 @@ Do not mutate live gameplay or restart the runtime while inspecting logs. Other 
 - `2006Scape Server/data/logs/agent-sessions/reports/canonical-agent-log-index.md`: canonical report index.
 - `2006Scape Server/data/logs/agent-sessions/profiles/<profile>/agent-personality.md`: derived first-person profile memory.
 - `2006Scape Server/data/logs/agent-sessions/profiles/<profile>/agent-personality-state.json`: structured profile state.
+- `agent-navigation/.local/character-memory/<profile>/`: separate ignored intentional memories/goals written through `character_memory.py`.
 - `~/.codex/sessions/<yyyy>/<MM>/<dd>/rollout-*.jsonl`: Codex rollout transcript source, when available.
 
 ## Source Files
@@ -56,7 +57,7 @@ Per-session Markdown should capture:
 - observable decision trail from logs and rollout events;
 - outcome, next step, reflection, and what the harness appears to be learning.
 
-Profile memory should be durable and account-scoped. It should synthesize repeated sanitized session patterns into beliefs, slow drift, self-formed goals, and bounded self-talk without overriding the player's command.
+Profile/personality memory should be durable and account-scoped. It should synthesize repeated sanitized session patterns into beliefs, slow drift, self-formed goals, and bounded self-talk without overriding the player's command. Intentional character memory is different: it is sparse, explicit, and written only when a future agent should remember a concrete goal or lesson.
 
 ## Validation
 

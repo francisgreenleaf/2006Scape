@@ -17,18 +17,28 @@ For the reliable server/client/login/bridge startup flow used before route explo
 - `data/observations.jsonl`: ignored local append-only route-learning observations from `rs.observe_state`, screenshots, and manual notes.
 - `data/movement_traces*.jsonl`: ignored optional legacy/dev movement trace streams from `tools/route_recorder.py`.
 - `data/route_tests.json`: regression checks for expected route selection, next steps, and safety warnings.
+- `.local/character-memory/<profile>/`: ignored intentional character memories and goals, kept separate per profile.
 - `screenshots/`: ignored local copied screenshots used as evidence. Commit only curated metadata, not bulk PNG captures.
 - `schema/`: JSON Schemas for the data files.
 - `cache-world-map.md`: notes on the cache-backed world map renderer and how to reuse it in other tools.
+- `scripting-primitives.md`: bridge scripting boundary, primitive tool list, compatibility tools, and current external runner entry points.
 - `tools/navdb.py`: dependency-free CLI for validation, route lookup, hazard checks, and recording observations.
 - `tools/capture-client-screenshot.sh`: macOS helper that captures the running Java client window and prints the screenshot path as JSON.
 - `tools/capture-cardinal-screenshots.sh`: compact four-angle screenshot helper for north/east/south/west visual route debugging.
 - `tools/rs-tool.sh`: small bridge wrapper for calling `rs` tools through the active local session without hand-writing `curl` each time.
 - `tools/script_registry.py`: lightweight script catalog for listing, wildcard searching, inspecting, and running registered helper scripts by fuzzy name.
+- `tools/character_memory.py`: sparse, profile-scoped long-term memories and goals for future agents.
 - `tools/agility_runner.py`: bridge-backed agility course runner that keeps obstacle execution and timing evidence out of the AI token loop.
-- `tools/mining_runner.py`: bridge-backed mining runner that discovers cache-backed mine clusters, routes between banks and rocks, chooses live ore targets, mines through batch bridge tools, and banks ores.
+- `tools/mining_runner.py`: bridge-backed mining runner that discovers cache-backed mine clusters, routes between banks and rocks, chooses live ore targets, mines through primitive rock/object loops by default, and banks ores.
+- `tools/woodcutting_runner.py`: standalone primitive tree-chopping runner with optional banking and bird-nest pickup.
+- `tools/fletching_runner.py`: primitive-first woodcutting and fletching runner. It uses object interaction for chopping, `use_item_on_item`, `click_interface_button`, and `wait_until_idle` for fletching, with legacy fallback for old runtimes.
+- `tools/combat_runner.py`: generic primitive combat runner for NPC targets, style selection, eating, waiting, looting, and optional route targets.
+- `tools/food_runner.py`: primitive fishing, cooking, fish-cook, and firemaking runner.
+- `tools/smithing_runner.py`: primitive smelting/smithing runner using furnace/anvil interactions, interface buttons, and `SmithingData`.
+- `tools/bank_loadout.py`: compact primitive bank-loadout helper that plans from observed inventory and applies only needed deposit/food/coin-float actions.
+- `tools/cowhide_combat_runner.py`: bounded cow combat, hide pickup, food restock, and banking runner built from route, combat, item, shop, and bank primitives.
 - `tools/render_profile_map.py`, `tools/render_heat_map.py`, `tools/render_fog_map.py`: plain-name active movement map renderers for `Mr. Flame`, `Heat Map`, and `Mr. Flame Fog`.
-- `tools/active_map_refresher.py`: background controller for keeping the three canonical active map PNGs current: profile movement, `Heat Map`, and profile fog. Use it for `start`, `status`, `logs`, `stop`, and `restart`; the profile movement map is a continuous hot loop.
+- `tools/active_map_refresher.py`: background controller for keeping the three canonical active map PNGs current every five minutes: profile movement, `Heat Map`, and profile fog. Use it for `start`, `status`, `logs`, and `restart`.
 - `tools/refresh_active_maps.py`: lower-level foreground worker used by `active_map_refresher.py`. It writes status/temp files under ignored `.local/map-refresh/`, JSON summaries under ignored `.local/map-summaries/`, and does not refresh auxiliary cache/route maps unless explicitly requested.
 
 ## Unified Movement Telemetry
@@ -71,6 +81,26 @@ python3 agent-navigation/tools/script_registry.py run navdb -- validate
 ```
 
 Keep durable descriptions and examples in `data/script_registry.json` so skills can stay short and point agents to the registry instead of duplicating script docs.
+
+## Scripting Primitives
+
+Use [Agent Scripting Primitives](scripting-primitives.md) before adding or changing Java bridge tools. The bridge should expose stable gameplay inputs such as item-on-item, item-on-object, interface-button clicks, interface-item selection, walking, waiting, object/NPC interaction, combat, banking, shops, and inventory management. Strategy belongs in external Python scripts and JSON data.
+
+Legacy high-level Java tools such as `fletch_logs_until_inventory_empty`, `mine_ore_until_inventory_full`, `chop_tree_until_inventory_full`, `fish_food`, `cook_food`, `light_fire`, `smith_item`, and `train_combat` remain available for compatibility, but new runners should prefer primitive composition. Current primitive-backed runners cover mining, woodcutting/fletching, food, smithing, and combat.
+
+For banking, prefer `tools/bank_loadout.py` or shared `bridge_script.execute_bank_policy` instead of ad hoc repeated deposit loops. A bank policy should observe inventory once, skip absent items, deposit listed resources/junk in one call, trim food with `keepFoodCount` in one call, and adjust the coin float once.
+
+## Character Memory
+
+Use `tools/character_memory.py` for intentional, sparse, profile-scoped notes that should affect future decisions. This is for things like equipment upgrade goals, recurring blockers, useful preferences, or strategic reminders. It is not for route graph facts, raw telemetry, session transcripts, every level-up, or every inventory batch.
+
+```sh
+python3 agent-navigation/tools/character_memory.py show --profile MrFlame --json
+python3 agent-navigation/tools/character_memory.py goal --profile MrFlame --priority normal --tags gear --text "Upgrade from a bronze axe when the character has enough coins and shop access."
+python3 agent-navigation/tools/character_memory.py remember --profile MrGem --kind warning --tags supplies --text "Carry food before repeating a route that previously caused low-HP recovery."
+```
+
+The default profile is `MrFlame`; pass `--profile` or set `RS_PROFILE` for another character. Known display variants such as `Mr. Flame` and `Mr. Gem` normalize to the same profile directories as `MrFlame` and `MrGem`.
 
 ## Learning Workflow
 
@@ -146,12 +176,49 @@ Course definitions are shareable JSON in `data/agility_courses.json`. Run logs a
 
 ## Mining Runner
 
-`tools/mining_runner.py` runs normal-gameplay mining loops with route learning and banking. It uses the cache-backed world map to discover ore clusters near known bank places, scores sites by bank distance, current distance, rock density, ore XP, and respawn cost, routes with `route_runner.py`, chooses the best currently reachable ore with `find_nearest_rock`, mines with `mine_ore_until_inventory_full`, then routes back to a bank and deposits ores. Route batch output includes run diagnostics (`runReq`, `runBefore`, `runAfter`, `runSpent`, `expectedRunSpend`, `tps`, `tilesPerTick`, `runWarn`), and mining logs keep run-policy events plus any non-`none` route warnings. Each mining run also writes a sibling `.routes.jsonl` file with structured route-batch run-efficiency evidence.
+`tools/mining_runner.py` runs normal-gameplay mining loops with route learning and banking. It uses the cache-backed world map to discover ore clusters near known bank places, scores sites by bank distance, current distance, rock density, ore XP, and respawn cost, routes with `route_runner.py`, chooses the best currently reachable ore with `find_nearest_rock`, mines through primitive `interact_object` plus `wait_until_idle` rounds, then routes back to a bank and deposits ores. Legacy `mine_ore_until_inventory_full` is available only through `--legacy-mining-tool` or stale-runtime fallback. Route batch output includes run diagnostics (`runReq`, `runBefore`, `runAfter`, `runSpent`, `expectedRunSpend`, `tps`, `tilesPerTick`, `runWarn`), and mining logs keep run-policy events plus any non-`none` route warnings. Each mining run also writes a sibling `.routes.jsonl` file with structured route-batch run-efficiency evidence.
 
 ```sh
 python3 agent-navigation/tools/mining_runner.py --list-sites --ores copper,tin,iron
 python3 agent-navigation/tools/mining_runner.py --target-mining-level 20 --auto-buy-bronze-pickaxe
+python3 agent-navigation/tools/mining_runner.py --ores iron --max-loads 1 --quiet
 python3 agent-navigation/tools/script_registry.py run mining -- --target-mining-level 20 --auto-buy-bronze-pickaxe
 ```
 
 Use `--list-sites` for read-only site planning. For live training, the runner writes generated JSONL evidence under `data/mining/runs/`, relies on passive movement telemetry for route learning, and keeps bridge tokens hidden behind `tools/rs-tool.sh`.
+
+## Fletching Runner
+
+`tools/fletching_runner.py` runs normal-gameplay woodcutting and fletching loops. It chooses trees and fletching products in Python, routes through `route_runner.py`, chops through primitive `find_nearest_tree`/`interact_object`/`wait_until_idle` rounds, picks up and banks bird nests, sells products when configured, and records JSONL evidence under `data/fletching/runs/`.
+
+```sh
+python3 agent-navigation/tools/fletching_runner.py --max-cycles 10 --tree auto --quiet
+python3 agent-navigation/tools/fletching_runner.py --target-woodcutting-level 50 --target-fletching-level 50 --quiet
+python3 agent-navigation/tools/fletching_runner.py --legacy-fletch-tool --legacy-chop-tool --max-cycles 3
+```
+
+The default chop/fletch path is primitive-first. It calls `find_nearest_tree` and `interact_object` for logs, `use_item_on_item` for knife-on-logs, `click_interface_button` for the make-all button, and `wait_until_idle` for production. If the live game has not been restarted onto a build with those primitives, the runner falls back to legacy tools unless the corresponding `--no-legacy-*-fallback` flag is passed.
+
+## Primitive Skilling Runners
+
+Use these before adding Java tools for new gameplay loops:
+
+```sh
+python3 agent-navigation/tools/woodcutting_runner.py --tree oak --stop-when-inventory-full --quiet
+python3 agent-navigation/tools/food_runner.py --mode fish-cook --quiet
+python3 agent-navigation/tools/food_runner.py --mode firemake --max-fires 10
+python3 agent-navigation/tools/smithing_runner.py --mode smelt --bar bronze --quiet
+python3 agent-navigation/tools/smithing_runner.py --mode smith --item sword --amount 10
+python3 agent-navigation/tools/combat_runner.py --npc goblin --target-level 10 --quiet
+```
+
+`woodcutting_runner.py`, `food_runner.py`, `smithing_runner.py`, and `combat_runner.py` are intentionally script-side strategy. They compose stable bridge primitives such as `interact_npc`, `interact_object`, `use_item_on_object`, `use_item_on_item`, `click_interface_button`, `select_interface_item`, `attack_npc`, `eat_best_food`, and `wait_until_idle`.
+
+## Cowhide Combat Runner
+
+`tools/cowhide_combat_runner.py` keeps early cow combat, hide pickup, kebab restocking, and banking out of the AI loop. It stays local in the Lumbridge cow pen when possible, uses route travel only for real travel legs, and writes ignored generated evidence under `data/combat/runs/`.
+
+```sh
+python3 agent-navigation/tools/cowhide_combat_runner.py --stop-when-inventory-full --no-final-bank --quiet
+python3 agent-navigation/tools/cowhide_combat_runner.py --target-attack 20 --target-strength 20 --target-defence 5 --max-cycles 25
+```

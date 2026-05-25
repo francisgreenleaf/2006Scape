@@ -1,6 +1,6 @@
 ---
 name: 2006scape
-description: "Use as the single entry skill for work in /Users/kevin/Documents/2006Scape, especially when a task broadly mentions 2006Scape or the right specialized workflow is unclear. Provides routing guidance, boundaries, starter commands, and child-skill pointers for runtime/bridge sessions, script discovery, route exploration, route-planner/ML graph development, object transitions, frontier exploration, compact screenshots, gameplay progression, cache maps, map visualization, session logs, bridge-tool development, and general repo editing without preloading every specialized skill body."
+description: "Use as the single entry skill for work in /Users/kevin/Documents/2006Scape, especially when a task broadly mentions 2006Scape or the right specialized workflow is unclear. Provides routing guidance, boundaries, starter commands, and child-skill pointers for runtime/bridge sessions, script discovery, route exploration, route-planner/ML graph development, object transitions, frontier exploration, compact screenshots, gameplay progression, profile-scoped character memories/goals, cache maps, map visualization, session logs, bridge-tool development, and general repo editing without preloading every specialized skill body."
 ---
 
 # 2006Scape
@@ -21,13 +21,14 @@ Always keep bridge tokens, API keys, saved-character secrets, passwords, and non
 | --- | --- | --- | --- |
 | General repo edits, Java/Maven work, maintenance, tests, code review, or durable lessons | `.codex/skills/2006scape-dev-editing/SKILL.md` | Read `AGENTS.md`; for edits, inspect `references/actionable-lessons.md` when relevant | Do not touch unrelated dirty files or add broad lessons from stale context |
 | Starting, stopping, relaunching, diagnosing, or claiming the local server/client/bridge runtime | `.codex/skills/2006scape-local-runtime/SKILL.md` | `python3 agent-navigation/tools/runtime_doctor.py status --observe` | Do not kill/restart active runtimes unless asked or clearly stale; keep profile sessions scoped; never print tokens |
-| Adding, debugging, reviewing, or documenting `rs.*` bridge tools | `.codex/skills/2006scape-agent-bridge-dev/SKILL.md` | Inspect `AgentActionService`, `AgentToolService`, and `CodexAppServerClient`; prove live tools with `agent-navigation/tools/rs-tool.sh` | Build success is not live proof; restart through `runtime_doctor.py` only when live validation is requested |
+| Adding, debugging, reviewing, or documenting `rs.*` bridge primitives or compatibility tools | `.codex/skills/2006scape-agent-bridge-dev/SKILL.md` | Read `agent-navigation/scripting-primitives.md`, then inspect `AgentActionService`, `AgentToolService`, and `CodexAppServerClient` | Prefer external scripts for strategy; build success is not live proof; restart through `runtime_doctor.py` only when live validation is requested |
 | Live route exploration, route DB edits, hazards, blockers, doors, gates, stairs, trapdoors, or topology from navigation data | `.codex/skills/2006scape-route-agent/SKILL.md` | `agent-navigation/tools/observe-slim.sh`; validate with `python3 agent-navigation/tools/navdb.py validate` | Use bridge tools only; do not use admin teleports, direct state edits, or visual guesses without evidence |
 | Route-planner implementation, graph semantics, `router.py`, `route_runner.py`, passive trace weighting, reverse edges, coordinate targets, ML/GNN route planning, or planner evaluation | `.codex/skills/2006scape-route-planner-dev/SKILL.md` | `python3 agent-navigation/tools/router.py plan --from X,Y,H --to PLACE --combat-level N --food N --run-energy N --run-enabled` | Keep learned models explainable and constrained by deterministic safety gates |
 | Doors, gates, ladders, trapdoors, stairs, ships, portals, tolls, or member gates | `.codex/skills/2006scape-object-transitions/SKILL.md` | Observe full state, identify object id/tile, preview/walk to interaction target, interact once, then prove post-state | Do not model object transitions as ordinary walk edges or accept a successful click as proof |
 | Live unknown-area expansion, short probes, frontier naming, coordinate targets, and hazard/death evidence | `.codex/skills/2006scape-frontier-exploration/SKILL.md` | Dry-run `route_runner.py --to X,Y,H --allow-frontier --direct-if-preview --probe-toward-target` before moving | Avoid destination gambling; every probe should produce reusable route, blocker, hazard, or frontier evidence |
 | Compact visual debugging of the live Java client | `.codex/skills/2006scape-screenshot-capture/SKILL.md` | `agent-navigation/tools/capture-cardinal-screenshots.sh --prefix reason` | Prefer `765x503` client captures; do not load full desktop screenshots unless compact capture fails |
-| Normal gameplay progression through in-game mechanics | `.codex/skills/2006scape-gameplay-progression/SKILL.md` | `agent-navigation/tools/observe-slim.sh`, then use batch `rs` tools through `agent-navigation/tools/rs-tool.sh` | Not for route DB schema edits, bridge source changes, spawned items, or direct player-state edits |
+| Normal gameplay progression through in-game mechanics | `.codex/skills/2006scape-gameplay-progression/SKILL.md` | `agent-navigation/tools/observe-slim.sh`, then search `script_registry.py` for a primitive-backed runner | Not for route DB schema edits, bridge source changes, spawned items, or direct player-state edits |
+| Intentional long-term memories, equipment goals, preferences, recurring blockers, or strategic reminders for one character | `.codex/skills/2006scape-character-memory/SKILL.md` | `python3 agent-navigation/tools/character_memory.py show --profile PROFILE --json` | Keep entries sparse and profile-scoped; route facts belong in nav data, routine progress belongs in session logs |
 | Discovering or running repo helper scripts by fuzzy name, wildcard, tag, or metadata | `.codex/skills/2006scape-script-registry/SKILL.md` | `python3 agent-navigation/tools/script_registry.py search QUERY` | Keep script descriptions in `agent-navigation/data/script_registry.json`, not in this umbrella skill |
 | Static cache-backed world map decoding/rendering, GameCache terrain/water/object/mapscene layers, bounded context maps, or map data export | `.codex/skills/2006scape-cache-map/SKILL.md` | For agent context, use `python3 agent-navigation/tools/render_agent_context_map.py --center latest` | Do not recreate the retired screenshot/minimap fog sampler or require a live client for static map work |
 | Map presentation, route overlays, topology styling, labels, legends, visual QA, recent-path/segment context maps, or sharing map images | `.codex/skills/2006scape-map-visualization/SKILL.md` | For agent segment context, use `python3 agent-navigation/tools/render_agent_context_map.py --segment-from FROM_PLACE --segment-to TO_PLACE` | Do not restart gameplay runtime for visual-only work; use `cache-map` for renderer internals |
@@ -90,14 +91,31 @@ agent-navigation/tools/capture-client-screenshot.sh --prefix reason --native-siz
 
 # 2006scape-gameplay-progression: normal gameplay through rs tools
 agent-navigation/tools/observe-slim.sh
-agent-navigation/tools/rs-tool.sh plan_combat_training '{"targetLevel":10}'
-agent-navigation/tools/rs-tool.sh train_combat '{"npc":"goblin"}'
+python3 agent-navigation/tools/script_registry.py search combat
 python3 agent-navigation/tools/mining_runner.py --target-mining-level 20 --auto-buy-bronze-pickaxe
+python3 agent-navigation/tools/combat_runner.py --npc goblin --target-level 10 --quiet
+python3 agent-navigation/tools/bank_loadout.py --preset cowhide-trip --dry-run --json
+python3 agent-navigation/tools/food_runner.py --mode fish-cook --quiet
+python3 agent-navigation/tools/smithing_runner.py --mode smith --item sword --amount 10
+python3 agent-navigation/tools/woodcutting_runner.py --tree oak --stop-when-inventory-full --quiet
+
+# 2006scape-character-memory: sparse profile-scoped memories and goals
+python3 agent-navigation/tools/character_memory.py show --profile PROFILE --json
+python3 agent-navigation/tools/character_memory.py remember --profile PROFILE --kind resource --priority high --tags equipment --text "A better axe is a useful near-term upgrade before long woodcutting or fletching sessions."
+python3 agent-navigation/tools/character_memory.py goal --profile PROFILE --priority normal --tags gear --text "Upgrade from a bronze axe when the character has enough coins and shop access."
 
 # 2006scape-script-registry: discover or run known helper scripts
 python3 agent-navigation/tools/script_registry.py list
 python3 agent-navigation/tools/script_registry.py search "agility"
 python3 agent-navigation/tools/script_registry.py search "mining"
+python3 agent-navigation/tools/script_registry.py search "fletching"
+python3 agent-navigation/tools/script_registry.py search "woodcutting"
+python3 agent-navigation/tools/script_registry.py search "combat"
+python3 agent-navigation/tools/script_registry.py search "food"
+python3 agent-navigation/tools/script_registry.py search "smithing"
+python3 agent-navigation/tools/script_registry.py search "bank"
+python3 agent-navigation/tools/script_registry.py search "cowhide"
+python3 agent-navigation/tools/script_registry.py search "memory"
 python3 agent-navigation/tools/script_registry.py show route --json
 python3 agent-navigation/tools/script_registry.py run agility -- --laps 10
 
@@ -125,6 +143,10 @@ For read-only questions, inspect the relevant docs or source first and answer wi
 For file edits, use `2006scape-dev-editing` plus the subsystem skill. Keep edits away from unrelated dirty files and preserve generated/local-only files.
 
 For live gameplay, observe first and use repo-side bridge wrappers. Prefer batch tools and treat their returned state as the next observation. If a long batch command is already running, wait near the expected completion interval before polling output instead of short-polling every few seconds. For route/mining movement, `route_runner.py` refreshes `set_run true` before long run-approved legs, unless reserve policy says not to run. Batch lines expose `runReq`, `runBefore`, `runAfter`, `runSpent`, `expectedRunSpend`, `tps`, `tilesPerTick`, and `runWarn`; if `runWarn` is not `none`, treat it as evidence that run was requested but not effective. Use `--evidence-jsonl PATH` for structured route-batch run-efficiency evidence, and expect `mining_runner.py` to write a sibling `.routes.jsonl` automatically.
+
+For new gameplay automation, keep strategy in Python scripts and data. Read `agent-navigation/scripting-primitives.md`; use stable primitives such as `use_item_on_item`, `use_item_on_object`, `click_interface_button`, `select_interface_item`, `interact_object`, `interact_npc`, bank/shop tools, combat tools, and `wait_until_idle` before adding Java. Existing Java skill tools are compatibility surfaces, not the default place for new loops. Current primitive-backed runners cover mining, woodcutting/fletching, food, smithing, combat, and compact bank loadout policies.
+
+For long autonomous gameplay or progression, load the selected character's sparse memory with `character_memory.py show --profile PROFILE --json`. Write new memory only for durable, decision-changing goals or lessons; do not log routine progress, temporary route details, secrets, or facts that belong in route data/session logs. Character memory is profile-scoped so `MrFlame` and `MrGem` stay separate.
 
 For visual route ambiguity, use compact screenshots through `agent-navigation/tools/capture-cardinal-screenshots.sh --prefix REASON`; do not load oversized full-screen captures.
 

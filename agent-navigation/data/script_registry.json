@@ -31,7 +31,7 @@
       "name": "Adaptive Mining Runner",
       "path": "agent-navigation/tools/mining_runner.py",
       "kind": "gameplay_runner",
-      "description": "Discovers cache-backed mine clusters, routes between banks and rocks, chooses the best live ore target, mines through bridge batches, banks ores for Mining training, and logs run-policy plus route-batch run-efficiency diagnostics.",
+      "description": "Discovers cache-backed mine clusters, routes between banks and rocks, chooses the best live ore target, mines with primitive find_nearest_rock plus interact_object loops by default, keeps legacy mining-tool fallback for old runtimes, banks ores for Mining training, and logs run-policy plus route-batch run-efficiency diagnostics.",
       "aliases": [
         "mining",
         "mine",
@@ -49,6 +49,7 @@
       ],
       "examples": [
         "python3 agent-navigation/tools/script_registry.py run mining -- --target-mining-level 20 --auto-buy-bronze-pickaxe",
+        "python3 agent-navigation/tools/mining_runner.py --ores iron --max-loads 1 --quiet",
         "python3 agent-navigation/tools/mining_runner.py --list-sites --ores copper,tin,iron"
       ]
     },
@@ -57,7 +58,7 @@
       "name": "Adaptive Fletching Runner",
       "path": "agent-navigation/tools/fletching_runner.py",
       "kind": "gameplay_runner",
-      "description": "Runs normal-gameplay woodcutting and fletching loops with bridge batch tools, bird nest pickup/banking, simple axe/knife handling, product selling, run enabling, quiet progress, and JSONL evidence.",
+      "description": "Runs normal-gameplay woodcutting and fletching loops with primitive-first tree object interaction, knife-on-log fletching, and interface-button make-all clicks, legacy fallback for old runtimes, bird nest pickup/banking, product selling, run enabling, quiet progress, and JSONL evidence.",
       "aliases": [
         "fletching",
         "fletch",
@@ -75,7 +76,167 @@
       ],
       "examples": [
         "python3 agent-navigation/tools/script_registry.py run fletching -- --target-woodcutting-level 50 --target-fletching-level 50 --quiet",
-        "python3 agent-navigation/tools/fletching_runner.py --max-cycles 10 --tree auto --quiet"
+        "python3 agent-navigation/tools/fletching_runner.py --max-cycles 10 --tree auto --quiet",
+        "python3 agent-navigation/tools/fletching_runner.py --legacy-fletch-tool --legacy-chop-tool --max-cycles 3"
+      ]
+    },
+    {
+      "id": "woodcutting_runner",
+      "name": "Primitive Woodcutting Runner",
+      "path": "agent-navigation/tools/woodcutting_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Runs standalone woodcutting through primitive find_nearest_tree, interact_object, wait_until_idle, route, bank, and bird-nest pickup steps without using Java woodcutting batch tools.",
+      "aliases": [
+        "woodcutting",
+        "woodcut",
+        "chop",
+        "chop trees",
+        "tree runner"
+      ],
+      "tags": [
+        "gameplay",
+        "woodcutting",
+        "training",
+        "runner",
+        "primitive"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/script_registry.py run woodcutting -- --tree oak --stop-when-inventory-full --quiet",
+        "python3 agent-navigation/tools/woodcutting_runner.py --target-woodcutting-level 30 --tree auto"
+      ]
+    },
+    {
+      "id": "cowhide_combat_runner",
+      "name": "Cowhide Combat Runner",
+      "path": "agent-navigation/tools/cowhide_combat_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Runs tight normal-gameplay cow combat for MrFlame-style early melee training: stays local inside the Lumbridge cow pen while reachable cows exist, handles the timed cow-pen gate transition, uses short fight/drop polling for fast Cowhide pickup, banks hides at Al Kharid through the compact bank-loadout policy, buys/eats kebabs as needed, records JSONL evidence, and uses route_runner.py only for real travel legs.",
+      "aliases": [
+        "cowhide",
+        "cow combat",
+        "cowhide combat",
+        "cow runner",
+        "hide banking",
+        "cowhide banking"
+      ],
+      "tags": [
+        "gameplay",
+        "combat",
+        "cows",
+        "cowhide",
+        "training",
+        "banking",
+        "runner",
+        "routing"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/script_registry.py run cowhide -- --target-attack 20 --target-strength 20 --target-defence 5 --quiet",
+        "python3 agent-navigation/tools/cowhide_combat_runner.py --stop-when-inventory-full --no-final-bank --quiet",
+        "python3 agent-navigation/tools/cowhide_combat_runner.py --target-attack 20 --target-strength 20 --target-defence 5 --max-cycles 25"
+      ]
+    },
+    {
+      "id": "bank_loadout",
+      "name": "Bank Loadout Helper",
+      "path": "agent-navigation/tools/bank_loadout.py",
+      "kind": "gameplay_support",
+      "description": "Applies compact primitive-backed bank loadout policies from observed inventory so scripts do not repeatedly deposit the same item; includes a cowhide-trip preset for banking hides and the spare iron scimitar while keeping three kebabs and 100 coins.",
+      "aliases": [
+        "bank-loadout",
+        "bank loadout",
+        "banking",
+        "loadout",
+        "cowhide bank",
+        "cow trip bank"
+      ],
+      "tags": [
+        "gameplay",
+        "banking",
+        "loadout",
+        "primitive",
+        "support"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/script_registry.py run bank-loadout -- --preset cowhide-trip --dry-run --json",
+        "python3 agent-navigation/tools/bank_loadout.py --preset cowhide-trip --json"
+      ]
+    },
+    {
+      "id": "combat_runner",
+      "name": "Primitive Combat Runner",
+      "path": "agent-navigation/tools/combat_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Runs generic combat training or target killing from external script logic using set_combat_style, find_training_npc, attack_npc, wait_until_idle, eat_best_food, optional looting, and optional route targets instead of Java train_combat or durable combat goal strategy.",
+      "aliases": [
+        "combat",
+        "fight",
+        "kill",
+        "training combat",
+        "generic combat"
+      ],
+      "tags": [
+        "gameplay",
+        "combat",
+        "training",
+        "runner",
+        "primitive"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/script_registry.py run combat -- --npc goblin --target-level 10 --quiet",
+        "python3 agent-navigation/tools/combat_runner.py --npc guard --area varrock --max-rounds 20"
+      ]
+    },
+    {
+      "id": "food_runner",
+      "name": "Primitive Food Runner",
+      "path": "agent-navigation/tools/food_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Runs fishing, cooking, fish-then-cook, or firemaking through interact_npc, use_item_on_object, use_item_on_item, click_interface_button, and wait_until_idle instead of Java fish_food, cook_food, or light_fire strategy tools.",
+      "aliases": [
+        "food",
+        "fishing",
+        "cook",
+        "cooking",
+        "firemaking",
+        "light fire"
+      ],
+      "tags": [
+        "gameplay",
+        "fishing",
+        "cooking",
+        "firemaking",
+        "runner",
+        "primitive"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/script_registry.py run food -- --mode fish-cook --quiet",
+        "python3 agent-navigation/tools/food_runner.py --mode firemake --max-fires 10"
+      ]
+    },
+    {
+      "id": "smithing_runner",
+      "name": "Primitive Smithing Runner",
+      "path": "agent-navigation/tools/smithing_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Runs smelting and smithing externally using object interaction, item-on-object, interface-button smelting, interface-item smithing selection, wait_until_idle, and SmithingData parsing instead of Java smelt_bar, smith_item, smith_best_item, plan_smithing, or train_smithing_profit strategy calls.",
+      "aliases": [
+        "smithing",
+        "smith",
+        "smelt",
+        "smelting",
+        "anvil",
+        "furnace"
+      ],
+      "tags": [
+        "gameplay",
+        "smithing",
+        "smelting",
+        "runner",
+        "primitive"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/script_registry.py run smithing -- --mode smelt --bar bronze --quiet",
+        "python3 agent-navigation/tools/smithing_runner.py --mode smith --item sword --amount 10"
       ]
     },
     {
@@ -263,6 +424,32 @@
       "examples": [
         "python3 agent-navigation/tools/script_registry.py run fog-map -- --output /tmp/fog-map.png --summary /tmp/fog-map.json",
         "agent-navigation/tools/render_fog_map.py"
+      ]
+    },
+    {
+      "id": "character_memory",
+      "name": "Character Memory",
+      "path": "agent-navigation/tools/character_memory.py",
+      "kind": "data_tool",
+      "description": "Reads and writes sparse profile-scoped long-term memories and goals for a selected character without mixing MrFlame, MrGem, or other profiles.",
+      "aliases": [
+        "character-memory",
+        "character memory",
+        "memory",
+        "memories",
+        "goals",
+        "profile memory"
+      ],
+      "tags": [
+        "memory",
+        "profile",
+        "goals",
+        "character",
+        "local"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/script_registry.py run character-memory -- show --profile MrFlame --json",
+        "python3 agent-navigation/tools/character_memory.py goal --profile MrFlame --priority normal --tags gear --text \"Upgrade from a bronze axe when the character has enough coins and shop access.\""
       ]
     },
     {

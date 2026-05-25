@@ -31,6 +31,7 @@ agent-navigation/tools/rs-tool.sh find_nearest_object '{"name":"gate","maxDistan
 agent-navigation/tools/rs-tool.sh preview_local_path '{"x":X,"y":Y,"height":0,"moveNear":true,"applyBounds":true,"maxWalkDistance":48}'
 agent-navigation/tools/rs-tool.sh walk_to_tile_until_arrived '{"x":X,"y":Y,"height":0,"stopDistance":0,"maxTicks":80,"maxWalkDistance":48,"stopOnCombat":true,"stopOnStall":true}'
 agent-navigation/tools/rs-tool.sh interact_object '{"objectId":OBJECT_ID,"x":X,"y":Y,"option":"first"}'
+agent-navigation/tools/rs-tool.sh walk_path_steps '{"steps":[{"x":X,"y":Y,"height":0}],"allowObjectTransition":true,"run":true}'
 agent-navigation/tools/rs-tool.sh wait_until_idle '{"maxTicks":10,"movement":true,"skilling":false,"combat":false}'
 agent-navigation/tools/capture-cardinal-screenshots.sh --prefix transition-reason
 python3 agent-navigation/tools/navdb.py validate
@@ -52,3 +53,7 @@ python3 agent-navigation/tools/navdb.py self-test
 Do not force member gates or tolls without explicit user approval and required items/coins. Do not admin-teleport, spawn keys/items, or directly mutate route state to pretend a transition was solved.
 
 Use `2006scape-route-planner-dev` when changing how transitions are represented in the graph. Use `2006scape-frontier-exploration` when deciding whether to explore around a blocked transition.
+
+## Lumbridge Cow Pen Gate
+
+The Lumbridge cow pen double gate (`1551`/`1553` around `3253,3266,0`) is a timed wooden gate. The server-side pathfinder can still treat the closed gate footprint as blocked after `interact_object`, so do not open it and then route through with generic `walk_to_tile_until_arrived`. Open the gate, immediately queue short adjacent `walk_path_steps` with `allowObjectTransition=true`, then prove the post-tile. The cowhide runner handles this automatically.
