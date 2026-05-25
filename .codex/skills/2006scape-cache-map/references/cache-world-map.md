@@ -37,9 +37,11 @@ Place labels for the cache exports and active topology maps come from `agent-nav
 
 The active movement maps are the profile movement map, `Heat Map`, and profile fog; they overlay learned movement traces, routing issues, deaths, combat edges, visited tiles, route density, and fog-of-war coverage on top of bounded cache-map backgrounds. JSON summaries and auxiliary route-overview renders default to ignored files under `agent-navigation/.local/map-summaries/`. Legacy movement-topology outputs may exist for old experiments, but they are not current user-facing maps.
 
-Agent context maps are not canonical topology exports. By default, `render_agent_context_map.py` and `render_context_map.py` write unique ignored artifacts under `agent-navigation/.local/context-maps/<date>/`; use explicit `--output` and `--summary` only for a deliberate smoke test or a user-facing comparison.
+Agent context maps are not canonical topology exports. By default, agents should call `render_agent_context_map_XS.py`, which delegates to `render_agent_context_map.py`/`render_context_map.py` and writes unique ignored artifacts under `agent-navigation/.local/context-maps/<date>/`; use explicit `--output` and `--summary` only for a deliberate smoke test or a user-facing comparison.
 
 Current cache-map summaries are written to `agent-navigation/.local/map-summaries/cache-world-map-full.json` and `agent-navigation/.local/map-summaries/cache-world-map-level0.json`. Use those summaries for exact bounds, pixel dimensions, region counts, tile counts, object counts, bridge-tile counts, and label metadata.
+
+The agent reference grid is anchored to the level-0 surface export bounds `1728,2560..3839,4031` with 32-tile cells. Columns run west-to-east as `A..Z, AA..`; rows run south-to-north starting at `1`. Use `agent-navigation/tools/map_grid.py` to convert world tiles to grid shorthand and `render_agent_context_map_XS.py --grid-cell CELL` to request a bounded context map for a named cell.
 
 Render the full map from repo root:
 
@@ -75,6 +77,14 @@ agent-navigation/tools/cache_world_map.py \
   --pixels-per-tile 4 \
   --output /tmp/lumbridge-varrock.png \
   --summary /tmp/lumbridge-varrock.json
+```
+
+Inspect and render the agent reference grid:
+
+```sh
+python3 agent-navigation/tools/map_grid.py locate --tile 3222,3218,0
+python3 agent-navigation/tools/map_grid.py bounds --cell AU21 --padding-tiles 4
+python3 agent-navigation/tools/render_agent_context_map_XS.py --grid-cell AU21 --grid-padding-tiles 4
 ```
 
 Render the active movement maps:

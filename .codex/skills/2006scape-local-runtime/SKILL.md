@@ -11,7 +11,7 @@ Use this skill for runtime lifecycle work only. Other agents may be playing or e
 
 Keep runtime work separate from code work. Prefer `agent-navigation/tools/runtime_doctor.py` and the documented launch path in `docs/local-agent-startup.md`; do not modify game source, route data, or map renderers while doing a runtime task unless the user asks.
 
-Never print, paste, inspect, log, or commit bridge tokens. The only allowed token destination is an ignored `agent-navigation/.local/rsbridge-session*.json` file read by `agent-navigation/tools/rs-tool.sh`.
+Never print, paste, inspect, log, or commit bridge tokens. The only allowed token destination is an ignored `agent-navigation/.local/rsbridge-session*.json` file read by `agent-navigation/tools/rs-tool_XS.sh` or the full fallback `agent-navigation/tools/rs-tool.sh`.
 
 ## Current Runtime Pieces
 
@@ -20,8 +20,9 @@ Never print, paste, inspect, log, or commit bridge tokens. The only allowed toke
 - Default profile: `MrFlame`; pass `--profile <name>` or set `RS_PROFILE=<name>` for another character.
 - Server launcher: `./scripts/start-server.sh`, which runs from the repo root and copies the jar to `/tmp/2006scape-run/`.
 - Client launcher: `./scripts/start-client.sh`.
-- Bridge wrappers: `agent-navigation/tools/observe-slim.sh` and `agent-navigation/tools/rs-tool.sh`.
+- Bridge wrappers: use `agent-navigation/tools/observe_XS.sh` and `agent-navigation/tools/rs-tool_XS.sh` by default; `observe-slim.sh` and `rs-tool.sh` remain full/fallback surfaces.
 - Runtime helper: `agent-navigation/tools/runtime_doctor.py`.
+- Server tick log summarizer: `agent-navigation/tools/server_tick_report.py`.
 
 ## Preflight
 
@@ -30,9 +31,12 @@ First determine whether a usable runtime already exists:
 ```sh
 python3 agent-navigation/tools/runtime_doctor.py status --observe
 python3 agent-navigation/tools/runtime_doctor.py status --profile MrGem --observe
+python3 agent-navigation/tools/server_tick_report.py --json
 ```
 
-If `observe-slim` succeeds for the intended profile, reuse the current session. Do not relaunch just to make the environment look clean.
+If `observe_XS.sh` succeeds for the intended profile, reuse the current session. Do not relaunch just to make the environment look clean.
+
+Use `server_tick_report.py` when the server log is noisy with cycle-duration messages. It reads recent `/tmp/2006scape-server.log` lines and summarizes warning/error counts, sampled cycle durations, and recent slow cycles without restarting or touching the JVM.
 
 If process inspection is needed and macOS denies it, do not invent a workaround. Report the permission issue or use a narrow approved process-management path when approvals are available.
 
@@ -74,7 +78,7 @@ The helper implements this flow:
 3. Wait for both `43594` and `43610`.
 4. Launch the client with the selected profile, saved-character login, `-agent-auto-login`, and a fresh `-agent-claim <nonce>`.
 5. Claim through `POST /agent/session/claim` and write only the ignored profile session file.
-6. Verify with `agent-navigation/tools/observe-slim.sh` or `RS_PROFILE=<name> agent-navigation/tools/observe-slim.sh`, not raw token-bearing `curl`.
+6. Verify with `agent-navigation/tools/observe_XS.sh` or `RS_PROFILE=<name> agent-navigation/tools/observe_XS.sh`, not raw token-bearing `curl`.
 
 Read `docs/local-agent-startup.md` for details or manual fallback. Do not retype the nonce-safe claim block from memory unless the helper itself is being debugged.
 
@@ -83,7 +87,7 @@ Read `docs/local-agent-startup.md` for details or manual fallback. Do not retype
 Before stopping anything, identify who owns the runtime:
 
 - If another user/agent is actively exploring, ask before interrupting unless the user already requested a stop.
-- If ports are occupied but `observe-slim` works, attach to the current runtime.
+- If ports are occupied but `observe_XS.sh` works, attach to the current runtime.
 - If the bridge token is invalid after a server/client restart, remove only that profile's ignored session file and re-claim.
 
 Do not rebuild while a server is running directly from `2006Scape Server/target/server-1.0-jar-with-dependencies.jar`. Use the launcher path that copies the jar to `/tmp/2006scape-run/`.

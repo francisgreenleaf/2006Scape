@@ -25,6 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CACHE_DIR = ROOT.parent / "2006Scape Server" / "data" / "cache"
 OUT = ROOT / ".local" / "map-summaries"
 RUNESCAPE_FONT = ROOT / "assets" / "fonts" / "runescape_uf.ttf"
+LEVEL0_SURFACE_BOUNDS = {"minX": 1728, "minY": 2560, "maxX": 3839, "maxY": 4031}
 
 REGION_SIZE = 64
 PLANES = 4

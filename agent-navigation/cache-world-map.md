@@ -28,6 +28,8 @@ Agent context maps are disposable debug artifacts. By default, `render_agent_con
 
 Current cache-map summaries are written to `agent-navigation/.local/map-summaries/cache-world-map-full.json` and `agent-navigation/.local/map-summaries/cache-world-map-level0.json`. Use those summaries for exact bounds, pixel dimensions, region counts, tile counts, object counts, bridge-tile counts, and label metadata.
 
+The level-0 reference grid is anchored to `1728,2560..3839,4031` with 32-tile cells. Columns run west-to-east as `A..Z, AA..`; rows run south-to-north starting at `1`. Use `agent-navigation/tools/map_grid.py` to convert between world tiles and grid shorthand, and use `render_agent_context_map.py --grid-cell CELL` when an agent needs a bounded context map for a named cell.
+
 ## How To Render
 
 Render the full cache map:
@@ -64,6 +66,14 @@ agent-navigation/tools/cache_world_map.py \
   --pixels-per-tile 4 \
   --output /tmp/lumbridge-varrock.png \
   --summary /tmp/lumbridge-varrock.json
+```
+
+Inspect and render the agent reference grid:
+
+```sh
+python3 agent-navigation/tools/map_grid.py locate --tile 3222,3218,0
+python3 agent-navigation/tools/map_grid.py bounds --cell AU21 --padding-tiles 4
+python3 agent-navigation/tools/render_agent_context_map.py --grid-cell AU21 --grid-padding-tiles 4
 ```
 
 Render movement topology with the cache map as the background:

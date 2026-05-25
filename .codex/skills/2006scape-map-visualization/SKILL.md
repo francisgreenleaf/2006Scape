@@ -17,6 +17,8 @@ Use this skill for how map outputs should look and be reviewed. Use `2006scape-c
 - `agent-navigation/.local/map-summaries/*.json`: ignored summaries for active map renders and auxiliary map outputs.
 - `agent-navigation/.local/context-maps/<date>/*.png`: ignored, timestamped agent context-map artifacts for current-location and segment debugging.
 - `agent-navigation/.local/context-maps/<date>/*.json`: matching machine-readable context-map summaries with bounds, center, POI markers, and place markers.
+- `agent-navigation/ml-routing/artifacts/comparisons/<runId>/*.png`: ignored ML before/after benchmark route maps. Use these for route-quality visual comparisons, not as active topology outputs.
+- `agent-navigation/ml-routing/artifacts/comparisons/<runId>/*.json`: per-case marker/metric sidecars; the aggregate `comparison-report.json` is compact and points to these details.
 - `agent-navigation/analysis/movement-topology-<date>.png`: dated analysis renders when comparison is useful.
 
 `agent-navigation/topology/` should stay uncluttered: keep only the three active user-facing movement PNGs plus the two reusable cache-world-map base exports there. Avoid timestamp clutter, JSON sidecars, surface-route renders, and one-off proof/shortcut/context exports in `topology/`; those belong under ignored `.local/` paths unless the user explicitly asks for a shareable artifact.
@@ -60,18 +62,35 @@ agent-navigation/tools/render_navigation_png.py \
 For current location or segment context without full-world resolution:
 
 ```sh
-python3 agent-navigation/tools/render_agent_context_map.py --center latest
+python3 agent-navigation/tools/render_agent_context_map_XS.py --center latest
 
-python3 agent-navigation/tools/render_agent_context_map.py \
+python3 agent-navigation/tools/map_grid.py locate --tile 3222,3218,0
+
+python3 agent-navigation/tools/render_agent_context_map_XS.py --grid-cell AU21 --grid-padding-tiles 4
+
+python3 agent-navigation/tools/render_agent_context_map_XS.py \
   --segment-from FROM_PLACE \
   --segment-to TO_PLACE
 ```
 
-By default, `render_agent_context_map.py` and the lower-level `render_context_map.py` write unique PNG/JSON artifacts under ignored `agent-navigation/.local/context-maps/<date>/`. Filenames include timestamp, mode, resolved center tile, radius, and pixel scale, so repeated Router/debug renders do not overwrite each other or clutter `agent-navigation/topology/`. Use explicit `--output` and/or `--summary` only when a stable path is intentionally needed for a smoke test or a user-facing artifact.
+By default, `render_agent_context_map_XS.py` delegates to the full context renderer and writes unique PNG/JSON artifacts under ignored `agent-navigation/.local/context-maps/<date>/`. Filenames include timestamp, mode, resolved center tile, radius, and pixel scale, so repeated Router/debug renders do not overwrite each other or clutter `agent-navigation/topology/`. Context maps draw the level-0 32-tile reference grid by default; use `map_grid.py locate --tile X,Y,H` to convert a tile to shorthand such as `AU21`, then `render_agent_context_map_XS.py --grid-cell AU21` to render that cell. Use full `render_agent_context_map.py` only when XS omits marker/detail fields needed for debugging. Use explicit `--output` and/or `--summary` only when a stable path is intentionally needed for a smoke test or a user-facing artifact.
 
 For agent routing, consume the JSON summary before opening the PNG. The summary includes bounds, center, output path, mapfunction/place marker counts, and marker coordinates. Loading the PNG into the thread is appropriate only when geometry or label placement cannot be resolved from JSON and tool output.
 
 For cache-map internals or full-map rendering, switch to `2006scape-cache-map`.
+
+For ML before/after route comparisons:
+
+```sh
+python3 agent-navigation/ml-routing/route_ml_XS.py compare-maps \
+  --case CASE_NAME \
+  --combat-level N \
+  --food N \
+  --run-energy N \
+  --run-enabled
+```
+
+`compare-maps` uses the shared cache/context-map base layers, so benchmark images already include terrain, water, mapscene buildings, large object footprints, mapfunction icons, and place labels. Old routes are red, new routes are cyan, and hazard/run segments are overlaid in yellow. Read the compact `comparison-report.json` first; use the per-case sidecar JSON for marker labels/coordinates, compact `routeSteps`, and `runPlan` details, and open the PNG only when route geometry itself needs visual review.
 
 ## Visual Standards
 
@@ -87,9 +106,10 @@ Maps should be useful at a glance:
 - use integer pixel scales for bounded context maps so the result stays lossless and pixel-perfect without resampling.
 - use `cache-world-map-full.png` or `cache-world-map-level0.png` when another script needs a static labeled base map instead of re-rendering or sampling the client.
 - keep user-facing place labels centralized in `agent-navigation/tools/map_labels.py` so cache-world exports, the profile map, `Heat Map`, and profile fog agree on Varrock, Barbarian Village, Edgeville, Ice Mountain, and other named places.
-- keep agent context maps bounded, compact, and archived under `.local/context-maps`; use `render_agent_context_map.py` rather than full topology or heatmap renderers for tactical routing.
+- keep agent context maps bounded, compact, and archived under `.local/context-maps`; use `render_agent_context_map_XS.py` rather than full topology or heatmap renderers for tactical routing.
 - keep nearby route geometry visible in agent segment maps, including docks, ports, bridges, and useful POI surroundings; use padding/max-span options rather than a full-world render when the default crop is too tight.
 - include all cache mapfunction icons in agent context maps, and rely on JSON marker labels before opening images when visual labels are too dense.
+- keep the agent-facing level-0 grid consistent across the profile map and context maps: 32-tile cells, columns west-to-east as `A..Z, AA..`, rows south-to-north starting at `1`, with `currentGridCell` and `referenceGridCells` in JSON summaries.
 - reuse `render_context_map.draw_static_context_layers` for new bounded route comparison images so mapfunction icons and place labels stay consistent across agent tools.
 - for `Heat Map`, keep the gradient legend separate from route-state items; do not reintroduce the old `DENSE` legend item because coverage now represents trace density.
 - for `Heat Map`, the optimized cached mask is applied once with a non-saturating max radial mask. If every explored tile looks dense, inspect the heat mask/cache version and summary before changing unrelated map layers.

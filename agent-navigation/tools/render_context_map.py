@@ -15,6 +15,7 @@ import uuid
 from pathlib import Path
 
 import cache_world_map
+import map_grid
 import navdb
 from render_navigation_png import Canvas
 
@@ -36,6 +37,9 @@ PALETTE = {
     "label_shadow": (0, 0, 0),
     "map_function_icon": (255, 232, 86),
     "map_function_outline": (32, 26, 16),
+    "reference_grid": (238, 242, 232),
+    "reference_grid_major": (255, 255, 240),
+    "reference_grid_label": (255, 255, 185),
     "start": (60, 185, 113),
     "end": (235, 87, 87),
     "grid": (66, 68, 58),
@@ -388,6 +392,123 @@ def draw_grid(canvas, bounds, project, scale, interval):
     return lines
 
 
+def draw_blended_axis_line(canvas, x0, y0, x1, y1, color, alpha, width):
+    width = max(1, int(width))
+    radius = width // 2
+    if x0 == x1:
+        canvas.blend_rect(x0 - radius, y0, x0 + radius, y1, color, alpha)
+    elif y0 == y1:
+        canvas.blend_rect(x0, y0 - radius, x1, y0 + radius, color, alpha)
+    else:
+        canvas.line(x0, y0, x1, y1, color, width=width)
+
+
+def draw_reference_grid_label(canvas, x, y, text, scale):
+    text = sanitize_label(text, max_length=8)
+    if not text:
+        return False
+    canvas.text(x + 1, y + 1, text, PALETTE["label_shadow"], scale=scale)
+    canvas.text(x, y, text, PALETTE["reference_grid_label"], scale=scale)
+    return True
+
+
+def draw_reference_grid(canvas, bounds, scale, args):
+    if not getattr(args, "reference_grid", False):
+        return {"referenceGrid": False}
+    cell_tiles = max(8, int(round(float(getattr(args, "reference_grid_cell_tiles", map_grid.DEFAULT_GRID_CELL_TILES)))))
+    major_every = max(1, int(getattr(args, "reference_grid_major_every", 4)))
+    line_alpha = max(0.0, min(0.70, float(getattr(args, "reference_grid_alpha", 0.30))))
+    major_alpha = max(0.0, min(0.85, float(getattr(args, "reference_grid_major_alpha", 0.48))))
+    cell_labels = getattr(args, "reference_grid_cell_labels", "all")
+    label_scale = max(1, int(getattr(args, "reference_grid_label_scale", 2)))
+    row_origin = getattr(args, "reference_grid_row_origin", map_grid.DEFAULT_ROW_ORIGIN)
+    reference_bounds = map_grid.LEVEL0_SURFACE_BOUNDS
+    min_x = int(bounds["minX"])
+    max_x = int(bounds["maxX"])
+    min_y = int(bounds["minY"])
+    max_y = int(bounds["maxY"])
+    width = canvas.width
+    height = canvas.height
+    col_start = int(math.floor((min_x - reference_bounds["minX"]) / float(cell_tiles)))
+    col_end = int(math.floor((max_x - reference_bounds["minX"]) / float(cell_tiles)))
+    row_start = int(math.floor((min_y - reference_bounds["minY"]) / float(cell_tiles)))
+    row_end = int(math.floor((max_y - reference_bounds["minY"]) / float(cell_tiles)))
+    dimensions = map_grid.grid_dimensions(reference_bounds, cell_tiles)
+    col_start = max(0, min(dimensions["columns"] - 1, col_start))
+    col_end = max(0, min(dimensions["columns"] - 1, col_end))
+    row_start = max(0, min(dimensions["rows"] - 1, row_start))
+    row_end = max(0, min(dimensions["rows"] - 1, row_end))
+
+    def screen_x(world_x):
+        return int(round((world_x - min_x) * scale))
+
+    def screen_y(world_y):
+        return int(round(height - 1 - (world_y - min_y) * scale))
+
+    minor_width = max(1, int(round(scale * 0.24)))
+    major_width = max(minor_width + 1, int(round(scale * 0.42)))
+    lines = 0
+    for col in range(col_start, col_end + 2):
+        world_x = reference_bounds["minX"] + col * cell_tiles
+        x = screen_x(world_x)
+        if x < -major_width or x > width + major_width:
+            continue
+        major = col % major_every == 0
+        draw_blended_axis_line(
+            canvas,
+            x,
+            0,
+            x,
+            height - 1,
+            PALETTE["reference_grid_major"] if major else PALETTE["reference_grid"],
+            major_alpha if major else line_alpha,
+            major_width if major else minor_width,
+        )
+        lines += 1
+    for row in range(row_start, row_end + 2):
+        world_y = reference_bounds["minY"] + row * cell_tiles
+        y = screen_y(world_y)
+        if y < -major_width or y > height + major_width:
+            continue
+        major = row % major_every == 0
+        draw_blended_axis_line(
+            canvas,
+            0,
+            y,
+            width - 1,
+            y,
+            PALETTE["reference_grid_major"] if major else PALETTE["reference_grid"],
+            major_alpha if major else line_alpha,
+            major_width if major else minor_width,
+        )
+        lines += 1
+
+    labels_drawn = 0
+    if cell_labels != "none":
+        label_step = 1 if cell_labels == "all" else major_every
+        first_row = row_start + ((label_step - row_start % label_step) % label_step)
+        first_col = col_start + ((label_step - col_start % label_step) % label_step)
+        inset = max(3, int(round(scale * 1.1)))
+        for row in range(first_row, row_end + 1, label_step):
+            row_text = map_grid.row_label(row, reference_bounds, cell_tiles, row_origin)
+            cell_top_y = min(max_y + 1, reference_bounds["minY"] + (row + 1) * cell_tiles)
+            y = max(2, min(height - 9 * label_scale - 2, screen_y(cell_top_y) + inset))
+            for col in range(first_col, col_end + 1, label_step):
+                cell_left_x = max(min_x, reference_bounds["minX"] + col * cell_tiles)
+                x = max(2, min(width - 22 * label_scale - 2, screen_x(cell_left_x) + inset))
+                text = "{}{}".format(map_grid.column_label(col), row_text)
+                if draw_reference_grid_label(canvas, x, y, text, label_scale):
+                    labels_drawn += 1
+
+    info = map_grid.cells_for_bounds(bounds, reference_bounds, cell_tiles, row_origin)
+    info.update({
+        "referenceGridMajorEvery": major_every,
+        "referenceGridLines": lines,
+        "referenceGridLabelsDrawn": labels_drawn,
+    })
+    return info
+
+
 def sanitize_label(value, max_length=28):
     text = str(value or "").replace("_", " ").strip()
     if len(text) > max_length:
@@ -626,6 +747,10 @@ def draw_static_context_layers(canvas, project, world_map, db, bounds, scale,
 
 def render(args):
     db = navdb.load_db()
+    if getattr(args, "grid_cell", None) and getattr(args, "bounds", None):
+        raise SystemExit("--grid-cell cannot be combined with --bounds")
+    if getattr(args, "grid_cell", None) and (args.segment_from or args.segment_to):
+        raise SystemExit("--grid-cell cannot be combined with --segment-from/--segment-to")
     all_records = sorted_trace_records(args.trace_file, args.player)
     max_trace_records = getattr(args, "max_trace_records", 0)
     records = limit_records(all_records, max_trace_records)
@@ -650,11 +775,34 @@ def render(args):
             raise SystemExit("no completed trace segment found from {} to {}".format(start_place["id"], end_place["id"]))
 
     recent = recent_records(records, args.recent_seconds)
-    center, center_info = center_from_arg(db, records, args.center)
+    if getattr(args, "grid_cell", None):
+        center = map_grid.center_for_cell(
+            args.grid_cell,
+            height=args.plane,
+            cell_tiles=getattr(args, "reference_grid_cell_tiles", map_grid.DEFAULT_GRID_CELL_TILES),
+            row_origin=getattr(args, "reference_grid_row_origin", map_grid.DEFAULT_ROW_ORIGIN),
+        )
+        center_info = {
+            "mode": "gridCell",
+            "gridCell": map_grid.parse_cell(
+                args.grid_cell,
+                cell_tiles=getattr(args, "reference_grid_cell_tiles", map_grid.DEFAULT_GRID_CELL_TILES),
+                row_origin=getattr(args, "reference_grid_row_origin", map_grid.DEFAULT_ROW_ORIGIN),
+            )["cell"],
+        }
+    else:
+        center, center_info = center_from_arg(db, records, args.center)
     args._center_info = center_info
     bounds = None
     context_anchors = []
-    if args.bounds:
+    if getattr(args, "grid_cell", None):
+        bounds = map_grid.bounds_for_cell(
+            args.grid_cell,
+            padding=getattr(args, "grid_padding_tiles", 0),
+            cell_tiles=getattr(args, "reference_grid_cell_tiles", map_grid.DEFAULT_GRID_CELL_TILES),
+            row_origin=getattr(args, "reference_grid_row_origin", map_grid.DEFAULT_ROW_ORIGIN),
+        )
+    elif args.bounds:
         bounds = cache_world_map.parse_bounds(args.bounds)
     elif segment_records and args.fit_segment:
         bounds = bounds_for_records(segment_records, args.padding_tiles)
@@ -687,6 +835,7 @@ def render(args):
 
     cache_world_map.draw_world_map(canvas, world_map, project, args.pixels_per_tile)
     grid_lines = draw_grid(canvas, bounds, project, args.pixels_per_tile, args.grid_interval)
+    reference_grid = draw_reference_grid(canvas, bounds, args.pixels_per_tile, args)
     segment_edges = draw_trace(canvas, project, segment_records, bounds, args.pixels_per_tile, PALETTE["segment"])
     recent_edges = draw_trace(canvas, project, recent, bounds, args.pixels_per_tile, PALETTE["recent"])
     context_layers = draw_static_context_layers(
@@ -717,6 +866,11 @@ def render(args):
     output.parent.mkdir(parents=True, exist_ok=True)
     canvas.save_png(output)
 
+    center_grid_cell = map_grid.cell_for_tile(
+        center,
+        cell_tiles=getattr(args, "reference_grid_cell_tiles", map_grid.DEFAULT_GRID_CELL_TILES),
+        row_origin=getattr(args, "reference_grid_row_origin", map_grid.DEFAULT_ROW_ORIGIN),
+    )
     summary = {
         "success": True,
         "output": str(output),
@@ -749,6 +903,9 @@ def render(args):
         "placeMarkers": context_layers["placeMarkers"],
         "placeLabelsDrawn": context_layers["placeLabelsDrawn"],
         "gridLines": grid_lines,
+        "currentGridCell": center_grid_cell.get("cell"),
+        "centerGridCell": center_grid_cell,
+        **reference_grid,
         "lossless": True,
     }
     summary_path.parent.mkdir(parents=True, exist_ok=True)
@@ -760,6 +917,10 @@ def main():
     parser = argparse.ArgumentParser(description="Render a small lossless cache-map window with tactical route context.")
     parser.add_argument("--center", default="latest", help="latest/current, x,y,h, or place id/name.")
     parser.add_argument("--bounds", help="Explicit minX,minY,maxX,maxY bounds.")
+    parser.add_argument("--grid-cell",
+                        help="Level-0 reference grid cell such as AU21. Renders that cell instead of --center.")
+    parser.add_argument("--grid-padding-tiles", type=nonnegative_int, default=0,
+                        help="Extra tiles around --grid-cell bounds.")
     parser.add_argument("--radius-tiles", type=positive_int, default=64)
     parser.add_argument("--padding-tiles", type=positive_int, default=24)
     parser.add_argument("--max-span-tiles", type=positive_int, default=224)
@@ -795,6 +956,16 @@ def main():
     parser.add_argument("--max-place-markers", type=positive_int, default=40)
     parser.add_argument("--grid-interval", type=int, default=0,
                         help="Draw coordinate grid every N tiles. 0 disables.")
+    parser.add_argument("--reference-grid", action="store_true", default=True,
+                        help="Draw the level-0 reference grid and include grid metadata.")
+    parser.add_argument("--no-reference-grid", dest="reference_grid", action="store_false")
+    parser.add_argument("--reference-grid-cell-tiles", type=positive_int, default=map_grid.DEFAULT_GRID_CELL_TILES)
+    parser.add_argument("--reference-grid-row-origin", choices=("south", "north"), default=map_grid.DEFAULT_ROW_ORIGIN)
+    parser.add_argument("--reference-grid-alpha", type=float, default=0.30)
+    parser.add_argument("--reference-grid-major-alpha", type=float, default=0.48)
+    parser.add_argument("--reference-grid-major-every", type=positive_int, default=4)
+    parser.add_argument("--reference-grid-cell-labels", choices=("none", "major", "all"), default="all")
+    parser.add_argument("--reference-grid-label-scale", type=positive_int, default=2)
     parser.add_argument("--artifact-dir", default=str(CONTEXT_MAP_ARCHIVE),
                         help="Default archive root for unique context-map artifacts.")
     parser.add_argument("--output",
