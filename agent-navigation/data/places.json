@@ -2478,6 +2478,71 @@
         "minFood": 0,
         "notes": "Reached live on 2026-05-24 from Catherby via Seers/Hemenster, the south-west route around Fishing Guild water, and the Tree Gnome Stronghold south gate. Gate object 190 at 2459,3383 moved MrFlame from 2459,3382 to 2459,3385; passive traces should be preferred for route timing, and the gate should remain an object transition rather than an ordinary walk edge."
       }
+    },
+    {
+      "id": "ardougne_market",
+      "name": "Ardougne Market",
+      "aliases": [
+        "ardougne",
+        "ardounge",
+        "ardy",
+        "ardougne square",
+        "ardougne marketplace",
+        "2662 3305"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "ardougne",
+      "tile": {
+        "x": 2662,
+        "y": 3305,
+        "height": 0
+      },
+      "arrivalRadius": 8,
+      "tags": [
+        "surface",
+        "members",
+        "city",
+        "long-term-target",
+        "verified"
+      ],
+      "safety": {
+        "risk": "medium",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Reached live on 2026-05-25 from the Gnome Agility Course via the Tree Gnome Stronghold south gate, a target-directed south-east shortcut through 2560,3349 and 2597,3330, and the Ardougne western approach. Nearby Knights of Ardougne, Paladins, Heroes, and Guards were non-aggressive when observed but are high-contact risks for a level-3 account."
+      }
+    },
+    {
+      "id": "ardougne_south_bank",
+      "name": "Ardougne South Bank",
+      "aliases": [
+        "ardy bank",
+        "ardougne bank",
+        "east ardougne bank",
+        "south ardougne bank",
+        "2654 3283"
+      ],
+      "kind": "bank",
+      "region": "ardougne",
+      "tile": {
+        "x": 2654,
+        "y": 3283,
+        "height": 0
+      },
+      "arrivalRadius": 4,
+      "tags": [
+        "surface",
+        "members",
+        "city",
+        "bank",
+        "verified"
+      ],
+      "safety": {
+        "risk": "medium",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Reached live on 2026-05-25 from Ardougne Market. The player state reported inBankArea=true at 2654,3283 and a reachable Bank booth object 2213 at 2656,3283 with interaction target 2655,3283. Do not treat generic Bank table objects as bank proof; bank identity should come from minimap bank symbols, actual Bank booth/chest/Banker evidence, or inBankArea/interface proof."
+      }
     }
   ]
 }

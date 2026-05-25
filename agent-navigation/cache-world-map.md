@@ -91,7 +91,7 @@ agent-navigation/tools/active_map_refresher.py stop
 - `agent-navigation/topology/movement-topology-v5-heatmap.png` / `.json`
 - `agent-navigation/topology/movement-topology-v6.png` / `.json`
 
-Each worker targets a 30-second cadence. If a render takes longer than 30 seconds, that map starts its next pass immediately after the previous pass finishes; it never overlaps two renders for the same map. The full `cache-world-map.png` is only rendered when missing or when `--refresh-world-map` is passed.
+The profile movement map (`mr-flame` / V4) is a continuous hot loop: as soon as one V4 render finishes, the next starts. The other active workers target a 30-second cadence. If a non-hot render takes longer than 30 seconds, that map starts its next pass immediately after the previous pass finishes; it never overlaps two renders for the same map. The full `cache-world-map.png` is only rendered when missing or when `--refresh-world-map` is passed.
 
 The watcher renders to ignored temp files first, then atomically replaces the canonical PNG/JSON after a successful run. It prints start/done/failure lines and writes ignored status JSON to `agent-navigation/.local/map-refresh/status.json`, including the latest duration, records/nodes/edges/deaths, cache fields, and fog-cache fields when available. Parallel topology workers use separate persistent cache subdirectories under `agent-navigation/.local/topology-render-cache/` so their cache writes do not collide; each map still gets warm-cache behavior across its own repeats.
 
