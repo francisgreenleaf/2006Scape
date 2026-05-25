@@ -59,3 +59,15 @@ Use `2006scape-route-planner-dev` when changing how transitions are represented 
 ## Lumbridge Cow Pen Gate
 
 The Lumbridge cow pen double gate (`1551`/`1553` around `3253,3266,0`) is a timed wooden gate. The server-side pathfinder can still treat the closed gate footprint as blocked after `interact_object`, so do not open it and then route through with generic `walk_to_tile_until_arrived`. Open the gate, immediately queue short adjacent `walk_path_steps` with `allowObjectTransition=true`, then prove the post-tile. The cowhide runner handles this automatically.
+
+## Al Kharid Toll Gate
+
+Use `bridge_script.cross_al_kharid_toll_gate(...)` from scripts instead of inlining the dialogue loop. Route close to the gate first, then the helper enforces the exact approach tile: `3267,3227,0` when crossing east into Al Kharid and `3268,3227,0` when crossing west toward Lumbridge. It discovers the live Gate object after standing on the side tile because Gate `2882` can be exposed at `3268,3227,0` even for westbound crossing. It opens the gate, advances the toll dialogue, selects option 1 only for the known payment actions, ignores stale `dialogueAction` with `nextChat=0`, and proves the post-side before returning.
+
+## Taverley White Wolf Gate
+
+Use `bridge_script.cross_taverley_white_wolf_gate(...)` for the Falador/Taverley gate near White Wolf Mountain. The live proof used Gate `1596` at `2935,3451,0`, approached from `2936,3451,0`, opened the gate, immediately queued `2935,3451,0 -> 2934,3451,0` with `walk_path_steps` and `allowObjectTransition=true`, then proved the player was west of the gate. This only solves the gate; the White Wolf Mountain path beyond it remains a high combat-contact route segment, although current MrFlame-class stats with food have walked/tanked it successfully.
+
+## Catherby Southern Range Door
+
+Use `bridge_script.open_catherby_south_range_door(...)` when the Catherby cooking loop needs the southern range house. The live proof stands at `2817,3439,0`, opens Door `1530` at `2816,3438,0`, then lets the cooking script use Range `2728` from the interaction tile `2817,3443,0`; a later shore-to-range trace also proved `2817,3438,0` as an acceptable adjacent approach tile. For exits from the south range building toward the shore, immediately queue `2817,3438,0 -> 2818,3438,0` with `allowObjectTransition=true` after opening the door. This is a range-house door, not a bank door. It is built on `open_object_then_walk_steps(...)`, the generic open-door/gate primitive for simple local transitions; keep location-specific helpers for exact approach/proof coordinates.

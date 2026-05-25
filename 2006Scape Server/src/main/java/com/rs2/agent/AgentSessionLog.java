@@ -531,12 +531,12 @@ public class AgentSessionLog {
 
         private String reflection() {
             if (latestObstacle != null) {
-                return "The harness had enough evidence to name a concrete blocker, which is useful friction rather than a silent failure.";
+                return "The logs captured a concrete blocker instead of leaving the failure ambiguous.";
             }
             if (latestTool != null && latestSuccess != null) {
-                return "The session appears steady: tool feedback was recorded and the latest successful result gave the agent something concrete to trust.";
+                return "The session has usable tool feedback and a concrete latest successful result.";
             }
-            return "The session is still sparse; more tool events are needed before the harness can say much about confidence or friction.";
+            return "The session is still sparse; more tool events are needed before drawing operational conclusions.";
         }
 
         private String learning() {

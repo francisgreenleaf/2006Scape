@@ -88,9 +88,10 @@ For normal A-to-B travel, prefer ML1 after observing the current tile:
 ```sh
 python3 agent-navigation/ml-routing/route_ml_XS.py define --from X,Y,H --to PLACE --combat-level N --food N --run-energy N --run-enabled
 python3 agent-navigation/tools/execute_route_definition.py --route-definition agent-navigation/.local/ml-route-definitions/ROUTE.json --run-mode auto --eat-at 10
+python3 agent-navigation/tools/route_failure_XS.py
 ```
 
-Read the returned `status`, `quality`, `safety`, `steps`, `run`, and `runSegments`. The old route method is deprecated: do not call bare `route_runner.py --to ...` for normal travel. If live movement is intended, run the returned `cmd`/persisted route-definition path; it uses `execute_route_definition.py` to follow route steps, eat before the next step at `--eat-at 10`, capture nearby NPC context on combat/HP loss, and write route feedback. Use full `route_ml.py define` only when XS omits a field needed for planner debugging.
+Read the returned `status`, `quality`, `safety`, `steps`, `run`, and `runSegments`. The old route method is deprecated: do not call bare `route_runner.py --to ...` for normal travel. If live movement is intended, run the returned `cmd`/persisted route-definition path; it uses `execute_route_definition.py` to follow route steps, eat before the next step at `--eat-at 10`, capture nearby NPC context on combat/HP loss, and write route feedback. If movement fails or recovery context is needed, read `route_failure_XS.py` before opening full route evidence JSONL. Use full `route_ml.py define` only when XS omits a field needed for planner debugging.
 
 Use navdb for route DB validation, route-data edits, and fallback next-step checks:
 

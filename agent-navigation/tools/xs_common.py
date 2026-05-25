@@ -674,6 +674,10 @@ def compact_preview(data):
 def compact_bridge(data, tool=None):
     if not isinstance(data, dict):
         return data
+    if data.get("compact") is True:
+        return data
+    if tool in ("food_bank", "food_bank_XS"):
+        return compact_food_bank(data)
     if "nearbyNpcs" in data or "nearbyObjects" in data:
         return compact_observe(
             data,
@@ -740,6 +744,61 @@ def compact_bridge(data, tool=None):
         path_tiles = [tile(entry) for entry in data["path"]]
         sample = path_tiles if len(path_tiles) <= 8 else path_tiles[:4] + ["...{}...".format(len(path_tiles) - 8)] + path_tiles[-4:]
         out["path"] = {"n": len(data["path"]), "end": tile(data["path"][-1]) if data["path"] else None, "sample": sample}
+    return {k: v for k, v in out.items() if v not in (None, "", [], {})}
+
+
+def compact_food_bank(data):
+    if not isinstance(data, dict):
+        return data
+    player_data = data.get("player") if isinstance(data.get("player"), dict) else data
+    combat = player_data.get("combatReadiness") if isinstance(player_data, dict) else {}
+    inv = inventory_from({"player": player_data}, limit=12)
+    bank = bank_summary(player_data, limit=12)
+    raw_food = []
+    cooked_food = []
+    burnt_food = []
+    tools = []
+    inventory = player_data.get("inventory") if isinstance(player_data, dict) else []
+    bank_items = player_data.get("bank") if isinstance(player_data, dict) else []
+    for source, collection in (("inv", inventory), ("bank", bank_items)):
+        if not isinstance(collection, list):
+            continue
+        for entry in collection:
+            if not isinstance(entry, dict):
+                continue
+            name = str(entry.get("name") or "").lower()
+            compact = item(entry)
+            compact["src"] = source
+            if "raw " in name:
+                raw_food.append(compact)
+            elif "burnt" in name:
+                burnt_food.append(compact)
+            elif entry.get("foodHeal"):
+                cooked_food.append(compact)
+            elif name in ("small fishing net", "fishing rod", "fly fishing rod", "harpoon", "lobster pot", "knife", "tinderbox"):
+                tools.append(compact)
+    out = {
+        "ok": bool(data.get("success", True)),
+        "p": player(player_data),
+        "inv": inv,
+        "bank": bank,
+        "food": {
+            "raw": raw_food[:8],
+            "cooked": cooked_food[:8],
+            "burnt": burnt_food[:8],
+            "tools": tools[:8],
+        },
+        "combat": {
+            "eat": combat.get("eatAtHitpoints") if isinstance(combat, dict) else None,
+            "retreat": combat.get("retreatAtHitpoints") if isinstance(combat, dict) else None,
+            "invFood": combat.get("inventoryFoodCount") if isinstance(combat, dict) else None,
+            "invHeal": combat.get("inventoryFoodHealing") if isinstance(combat, dict) else None,
+            "bankFood": combat.get("bankFoodCount") if isinstance(combat, dict) else None,
+            "bankCoins": combat.get("bankCoins") if isinstance(combat, dict) else None,
+        },
+    }
+    out["combat"] = {k: v for k, v in out["combat"].items() if v is not None}
+    out["food"] = {k: v for k, v in out["food"].items() if v}
     return {k: v for k, v in out.items() if v not in (None, "", [], {})}
 
 

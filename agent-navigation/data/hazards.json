@@ -235,13 +235,14 @@
         "y": 3437,
         "height": 0
       },
-      "radius": 28,
-      "risk": "death-confirmed-for-new-accounts",
-      "requirements": {
-        "minCombatLevel": 35,
-        "minFood": 6,
-        "minRunEnergy": 70,
-        "requiresRun": true
+      "radius": 8,
+    "risk": "high-combat-contact",
+    "status": "tankable-for-current-mrflame-with-food",
+    "requirements": {
+      "minCombatLevel": 20,
+      "minFood": 3,
+      "minRunEnergy": 0,
+      "requiresRun": false
       },
       "npcs": [
         {
@@ -252,17 +253,18 @@
         }
       ],
       "avoidWhen": [
-        "combat level below 35",
-        "food below 6",
-        "run energy below 70",
-        "route can avoid the immediate west side of the Taverley gate",
-        "target path crosses 2870,3436 or nearby white wolves"
-      ],
-      "notes": "Live death observed 2026-05-24 during the Gnome Agility Course push. The gate around 2935/2936,3451 was opened through normal gameplay and the route reached 2916,3434, then a westward probe to 2870,3436 entered combat with White wolf level 25 at 2870,3437. HP dropped from 10 to 5 and then death occurred at 2869,3436 with no food. NPC aggressive flag reported false; do not infer max hit from observed damage.",
+        "combat level below 20",
+        "food below 3",
+      "route can avoid the immediate west side of the Taverley gate",
+      "target path crosses 2870,3436 or nearby white wolves"
+    ],
+    "notes": "Live death observed 2026-05-24 during the Gnome Agility Course push with new-account stats and no food. The gate around 2935/2936,3451 was opened through normal gameplay and the route reached 2916,3434, then a westward probe to 2870,3436 entered combat with White wolf level 25 at 2870,3437. HP dropped from 10 to 5 and then death occurred at 2869,3436 with no food. Keep this local radius tight around the proven lower wolf contact so normal Catherby shore/shop movement does not inherit White Wolf warnings. This is no longer considered lethal for current MrFlame-class hitpoints/defence with food: a 2026-05-25 ML1 route-step crossing from 2934,3451 to Catherby completed while walking with HP 20 -> 15, three kebabs unused, and brief wolf contact around 2868,3439, 2856,3466, 2861,3494, 2861,3503, and 2850,3495. Prefer running when available, but do not reject this route solely because run is disabled for current MrFlame-class stats. NPC aggressive flag reported false; do not infer max hit from observed damage.",
       "observations": [
-        "2026-05-24: after manual gate proof at 2935/2936,3451, route_runner direct-preview probe reached 2870,3436 and triggered White wolf level 25 combat; MrFlame died and respawned at Lumbridge."
-      ]
-    },
+        "2026-05-24: after manual gate proof at 2935/2936,3451, route_runner direct-preview probe reached 2870,3436 and triggered White wolf level 25 combat; low-stat MrFlame died and respawned at Lumbridge.",
+      "2026-05-24: later successful Catherby trace skirted north through the mountain route and continued to Catherby with brief combat contact but no HP loss.",
+      "2026-05-25: ML1 route 2934-3451-0-catherby-learned-272-28 completed by walking the routeSteps from west of the Taverley gate to Catherby. Combat contact occurred, one Wolf hit for 5 near 2850,3495, and MrFlame arrived at 2817,3436 with HP 15/20 and all three kebabs."
+    ]
+  },
     {
       "id": "dwarven_mine_descent_unverified",
       "name": "Dwarven Mine Descent Unverified",
@@ -326,7 +328,7 @@
       "radius": 28,
       "risk": "high-for-new-accounts",
       "requirements": {
-        "minCombatLevel": 25,
+        "minCombatLevel": 20,
         "minFood": 3,
         "minRunEnergy": 40,
         "requiresRun": true
@@ -342,7 +344,7 @@
         }
       ],
       "avoidWhen": [
-        "combat level below 25",
+        "combat level below 20",
         "hitpoints below 10",
         "food below 3",
         "run energy below 40",
@@ -604,7 +606,7 @@
       "radius": 32,
       "risk": "high-for-new-accounts",
       "requirements": {
-        "minCombatLevel": 25,
+        "minCombatLevel": 20,
         "minFood": 3,
         "minRunEnergy": 40,
         "requiresRun": true
@@ -618,13 +620,13 @@
         }
       ],
       "avoidWhen": [
-        "combat level below 25",
+        "combat level below 20",
         "food below 3",
         "run energy below 40",
         "route can skirt south or east instead",
         "player has accidentally attacked or been target-linked to a Black Knight"
       ],
-      "notes": "Observed 2026-05-24 from 3115,3202: Black Knight level 33 at distance 27, aggressive=false, underAttack=false. Treat as high risk for level-3 MrFlame because earlier Black Knight contact caused dangerous combat elsewhere; safe only as distant transit, not a fight or idle area."
+      "notes": "Observed 2026-05-24 from 3115,3202: Black Knight level 33 at distance 27, aggressive=false, underAttack=false. Treat as high risk for level-3 MrFlame because earlier Black Knight contact caused dangerous combat elsewhere. For current MrFlame-class stats, food, and run energy, this is acceptable as moving transit only; do not idle or fight here."
     },
     {
       "id": "draynor_south_wizard_group",
@@ -676,7 +678,7 @@
       "radius": 20,
       "risk": "high-for-new-accounts",
       "requirements": {
-        "minCombatLevel": 25,
+        "minCombatLevel": 20,
         "minFood": 3,
         "minRunEnergy": 40,
         "requiresRun": true
@@ -708,7 +710,7 @@
         }
       ],
       "avoidWhen": [
-        "combat level below 25",
+        "combat level below 20",
         "food below 3",
         "run energy below 40",
         "route can stay west or south instead",
@@ -723,7 +725,7 @@
       "radius": 30,
       "risk": "death-confirmed-for-new-accounts",
       "requirements": {
-        "minCombatLevel": 25,
+        "minCombatLevel": 20,
         "minFood": 3,
         "minRunEnergy": 40,
         "requiresRun": true
@@ -755,13 +757,13 @@
         }
       ],
       "avoidWhen": [
-        "combat level below 25",
+        "combat level below 20",
         "food below 3",
         "run energy below 40",
         "route can take a wider south or east arc",
         "player has accidentally attacked any NPC in the cluster"
       ],
-      "notes": "Observed 2026-05-24 while probing west/southwest from 3110,3218 through 3099,3209, 3092,3213, and later 3087,3220. The 3087,3220 frontier itself was reached with HP 10 and no combat, but southwest 3075,3215 was blocked and northwest 3079,3246 entered Dark wizard level 7 combat around 3090,3236/3088,3236. HP dropped from 10 to 3 with no food, then MrFlame died and respawned at Lumbridge. Black Knight level 33 and Market Guards level 20 were nearby. This pocket is death-confirmed for level-3/no-food routing.",
+      "notes": "Observed 2026-05-24 while probing west/southwest from 3110,3218 through 3099,3209, 3092,3213, and later 3087,3220. The 3087,3220 frontier itself was reached with HP 10 and no combat, but southwest 3075,3215 was blocked and northwest 3079,3246 entered Dark wizard level 7 combat around 3090,3236/3088,3236. HP dropped from 10 to 3 with no food, then MrFlame died and respawned at Lumbridge. Black Knight level 33 and Market Guards level 20 were nearby. This pocket is death-confirmed for level-3/no-food routing. For current MrFlame-class combat, food, and run energy, the benchmarked Draynor transit arcs are acceptable while moving, but should still be run through and never used as idle stops.",
       "type": "npc_zone",
       "center": {
         "x": 3088,

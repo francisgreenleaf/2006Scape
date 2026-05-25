@@ -44,7 +44,7 @@
         "y": 3215,
         "height": 0
       },
-      "arrivalRadius": 1,
+      "arrivalRadius": 2,
       "tags": [
         "surface",
         "interior",
@@ -706,6 +706,37 @@
       }
     },
     {
+      "id": "varrock_south_dark_wizards",
+      "name": "South Varrock Dark Wizards",
+      "aliases": [
+        "dark wizards south of varrock",
+        "varrock dark wizards",
+        "south varrock wizards",
+        "dark wizard corridor"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "varrock",
+      "tile": {
+        "x": 3222,
+        "y": 3372,
+        "height": 0
+      },
+      "arrivalRadius": 8,
+      "tags": [
+        "surface",
+        "hazard",
+        "combat",
+        "avoid_low_level",
+        "label"
+      ],
+      "safety": {
+        "risk": "death-confirmed-for-new-accounts",
+        "minCombatLevel": 20,
+        "minFood": 4,
+        "notes": "Label for the south Varrock Dark wizard hazard cluster. Do not route level-3 or no-food characters through this corridor; use safer east-road proof legs instead."
+      }
+    },
+    {
       "id": "varrock_armour_shop",
       "name": "Varrock Armour Shop",
       "aliases": [
@@ -769,8 +800,8 @@
       "kind": "hub",
       "region": "barbarian_village",
       "tile": {
-        "x": 3081,
-        "y": 3429,
+        "x": 3085,
+        "y": 3425,
         "height": 0
       },
       "arrivalRadius": 4,
@@ -1938,11 +1969,75 @@
       }
     },
     {
+      "id": "taverley_white_wolf_gate_west_side",
+      "name": "Taverley White Wolf Gate West Side",
+      "aliases": [
+        "west of taverley white wolf gate",
+        "white wolf gate west side",
+        "west side of white wolf gate",
+        "2934 3451"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "taverley",
+      "tile": {
+        "x": 2934,
+        "y": 3451,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "checkpoint",
+        "gate",
+        "white-wolf",
+        "verified-live-route"
+      ],
+      "safety": {
+        "risk": "high-combat-contact-westward",
+        "minCombatLevel": 20,
+        "minFood": 3,
+        "minRunEnergy": 0,
+        "requiresRun": false,
+        "notes": "West-side checkpoint after the Taverley/White Wolf gate transition. The route from here to Catherby was walked live by MrFlame on 2026-05-25 with HP 20 -> 15 and no food used. Use taverley_white_wolf_gate_east_side plus the explicit gate-transition route when routing from Catherby/White Wolf Mountain back toward Falador."
+      }
+    },
+    {
+      "id": "taverley_white_wolf_gate_east_side",
+      "name": "Taverley White Wolf Gate East Side",
+      "aliases": [
+        "east of taverley white wolf gate",
+        "white wolf gate east side",
+        "east side of white wolf gate",
+        "2936 3451"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "taverley",
+      "tile": {
+        "x": 2936,
+        "y": 3451,
+        "height": 0
+      },
+      "arrivalRadius": 1,
+      "tags": [
+        "surface",
+        "checkpoint",
+        "gate",
+        "white-wolf",
+        "object-transition",
+        "cache-source"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "East/Falador-side approach tile for the Taverley White Wolf gate. Bridge script constants define the gate at 2935,3451 with east approach 2936,3451 and west approach 2934,3451."
+      }
+    },
+    {
       "id": "catherby",
       "name": "Catherby",
       "aliases": [
-        "catherby bank",
-        "catherby fishing shore",
+        "catherby town",
         "catherby coast"
       ],
       "kind": "town",
@@ -1958,13 +2053,182 @@
         "town",
         "coast",
         "long-term-target",
-        "unverified"
+        "verified-live-route"
       ],
       "safety": {
-        "risk": "unknown-unverified",
+        "risk": "high-combat-contact",
+        "minCombatLevel": 20,
+        "minFood": 3,
+        "minRunEnergy": 0,
+        "requiresRun": false,
+        "notes": "Live trace data reaches Catherby through Falador/Taverley/White Wolf Mountain. Current MrFlame-class stats with food can walk/tank the White Wolf section; prefer running when available, but do not reject the route solely because run is disabled. Record combat/HP-loss evidence after crossings so future run-zone modeling becomes data-driven. Use catherby_bank, catherby_range, catherby_fishing_shore, or catherby_fishing_shop when a task needs that exact utility."
+      }
+    },
+    {
+      "id": "catherby_bank",
+      "name": "Catherby Bank",
+      "aliases": [
+        "catherby bank",
+        "catherby bank area",
+        "catherby deposit tile",
+        "catherby banking"
+      ],
+      "kind": "bank",
+      "region": "catherby",
+      "tile": {
+        "x": 2814,
+        "y": 3440,
+        "height": 0
+      },
+      "arrivalRadius": 1,
+      "tags": [
+        "surface",
+        "town",
+        "bank",
+        "catherby",
+        "verified-live-route",
+        "pathable-bank-anchor"
+      ],
+      "safety": {
+        "risk": "low",
         "minCombatLevel": 3,
-        "minFood": 4,
-        "notes": "Long-term target added for route planning. No live route to Catherby is verified yet; westward progress should build verified graph links through Falador/Taverley/White Wolf Mountain before using this as an autonomous destination."
+        "minFood": 0,
+        "notes": "MrFlame deposited successfully from 2815,3440 after passing/opening the south range-house Door 1530 at 2816,3438. Newer live range-door proof uses approach tiles 2817,3439 and 2817,3438. Banking automation should accept inBankArea=true or a successful bank action as arrival proof instead of forcing an exact walk to an older town/bank coordinate. Routing uses 2814,3440 as the pathable bank anchor because cache collision marks 2815,3440 as clipped; 2815,3440 remains accepted by the 1-tile arrival radius and inBankArea/bank action proof."
+      }
+    },
+    {
+      "id": "catherby_range",
+      "name": "Catherby Range",
+      "aliases": [
+        "catherby range",
+        "catherby stove",
+        "catherby cooking range",
+        "catherby cooking spot"
+      ],
+      "kind": "cooking_spot",
+      "region": "catherby",
+      "tile": {
+        "x": 2819,
+        "y": 3443,
+        "height": 0
+      },
+      "arrivalRadius": 2,
+      "tags": [
+        "surface",
+        "town",
+        "cooking",
+        "range",
+        "catherby",
+        "verified-live-route"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Usable range object 2728 is at 2817,3444. Passive traces cooked from 2817,3443 and 2819,3443, so this target accepts a 2-tile arrival radius for range usability. Routing uses 2819,3443 as the pathable range anchor because cache collision cannot expand eastward routes from 2817,3443. The nearby Door 1530 at 2816,3438 is the south range-house door and can block movement between deeper range-house tiles and the shore/bank approach area; use the Catherby food runner or object-transition helper rather than repeated raw use_item_on_object loops."
+      }
+    },
+    {
+      "id": "catherby_fishing_shop",
+      "name": "Catherby Fishing Shop",
+      "aliases": [
+        "catherby fishing shop",
+        "catherby fish shop",
+        "catherby fishing store",
+        "catherby fishing supplies",
+        "harry",
+        "harry's fishing shop",
+        "harrys fishing shop",
+        "harry catherby",
+        "fishing shop"
+      ],
+      "kind": "shop",
+      "region": "catherby",
+      "tile": {
+        "x": 2834,
+        "y": 3440,
+        "height": 0
+      },
+      "arrivalRadius": 3,
+      "tags": [
+        "surface",
+        "town",
+        "shop",
+        "fishing",
+        "catherby",
+        "cache-source",
+        "shop-open-proof"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Fishing shop interaction waypoint near Harry. Source data: spawns.json has Harry NPC 576 at 2835,3441, Shops.java maps HARRY to shop id 32, shops.json names shop 32 Harry's Fishing Shop, and the cache context map shows mapfunction 25 object 2758 at 2833,3443. Harry's Fishing Shop stocks small nets, fishing rods, harpoons, lobster pots, bait, and other fishing supplies. Use open_nearest_shop with name 'harry' or 'fishing' from this waypoint. Live proof on 2026-05-25 opened Harry's shop successfully from 2832,3438 and 2831,3438 after ML1 route execution from the Catherby bank area."
+      }
+    },
+    {
+      "id": "catherby_fishing_shore",
+      "name": "Catherby Fishing Shore",
+      "aliases": [
+        "catherby fishing shore",
+        "catherby fishing spots",
+        "catherby shore",
+        "catherby fish"
+      ],
+      "kind": "resource_spot",
+      "region": "catherby",
+      "tile": {
+        "x": 2853,
+        "y": 3424,
+        "height": 0
+      },
+      "arrivalRadius": 4,
+      "tags": [
+        "surface",
+        "coast",
+        "fishing",
+        "catherby",
+        "verified-live-route"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Preferred anchor for Catherby fishing loops. The runner reacquires live fishing spots near this shore instead of assuming a fixed NPC index."
+      }
+    },
+    {
+      "id": "white_wolf_mountain_hazard",
+      "name": "White Wolf Mountain",
+      "aliases": [
+        "white wolf mountain",
+        "white wolves",
+        "taverley white wolf gate",
+        "white wolf death site"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "taverley",
+      "tile": {
+        "x": 2870,
+        "y": 3437,
+        "height": 0
+      },
+      "arrivalRadius": 8,
+      "tags": [
+        "surface",
+        "hazard",
+        "combat",
+        "avoid_low_level",
+        "tankable_with_food",
+        "label"
+      ],
+      "safety": {
+        "risk": "high-combat-contact",
+        "minCombatLevel": 20,
+        "minFood": 3,
+        "minRunEnergy": 0,
+        "requiresRun": false,
+        "notes": "Label for the White Wolf Mountain crossing where low-stat MrFlame died near 2869,3436 after White wolf contact. Current MrFlame-class stats with food have walked/tanked this band successfully, taking one 5 HP hit and arriving at Catherby without eating. Prefer running when available, but do not reject current-stats routes solely because run is disabled; avoid only for low combat, no-food, or stalled/idling routes."
       }
     },
     {
@@ -2325,6 +2589,41 @@
       }
     },
     {
+      "id": "port_sarim_highwayman_hazard",
+      "name": "Highwayman",
+      "aliases": [
+        "highwayman",
+        "port sarim highwayman",
+        "falador south highwayman",
+        "highwayman death site"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "falador_port_sarim",
+      "tile": {
+        "x": 3006,
+        "y": 3275,
+        "height": 0
+      },
+      "arrivalRadius": 6,
+      "tags": [
+        "surface",
+        "hazard",
+        "combat",
+        "avoid_low_level",
+        "port-sarim",
+        "falador",
+        "label"
+      ],
+      "safety": {
+        "risk": "death-confirmed-for-new-accounts",
+        "minCombatLevel": 10,
+        "minFood": 3,
+        "minRunEnergy": 30,
+        "requiresRun": true,
+        "notes": "Label for the Highwayman road-contact death site on the Falador-to-Port-Sarim road. Level-3 MrFlame died after combat started near 3005,3275; low-level routes should prefer the wider Rimmington/coast approach."
+      }
+    },
+    {
       "id": "port_sarim_draynor_north_arc",
       "name": "Port Sarim to Draynor North Arc",
       "aliases": [
@@ -2447,6 +2746,127 @@
         "minCombatLevel": 3,
         "minFood": 0,
         "notes": "Reached live on 2026-05-24 by following the Rimmington/Port Sarim coastline south from 2967,3189 through 3035,3170 and 3021,3145. South and east probes from 3000,3115 were blocked by coastline/water; no NPC hazards observed."
+      }
+    },
+    {
+      "id": "draynor_bank",
+      "name": "Draynor Bank",
+      "aliases": [
+        "draynor bank",
+        "draynor village bank",
+        "draynor banking"
+      ],
+      "kind": "bank",
+      "region": "draynor",
+      "tile": {
+        "x": 3092,
+        "y": 3242,
+        "height": 0
+      },
+      "arrivalRadius": 4,
+      "tags": [
+        "surface",
+        "bank",
+        "draynor",
+        "f2p",
+        "cache-source",
+        "hazard-adjacent"
+      ],
+      "safety": {
+        "risk": "medium",
+        "minCombatLevel": 20,
+        "minFood": 1,
+        "notes": "Bank waypoint near cache bank mapfunction 5 at 3094,3243 and existing draynor_bank_hazard_checkpoint at 3092,3242. Treat the southeast jail/black-knight approach as hazard-adjacent; use ML1 route safety review before long low-level trips."
+      }
+    },
+    {
+      "id": "falador_west_bank",
+      "name": "Falador West Bank",
+      "aliases": [
+        "falador west bank",
+        "falador bank west",
+        "falador western bank"
+      ],
+      "kind": "bank",
+      "region": "falador",
+      "tile": {
+        "x": 2947,
+        "y": 3368,
+        "height": 0
+      },
+      "arrivalRadius": 4,
+      "tags": [
+        "surface",
+        "bank",
+        "falador",
+        "f2p",
+        "cache-source"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Cache bank mapfunction 5 at 2947,3368. Useful west Falador anchor near the shield shop and White Wolf/Taverley approach."
+      }
+    },
+    {
+      "id": "falador_east_bank",
+      "name": "Falador East Bank",
+      "aliases": [
+        "falador east bank",
+        "falador bank east",
+        "falador eastern bank"
+      ],
+      "kind": "bank",
+      "region": "falador",
+      "tile": {
+        "x": 3015,
+        "y": 3355,
+        "height": 0
+      },
+      "arrivalRadius": 4,
+      "tags": [
+        "surface",
+        "bank",
+        "falador",
+        "f2p",
+        "cache-source"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Cache bank mapfunction 5 at 3015,3355. Useful east Falador anchor toward Port Sarim, Draynor, and Al Kharid/Varrock routes."
+      }
+    },
+    {
+      "id": "edgeville_bank",
+      "name": "Edgeville Bank",
+      "aliases": [
+        "edgeville bank",
+        "edge bank",
+        "edgeville banking"
+      ],
+      "kind": "bank",
+      "region": "edgeville",
+      "tile": {
+        "x": 3094,
+        "y": 3494,
+        "height": 0
+      },
+      "arrivalRadius": 4,
+      "tags": [
+        "surface",
+        "bank",
+        "edgeville",
+        "f2p",
+        "cache-source"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Cache bank mapfunction 5 at 3094,3494. Useful north-west F2P bank anchor near Edgeville Monastery and the Barbarian Village/Varrock corridor."
       }
     },
     {
@@ -2575,6 +2995,68 @@
         "minCombatLevel": 3,
         "minFood": 0,
         "notes": "Reached live on 2026-05-25 from Ardougne South Bank with run enabled, HP 10, and no combat. Bank proof came from the context-map bank marker and reachable in-range Bank booth object 2213 at 2618,3331 with interaction target 2618,3332; decorative Bank table objects are not bank proof."
+      }
+    },
+    {
+      "id": "tree_gnome_stronghold_south_gate_south_side",
+      "name": "Tree Gnome Stronghold South Gate South Side",
+      "aliases": [
+        "gnome stronghold south gate south side",
+        "tree gnome south gate outside",
+        "2459 3382"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "tree_gnome_stronghold",
+      "tile": {
+        "x": 2459,
+        "y": 3382,
+        "height": 0
+      },
+      "arrivalRadius": 1,
+      "tags": [
+        "surface",
+        "members",
+        "gate",
+        "tree-gnome-stronghold",
+        "object-transition",
+        "cache-source"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "South/outside approach tile for the Tree Gnome Stronghold south gate. Live notes on gnome_agility_course say Gate object 190 at 2459,3383 moved MrFlame from 2459,3382 to 2459,3385."
+      }
+    },
+    {
+      "id": "tree_gnome_stronghold_south_gate_north_side",
+      "name": "Tree Gnome Stronghold South Gate North Side",
+      "aliases": [
+        "gnome stronghold south gate north side",
+        "tree gnome south gate inside",
+        "2459 3385"
+      ],
+      "kind": "surface_checkpoint",
+      "region": "tree_gnome_stronghold",
+      "tile": {
+        "x": 2459,
+        "y": 3385,
+        "height": 0
+      },
+      "arrivalRadius": 1,
+      "tags": [
+        "surface",
+        "members",
+        "gate",
+        "tree-gnome-stronghold",
+        "object-transition",
+        "cache-source"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "North/inside arrival tile for the Tree Gnome Stronghold south gate. Use this as the connector toward the Gnome Agility Course after crossing Gate object 190."
       }
     }
   ]

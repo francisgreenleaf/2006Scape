@@ -49,7 +49,7 @@ public class AgentSessionReportTest {
         File profileMemory = AgentProfileMemory.INSTANCE.personalityFile(base, "MrGem");
         assertTrue(profileMemory.exists());
         String profile = new String(Files.readAllBytes(profileMemory.toPath()), StandardCharsets.UTF_8);
-        assertTrue(profile.contains("# Agent Personality - MrGem"));
+        assertTrue(profile.contains("# Agent Profile Memory - MrGem"));
         assertTrue(profile.contains("inventory pressure"));
     }
 }

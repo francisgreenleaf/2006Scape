@@ -25,12 +25,16 @@ REPO_ROOT = SCRIPT_DIR.parents[1]
 RS_TOOL = SCRIPT_DIR / "rs-tool.sh"
 ROUTE_RUNNER = SCRIPT_DIR / "route_runner.py"
 RUNS_DIR = ROOT / "data" / "combat" / "runs"
+RUNNER_CONTROL_DIR = ROOT / ".local" / "runners"
+RUNNER_CONTROL_NAME = "cowhide-combat"
 RUN_PROFILE = ""
 
 COWHIDE = 1739
 COINS = 995
 KEBAB = 1971
+MITHRIL_SCIMITAR = 1329
 STEEL_WEAPON_ATTACK_LEVEL = 5
+MITHRIL_SCIMITAR_ATTACK_LEVEL = 20
 EARLY_STYLE_LEVEL = 5
 EXTRA_COW_TRIP_BANK_ITEM_IDS = (1323,)  # Iron scimitar; steel scimitar is equipped once attack is 5.
 LUMBRIDGE_COW_PEN_GATE_IDS = {1551, 1553}
@@ -319,6 +323,18 @@ def cowhide_count(player):
     return count_inventory_item(player, COWHIDE)
 
 
+def equipment_has_item(player, item_id):
+    target = int(item_id)
+    for item in equipment(player):
+        try:
+            current = int(item.get("id", item.get("itemId", -1)) or -1)
+        except (TypeError, ValueError):
+            current = -1
+        if current == target:
+            return True
+    return False
+
+
 def compact_item(item):
     if not isinstance(item, dict):
         return item
@@ -361,6 +377,168 @@ def compact_player(player):
         "bankCoins": bank_coins(player),
         "equipment": [compact_item(item) for item in equipment(player)],
     }
+
+
+def runner_profile_label(args):
+    profile = (getattr(args, "profile", "") or os.environ.get("RS_PROFILE", "")).strip()
+    return profile or "default"
+
+
+def runner_control_stem(args):
+    profile = runner_profile_label(args)
+    if profile == "default":
+        return RUNNER_CONTROL_NAME
+    slug = "".join(ch.lower() if ch.isalnum() else "-" for ch in profile).strip("-")
+    return "{}-{}".format(RUNNER_CONTROL_NAME, slug or "profile")
+
+
+def runner_status_path(args):
+    return RUNNER_CONTROL_DIR / "{}.status.json".format(runner_control_stem(args))
+
+
+def runner_primary_stop_path(args):
+    return RUNNER_CONTROL_DIR / "{}.stop".format(runner_control_stem(args))
+
+
+def runner_stop_paths(args):
+    paths = [runner_primary_stop_path(args)]
+    if runner_profile_label(args) != "default":
+        paths.append(RUNNER_CONTROL_DIR / "{}.stop".format(RUNNER_CONTROL_NAME))
+    return paths
+
+
+def runner_stop_requested(args):
+    return any(path.exists() for path in runner_stop_paths(args))
+
+
+def existing_runner_stop_paths(args):
+    return [str(path) for path in runner_stop_paths(args) if path.exists()]
+
+
+def clear_runner_stop_requests(args):
+    cleared = []
+    for path in runner_stop_paths(args):
+        try:
+            path.unlink()
+            cleared.append(str(path))
+        except FileNotFoundError:
+            continue
+    return cleared
+
+
+def request_runner_stop(args):
+    RUNNER_CONTROL_DIR.mkdir(parents=True, exist_ok=True)
+    paths = [runner_primary_stop_path(args)]
+    if runner_profile_label(args) != "default":
+        paths.append(RUNNER_CONTROL_DIR / "{}.stop".format(RUNNER_CONTROL_NAME))
+    payload = {
+        "runner": "cowhide_combat_runner",
+        "profile": runner_profile_label(args),
+        "requestedAt": utc_now(),
+        "pid": os.getpid(),
+    }
+    for path in paths:
+        path.write_text(json.dumps(payload, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps({
+        "ok": True,
+        "runner": "cowhide_combat_runner",
+        "profile": runner_profile_label(args),
+        "stopRequests": [str(path) for path in paths],
+    }, sort_keys=True))
+    return 0
+
+
+def print_runner_status(args):
+    path = runner_status_path(args)
+    payload = {
+        "ok": path.exists(),
+        "runner": "cowhide_combat_runner",
+        "profile": runner_profile_label(args),
+        "statusPath": str(path),
+        "stopRequested": runner_stop_requested(args),
+        "stopFiles": existing_runner_stop_paths(args),
+    }
+    if path.exists():
+        try:
+            payload["status"] = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            payload["ok"] = False
+            payload["error"] = str(exc)
+    elif runner_profile_label(args) == "default":
+        payload["knownStatusPaths"] = [
+            str(item) for item in sorted(RUNNER_CONTROL_DIR.glob("{}*.status.json".format(RUNNER_CONTROL_NAME)))
+        ] if RUNNER_CONTROL_DIR.exists() else []
+    print(json.dumps(payload, sort_keys=True))
+    return 1 if payload.get("error") else 0
+
+
+def runner_args_summary(args):
+    keys = (
+        "profile",
+        "target_attack",
+        "target_strength",
+        "target_defence",
+        "max_cycles",
+        "bank_target",
+        "cow_area_target",
+        "bank_at_hides",
+        "stop_when_inventory_full",
+        "final_bank",
+        "auto_buy_mithril_scimitar",
+        "quiet",
+    )
+    return {key: jsonable(getattr(args, key, None)) for key in keys}
+
+
+def write_runner_status(args, status, run_path=None, reason=None, cycle=None, fights_done=None, player=None, extra=None):
+    RUNNER_CONTROL_DIR.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "runner": "cowhide_combat_runner",
+        "profile": runner_profile_label(args),
+        "status": status,
+        "reason": reason,
+        "pid": os.getpid(),
+        "updatedAt": utc_now(),
+        "args": runner_args_summary(args),
+        "stopRequested": runner_stop_requested(args),
+        "stopFiles": existing_runner_stop_paths(args),
+    }
+    if run_path is not None:
+        payload["runLog"] = str(run_path)
+        payload["routeEvidencePath"] = route_evidence_path(args, run_path)
+    if cycle is not None:
+        payload["cycle"] = cycle
+    if fights_done is not None:
+        payload["fightsDone"] = fights_done
+    if player is not None:
+        payload["player"] = compact_player(player)
+    if extra:
+        payload.update(extra)
+    path = runner_status_path(args)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(payload, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+    tmp.replace(path)
+
+
+def safe_stop_requested(args, handle, phase, cycle, player):
+    if not runner_stop_requested(args):
+        return False
+    compact = compact_player(player)
+    if compact["isInCombat"] or compact["isMoving"]:
+        write_event(handle, "stop_request_deferred", {
+            "phase": phase,
+            "cycle": cycle,
+            "stopFiles": existing_runner_stop_paths(args),
+            "player": compact,
+        })
+        return False
+    write_event(handle, "stop_requested", {
+        "phase": phase,
+        "cycle": cycle,
+        "stopFiles": existing_runner_stop_paths(args),
+        "player": compact,
+    })
+    return True
 
 
 def active_combat_npc(state, player):
@@ -1102,7 +1280,7 @@ def choose_combat_style(player, args):
         return "attack", "steel_weapon_attack_gate"
     if strength < min(EARLY_STYLE_LEVEL, int(args.target_strength)):
         return "strength", "early_strength"
-    if defence < defence_target:
+    if defence < min(defence_target, EARLY_STYLE_LEVEL):
         return "defence", "defence_target"
     if attack < balance_until or strength < balance_until:
         if attack >= balance_until:
@@ -1110,10 +1288,27 @@ def choose_combat_style(player, args):
         if strength >= balance_until:
             return "attack", "balance_attack_strength_to_checkpoint"
         return ("attack" if attack <= strength else "strength"), "balance_attack_strength"
+    attack_before_all = min(int(args.attack_before_balanced_all), int(args.target_attack))
+    if attack < attack_before_all:
+        return "attack", "post_balance_attack_target"
+    if bool(args.balance_all_after_attack_checkpoint):
+        candidates = []
+        for style, level, target in (
+            ("attack", attack, int(args.target_attack)),
+            ("strength", strength, int(args.target_strength)),
+            ("defence", defence, defence_target),
+        ):
+            if level < target:
+                candidates.append((level, {"strength": 0, "attack": 1, "defence": 2}[style], style))
+        if candidates:
+            level, _priority, style = min(candidates)
+            return style, "balance_all_lowest_level_{}".format(level)
     if attack < int(args.target_attack):
         return "attack", "post_balance_attack_target"
     if strength < int(args.target_strength):
         return "strength", "post_balance_strength_target"
+    if defence < defence_target:
+        return "defence", "post_balance_defence_target"
     return None, "targets_reached"
 
 
@@ -1271,6 +1466,116 @@ def buy_kebabs_if_needed(player, args, handle, run_path, reason):
         player = close_interfaces_if_needed(player, handle, "after_failed_kebab_purchase")
         raise RunnerStop("kebab_purchase_failed", "Could not buy enough kebabs for the configured food minimum.", player)
     player = close_interfaces_if_needed(player, handle, "after_kebab_shop")
+    return player
+
+
+def equip_inventory_item(player, item_id, args, handle, reason):
+    result = call_tool("equip_item", {"itemId": int(item_id)})
+    updated = player_from_or(result, player)
+    write_event(handle, "equip_item", {
+        "reason": reason,
+        "itemId": int(item_id),
+        "success": bool(result.get("success")),
+        "message": result.get("message"),
+        "player": compact_player(updated),
+    })
+    if not result.get("success"):
+        raise RunnerStop("equip_item_failed", "Could not equip item {} for {}.".format(item_id, reason), updated)
+    return updated
+
+
+def route_to_bank_for_upgrade(player, args, handle, run_path, reason):
+    if bool(player.get("inBankArea", False)):
+        return player
+    if is_lumbridge_cow_pen_target(args.cow_area_target) and is_al_kharid_bank_target(args.bank_target):
+        return route_to_al_kharid_bank_for_cow_trip(player, args, handle, run_path, reason)
+    _state, player = route_or_stop(args.bank_target, args, handle, reason, run_path, player)
+    return player
+
+
+def ensure_mithril_scimitar_upgrade(player, args, handle, run_path, reason):
+    if not bool(args.auto_buy_mithril_scimitar):
+        return player
+    if skill_level(player, "attack") < MITHRIL_SCIMITAR_ATTACK_LEVEL:
+        return player
+    if equipment_has_item(player, MITHRIL_SCIMITAR):
+        return player
+
+    if count_inventory_item(player, MITHRIL_SCIMITAR) > 0:
+        return equip_inventory_item(player, MITHRIL_SCIMITAR, args, handle, "mithril_scimitar_inventory_" + reason)
+
+    if count_bank_item(player, MITHRIL_SCIMITAR) > 0:
+        player = route_to_bank_for_upgrade(player, args, handle, run_path, "mithril_scimitar_bank_" + reason)
+        withdrawn = call_tool("withdraw_bank_items", {"itemId": MITHRIL_SCIMITAR, "amount": 1})
+        player = player_from_or(withdrawn, player)
+        write_event(handle, "withdraw_mithril_scimitar", {
+            "reason": reason,
+            "success": bool(withdrawn.get("success")),
+            "message": withdrawn.get("message"),
+            "withdrawnAmount": withdrawn.get("withdrawnAmount"),
+            "player": compact_player(player),
+        })
+        if count_inventory_item(player, MITHRIL_SCIMITAR) <= 0:
+            raise RunnerStop("mithril_scimitar_withdraw_failed", "Mithril scimitar was banked but could not be withdrawn.", player)
+        return equip_inventory_item(player, MITHRIL_SCIMITAR, args, handle, "mithril_scimitar_bank_" + reason)
+
+    if inventory_coins(player) < int(args.mithril_scimitar_coin_budget):
+        player = route_to_bank_for_upgrade(player, args, handle, run_path, "mithril_scimitar_coins_" + reason)
+        player = prepare_bank_loadout(player, args, handle, run_path, "mithril_scimitar_pre_buy_loadout")
+        need = max(0, int(args.mithril_scimitar_coin_budget) - inventory_coins(player))
+        if need > 0:
+            withdrawn = call_tool("withdraw_bank_items", {"itemId": COINS, "amount": need})
+            player = player_from_or(withdrawn, player)
+            write_event(handle, "withdraw_mithril_scimitar_coins", {
+                "reason": reason,
+                "requestedAmount": need,
+                "success": bool(withdrawn.get("success")),
+                "message": withdrawn.get("message"),
+                "withdrawnAmount": withdrawn.get("withdrawnAmount"),
+                "player": compact_player(player),
+            })
+        if inventory_coins(player) < int(args.mithril_scimitar_coin_budget):
+            raise RunnerStop("mithril_scimitar_coins_missing", "Could not withdraw enough coins for a Mithril scimitar.", player)
+
+    if int(player.get("freeInventorySlots", 0) or 0) <= 0:
+        player = route_to_bank_for_upgrade(player, args, handle, run_path, "mithril_scimitar_space_" + reason)
+        player = prepare_bank_loadout(player, args, handle, run_path, "mithril_scimitar_inventory_space")
+        if int(player.get("freeInventorySlots", 0) or 0) <= 0:
+            raise RunnerStop("mithril_scimitar_inventory_full", "No inventory slot available to buy a Mithril scimitar.", player)
+
+    _state, player = route_or_stop(args.mithril_scimitar_shop_target, args, handle, "mithril_scimitar_shop_" + reason, run_path, player)
+    player = close_interfaces_if_needed(player, handle, "before_mithril_scimitar_shop")
+    opened = call_tool("open_nearest_shop", {"name": args.mithril_scimitar_shop_name, "maxDistance": args.shop_max_distance})
+    player = player_from_or(opened, player)
+    shop = (opened.get("player") or {}).get("shop") or {}
+    write_event(handle, "open_mithril_scimitar_shop", {
+        "reason": reason,
+        "success": bool(opened.get("success")),
+        "message": opened.get("message"),
+        "shop": shop,
+        "player": compact_player(player),
+    })
+    if not opened.get("success"):
+        raise RunnerStop("mithril_scimitar_shop_unavailable", "Could not open a nearby scimitar shop.", player)
+
+    bought = call_tool("buy_shop_item", {"itemId": MITHRIL_SCIMITAR, "amount": 1})
+    player = player_from_or(bought, player)
+    write_event(handle, "buy_mithril_scimitar", {
+        "reason": reason,
+        "success": bool(bought.get("success")),
+        "message": bought.get("message"),
+        "bought": bought.get("bought", 0),
+        "player": compact_player(player),
+    })
+    player = close_interfaces_if_needed(player, handle, "after_mithril_scimitar_shop")
+    if count_inventory_item(player, MITHRIL_SCIMITAR) <= 0 and not equipment_has_item(player, MITHRIL_SCIMITAR):
+        raise RunnerStop("mithril_scimitar_purchase_failed", "Could not buy a Mithril scimitar.", player)
+    if not equipment_has_item(player, MITHRIL_SCIMITAR):
+        player = equip_inventory_item(player, MITHRIL_SCIMITAR, args, handle, "mithril_scimitar_bought_" + reason)
+
+    if is_al_kharid_bank_target(args.bank_target):
+        _state, player = route_or_stop(args.bank_target, args, handle, "mithril_scimitar_post_buy_bank", run_path, player)
+        player = prepare_bank_loadout(player, args, handle, run_path, "mithril_scimitar_post_buy_loadout")
     return player
 
 
@@ -1555,19 +1860,38 @@ def run(args):
     fights_done = 0
     cycles_done = 0
     stopped_reason = None
+    cleared_stop_requests = clear_runner_stop_requests(args)
     try:
         write_event(handle, "run_start", {
             "args": jsonable(vars(args)),
             "runLog": str(run_path),
             "routeEvidencePath": route_evidence_path(args, run_path),
+            "clearedStopRequests": cleared_stop_requests,
+        })
+        write_runner_status(args, "running", run_path=run_path, reason="started", extra={
+            "startedAt": utc_now(),
+            "clearedStopRequests": cleared_stop_requests,
         })
         state, player = observe_state()
         write_event(handle, "observe", {"player": compact_player(player)})
+        write_runner_status(args, "running", run_path=run_path, reason="observed_start", player=player)
         stop_if_unsafe(state, player, args, handle, "run_start")
 
         for cycle in range(1, int(args.max_cycles) + 1):
             cycles_done = cycle
             state, player = observe_state()
+            write_runner_status(
+                args,
+                "running",
+                run_path=run_path,
+                reason="cycle_start",
+                cycle=cycle,
+                fights_done=fights_done,
+                player=player,
+            )
+            if safe_stop_requested(args, handle, "cycle_start", cycle, player):
+                stopped_reason = "stop_requested"
+                break
             stop_if_unsafe(state, player, args, handle, "cycle_start")
             player = eat_if_needed(state, player, args, handle, "cycle_start")
             if targets_reached(player, args):
@@ -1589,6 +1913,7 @@ def run(args):
 
             if bool(player.get("inBankArea", False)):
                 player = prepare_bank_loadout(player, args, handle, run_path, "cycle_start")
+            player = ensure_mithril_scimitar_upgrade(player, args, handle, run_path, "cycle_start")
             player = buy_kebabs_if_needed(player, args, handle, run_path, "before_fight")
             if targets_reached(player, args):
                 stopped_reason = "target_levels"
@@ -1649,12 +1974,24 @@ def run(args):
                 after["inventoryFood"],
                 after["freeSlots"],
             ), args)
+            write_runner_status(
+                args,
+                "running",
+                run_path=run_path,
+                reason="cycle_done",
+                cycle=cycle,
+                fights_done=fights_done,
+                player=player,
+            )
+            if safe_stop_requested(args, handle, "cycle_done", cycle, player):
+                stopped_reason = "stop_requested"
+                break
 
         else:
             stopped_reason = "max_cycles"
 
         state, player = observe_state()
-        if cowhide_count(player) > 0 and args.final_bank and not args.stop_when_inventory_full:
+        if cowhide_count(player) > 0 and args.final_bank and not args.stop_when_inventory_full and stopped_reason != "stop_requested":
             player = bank_hides(player, args, handle, run_path, "final")
         write_event(handle, "run_finish", {
             "reason": stopped_reason or "complete",
@@ -1664,6 +2001,15 @@ def run(args):
             "runLog": str(run_path),
             "routeEvidencePath": route_evidence_path(args, run_path),
         })
+        write_runner_status(
+            args,
+            "finished",
+            run_path=run_path,
+            reason=stopped_reason or "complete",
+            cycle=cycles_done,
+            fights_done=fights_done,
+            player=player,
+        )
         log("cowhide combat log: {}".format(run_path), args, force=True)
         return 0
     except RunnerStop as exc:
@@ -1677,6 +2023,16 @@ def run(args):
             "runLog": str(run_path),
             "routeEvidencePath": route_evidence_path(args, run_path),
         })
+        write_runner_status(
+            args,
+            "blocked",
+            run_path=run_path,
+            reason=exc.reason,
+            cycle=cycles_done,
+            fights_done=fights_done,
+            player=exc.player,
+            extra={"message": exc.message},
+        )
         log("blocked: {} ({})".format(exc.reason, exc.message), args, force=True)
         log("cowhide combat log: {}".format(run_path), args, force=True)
         return 2
@@ -1687,11 +2043,21 @@ def run(args):
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Run bounded cow combat, cowhide pickup, and banking.")
     parser.add_argument("--profile", default="", help="Bridge profile/session to use. Defaults to the active session.")
+    parser.add_argument("--status", action="store_true",
+                        help="Print this runner's cooperative status file and exit without touching the game.")
+    parser.add_argument("--request-stop", action="store_true",
+                        help="Ask a running cowhide runner to stop at the next safe non-combat boundary.")
+    parser.add_argument("--clear-stop", action="store_true",
+                        help="Clear this runner's pending cooperative stop request and exit.")
     parser.add_argument("--target-attack", type=int, default=20)
     parser.add_argument("--target-strength", type=int, default=20)
     parser.add_argument("--target-defence", type=int, default=5)
     parser.add_argument("--balance-attack-strength-until", type=int, default=15,
                         help="After early gear/defence goals, balance Attack and Strength up to this level, then finish Attack before Strength.")
+    parser.add_argument("--attack-before-balanced-all", type=int, default=20,
+                        help="After the Attack/Strength checkpoint, force Attack to this level before lowest-level all-melee balancing.")
+    parser.add_argument("--balance-all-after-attack-checkpoint", action=argparse.BooleanOptionalAction, default=True,
+                        help="After the Attack checkpoint, train the lowest of Attack/Strength/Defence with direct styles instead of controlled XP.")
     parser.add_argument("--bank-target", default="al_kharid_bank", help="route_runner target for hide banking.")
     parser.add_argument("--cow-area-target", default="lumbridge_cow_pen", help="route_runner target for cow combat.")
     parser.add_argument("--cow-gate-approach-target", default="3252,3266,0",
@@ -1735,6 +2101,10 @@ def main(argv=None):
     parser.add_argument("--coin-float", type=int, default=100)
     parser.add_argument("--kebab-shop-name", default="kebab")
     parser.add_argument("--shop-max-distance", type=int, default=8)
+    parser.add_argument("--auto-buy-mithril-scimitar", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--mithril-scimitar-shop-target", default="al_kharid_scimitar_shop")
+    parser.add_argument("--mithril-scimitar-shop-name", default="scimitar")
+    parser.add_argument("--mithril-scimitar-coin-budget", type=int, default=2000)
     parser.add_argument("--cow-scan-distance", type=int, default=24)
     parser.add_argument("--max-cow-hit", type=int, default=1)
     parser.add_argument("--min-run-energy", type=int, default=10)
@@ -1749,6 +2119,19 @@ def main(argv=None):
     parser.add_argument("--al-kharid-gate-dialogue-steps", type=int, default=6)
     parser.add_argument("--quiet", action=argparse.BooleanOptionalAction, default=False)
     args = parser.parse_args(argv)
+
+    if args.status:
+        return print_runner_status(args)
+    if args.request_stop:
+        return request_runner_stop(args)
+    if args.clear_stop:
+        print(json.dumps({
+            "ok": True,
+            "runner": "cowhide_combat_runner",
+            "profile": runner_profile_label(args),
+            "clearedStopRequests": clear_runner_stop_requests(args),
+        }, sort_keys=True))
+        return 0
 
     for name in ("target_attack", "target_strength", "target_defence"):
         if int(getattr(args, name)) < 1:

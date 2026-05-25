@@ -19,7 +19,7 @@ Do not mutate live gameplay or restart the runtime while inspecting logs. Other 
 - `2006Scape Server/data/logs/agent-sessions/<yyyy-MM-dd>/<sessionId>.md`: readable per-session summary.
 - `2006Scape Server/data/logs/agent-sessions/reports/<yyyy-MM-dd>/summary-<HHMMSS>Z.md`: generated rollup reports.
 - `2006Scape Server/data/logs/agent-sessions/reports/canonical-agent-log-index.md`: canonical report index.
-- `2006Scape Server/data/logs/agent-sessions/profiles/<profile>/agent-personality.md`: derived first-person profile memory.
+- `2006Scape Server/data/logs/agent-sessions/profiles/<profile>/agent-personality.md`: derived operational profile memory.
 - `2006Scape Server/data/logs/agent-sessions/profiles/<profile>/agent-personality-state.json`: structured profile state.
 - `agent-navigation/.local/character-memory/<profile>/`: separate ignored intentional memories/goals written through `character_memory.py`.
 - `~/.codex/sessions/<yyyy>/<MM>/<dd>/rollout-*.jsonl`: Codex rollout transcript source, when available.
@@ -35,9 +35,12 @@ Do not mutate live gameplay or restart the runtime while inspecting logs. Other 
 Prefer targeted reads. Logs can contain very large `observe_state` payloads, bank contents, nearby objects, and profile memory.
 
 ```sh
+python3 agent-navigation/tools/agent_session_XS.py --profile MrFlame --latest
 find "2006Scape Server/data/logs/agent-sessions" -type f | sort
 sed -n '1,220p' "2006Scape Server/data/logs/agent-sessions/<date>/<session>.md"
 ```
+
+Start with `agent_session_XS.py` for routine rollout/usage audits. It reports the latest matching session id, top tool counts, recent outcomes, recent failures, current player state, and the raw log paths without loading multi-megabyte JSONL or Markdown files. Open the full Markdown/JSONL only when the XS summary omits a needed detail.
 
 For JSONL, summarize event types before reading whole entries:
 
@@ -55,9 +58,9 @@ Per-session Markdown should capture:
 - what was attempted and what succeeded;
 - obstacles, in-game blockers, death, missing items, unsafe state, or unavailable objects/NPCs;
 - observable decision trail from logs and rollout events;
-- outcome, next step, reflection, and what the harness appears to be learning.
+- outcome, next step, operational reflection when it explains a blocker or future safety constraint, and what the harness appears to be learning.
 
-Profile/personality memory should be durable and account-scoped. It should synthesize repeated sanitized session patterns into beliefs, slow drift, self-formed goals, and bounded self-talk without overriding the player's command. Intentional character memory is different: it is sparse, explicit, and written only when a future agent should remember a concrete goal or lesson.
+Profile/personality memory should be durable, account-scoped, and matter-of-fact. It should synthesize repeated sanitized session patterns into operational risk notes, preparation habits, repeated blockers, and bounded recent notes without becoming a character voice or overriding the player's command. Do not quote it back to the player or use it for routine self-reflection. Intentional character memory is different: it is sparse, explicit, and written only when a future agent should remember a concrete goal or lesson.
 
 ## Validation
 

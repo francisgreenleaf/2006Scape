@@ -1,5 +1,7 @@
 package com.rs2.agent;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.rs2.game.content.StaticObjectList;
 import com.rs2.game.objects.Objects;
 import org.junit.Test;
@@ -194,5 +196,66 @@ public class AgentToolServiceTest {
         assertTrue(AgentToolService.isAlKharidGateCrossingStep(3267, 3227, 3274, 3195));
         assertFalse(AgentToolService.isAlKharidGateCrossingStep(3268, 3227, 3274, 3195));
         assertFalse(AgentToolService.isAlKharidGateCrossingStep(3268, 3233, 3252, 3236));
+    }
+
+    @Test
+    public void xsToolNamesMapToBaseToolNames() {
+        assertTrue(AgentToolService.isXsTool("observe_state_XS"));
+        assertFalse(AgentToolService.isXsTool("observe_state"));
+        assertEquals("observe_state", AgentToolService.baseToolName("observe_state_XS"));
+        assertEquals("deposit_inventory_items", AgentToolService.baseToolName("deposit_inventory_items"));
+    }
+
+    @Test
+    public void xsCompactorKeepsDecisionFieldsAndDropsFullStateShape() {
+        JsonObject result = AgentToolService.success("Observed current game state.");
+        JsonObject player = new JsonObject();
+        player.addProperty("name", "mrflame");
+        player.addProperty("x", 2814);
+        player.addProperty("y", 3440);
+        player.addProperty("height", 0);
+        player.addProperty("hitpoints", 20);
+        player.addProperty("maxHitpoints", 20);
+        player.addProperty("freeInventorySlots", 26);
+        player.addProperty("runEnergy", 31);
+        player.addProperty("runEnabled", false);
+        player.addProperty("inBankArea", true);
+        JsonObject skills = new JsonObject();
+        JsonObject cooking = new JsonObject();
+        cooking.addProperty("level", 43);
+        cooking.addProperty("xp", 52520);
+        cooking.addProperty("baseLevel", 43);
+        skills.add("cooking", cooking);
+        player.add("skills", skills);
+        JsonArray inventory = new JsonArray();
+        JsonObject lobster = new JsonObject();
+        lobster.addProperty("slot", 0);
+        lobster.addProperty("id", 379);
+        lobster.addProperty("amount", 2);
+        lobster.addProperty("name", "Lobster");
+        lobster.addProperty("foodHeal", 12);
+        inventory.add(lobster);
+        player.add("inventory", inventory);
+        player.add("equipment", new JsonArray());
+        JsonArray bank = new JsonArray();
+        JsonObject coins = new JsonObject();
+        coins.addProperty("slot", 0);
+        coins.addProperty("id", 995);
+        coins.addProperty("amount", 100);
+        coins.addProperty("name", "Coins");
+        bank.add(coins);
+        player.add("bank", bank);
+        result.add("player", player);
+
+        JsonObject compact = AgentToolService.compactXsResult("observe_state", result);
+
+        assertTrue(compact.get("success").getAsBoolean());
+        assertTrue(compact.get("compact").getAsBoolean());
+        assertEquals("observe_state_XS", compact.get("tool").getAsString());
+        assertEquals("2814,3440,0", compact.getAsJsonObject("player").get("tile").getAsString());
+        assertEquals(2, compact.getAsJsonObject("inventory").get("food").getAsInt());
+        assertEquals(100, compact.getAsJsonObject("bank").get("coins").getAsInt());
+        assertFalse(compact.getAsJsonObject("player").has("inventory"));
+        assertTrue(compact.getAsJsonObject("player").getAsJsonObject("skills").has("cooking"));
     }
 }

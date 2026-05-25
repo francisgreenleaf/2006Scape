@@ -156,7 +156,7 @@
     },
     {
       "name": "barbarian_village_to_varrock_east_bank_live_verified",
-      "from": "3081,3429,0",
+      "from": "3085,3425,0",
       "to": "varrock_east_bank",
       "combatLevel": 3,
       "food": 2,
@@ -166,6 +166,82 @@
       "expectRoute": "barbarian_village_to_varrock_east_bank",
       "expectType": "walk",
       "expectNext": "3092,3429,0"
+    },
+    {
+      "name": "catherby_bank_to_fishing_shop",
+      "from": "2814,3440,0",
+      "to": "catherby_fishing_shop",
+      "combatLevel": 3,
+      "food": 0,
+      "coins": 0,
+      "runEnergy": 0,
+      "runEnabled": false,
+      "expectRoute": "catherby_bank_to_fishing_shop_static_source",
+      "expectType": "walk",
+      "expectNext": "2824,3440,0"
+    },
+    {
+      "name": "catherby_range_to_fishing_shop",
+      "from": "2819,3443,0",
+      "to": "catherby_fishing_shop",
+      "combatLevel": 3,
+      "food": 0,
+      "coins": 0,
+      "runEnergy": 0,
+      "runEnabled": false,
+      "expectRoute": "catherby_range_to_fishing_shop_static_source",
+      "expectType": "walk",
+      "expectNext": "2820,3440,0"
+    },
+    {
+      "name": "catherby_fishing_shore_to_fishing_shop",
+      "from": "2853,3424,0",
+      "to": "catherby_fishing_shop",
+      "combatLevel": 3,
+      "food": 0,
+      "coins": 0,
+      "runEnergy": 0,
+      "runEnabled": false,
+      "expectRoute": "catherby_fishing_shore_to_fishing_shop_static_source",
+      "expectType": "walk",
+      "expectNext": "2846,3430,0"
+    },
+    {
+      "name": "catherby_fishing_shop_to_shore",
+      "from": "2834,3440,0",
+      "to": "catherby_fishing_shore",
+      "combatLevel": 3,
+      "food": 0,
+      "coins": 0,
+      "runEnergy": 0,
+      "runEnabled": false,
+      "expectRoute": "catherby_fishing_shop_to_fishing_shore_static_source",
+      "expectType": "walk",
+      "expectNext": "2841,3436,0"
+    },
+    {
+      "name": "catherby_fishing_shop_to_bank",
+      "from": "2834,3440,0",
+      "to": "catherby_bank",
+      "combatLevel": 3,
+      "food": 0,
+      "coins": 0,
+      "runEnergy": 0,
+      "runEnabled": false,
+      "expectType": "walk",
+      "expectNext": "2824,3440,0"
+    },
+    {
+      "name": "catherby_fishing_shop_to_range",
+      "from": "2834,3440,0",
+      "to": "catherby_range",
+      "combatLevel": 3,
+      "food": 0,
+      "coins": 0,
+      "runEnergy": 0,
+      "runEnabled": false,
+      "expectType": "walk",
+      "expectNext": "2827,3439,0"
     }
   ]
 }

@@ -3,9 +3,11 @@
 
 import argparse
 import datetime as dt
+import sys
 import uuid
 
 import bridge_script as bridge
+from usage_log import log_usage
 
 
 RUNS_DIR = bridge.ROOT / "data" / "food" / "runs"
@@ -31,6 +33,14 @@ def raw_food_item(player):
     return bridge.first_inventory_item(player, RAW_FOOD_IDS)
 
 
+def inventory_item_count(player, item_id):
+    return sum(
+        int(item.get("amount", 0) or 0)
+        for item in bridge.inventory(player)
+        if int(item.get("id", item.get("itemId", -1)) or -1) == int(item_id)
+    )
+
+
 def log_item(player):
     return bridge.first_inventory_item(player, LOG_IDS)
 
@@ -38,6 +48,36 @@ def log_item(player):
 def route_if_requested(target, profile, handle, reason):
     if target:
         bridge.route_to(target, profile=profile, handle=handle, reason=reason)
+
+
+def walk_to_object_interaction_tile(player, obj, profile, handle, args, reason):
+    if bool(obj.get("interactionInRange", False)):
+        return player
+    target = obj.get("nearestInteractionTile") or obj.get("interactionWalkTarget")
+    if not isinstance(target, dict):
+        return player
+    result = bridge.call_tool("walk_to_tile_until_arrived", {
+        "x": int(target["x"]),
+        "y": int(target["y"]),
+        "height": int(target.get("height", 0) or 0),
+        "stopDistance": 0,
+        "maxTicks": args.object_approach_ticks,
+        "maxWalkDistance": args.object_approach_distance,
+        "stopOnCombat": True,
+        "stopOnStall": True,
+    }, profile=profile)
+    player = bridge._player_from_or(result, player)
+    bridge.write_event(handle, "object_approach", {
+        "reason": reason,
+        "object": obj,
+        "target": target,
+        "success": bool(result.get("success")),
+        "message": result.get("message"),
+        "batchStatus": result.get("batchStatus"),
+        "batchTicks": result.get("batchTicks"),
+        "player": bridge.compact_player(player),
+    })
+    return player
 
 
 def fish_until_full(profile, args, handle):
@@ -94,10 +134,13 @@ def cook_inventory(profile, args, handle):
     player = bridge.observe(profile)
     total_ticks = 0
     rounds = 0
+    no_progress_rounds = 0
     while total_ticks < args.max_ticks:
         food = raw_food_item(player)
         if food is None:
             break
+        before_raw_count = inventory_item_count(player, int(food["id"]))
+        before_cooking_xp = bridge.skill_xp(player, "cooking")
         object_ids = FIRE_OBJECT_IDS if args.fire_only else COOKING_OBJECT_IDS
         find_result = bridge.call_tool("find_nearest_object", {
             "objectIds": object_ids,
@@ -113,6 +156,7 @@ def cook_inventory(profile, args, handle):
             if not find_result.get("success"):
                 raise RuntimeError(find_result.get("message", "no cooking object found"))
         obj = find_result.get("object") or {}
+        player = walk_to_object_interaction_tile(player, obj, profile, handle, args, "cooking_object")
         use_result = bridge.call_tool("use_item_on_object", {
             "itemId": int(food["id"]),
             "objectId": obj.get("objectId"),
@@ -128,8 +172,15 @@ def cook_inventory(profile, args, handle):
             "combat": False,
         }, profile=profile)
         player = bridge.player_from(wait)
+        after_raw_count = inventory_item_count(player, int(food["id"]))
+        after_cooking_xp = bridge.skill_xp(player, "cooking")
         total_ticks += max(1, int(wait.get("batchTicks", wait_ticks) or wait_ticks))
         rounds += 1
+        made_progress = after_raw_count < before_raw_count or after_cooking_xp != before_cooking_xp
+        if made_progress:
+            no_progress_rounds = 0
+        else:
+            no_progress_rounds += 1
         bridge.write_event(handle, "cook_round", {
             "round": rounds,
             "food": food,
@@ -137,10 +188,18 @@ def cook_inventory(profile, args, handle):
             "useSuccess": bool(use_result.get("success")),
             "buttonSuccess": bool(button.get("success")),
             "waitStatus": wait.get("batchStatus"),
+            "rawCountBefore": before_raw_count,
+            "rawCountAfter": after_raw_count,
+            "cookingXpBefore": before_cooking_xp,
+            "cookingXpAfter": after_cooking_xp,
+            "madeProgress": made_progress,
+            "noProgressRounds": no_progress_rounds,
             "player": bridge.compact_player(player, ("cooking",)),
         })
         if not use_result.get("success", False) or not button.get("success", False) or not wait.get("success", False):
             break
+        if no_progress_rounds >= args.max_no_progress_rounds:
+            raise RuntimeError("cooking made no inventory or XP progress for {} rounds".format(no_progress_rounds))
     return player
 
 
@@ -209,6 +268,7 @@ def run(args):
 
 
 def main(argv=None):
+    argv_list = list(sys.argv[1:] if argv is None else argv)
     parser = argparse.ArgumentParser(description="Run primitive-backed fishing, cooking, and firemaking.")
     parser.add_argument("--profile", default="")
     parser.add_argument("--mode", choices=["fish", "cook", "fish-cook", "firemake"], default="fish-cook")
@@ -216,6 +276,9 @@ def main(argv=None):
     parser.add_argument("--cooking-place", default="lumbridge_kitchen_range")
     parser.add_argument("--npc-max-distance", type=int, default=20)
     parser.add_argument("--object-max-distance", type=int, default=20)
+    parser.add_argument("--object-approach-distance", type=int, default=12)
+    parser.add_argument("--object-approach-ticks", type=int, default=24)
+    parser.add_argument("--max-no-progress-rounds", type=int, default=2)
     parser.add_argument("--max-ticks", type=int, default=260)
     parser.add_argument("--cook-button-id", type=int, default=53149)
     parser.add_argument("--fire-only", action="store_true")
@@ -224,7 +287,8 @@ def main(argv=None):
     parser.add_argument("--min-run-energy", type=int, default=10)
     parser.add_argument("--quiet", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--no-log", action="store_true")
-    return run(parser.parse_args(argv))
+    log_usage("food_runner", surface="full", argv=argv_list)
+    return run(parser.parse_args(argv_list))
 
 
 if __name__ == "__main__":

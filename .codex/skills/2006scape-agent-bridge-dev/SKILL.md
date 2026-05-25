@@ -42,6 +42,10 @@ Prefer external scripts for skill loops. Keep `mine_ore_until_inventory_full`, `
 
 Prefer batch or wait primitives for long-running actions. `walk_to_tile_until_arrived`, `travel_to_landmark_until_arrived`, `wait_until_idle`, and compatibility batch tools exist to avoid one-tick polling. When observing an already-running command from a terminal session, estimate the likely completion interval and wait near that duration instead of polling every few seconds.
 
+Dynamic XS tools are first-class bridge aliases, not separate gameplay mechanics. `*_XS` names route through the same server-authoritative handlers and compact the returned payload before it goes back to the model. Keep XS coverage in `CodexAppServerClient.java`, route aliases through `AgentActionService`, and compact through `AgentToolService.compactXsResult`. Current high-use XS aliases are `observe_state_XS`, `walk_to_tile_until_arrived_XS`, `travel_to_landmark_until_arrived_XS`, `wait_ticks_XS`, `wait_until_idle_XS`, `find_nearest_object_XS`, `deposit_inventory_items_XS`, `unequip_item_XS`, `unequip_items_XS`, and `food_bank_XS`. Full tools remain the evidence/debug fallback.
+
+When updating bank/equipment metadata, expose array fields that already exist server-side. `deposit_inventory_items` and `deposit_inventory_items_XS` accept `itemIds` to deposit multiple item types in one call. `unequip_items_XS` accepts `equipmentSlots`, `slotNames`, `itemIds`, `names`/`items`, or `all=true` so agents do not loop one equipment slot at a time.
+
 ## Validation
 
 For source changes, run the smallest meaningful Maven check first, then broaden if needed:
