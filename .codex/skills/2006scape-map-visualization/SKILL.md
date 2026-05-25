@@ -1,6 +1,6 @@
 ---
 name: 2006scape-map-visualization
-description: "Use when designing, rendering, reviewing, or improving 2006Scape map visual outputs in /Users/kevin/Documents/2006Scape, including movement-topology PNG/JSON, cache-world-map PNG/JSON, surface-routes PNG, route overlays, movement trace styling, grid/label readability, canonical image paths, visual QA, and sharing map images with users. Use with 2006scape-cache-map when renderer internals or cache decoding are involved."
+description: "Use when designing, rendering, reviewing, or improving 2006Scape map visual outputs in /Users/kevin/Documents/2006Scape, including movement-topology PNGs, cache-world-map artifacts, route overlays, movement trace styling, grid/label readability, canonical image paths, visual QA, and sharing map images with users. Use with 2006scape-cache-map when renderer internals or cache decoding are involved."
 ---
 
 # 2006Scape Map Visualization
@@ -9,39 +9,34 @@ Use this skill for how map outputs should look and be reviewed. Use `2006scape-c
 
 ## Canonical Outputs
 
-- `agent-navigation/topology/cache-world-map.png`: full static cache-backed world map.
-- `agent-navigation/topology/cache-world-map.json`: full map render summary.
 - `agent-navigation/topology/movement-topology-v4.png`: active profile movement map.
-- `agent-navigation/topology/movement-topology-v4.json`: active profile movement map summary.
 - `agent-navigation/topology/movement-topology-v5-heatmap.png`: active `Heat Map` with transparent coverage density for route-learning/ML inspection.
-- `agent-navigation/topology/movement-topology-v5-heatmap.json`: active `Heat Map` summary.
 - `agent-navigation/topology/movement-topology-v6.png`: active profile fog topology with route/icon overlays and dimmed unvisited map context.
-- `agent-navigation/topology/movement-topology-v6.json`: active profile fog summary.
+- `agent-navigation/.local/map-summaries/*.json`: ignored summaries for active map renders and auxiliary map outputs.
 - `agent-navigation/.local/context-maps/<date>/*.png`: ignored, timestamped agent context-map artifacts for current-location and segment debugging.
 - `agent-navigation/.local/context-maps/<date>/*.json`: matching machine-readable context-map summaries with bounds, center, POI markers, and place markers.
-- `agent-navigation/topology/surface-routes.png`: route database/navigation overview.
 - `agent-navigation/analysis/movement-topology-<date>.png`: dated analysis renders when comparison is useful.
 
-Prefer canonical paths unless the user asks for comparison artifacts. Avoid timestamp clutter and one-off proof/shortcut/context exports in `topology/`; agent context maps belong under ignored `.local/context-maps`.
+`agent-navigation/topology/` should stay uncluttered: keep only the three active user-facing PNGs there. Avoid timestamp clutter, JSON sidecars, surface-route renders, full cache renders, and one-off proof/shortcut/context exports in `topology/`; those belong under ignored `.local/` paths unless the user explicitly asks for a shareable artifact.
 
 ## Render Commands
 
 For the active profile movement map:
 
 ```sh
-agent-navigation/tools/render_movement_topology_v4.py
+agent-navigation/tools/render_profile_map.py
 ```
 
-Movement topology reads unified movement traces through `navdb.iter_movement_traces()`. Passive server player traces from `2006Scape Server/data/logs/player-movement-traces/` are the default evidence source; stationary idle `state` heartbeats, duplicate agent batch traces, and legacy fallback `agent-navigation/data/movement_traces*.jsonl` are opt-in/fallback only. Use `--trace-profile NAME` or `RS_PROFILE=NAME` to render one character's evidence.
+Movement topology reads unified movement traces through the shared nav trace sources. Passive server player traces from `2006Scape Server/data/logs/player-movement-traces/` are the main evidence source; the plain-name user-facing map wrappers also backfill historical agent-batch traces recorded before passive player tracing began, so early exploration/deaths remain visible without double-counting newer batches. Stationary idle `state` heartbeats, full duplicate agent batch traces, and legacy fallback `agent-navigation/data/movement_traces*.jsonl` are opt-in/fallback only. Use `--trace-profile NAME` or `RS_PROFILE=NAME` to render one character's evidence.
 
 For the active `Heat Map` and profile fog player-facing analysis maps:
 
 ```sh
-agent-navigation/tools/render_movement_topology_v5.py
-agent-navigation/tools/render_movement_topology_v6.py
+agent-navigation/tools/render_heat_map.py
+agent-navigation/tools/render_fog_map.py
 ```
 
-Use the profile movement map for the main map, `Heat Map` for player-facing trace-coverage density, and the profile fog map for fog-of-war coverage. Agents should not run these full topology renders during live routing unless explicitly asked. Active movement maps read the latest movement traces at render time. Legacy versioned map renderers may exist on disk for old outputs; leave them alone and do not use them as current maps.
+Use the profile movement map for the main map, `Heat Map` for player-facing trace-coverage density, and the profile fog map for fog-of-war coverage. Agents should not run these full topology renders during live routing unless explicitly asked. Active movement maps read the latest movement traces at render time. Legacy versioned map renderers may exist on disk for old outputs or compatibility; leave them alone and use the plain-name scripts as the current map interface.
 
 For continuous background refresh while movement traces are being collected:
 
@@ -50,14 +45,14 @@ agent-navigation/tools/active_map_refresher.py start
 agent-navigation/tools/active_map_refresher.py status
 ```
 
-Use `agent-navigation/tools/active_map_refresher.py` as the special background tool; it manages the PID, log, status file, and restart behavior for the lower-level `refresh_active_maps.py` worker. The refresher updates `surface-routes`, the profile movement map, `Heat Map`, and profile fog in independent non-overlapping worker loops. The profile movement map (`mr-flame` / V4) is a continuous hot loop that starts its next render as soon as the previous render finishes; the other active maps keep the 30-second target cadence. It writes ignored temp/status files under `agent-navigation/.local/map-refresh/`, uses per-map cache subdirectories under `agent-navigation/.local/topology-render-cache/` for parallel topology workers, atomically replaces canonical PNG/JSON files only after successful renders, passes trace-profile filters through to movement renderers, and skips the static `cache-world-map` unless it is missing or `--refresh-world-map` is passed. Use `refresh_active_maps.py --once ...` directly only for one-shot validation or renderer debugging.
+Use `agent-navigation/tools/active_map_refresher.py` as the special background tool; it manages the PID, log, status file, and restart behavior for the lower-level `refresh_active_maps.py` worker. The refresher updates the profile movement map, `Heat Map`, and profile fog in independent non-overlapping worker loops. The `mr-flame` profile movement map is a continuous hot loop that starts its next render as soon as the previous render finishes; the other active maps keep the 30-second target cadence. It writes ignored temp/status files under `agent-navigation/.local/map-refresh/`, ignored summaries under `agent-navigation/.local/map-summaries/`, uses per-map cache subdirectories under `agent-navigation/.local/topology-render-cache/` for parallel topology workers, and atomically replaces the three canonical PNG files only after successful renders. Use `refresh_active_maps.py --once ...` directly only for one-shot validation or renderer debugging.
 
 For route overview:
 
 ```sh
 agent-navigation/tools/render_navigation_png.py \
   --region all \
-  --output agent-navigation/topology/surface-routes.png
+  --output agent-navigation/.local/map-summaries/surface-routes.png
 ```
 
 For current location or segment context without full-world resolution:
@@ -92,9 +87,10 @@ Maps should be useful at a glance:
 - keep nearby route geometry visible in agent segment maps, including docks, ports, bridges, and useful POI surroundings; use padding/max-span options rather than a full-world render when the default crop is too tight.
 - include all cache mapfunction icons in agent context maps, and rely on JSON marker labels before opening images when visual labels are too dense.
 - for `Heat Map`, keep the gradient legend separate from route-state items; do not reintroduce the old `DENSE` legend item because coverage now represents trace density.
+- for `Heat Map`, the optimized cached mask is applied once with a non-saturating max radial mask. If every explored tile looks dense, inspect the heat mask/cache version and summary before changing unrelated map layers.
 - for `Heat Map` and profile fog, keep the title short and use the larger title-bar paragraph for the evidence-backed Gielinor navigation graph, GPT-5.5 planning, deterministic routing, and ML-scoring context.
 - for profile fog, keep route/death/current markers above the fog layer, dim unvisited background context very dark, use a wider visible reveal around movement evidence, and hide cache POI icons beyond the separate explored POI radius close to the visible reveal.
-- for `Heat Map` and profile fog performance work, preserve exact full-resolution output. Prefer exact radial-kernel caching, the append-validated topology prefix cache, the static base-map canvas cache, the POI list cache, the ignored full-resolution fog cache in `agent-navigation/.local/topology-render-cache`, direct byte-level loops, and spatial indexes. Do not switch coverage to lower-resolution masks or paint over stale final PNGs unless the user explicitly trades quality for speed. Verify behavior through the summary `cache` block plus `coverageFogCache`, `coverageFogCachedNodes`, and `coverageFogRenderedNodes`.
+- for `Heat Map` and profile fog performance work, preserve exact full-resolution output. Prefer exact radial-kernel caching, the append-validated topology prefix cache, the static base-map canvas cache, the POI list cache, ignored full-resolution heat/fog coverage caches in `agent-navigation/.local/topology-render-cache`, direct byte-level loops/downsampling, quantized bounds, and spatial indexes. Do not switch coverage to lower-resolution masks or paint over stale final PNGs unless the user explicitly trades quality for speed. Verify behavior through the summary `cache` block plus `coverageHeatCache`/`coverageFogCache`, cached node counts, and rendered node counts.
 
 When the user asks to see an image, render or reference it with an absolute path:
 

@@ -20,7 +20,7 @@ from render_navigation_png import Canvas
 
 ROOT = Path(__file__).resolve().parents[1]
 CACHE_DIR = ROOT.parent / "2006Scape Server" / "data" / "cache"
-OUT = ROOT / "topology"
+OUT = ROOT / ".local" / "map-summaries"
 
 REGION_SIZE = 64
 PLANES = 4

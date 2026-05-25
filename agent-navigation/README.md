@@ -27,8 +27,9 @@ For the reliable server/client/login/bridge startup flow used before route explo
 - `tools/script_registry.py`: lightweight script catalog for listing, wildcard searching, inspecting, and running registered helper scripts by fuzzy name.
 - `tools/agility_runner.py`: bridge-backed agility course runner that keeps obstacle execution and timing evidence out of the AI token loop.
 - `tools/mining_runner.py`: bridge-backed mining runner that discovers cache-backed mine clusters, routes between banks and rocks, chooses live ore targets, mines through batch bridge tools, and banks ores.
-- `tools/active_map_refresher.py`: background controller for keeping canonical `surface-routes`, profile movement, `Heat Map`, and profile fog exports current. Use it for `start`, `status`, `logs`, `stop`, and `restart`; V4/profile movement is a continuous hot loop.
-- `tools/refresh_active_maps.py`: lower-level foreground worker used by `active_map_refresher.py`. It writes status/temp files under ignored `.local/map-refresh/` and does not refresh the static full cache map unless missing or requested.
+- `tools/render_profile_map.py`, `tools/render_heat_map.py`, `tools/render_fog_map.py`: plain-name active movement map renderers for `Mr. Flame`, `Heat Map`, and `Mr. Flame Fog`.
+- `tools/active_map_refresher.py`: background controller for keeping the three canonical active map PNGs current: profile movement, `Heat Map`, and profile fog. Use it for `start`, `status`, `logs`, `stop`, and `restart`; the profile movement map is a continuous hot loop.
+- `tools/refresh_active_maps.py`: lower-level foreground worker used by `active_map_refresher.py`. It writes status/temp files under ignored `.local/map-refresh/`, JSON summaries under ignored `.local/map-summaries/`, and does not refresh auxiliary cache/route maps unless explicitly requested.
 
 ## Unified Movement Telemetry
 
@@ -43,6 +44,8 @@ The passive stream records authoritative post-movement tiles, previous tiles, ru
 Object interaction records use `event: "object_interaction"` with `objectInteractionPhase: "queued"` for the raw click target and `"completed"` for the reached/post-handler state. They include `objectId`, `objectName` when definitions are available, `objectTile`, `option`, `objectOption`, `packetOpcode`, and a compact `object` metadata block. The route graph preserves object metadata on edges and does not infer reverse edges across object-backed transitions.
 
 `tools/navdb.py`, `tools/router.py`, and the movement topology renderers read one unified trace iterator. It prefers the passive player trace stream by default and avoids double-counting bridge batch or fallback polling traces when passive traces exist.
+
+The user-facing active map wrappers are slightly more inclusive for historical context: they backfill agent batch traces recorded before passive player tracing began, preserving early exploration and death sites while still omitting newer duplicated batches.
 
 - passive server player traces in `2006Scape Server/data/logs/player-movement-traces/` are the default source;
 - agent batch movement traces in `2006Scape Server/data/logs/agent-movement-traces/` are diagnostics and fallback input;
@@ -143,7 +146,7 @@ Course definitions are shareable JSON in `data/agility_courses.json`. Run logs a
 
 ## Mining Runner
 
-`tools/mining_runner.py` runs normal-gameplay mining loops with route learning and banking. It uses the cache-backed world map to discover ore clusters near known bank places, scores sites by bank distance, current distance, rock density, ore XP, and respawn cost, routes with `route_runner.py`, chooses the best currently reachable ore with `find_nearest_rock`, mines with `mine_ore_until_inventory_full`, then routes back to a bank and deposits ores.
+`tools/mining_runner.py` runs normal-gameplay mining loops with route learning and banking. It uses the cache-backed world map to discover ore clusters near known bank places, scores sites by bank distance, current distance, rock density, ore XP, and respawn cost, routes with `route_runner.py`, chooses the best currently reachable ore with `find_nearest_rock`, mines with `mine_ore_until_inventory_full`, then routes back to a bank and deposits ores. Route batch output includes run diagnostics (`runReq`, `runBefore`, `runAfter`, `runSpent`, `expectedRunSpend`, `tps`, `tilesPerTick`, `runWarn`), and mining logs keep run-policy events plus any non-`none` route warnings. Each mining run also writes a sibling `.routes.jsonl` file with structured route-batch run-efficiency evidence.
 
 ```sh
 python3 agent-navigation/tools/mining_runner.py --list-sites --ores copper,tin,iron

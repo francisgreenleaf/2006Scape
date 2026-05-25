@@ -1603,6 +1603,8 @@ public class CombatAssistant {
 	public void resetPlayerAttack() {
 		player.usingMagic = false;
 		player.npcIndex = 0;
+		player.killingNpcIndex = 0;
+		player.oldNpcIndex = 0;
 		player.faceUpdate(0);
 		player.playerIndex = 0;
 		player.getPlayerAssistant().resetFollow();

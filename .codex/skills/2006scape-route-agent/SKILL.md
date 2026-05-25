@@ -111,7 +111,7 @@ python3 agent-navigation/tools/route_runner.py --to PLACE --orient --json --run-
 
 It performs one observe, graph plan, route evaluation, clipped-path preview, optional suspicious-route context map, and compact run-policy summary. Use it before uncertain long legs instead of manually chaining observe, route-eval, preview, and map commands.
 
-For low-token long-route execution, prefer `agent-navigation/tools/route_runner.py --to PLACE --run-reserve auto` after observing current state. It wraps `router.py`, preflights local legs, preserves energy for known run-required hazards using preview length before each batch, issues batch movement, and treats each batch result as the next observation.
+For low-token long-route execution, prefer `agent-navigation/tools/route_runner.py --to PLACE --run-reserve auto` after observing current state. It wraps `router.py`, preflights local legs, preserves energy for known run-required hazards using preview length before each batch, issues batch movement, and treats each batch result as the next observation. While it runs, poll terminal output at the expected batch duration (`maxTicks * 600ms` plus a small buffer) instead of every few seconds unless there is a safety reason to short-poll.
 
 Coordinate targets are valid for frontier/routing work:
 

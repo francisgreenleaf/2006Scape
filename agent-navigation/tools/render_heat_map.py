@@ -47,4 +47,7 @@ if __name__ == "__main__":
         default_running_overlay=True,
         default_coverage_heatmap=True,
         default_coverage_heat_alpha=0.38,
+        default_coverage_heat_high_percentile=0.94,
+        default_coverage_heat_gamma=0.90,
+        default_include_historical_agent_batch_traces=True,
     )

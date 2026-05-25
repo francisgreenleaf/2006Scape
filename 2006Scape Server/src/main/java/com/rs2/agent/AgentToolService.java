@@ -27,6 +27,7 @@ import com.rs2.game.content.skills.cooking.Cooking;
 import com.rs2.game.content.skills.core.Fishing;
 import com.rs2.game.content.skills.core.Mining;
 import com.rs2.agent.AgentSmithingPlanner.ItemValueProvider;
+import com.rs2.game.content.skills.fletching.LogCutting;
 import com.rs2.game.content.skills.firemaking.Firemaking;
 import com.rs2.game.content.skills.firemaking.LogData;
 import com.rs2.agent.AgentSmithingPlanner.SmithingChoice;
@@ -69,6 +70,7 @@ public class AgentToolService {
     private static final long MINING_RECLICK_COOLDOWN_MS = 1800L;
     private static final int COINS = AgentCombatPlanner.coinsItemId();
     private static final int HAMMER = 2347;
+    private static final int KNIFE = 946;
     private static final String SMITHING_BANK_LANDMARK = "varrock west bank";
     private static final String SMITHING_FURNACE_LANDMARK = "al kharid furnace";
     private static final String SMITHING_ANVIL_LANDMARK = "varrock west anvils";
@@ -99,6 +101,24 @@ public class AgentToolService {
     };
     private static final int[] RAW_COOKABLE_FOOD_IDS = {
             377, 335, 331, 321, 317, 2132, 2138
+    };
+    private static final int[] FLETCHING_PRODUCT_ITEM_IDS = {
+            52, 50, 48, 54, 56, 60, 58, 64, 62, 68, 66, 72, 70
+    };
+    private static final FletchingChoice[] FLETCHING_CHOICES = {
+            new FletchingChoice(1511, 52, 1, 5.0D),
+            new FletchingChoice(1511, 50, 5, 5.0D),
+            new FletchingChoice(1511, 48, 10, 10.0D),
+            new FletchingChoice(1521, 54, 20, 16.5D),
+            new FletchingChoice(1521, 56, 25, 25.0D),
+            new FletchingChoice(1519, 60, 35, 33.3D),
+            new FletchingChoice(1519, 58, 40, 41.5D),
+            new FletchingChoice(1517, 64, 50, 50.0D),
+            new FletchingChoice(1517, 62, 55, 58.3D),
+            new FletchingChoice(1515, 68, 65, 67.5D),
+            new FletchingChoice(1515, 66, 70, 70.0D),
+            new FletchingChoice(1513, 72, 80, 83.25D),
+            new FletchingChoice(1513, 70, 85, 91.5D)
     };
     private static final ConcurrentMap<Integer, Long> MINING_CLICK_COOLDOWN_UNTIL =
             new ConcurrentHashMap<Integer, Long>();
@@ -204,6 +224,9 @@ public class AgentToolService {
         }
         if ("light_fire".equals(tool)) {
             return lightFire(player, arguments);
+        }
+        if ("fletch_logs".equals(tool)) {
+            return fletchLogs(player, arguments);
         }
         if ("open_nearest_shop".equals(tool)) {
             return openNearestShop(player, arguments);
@@ -1709,6 +1732,8 @@ public class AgentToolService {
         JsonArray soldItems = new JsonArray();
         boolean smithingProducts = "smithing products".equals(category) || "smithing_products".equals(category)
                 || "smithing".equals(category) || "armor".equals(category) || "armour".equals(category);
+        boolean fletchingProducts = "fletching products".equals(category) || "fletching_products".equals(category)
+                || "fletching".equals(category) || "bows".equals(category) || "unstrung bows".equals(category);
         for (int i = 0; i < player.playerItems.length && sold < maxAmount; i++) {
             int storedId = player.playerItems[i];
             if (storedId <= 0) {
@@ -1721,11 +1746,14 @@ public class AgentToolService {
             if (smithingProducts && !AgentSmithingPlanner.isSmithingProduct(itemId)) {
                 continue;
             }
+            if (fletchingProducts && !isFletchingProductItem(itemId)) {
+                continue;
+            }
             String itemName = normalize(DeprecatedItems.getItemName(itemId));
             if (!name.isEmpty() && !itemName.contains(name)) {
                 continue;
             }
-            if (itemIds.isEmpty() && name.isEmpty() && !smithingProducts) {
+            if (itemIds.isEmpty() && name.isEmpty() && !smithingProducts && !fletchingProducts) {
                 continue;
             }
             int amount = Math.min(Math.max(1, player.playerItemsN[i]), maxAmount - sold);
@@ -1752,6 +1780,41 @@ public class AgentToolService {
         result.addProperty("sold", sold);
         result.addProperty("coinsReceived", coinsReceived);
         result.add("soldItems", soldItems);
+        addPlayerState(result, player);
+        return result;
+    }
+
+    private static JsonObject fletchLogs(Player player, JsonObject arguments) {
+        if (player.playerIsFletching || player.isFletching) {
+            JsonObject result = success("Already fletching; wait for the current fletching action to finish.");
+            addPlayerState(result, player);
+            return result;
+        }
+        if (!player.getItemAssistant().playerHasItem(KNIFE)) {
+            JsonObject result = failure("A knife is required to fletch logs.");
+            addPlayerState(result, player);
+            return result;
+        }
+        FletchingChoice choice = bestFletchingChoice(player, arguments);
+        if (choice == null) {
+            JsonObject result = failure("No fletchable logs are available for the current Fletching level and request.");
+            addPlayerState(result, player);
+            return result;
+        }
+        int available = countInventoryItem(player, choice.logId);
+        int amount = Math.max(1, Math.min(available, getInt(arguments, "amount", available)));
+        player.stopMovement();
+        player.endCurrentTask();
+        player.getPlayerAssistant().resetFollow();
+        player.getCombatAssistant().resetPlayerAttack();
+        SkillHandler.resetSkills(player);
+        player.isBanking = false;
+        player.getFletching().log = choice.logId;
+        LogCutting.cutLog(player, choice.productId, choice.level, choice.xp, amount);
+        JsonObject result = success("Started fletching " + DeprecatedItems.getItemName(choice.productId) + ".");
+        result.addProperty("amount", amount);
+        result.addProperty("estimatedTicks", amount * 3);
+        result.add("fletchingChoice", fletchingChoiceJson(choice));
         addPlayerState(result, player);
         return result;
     }
@@ -3907,6 +3970,97 @@ public class AgentToolService {
         return countInventoryItem(player, HAMMER) > 0;
     }
 
+    static int countInventoryFletchableLogs(Player player) {
+        int count = 0;
+        for (int i = 0; i < player.playerItems.length; i++) {
+            int storedId = player.playerItems[i];
+            if (storedId > 0 && bestFletchingChoiceForLog(player.playerLevel[Constants.FLETCHING], storedId - 1, "") != null) {
+                count += Math.max(1, player.playerItemsN[i]);
+            }
+        }
+        return count;
+    }
+
+    static int countInventoryFletchingProducts(Player player) {
+        int count = 0;
+        for (int i = 0; i < player.playerItems.length; i++) {
+            int storedId = player.playerItems[i];
+            if (storedId > 0 && isFletchingProductItem(storedId - 1)) {
+                count += Math.max(1, player.playerItemsN[i]);
+            }
+        }
+        return count;
+    }
+
+    static boolean isFletchingProductItem(int itemId) {
+        for (int productId : FLETCHING_PRODUCT_ITEM_IDS) {
+            if (productId == itemId) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static FletchingChoice bestFletchingChoiceForLog(int fletchingLevel, int logId, String productPreference) {
+        String normalizedPreference = normalize(productPreference);
+        FletchingChoice best = null;
+        for (FletchingChoice choice : FLETCHING_CHOICES) {
+            if (choice.logId != logId || choice.level > fletchingLevel) {
+                continue;
+            }
+            if (!normalizedPreference.isEmpty() && !choice.matchesProductPreference(normalizedPreference)) {
+                continue;
+            }
+            if (best == null || choice.xp > best.xp || (choice.xp == best.xp && choice.level > best.level)) {
+                best = choice;
+            }
+        }
+        return best;
+    }
+
+    private static FletchingChoice bestFletchingChoice(Player player, JsonObject arguments) {
+        int requestedLogId = getInt(arguments, "logId", getInt(arguments, "itemId", -1));
+        int requestedProductId = getInt(arguments, "productId", -1);
+        String logName = normalize(getString(arguments, "log", getString(arguments, "resource", "")));
+        String productPreference = getString(arguments, "product", getString(arguments, "make", ""));
+        FletchingChoice best = null;
+        for (FletchingChoice choice : FLETCHING_CHOICES) {
+            if (requestedLogId >= 0 && choice.logId != requestedLogId) {
+                continue;
+            }
+            if (requestedProductId >= 0 && choice.productId != requestedProductId) {
+                continue;
+            }
+            if (!logName.isEmpty() && !normalize(DeprecatedItems.getItemName(choice.logId)).contains(logName)) {
+                continue;
+            }
+            if (!normalize(productPreference).isEmpty() && !choice.matchesProductPreference(normalize(productPreference))) {
+                continue;
+            }
+            if (choice.level > player.playerLevel[Constants.FLETCHING]) {
+                continue;
+            }
+            if (countInventoryItem(player, choice.logId) <= 0) {
+                continue;
+            }
+            if (best == null || choice.xp > best.xp || (choice.xp == best.xp && choice.level > best.level)) {
+                best = choice;
+            }
+        }
+        return best;
+    }
+
+    private static JsonObject fletchingChoiceJson(FletchingChoice choice) {
+        JsonObject json = new JsonObject();
+        json.addProperty("logId", choice.logId);
+        json.addProperty("logName", DeprecatedItems.getItemName(choice.logId));
+        json.addProperty("productId", choice.productId);
+        json.addProperty("productName", DeprecatedItems.getItemName(choice.productId));
+        json.addProperty("level", choice.level);
+        json.addProperty("xp", choice.xp);
+        return json;
+    }
+
     private static int totalCoins(Player player) {
         return countInventoryItem(player, COINS) + countBankItem(player, COINS);
     }
@@ -4727,6 +4881,32 @@ public class AgentToolService {
             return ItemConstants.ARROWS;
         }
         return -1;
+    }
+
+    static final class FletchingChoice {
+        final int logId;
+        final int productId;
+        final int level;
+        final double xp;
+
+        private FletchingChoice(int logId, int productId, int level, double xp) {
+            this.logId = logId;
+            this.productId = productId;
+            this.level = level;
+            this.xp = xp;
+        }
+
+        private boolean matchesProductPreference(String preference) {
+            if (preference == null || preference.isEmpty() || "best".equals(preference)) {
+                return true;
+            }
+            String productName = normalize(DeprecatedItems.getItemName(productId));
+            if (productName.contains(preference)) {
+                return true;
+            }
+            return ("arrow".equals(preference) || "arrow shafts".equals(preference) || "shafts".equals(preference))
+                    && productId == 52;
+        }
     }
 
     private static class ItemMatch {

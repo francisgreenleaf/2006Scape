@@ -204,15 +204,61 @@ def observe():
     return player_from(call_tool("observe_state", {}))
 
 
-def ensure_run(player, args):
+def run_delta(before, after):
+    if before is None or after is None:
+        return {}
+    before_energy = int(before.get("runEnergy", 0) or 0)
+    after_energy = int(after.get("runEnergy", 0) or 0)
+    before_enabled = bool(before.get("runEnabled", False))
+    after_enabled = bool(after.get("runEnabled", False))
+    return {
+        "runBefore": {
+            "enabled": before_enabled,
+            "energy": before_energy,
+        },
+        "runAfter": {
+            "enabled": after_enabled,
+            "energy": after_energy,
+        },
+        "runEnabledBefore": before_enabled,
+        "runEnabledAfter": after_enabled,
+        "runEnergyBefore": before_energy,
+        "runEnergyAfter": after_energy,
+        "runEnergySpent": max(0, before_energy - after_energy),
+    }
+
+
+def ensure_run(player, args, handle=None, reason="general"):
+    before = compact_player(player)
+    event = {
+        "reason": reason,
+        "requestedRun": not bool(args.no_enable_run),
+        "minRunEnergy": int(args.min_run_energy),
+        "before": before,
+    }
     if args.no_enable_run:
+        event["decision"] = "disabled"
+        write_event(handle, "run_policy", event)
         return player
     if bool(player.get("runEnabled", False)):
+        event["decision"] = "already_enabled"
+        event["after"] = before
+        write_event(handle, "run_policy", event)
         return player
     if int(player.get("runEnergy", 0) or 0) < args.min_run_energy:
+        event["decision"] = "below_min_energy"
+        event["after"] = before
+        write_event(handle, "run_policy", event)
         return player
     result = call_tool("set_run", {"enabled": True})
-    return player_from(result)
+    updated = player_from(result)
+    event["decision"] = "set_run"
+    event["success"] = bool(result.get("success"))
+    event["message"] = result.get("message")
+    event["after"] = compact_player(updated)
+    event["runDelta"] = run_delta(before, event["after"])
+    write_event(handle, "run_policy", event)
+    return updated
 
 
 def count_inventory_item(player, item_id):
@@ -231,6 +277,14 @@ def count_bank_item(player, item_id):
     return total
 
 
+def count_equipment_item(player, item_id):
+    total = 0
+    for item in player.get("equipment", []) or []:
+        if int(item.get("id", -1)) == int(item_id):
+            total += int(item.get("amount", 0) or 0)
+    return total
+
+
 def inventory_ore_count(player, ores=None):
     wanted = set(ores or ORE_DEFS.keys())
     total = 0
@@ -239,13 +293,18 @@ def inventory_ore_count(player, ores=None):
     return total
 
 
-def best_usable_pickaxe(player, in_bank=False):
+def best_usable_pickaxe(player, in_bank=False, equipped=False):
     skills = player.get("skills") or {}
     mining = int((skills.get("mining") or {}).get("level", 1) or 1)
     for pickaxe in PICKAXES:
         if mining < pickaxe["level"]:
             continue
-        count = count_bank_item(player, pickaxe["itemId"]) if in_bank else count_inventory_item(player, pickaxe["itemId"])
+        if in_bank:
+            count = count_bank_item(player, pickaxe["itemId"])
+        elif equipped:
+            count = count_equipment_item(player, pickaxe["itemId"])
+        else:
+            count = count_inventory_item(player, pickaxe["itemId"])
         if count > 0:
             return pickaxe
     return None
@@ -266,6 +325,16 @@ def write_event(handle, event, data):
     record.update(data)
     handle.write(json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n")
     handle.flush()
+
+
+def route_evidence_path(handle):
+    if handle is None:
+        return ""
+    name = getattr(handle, "name", "") or ""
+    if not name:
+        return ""
+    path = Path(name)
+    return str(path.with_name(path.stem + ".routes.jsonl"))
 
 
 def load_places():
@@ -431,12 +500,32 @@ def route_to_target(target, args, handle, reason):
         str(args.max_walk_distance),
         "--max-ticks",
         str(args.route_max_ticks),
+        "--force-run-min-preview-steps",
+        str(args.force_run_min_preview_steps),
+        "--run-diagnostics-min-steps",
+        str(args.run_diagnostics_min_steps),
+        "--run-walk-warning-ticks-per-step",
+        str(args.run_walk_warning_ticks_per_step),
+        "--run-warning-max-energy-spent",
+        str(args.run_warning_max_energy_spent),
     ]
     if args.profile:
         command.extend(["--profile", args.profile])
     if args.no_enable_run:
         command.append("--no-enable-run")
-    write_event(handle, "route_start", {"reason": reason, "target": target, "command": command[1:]})
+    if args.force_run_before_long_leg:
+        command.append("--force-run-before-long-leg")
+    else:
+        command.append("--no-force-run-before-long-leg")
+    route_evidence = route_evidence_path(handle)
+    if route_evidence:
+        command.extend(["--evidence-jsonl", route_evidence])
+    write_event(handle, "route_start", {
+        "reason": reason,
+        "target": target,
+        "command": command[1:],
+        "routeEvidencePath": route_evidence,
+    })
     proc = subprocess.Popen(
         command,
         cwd=str(REPO_ROOT),
@@ -454,11 +543,14 @@ def route_to_target(target, args, handle, reason):
                 write_event(handle, "route_output", {"reason": reason, "line": line})
     stderr = proc.stderr.read().strip() if proc.stderr is not None else ""
     code = proc.wait()
+    run_warning_lines = [line for line in stdout_lines if "runWarn=" in line and "runWarn=none" not in line]
     write_event(handle, "route_finish", {
         "reason": reason,
         "target": target,
         "returncode": code,
         "stdoutTail": stdout_lines[-8:],
+        "runWarningLines": run_warning_lines[-5:],
+        "routeEvidencePath": route_evidence,
         "stderr": stderr[:1000],
     })
     return code == 0
@@ -474,6 +566,13 @@ def route_to_bank(site, args, handle):
 
 
 def ensure_pickaxe(player, site, args, handle):
+    equipped = best_usable_pickaxe(player, equipped=True)
+    if equipped:
+        write_event(handle, "equipped_pickaxe", {
+            "pickaxe": equipped,
+            "player": compact_player(player),
+        })
+        return player
     carried = best_usable_pickaxe(player, in_bank=False)
     if carried:
         return player
@@ -570,7 +669,7 @@ def choose_live_ore(player, site, ores, args, handle):
     return fallback
 
 
-def mine_batch(ore, site, args, handle):
+def mine_batch(ore, site, args, handle, start_player=None):
     payload = {
         "ore": ore,
         "maxDistance": int(site["rockScanDistance"]),
@@ -588,6 +687,7 @@ def mine_batch(ore, site, args, handle):
         "success": bool(result.get("success")),
         "batchStatus": result.get("batchStatus"),
         "elapsedSeconds": elapsed,
+        "runDelta": run_delta(compact_player(start_player) if start_player else None, compact_player(player)),
         "player": compact_player(player),
         "message": result.get("message"),
     })
@@ -705,7 +805,7 @@ def run(args):
             "logPath": log_path,
         })
         player = observe()
-        player = ensure_run(player, args)
+        player = ensure_run(player, args, handle, "run_start")
         site = choose_site(ores, args, player)
         write_event(handle, "site_selected", {"site": site, "player": compact_player(player)})
         log("selected mining site {} bank={} tile={} ores={}".format(
@@ -727,10 +827,11 @@ def run(args):
             if bool(player.get("isDead")) or bool(player.get("isInCombat")):
                 write_event(handle, "safety_stop", {"player": compact_player(player)})
                 raise RuntimeError("stopping because the player is dead or in combat")
+            player = ensure_run(player, args, handle, "loop")
             site = choose_site(ores, args, player)
             player = route_to_site_if_needed(player, site, args, handle)
             ore = choose_live_ore(player, site, ores, args, handle)
-            result = mine_batch(ore, site, args, handle)
+            result = mine_batch(ore, site, args, handle, player)
             player = player_from(result)
             batches_done += 1
             if args.target_mining_level and mining_level(player) >= args.target_mining_level:
@@ -806,6 +907,18 @@ def main(argv=None):
     parser.add_argument("--run-reserve", default="auto")
     parser.add_argument("--min-run-energy", type=int, default=10)
     parser.add_argument("--no-enable-run", action="store_true")
+    parser.add_argument("--force-run-before-long-leg", action="store_true", default=True,
+                        help="Ask route_runner to refresh set_run true before long run-approved legs.")
+    parser.add_argument("--no-force-run-before-long-leg", dest="force_run_before_long_leg", action="store_false",
+                        help="Do not ask route_runner to refresh run state before long legs.")
+    parser.add_argument("--force-run-min-preview-steps", type=int, default=8,
+                        help="Minimum route preview path length that counts as a long leg for run refresh.")
+    parser.add_argument("--run-diagnostics-min-steps", type=int, default=8,
+                        help="Minimum route preview path length before walking-speed run warnings.")
+    parser.add_argument("--run-walk-warning-ticks-per-step", type=float, default=0.85,
+                        help="Warn when route batches supposedly running are this slow or slower.")
+    parser.add_argument("--run-warning-max-energy-spent", type=int, default=0,
+                        help="Warn only when route-batch run energy spent is at or below this value.")
     parser.add_argument("--bank-all-ores", action="store_true", default=True)
     parser.add_argument("--no-bank-all-ores", dest="bank_all_ores", action="store_false")
     parser.add_argument("--auto-buy-bronze-pickaxe", action="store_true")

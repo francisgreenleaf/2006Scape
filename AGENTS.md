@@ -158,6 +158,7 @@ Agent session logging:
 Dynamic tools currently supported:
 
 - `rs.observe_state`
+- `rs.set_run`
 - `rs.send_public_chat`
 - `rs.plan_combat_training`
 - `rs.continue_dialogue`
@@ -210,7 +211,7 @@ Gameplay guardrails:
 
 - Keep actions server-authoritative and routed through existing mechanics such as `PlayerAssistant.playerWalk`, `CombatAssistant.attackNpc`, `ClickObject`, and `Mining.startMining`.
 - Prefer server-side batch tools for long-running actions. Use `travel_to_landmark_until_arrived` or `walk_to_tile_until_arrived` instead of travel/walk plus repeated one-tick waits, `mine_ore_until_inventory_full` or `chop_tree_until_inventory_full` instead of polling per resource, and `wait_until_idle` after production actions such as smelting, smithing, cooking, fishing, or combat waits.
-- Treat a batch tool response as the next observation; do not immediately call `observe_state` unless the returned state is missing needed context.
+- Treat a batch tool response as the next observation; do not immediately call `observe_state` unless the returned state is missing needed context. When waiting on a long-running batch command, estimate the likely completion interval from `maxTicks` or the action loop and poll near that time instead of every few seconds, unless combat, death, a blocker, or near-term completion is likely.
 - Do not add screen automation, admin teleports, item spawning, or direct player state edits for agent behavior.
 - Preserve session scoping: reject offline, disconnected, dead, expired-token, and wrong-player sessions.
 - Keep the Codex thread read-only with `approvalPolicy: "never"` and no network access at turn time. The model should use only `rs` dynamic tools for gameplay.

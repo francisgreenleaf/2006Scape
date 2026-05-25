@@ -2543,6 +2543,37 @@
         "minFood": 0,
         "notes": "Reached live on 2026-05-25 from Ardougne Market. The player state reported inBankArea=true at 2654,3283 and a reachable Bank booth object 2213 at 2656,3283 with interaction target 2655,3283. Do not treat generic Bank table objects as bank proof; bank identity should come from minimap bank symbols, actual Bank booth/chest/Banker evidence, or inBankArea/interface proof."
       }
+    },
+    {
+      "id": "ardougne_north_bank",
+      "name": "Ardougne North Bank",
+      "aliases": [
+        "ardy north bank",
+        "ardougne north bank",
+        "east ardougne north bank",
+        "2618 3332"
+      ],
+      "kind": "bank",
+      "region": "ardougne",
+      "tile": {
+        "x": 2618,
+        "y": 3332,
+        "height": 0
+      },
+      "arrivalRadius": 4,
+      "tags": [
+        "surface",
+        "members",
+        "city",
+        "bank",
+        "verified"
+      ],
+      "safety": {
+        "risk": "medium",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Reached live on 2026-05-25 from Ardougne South Bank with run enabled, HP 10, and no combat. Bank proof came from the context-map bank marker and reachable in-range Bank booth object 2213 at 2618,3331 with interaction target 2618,3332; decorative Bank table objects are not bank proof."
+      }
     }
   ]
 }

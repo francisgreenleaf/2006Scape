@@ -90,6 +90,27 @@ public class AgentPassiveTraceLogTest {
     }
 
     @Test
+    public void ignoresStaleKillingNpcIndexAfterCombatEnds() throws Exception {
+        TestPlayer player = new TestPlayer(15);
+        player.playerName = "Respawn Tester";
+        player.absX = 3222;
+        player.absY = 3218;
+        player.heightLevel = 0;
+        player.playerLevel[Constants.HITPOINTS] = 10;
+        player.killingNpcIndex = 1494;
+
+        AgentPassiveTraceLog.INSTANCE.recordTick(player, 1L, 3222, 3218, 0, 10, 100);
+
+        File logFile = findFile(logDirectory, "respawn_tester.jsonl");
+        assertNotNull(logFile);
+        List<String> lines = Files.readAllLines(logFile.toPath(), StandardCharsets.UTF_8);
+        assertEquals(1, lines.size());
+        assertTrue(lines.get(0).contains("\"event\":\"state\""));
+        assertTrue(lines.get(0).contains("\"isInCombat\":false"));
+        assertTrue(lines.get(0).contains("\"combat\":false"));
+    }
+
+    @Test
     public void recordsObjectClickEventsWithObjectMetadata() throws Exception {
         TestPlayer player = new TestPlayer(14);
         player.playerName = "Object Tester";

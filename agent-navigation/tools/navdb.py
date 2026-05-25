@@ -354,6 +354,25 @@ def tile_from_record(record, name):
         return None
 
 
+def record_int(record, key, default=0):
+    try:
+        return int(record.get(key) or default)
+    except (TypeError, ValueError):
+        return default
+
+
+def record_in_combat(record):
+    if record.get("isInCombat") is not True:
+        return False
+    if record_int(record, "npcIndex") > 0:
+        return True
+    if record_int(record, "underAttackBy") > 0:
+        return True
+    if record_int(record, "underAttackBy2") > 0:
+        return True
+    return record_int(record, "hitpointsLost") > 0
+
+
 def is_stationary_state_record(record):
     event = str(record.get("event") or record.get("batchStatus") or "").strip()
     if event != "state" or record.get("moved") is True:
@@ -366,7 +385,7 @@ def is_stationary_state_record(record):
         return False
     return not (
         record.get("isDead") is True
-        or record.get("isInCombat") is True
+        or record_in_combat(record)
         or int(record.get("hitpointsLost") or 0) > 0
     )
 
@@ -429,6 +448,14 @@ def new_graph_edge(from_key, to_key):
         "objects": {},
         "objectOptions": {},
         "objectPhases": {},
+        "routeBatchSamples": 0,
+        "runRequestedBatches": 0,
+        "runEffectiveBatches": 0,
+        "runIneffectiveBatches": 0,
+        "expectedRunSpend": 0,
+        "expectedSavedTicksFromRun": 0,
+        "observedSavedTicksVsWalkEstimate": 0,
+        "observedExtraTicksVsRunEstimate": 0,
         "lastSeen": "",
     }
 
@@ -470,6 +497,24 @@ def object_info_key(info):
     return "{}:{}{}".format(object_id, name, suffix)
 
 
+def record_tick_weight(record):
+    for key in ("batchTicks", "ticks"):
+        try:
+            value = int(record.get(key) or 0)
+        except (TypeError, ValueError):
+            value = 0
+        if value > 0:
+            return value
+    return 1
+
+
+def run_efficiency_int(efficiency, key):
+    try:
+        return int(efficiency.get(key) or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def add_trace_edge(edges, previous_key, current_key, record, trace_id, inferred_reverse=False):
     edge_key = (previous_key, current_key)
     edge = edges.get(edge_key)
@@ -481,15 +526,33 @@ def add_trace_edge(edges, previous_key, current_key, record, trace_id, inferred_
         edge["failures"] += 1
     else:
         edge["successes"] += 1
-    edge["ticks"] += 1
+    tick_weight = record_tick_weight(record)
+    edge["ticks"] += tick_weight
     if record.get("runEnabled") is True:
-        edge["runTicks"] += 1
+        edge["runTicks"] += tick_weight
     else:
-        edge["walkTicks"] += 1
+        edge["walkTicks"] += tick_weight
     edge["energySpent"] += max(0, int(record.get("runEnergySpent") or 0))
     edge["hitpointsLost"] += max(0, int(record.get("hitpointsLost") or 0))
-    if record.get("isInCombat") is True:
-        edge["combatTicks"] += 1
+    if record_in_combat(record):
+        edge["combatTicks"] += tick_weight
+    run_efficiency = record.get("runEfficiency")
+    if isinstance(run_efficiency, dict):
+        edge["routeBatchSamples"] += 1
+        if run_efficiency.get("requestedRun") is True:
+            edge["runRequestedBatches"] += 1
+        warnings = run_efficiency.get("warnings") or []
+        if "run_requested_but_speed_looks_like_walking" in warnings:
+            edge["runIneffectiveBatches"] += 1
+        elif (run_efficiency.get("requestedRun") is True
+              and run_efficiency_int(run_efficiency, "observedSavedTicksVsWalkEstimate") > 0):
+            edge["runEffectiveBatches"] += 1
+        edge["expectedRunSpend"] += run_efficiency_int(run_efficiency, "expectedRunSpend")
+        edge["expectedSavedTicksFromRun"] += run_efficiency_int(run_efficiency, "expectedSavedTicksFromRun")
+        edge["observedSavedTicksVsWalkEstimate"] += run_efficiency_int(
+            run_efficiency, "observedSavedTicksVsWalkEstimate")
+        edge["observedExtraTicksVsRunEstimate"] += run_efficiency_int(
+            run_efficiency, "observedExtraTicksVsRunEstimate")
     tool = str(record.get("tool") or "")
     if tool:
         edge["tools"][tool] = edge["tools"].get(tool, 0) + 1
@@ -520,7 +583,7 @@ def reversible_trace_record(record, previous, tile):
         return False
     if is_trace_failure(record):
         return False
-    if record.get("isDead") is True or record.get("isInCombat") is True:
+    if record.get("isDead") is True or record_in_combat(record):
         return False
     if int(record.get("hitpointsLost") or 0) > 0:
         return False

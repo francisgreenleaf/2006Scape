@@ -144,7 +144,7 @@ def failure_tiles(args):
     for record in navdb.iter_movement_traces(
             args.trace_file, args.trace_profile, args.include_unscoped_traces):
         if (navdb.is_trace_failure(record)
-                or record.get("isInCombat") is True
+                or navdb.record_in_combat(record)
                 or int(record.get("hitpointsLost") or 0) > 0):
             tile = navdb.tile_from_record(record, "tile")
             if tile:
@@ -227,6 +227,15 @@ def trace_edge_meta(trace_edge, evidence_adjusted):
         meta["objects"] = trace_edge.get("objects", {})
         meta["objectOptions"] = trace_edge.get("objectOptions", {})
         meta["objectPhases"] = trace_edge.get("objectPhases", {})
+    if trace_edge.get("routeBatchSamples", 0) > 0:
+        meta["routeBatchSamples"] = trace_edge.get("routeBatchSamples", 0)
+        meta["runRequestedBatches"] = trace_edge.get("runRequestedBatches", 0)
+        meta["runEffectiveBatches"] = trace_edge.get("runEffectiveBatches", 0)
+        meta["runIneffectiveBatches"] = trace_edge.get("runIneffectiveBatches", 0)
+        meta["expectedRunSpend"] = trace_edge.get("expectedRunSpend", 0)
+        meta["expectedSavedTicksFromRun"] = trace_edge.get("expectedSavedTicksFromRun", 0)
+        meta["observedSavedTicksVsWalkEstimate"] = trace_edge.get("observedSavedTicksVsWalkEstimate", 0)
+        meta["observedExtraTicksVsRunEstimate"] = trace_edge.get("observedExtraTicksVsRunEstimate", 0)
     return meta
 
 

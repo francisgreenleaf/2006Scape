@@ -36,7 +36,7 @@ When adding or changing an `rs.*` tool:
 5. Return a useful JSON result with `success`, a concise message, and state when it helps the next decision.
 6. Add or update focused tests when behavior is shared, risky, or has already regressed.
 
-Prefer batch tools for long-running actions. `walk_to_tile_until_arrived`, `travel_to_landmark_until_arrived`, `mine_ore_until_inventory_full`, `chop_tree_until_inventory_full`, `wait_until_idle`, and durable goal tools exist to avoid one-tick polling.
+Prefer batch tools for long-running actions. `walk_to_tile_until_arrived`, `travel_to_landmark_until_arrived`, `mine_ore_until_inventory_full`, `chop_tree_until_inventory_full`, `wait_until_idle`, and durable goal tools exist to avoid one-tick polling. When observing an already-running batch command from a terminal session, estimate the likely completion interval and wait near that duration instead of polling every few seconds.
 
 ## Validation
 

@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Render the active profile movement map with running-route tinting.
-
-This keeps cache icons and place-label defaults, then adds a subtle route color
-shift where movement traces show actual or inferred running.
-"""
+"""Render the active profile movement map."""
 
 from pathlib import Path
 import os
@@ -35,4 +31,5 @@ if __name__ == "__main__":
         default_poi_mode="all",
         default_poi_icon_scale=1.0,
         default_running_overlay=True,
+        default_include_historical_agent_batch_traces=True,
     )

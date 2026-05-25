@@ -75,6 +75,23 @@ public class AgentToolServiceTest {
     }
 
     @Test
+    public void fletchingPlannerChoosesBestUnlockedProductForLogs() {
+        assertEquals(52, AgentToolService.bestFletchingChoiceForLog(1, 1511, "").productId);
+        assertEquals(48, AgentToolService.bestFletchingChoiceForLog(10, 1511, "").productId);
+        assertEquals(56, AgentToolService.bestFletchingChoiceForLog(25, 1521, "").productId);
+        assertEquals(58, AgentToolService.bestFletchingChoiceForLog(40, 1519, "").productId);
+        assertEquals(64, AgentToolService.bestFletchingChoiceForLog(50, 1517, "").productId);
+    }
+
+    @Test
+    public void fletchingSaleCategoryRecognizesBowProductsButNotLogs() {
+        assertTrue(AgentToolService.isFletchingProductItem(52));
+        assertTrue(AgentToolService.isFletchingProductItem(56));
+        assertFalse(AgentToolService.isFletchingProductItem(1511));
+        assertFalse(AgentToolService.isFletchingProductItem(946));
+    }
+
+    @Test
     public void walkTargetsStayInsideLoadedMapRegion() {
         int[] target = AgentToolService.boundedWalkTarget(3252, 3236, 400, 394, 3252, 3266);
 

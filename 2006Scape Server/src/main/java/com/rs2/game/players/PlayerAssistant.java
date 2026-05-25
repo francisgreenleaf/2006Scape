@@ -1389,6 +1389,10 @@ public class PlayerAssistant {
 		}
 		player.faceUpdate(0);
 		player.npcIndex = 0;
+		player.killingNpcIndex = 0;
+		player.oldNpcIndex = 0;
+		player.underAttackBy = 0;
+		player.underAttackBy2 = 0;
 		player.playerIndex = 0;
 		player.stopMovement();
 		if (player.inCw()) {

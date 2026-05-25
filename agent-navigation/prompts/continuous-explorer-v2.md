@@ -69,7 +69,7 @@ Say only material progress, route milestones, and blockers:
 running to Draynor checkpoint 3120,3208
 reached Draynor edge; continuing toward Port Sarim
 blocked west at 3096,3169; backing out and taking northern arc
-map updated: agent-navigation/topology/surface-routes.png
+map updated: agent-navigation/topology/movement-topology-v4.png
 ```
 
 Do not repeatedly report unchanged HP, unchanged food, unchanged validation success, or routine nearby NPCs.
@@ -239,28 +239,26 @@ Map files:
 
 ```text
 agent-navigation/tools/cache_world_map.py
-agent-navigation/topology/surface-routes.png
 agent-navigation/topology/movement-topology-v4.png
 agent-navigation/topology/movement-topology-v5-heatmap.png
 agent-navigation/topology/movement-topology-v6.png
 ```
 
-Render canonical maps by overwriting the same PNGs. The active movement topology wrappers use the cache-backed world map as their background by default and read the latest unified movement traces at render time. During live route exploration, prefer `render_agent_context_map.py`; it writes ignored timestamped context artifacts under `agent-navigation/.local/context-maps/<date>/`.
+Render canonical active maps by overwriting the same three PNGs. The active movement topology wrappers use the cache-backed world map as their background by default and read the latest unified movement traces at render time. During live route exploration, prefer `render_agent_context_map.py`; it writes ignored timestamped context artifacts under `agent-navigation/.local/context-maps/<date>/`.
 
 ```sh
-agent-navigation/tools/cache_world_map.py --output agent-navigation/topology/cache-world-map.png --summary agent-navigation/topology/cache-world-map.json
-agent-navigation/tools/render_navigation_png.py --region all --output agent-navigation/topology/surface-routes.png
-agent-navigation/tools/render_movement_topology_v4.py
-agent-navigation/tools/render_movement_topology_v5.py
-agent-navigation/tools/render_movement_topology_v6.py
+agent-navigation/tools/cache_world_map.py --output agent-navigation/.local/map-summaries/cache-world-map.png --summary agent-navigation/.local/map-summaries/cache-world-map.json
+agent-navigation/tools/render_profile_map.py
+agent-navigation/tools/render_heat_map.py
+agent-navigation/tools/render_fog_map.py
 ```
 
-Do not create one-off route PNGs in `agent-navigation/topology/`. Replace `surface-routes.png` and the active movement map PNG/JSON pairs only. Legacy `movement-topology.png`, direct V2/V3 outputs, shortcut/proof context maps, and stable `agent-context-map.*` exports are not current products.
+Do not create one-off route PNGs in `agent-navigation/topology/`. Keep only the three active map PNGs there; JSON summaries, surface-route renders, cache-map renders, shortcut/proof context maps, and stable `agent-context-map.*` exports belong under ignored `.local` paths unless the user explicitly asks otherwise.
 
 When the user asks for the PNG, render it, then show it with an absolute local path:
 
 ```md
-![surface routes](/Users/kevin/Documents/2006Scape/agent-navigation/topology/surface-routes.png)
+![Mr. Flame map](/Users/kevin/Documents/2006Scape/agent-navigation/topology/movement-topology-v4.png)
 ```
 
 ## Current learned context from the prior rollout
@@ -320,11 +318,10 @@ Do not assume exact 3106,3198 is reachable from 3115,3186; movement settled at 3
 Do not push northwest toward the Black Knight with one bread.
 ```
 
-Latest known map render:
+Latest known active map render:
 
 ```text
-agent-navigation/topology/surface-routes.png
-surface-only, 2271x2461, 6 px/tile.
+agent-navigation/topology/movement-topology-v4.png
 ```
 
 Known map blocker:

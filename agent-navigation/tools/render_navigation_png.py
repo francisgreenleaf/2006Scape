@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Render navigation topology PNGs from agent-navigation data.
 
-Default output is a stable, overwritten surface map. The renderer uses only the
-Python standard library so agents can run it in the gameplay harness.
+Default output is an ignored, overwritten surface map. The renderer uses only
+the Python standard library so agents can run it in the gameplay harness.
 """
 
 import argparse
@@ -14,7 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"
-OUT = ROOT / "topology"
+OUT = ROOT / ".local" / "map-summaries"
 
 PALETTE = {
     "paper": (245, 239, 219),
@@ -151,27 +151,60 @@ class Canvas:
     def blend(self, x, y, color, alpha):
         if not (0 <= x < self.width and 0 <= y < self.height):
             return
-        old = self.get(x, y)
-        mixed = tuple(int(old[i] * (1 - alpha) + color[i] * alpha) for i in range(3))
-        self.set(x, y, mixed)
+        i = (y * self.width + x) * 3
+        if alpha >= 1.0:
+            self.pixels[i] = color[0]
+            self.pixels[i + 1] = color[1]
+            self.pixels[i + 2] = color[2]
+            return
+        inv = 1.0 - alpha
+        self.pixels[i] = int(self.pixels[i] * inv + color[0] * alpha)
+        self.pixels[i + 1] = int(self.pixels[i + 1] * inv + color[1] * alpha)
+        self.pixels[i + 2] = int(self.pixels[i + 2] * inv + color[2] * alpha)
 
     def rect(self, x0, y0, x1, y1, color):
         if x0 > x1:
             x0, x1 = x1, x0
         if y0 > y1:
             y0, y1 = y1, y0
-        for y in range(max(0, y0), min(self.height, y1 + 1)):
-            for x in range(max(0, x0), min(self.width, x1 + 1)):
-                self.set(x, y, color)
+        x_start = max(0, int(x0))
+        x_end = min(self.width, int(x1) + 1)
+        y_start = max(0, int(y0))
+        y_end = min(self.height, int(y1) + 1)
+        if x_start >= x_end or y_start >= y_end:
+            return
+        row = bytes(color) * (x_end - x_start)
+        stride = self.width * 3
+        offset = x_start * 3
+        for y in range(y_start, y_end):
+            start = y * stride + offset
+            self.pixels[start:start + len(row)] = row
 
     def blend_rect(self, x0, y0, x1, y1, color, alpha):
         if x0 > x1:
             x0, x1 = x1, x0
         if y0 > y1:
             y0, y1 = y1, y0
-        for y in range(max(0, y0), min(self.height, y1 + 1)):
-            for x in range(max(0, x0), min(self.width, x1 + 1)):
-                self.blend(x, y, color, alpha)
+        x_start = max(0, int(x0))
+        x_end = min(self.width, int(x1) + 1)
+        y_start = max(0, int(y0))
+        y_end = min(self.height, int(y1) + 1)
+        if x_start >= x_end or y_start >= y_end or alpha <= 0:
+            return
+        if alpha >= 1.0:
+            self.rect(x_start, y_start, x_end - 1, y_end - 1, color)
+            return
+        pixels = self.pixels
+        stride = self.width * 3
+        cr, cg, cb = color
+        inv = 1.0 - alpha
+        for y in range(y_start, y_end):
+            index = y * stride + x_start * 3
+            for _x in range(x_start, x_end):
+                pixels[index] = int(pixels[index] * inv + cr * alpha)
+                pixels[index + 1] = int(pixels[index + 1] * inv + cg * alpha)
+                pixels[index + 2] = int(pixels[index + 2] * inv + cb * alpha)
+                index += 3
 
     def circle(self, cx, cy, r, color, alpha=1.0, outline=False):
         rr = r * r
