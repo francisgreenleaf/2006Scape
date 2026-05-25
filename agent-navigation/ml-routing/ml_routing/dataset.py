@@ -12,7 +12,7 @@ from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple
 
 from . import VERSION
 from .common import compact_counter, distance, iter_jsonl, parse_tile, tile_key, utcnow, write_json, write_jsonl
-from .paths import ARTIFACT_ROOT, NAV_ROOT, ensure_artifact_dirs, ensure_tool_imports, timestamp_id
+from .paths import ARTIFACT_ROOT, NAV_ROOT, ensure_artifact_dirs, ensure_tool_imports, portable_artifact_path, timestamp_id
 
 
 def _load_nav_modules():
@@ -347,7 +347,7 @@ def export_dataset(args: SimpleNamespace) -> Dict[str, Any]:
         "runId": run_id,
         "generatedAt": generated_at,
         "profile": args.profile or "",
-        "outputDir": str(output_dir),
+        "outputDir": portable_artifact_path(output_dir),
         "counts": counts,
         "graph": graph_summary,
         "routeAttemptStatuses": dict(statuses),

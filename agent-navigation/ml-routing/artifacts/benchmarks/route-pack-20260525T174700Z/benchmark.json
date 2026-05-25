@@ -1,0 +1,6796 @@
+{
+  "actionableCount": 30,
+  "caseCount": 30,
+  "generatedAt": "2026-05-25T18:00:23Z",
+  "okCount": 30,
+  "outputDir": "artifacts/benchmarks/route-pack-20260525T174700Z",
+  "results": [
+    {
+      "actionable": true,
+      "detourRatio": 1.369,
+      "directCandidate": null,
+      "edgeSources": {
+        "cache_direct": 282
+      },
+      "estimatedTicks": 282.0,
+      "from": "lumbridge_castle_courtyard",
+      "mlScore": {
+        "confidence": 0.632203,
+        "predictedTicks": 284.82,
+        "riskScore": 0.05,
+        "score": 1024.992,
+        "sourceMix": {
+          "edge": 28,
+          "region": 11
+        }
+      },
+      "mode": "cache_direct",
+      "name": "lumbridge_to_varrock",
+      "next": {
+        "height": 0,
+        "x": 3229,
+        "y": 3233
+      },
+      "quality": "watch",
+      "routeDistance": 282,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "varrock_square",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
+        "--allow-frontier",
+        "--direct-if-preview",
+        "--probe-toward-target"
+      ],
+      "routeStepCount": 40,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 3222,
+          "y": 3218
+        },
+        {
+          "height": 0,
+          "x": 3228,
+          "y": 3220
+        },
+        {
+          "height": 0,
+          "x": 3232,
+          "y": 3221
+        },
+        {
+          "height": 0,
+          "x": 3231,
+          "y": 3226
+        },
+        {
+          "height": 0,
+          "x": 3230,
+          "y": 3232
+        },
+        {
+          "height": 0,
+          "x": 3228,
+          "y": 3238
+        },
+        {
+          "height": 0,
+          "x": 3229,
+          "y": 3242
+        },
+        {
+          "height": 0,
+          "x": 3231,
+          "y": 3247
+        },
+        {
+          "height": 0,
+          "x": 3231,
+          "y": 3257
+        },
+        {
+          "height": 0,
+          "x": 3229,
+          "y": 3261
+        },
+        {
+          "height": 0,
+          "x": 3239,
+          "y": 3262
+        },
+        {
+          "height": 0,
+          "x": 3240,
+          "y": 3269
+        },
+        {
+          "height": 0,
+          "x": 3240,
+          "y": 3274
+        },
+        {
+          "height": 0,
+          "x": 3236,
+          "y": 3279
+        },
+        {
+          "height": 0,
+          "x": 3237,
+          "y": 3288
+        },
+        {
+          "height": 0,
+          "x": 3238,
+          "y": 3298
+        },
+        {
+          "height": 0,
+          "x": 3238,
+          "y": 3303
+        },
+        {
+          "height": 0,
+          "x": 3229,
+          "y": 3312
+        },
+        {
+          "height": 0,
+          "x": 3226,
+          "y": 3314
+        },
+        {
+          "height": 0,
+          "x": 3221,
+          "y": 3319
+        },
+        {
+          "height": 0,
+          "x": 3221,
+          "y": 3326
+        },
+        {
+          "height": 0,
+          "x": 3211,
+          "y": 3336
+        },
+        {
+          "height": 0,
+          "x": 3206,
+          "y": 3340
+        },
+        {
+          "height": 0,
+          "x": 3198,
+          "y": 3350
+        },
+        {
+          "height": 0,
+          "x": 3188,
+          "y": 3351
+        },
+        {
+          "height": 0,
+          "x": 3184,
+          "y": 3358
+        },
+        {
+          "height": 0,
+          "x": 3184,
+          "y": 3364
+        },
+        {
+          "height": 0,
+          "x": 3187,
+          "y": 3370
+        },
+        {
+          "height": 0,
+          "x": 3182,
+          "y": 3375
+        },
+        {
+          "height": 0,
+          "x": 3182,
+          "y": 3380
+        },
+        {
+          "height": 0,
+          "x": 3179,
+          "y": 3388
+        },
+        {
+          "height": 0,
+          "x": 3171,
+          "y": 3396
+        },
+        {
+          "height": 0,
+          "x": 3171,
+          "y": 3406
+        },
+        {
+          "height": 0,
+          "x": 3171,
+          "y": 3416
+        },
+        {
+          "height": 0,
+          "x": 3171,
+          "y": 3425
+        },
+        {
+          "height": 0,
+          "x": 3181,
+          "y": 3426
+        },
+        {
+          "height": 0,
+          "x": 3186,
+          "y": 3428
+        },
+        {
+          "height": 0,
+          "x": 3196,
+          "y": 3429
+        },
+        {
+          "height": 0,
+          "x": 3205,
+          "y": 3429
+        },
+        {
+          "height": 0,
+          "x": 3206,
+          "y": 3428
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 282,
+        "runTileDistance": 24,
+        "segmentCount": 1,
+        "walkTileDistance": 258
+      },
+      "runSegments": [
+        {
+          "distance": 24,
+          "endIndex": 168,
+          "from": {
+            "height": 0,
+            "x": 3210,
+            "y": 3337
+          },
+          "hazardIds": [
+            "varrock_south_dark_wizards_unverified"
+          ],
+          "minRunEnergy": 60,
+          "startIndex": 144,
+          "to": {
+            "height": 0,
+            "x": 3188,
+            "y": 3351
+          }
+        }
+      ],
+      "score": 1024.992,
+      "selectedOverLearned": {
+        "previousQuality": "suspicious",
+        "previousRouteDistance": 311,
+        "previousStatus": "ok",
+        "reason": "cache-direct path reached the requested target with a shorter hazard-costed clipped route",
+        "savedTiles": 29
+      },
+      "status": "ok",
+      "targetDistanceIncreases": 2,
+      "to": "varrock_square"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 1.298,
+      "directCandidate": null,
+      "edgeSources": {
+        "cache_direct": 322
+      },
+      "estimatedTicks": 322.0,
+      "from": "lumbridge_castle_courtyard",
+      "mlScore": {
+        "confidence": 0.931871,
+        "predictedTicks": 258.47,
+        "riskScore": 0.025,
+        "score": 542.318,
+        "sourceMix": {
+          "region": 43
+        }
+      },
+      "mode": "cache_direct",
+      "name": "lumbridge_to_falador",
+      "next": {
+        "height": 0,
+        "x": 3227,
+        "y": 3232
+      },
+      "quality": "watch",
+      "routeDistance": 322,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "falador_shield_shop",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
+        "--allow-frontier",
+        "--direct-if-preview",
+        "--probe-toward-target"
+      ],
+      "routeStepCount": 44,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 3222,
+          "y": 3218
+        },
+        {
+          "height": 0,
+          "x": 3231,
+          "y": 3218
+        },
+        {
+          "height": 0,
+          "x": 3231,
+          "y": 3226
+        },
+        {
+          "height": 0,
+          "x": 3227,
+          "y": 3234
+        },
+        {
+          "height": 0,
+          "x": 3217,
+          "y": 3237
+        },
+        {
+          "height": 0,
+          "x": 3212,
+          "y": 3237
+        },
+        {
+          "height": 0,
+          "x": 3207,
+          "y": 3242
+        },
+        {
+          "height": 0,
+          "x": 3202,
+          "y": 3245
+        },
+        {
+          "height": 0,
+          "x": 3199,
+          "y": 3250
+        },
+        {
+          "height": 0,
+          "x": 3192,
+          "y": 3256
+        },
+        {
+          "height": 0,
+          "x": 3187,
+          "y": 3264
+        },
+        {
+          "height": 0,
+          "x": 3182,
+          "y": 3267
+        },
+        {
+          "height": 0,
+          "x": 3180,
+          "y": 3272
+        },
+        {
+          "height": 0,
+          "x": 3173,
+          "y": 3276
+        },
+        {
+          "height": 0,
+          "x": 3166,
+          "y": 3282
+        },
+        {
+          "height": 0,
+          "x": 3159,
+          "y": 3288
+        },
+        {
+          "height": 0,
+          "x": 3154,
+          "y": 3292
+        },
+        {
+          "height": 0,
+          "x": 3149,
+          "y": 3295
+        },
+        {
+          "height": 0,
+          "x": 3139,
+          "y": 3295
+        },
+        {
+          "height": 0,
+          "x": 3129,
+          "y": 3303
+        },
+        {
+          "height": 0,
+          "x": 3124,
+          "y": 3305
+        },
+        {
+          "height": 0,
+          "x": 3114,
+          "y": 3313
+        },
+        {
+          "height": 0,
+          "x": 3105,
+          "y": 3317
+        },
+        {
+          "height": 0,
+          "x": 3097,
+          "y": 3318
+        },
+        {
+          "height": 0,
+          "x": 3090,
+          "y": 3320
+        },
+        {
+          "height": 0,
+          "x": 3080,
+          "y": 3327
+        },
+        {
+          "height": 0,
+          "x": 3070,
+          "y": 3328
+        },
+        {
+          "height": 0,
+          "x": 3063,
+          "y": 3329
+        },
+        {
+          "height": 0,
+          "x": 3053,
+          "y": 3327
+        },
+        {
+          "height": 0,
+          "x": 3043,
+          "y": 3327
+        },
+        {
+          "height": 0,
+          "x": 3033,
+          "y": 3327
+        },
+        {
+          "height": 0,
+          "x": 3026,
+          "y": 3328
+        },
+        {
+          "height": 0,
+          "x": 3017,
+          "y": 3326
+        },
+        {
+          "height": 0,
+          "x": 3013,
+          "y": 3322
+        },
+        {
+          "height": 0,
+          "x": 3008,
+          "y": 3322
+        },
+        {
+          "height": 0,
+          "x": 3008,
+          "y": 3332
+        },
+        {
+          "height": 0,
+          "x": 3008,
+          "y": 3342
+        },
+        {
+          "height": 0,
+          "x": 3008,
+          "y": 3348
+        },
+        {
+          "height": 0,
+          "x": 3001,
+          "y": 3355
+        },
+        {
+          "height": 0,
+          "x": 3000,
+          "y": 3360
+        },
+        {
+          "height": 0,
+          "x": 2995,
+          "y": 3365
+        },
+        {
+          "height": 0,
+          "x": 2990,
+          "y": 3368
+        },
+        {
+          "height": 0,
+          "x": 2980,
+          "y": 3378
+        },
+        {
+          "height": 0,
+          "x": 2977,
+          "y": 3380
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 322,
+        "runTileDistance": 0,
+        "segmentCount": 0,
+        "walkTileDistance": 322
+      },
+      "runSegments": null,
+      "score": 542.318,
+      "selectedOverLearned": {
+        "previousQuality": "suspicious",
+        "previousRouteDistance": 384,
+        "previousStatus": "ok",
+        "reason": "cache-direct path reached the requested target with a shorter hazard-costed clipped route",
+        "savedTiles": 62
+      },
+      "status": "ok",
+      "targetDistanceIncreases": 5,
+      "to": "falador_shield_shop"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 1.151,
+      "directCandidate": null,
+      "edgeSources": {
+        "route_hint": 23
+      },
+      "estimatedTicks": 264.0,
+      "from": "falador_shield_shop",
+      "mlScore": {
+        "confidence": 0.921024,
+        "predictedTicks": 216.5,
+        "riskScore": 0.314394,
+        "score": 764.451,
+        "sourceMix": {
+          "global": 1,
+          "region": 10
+        }
+      },
+      "mode": null,
+      "name": "falador_to_port_sarim",
+      "next": {
+        "height": 0,
+        "x": 2990,
+        "y": 3368
+      },
+      "quality": "watch",
+      "routeDistance": 206,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "port_sarim_dock",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl"
+      ],
+      "routeStepCount": 28,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 2974,
+          "y": 3383
+        },
+        {
+          "height": 0,
+          "x": 2971,
+          "y": 3381
+        },
+        {
+          "height": 0,
+          "x": 2977,
+          "y": 3375
+        },
+        {
+          "height": 0,
+          "x": 2982,
+          "y": 3371
+        },
+        {
+          "height": 0,
+          "x": 2988,
+          "y": 3368
+        },
+        {
+          "height": 0,
+          "x": 2994,
+          "y": 3366
+        },
+        {
+          "height": 0,
+          "x": 3000,
+          "y": 3360
+        },
+        {
+          "height": 0,
+          "x": 3000,
+          "y": 3355
+        },
+        {
+          "height": 0,
+          "x": 3006,
+          "y": 3349
+        },
+        {
+          "height": 0,
+          "x": 3006,
+          "y": 3339
+        },
+        {
+          "height": 0,
+          "x": 3008,
+          "y": 3334
+        },
+        {
+          "height": 0,
+          "x": 3008,
+          "y": 3324
+        },
+        {
+          "height": 0,
+          "x": 3008,
+          "y": 3318
+        },
+        {
+          "height": 0,
+          "x": 3007,
+          "y": 3308
+        },
+        {
+          "height": 0,
+          "x": 3007,
+          "y": 3298
+        },
+        {
+          "height": 0,
+          "x": 3007,
+          "y": 3288
+        },
+        {
+          "height": 0,
+          "x": 3007,
+          "y": 3278
+        },
+        {
+          "height": 0,
+          "x": 3013,
+          "y": 3268
+        },
+        {
+          "height": 0,
+          "x": 3016,
+          "y": 3262
+        },
+        {
+          "height": 0,
+          "x": 3018,
+          "y": 3253
+        },
+        {
+          "height": 0,
+          "x": 3018,
+          "y": 3248
+        },
+        {
+          "height": 0,
+          "x": 3025,
+          "y": 3241
+        },
+        {
+          "height": 0,
+          "x": 3028,
+          "y": 3232
+        },
+        {
+          "height": 0,
+          "x": 3028,
+          "y": 3222
+        },
+        {
+          "height": 0,
+          "x": 3027,
+          "y": 3212
+        },
+        {
+          "height": 0,
+          "x": 3027,
+          "y": 3207
+        },
+        {
+          "height": 0,
+          "x": 3035,
+          "y": 3203
+        },
+        {
+          "height": 0,
+          "x": 3041,
+          "y": 3203
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 206,
+        "runTileDistance": 50,
+        "segmentCount": 1,
+        "walkTileDistance": 156
+      },
+      "runSegments": [
+        {
+          "distance": 50,
+          "endIndex": 145,
+          "from": {
+            "height": 0,
+            "x": 3007,
+            "y": 3300
+          },
+          "hazardIds": [
+            "port_sarim_highwayman_road_contact"
+          ],
+          "minRunEnergy": 30,
+          "startIndex": 95,
+          "to": {
+            "height": 0,
+            "x": 3018,
+            "y": 3251
+          }
+        }
+      ],
+      "score": 764.451,
+      "selectedOverLearned": null,
+      "status": "ok",
+      "targetDistanceIncreases": 1,
+      "to": "port_sarim_dock"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 3.043,
+      "directCandidate": {
+        "detourRatio": 3.043,
+        "directDistance": 47,
+        "edgeSources": {
+          "cache_direct": 143
+        },
+        "endTile": {
+          "height": 0,
+          "x": 3092,
+          "y": 3246
+        },
+        "mode": "cache_direct",
+        "next": {
+          "height": 0,
+          "x": 3028,
+          "y": 3211
+        },
+        "quality": "bad",
+        "routeDistance": 143,
+        "routeStepCount": 23,
+        "runPlan": {
+          "policy": "conserve_run_until_hazard_segments",
+          "routeDistance": 143,
+          "runTileDistance": 59,
+          "segmentCount": 2,
+          "walkTileDistance": 84
+        },
+        "status": "ok",
+        "targetDistanceIncreases": 8
+      },
+      "edgeSources": {
+        "route_hint": 18
+      },
+      "estimatedTicks": 135.0,
+      "from": "port_sarim_dock",
+      "mlScore": {
+        "confidence": 0.935416,
+        "predictedTicks": 70.78,
+        "riskScore": 0.011905,
+        "score": 2410.592,
+        "sourceMix": {
+          "region": 5
+        }
+      },
+      "mode": null,
+      "name": "port_sarim_to_draynor",
+      "next": {
+        "height": 0,
+        "x": 3028,
+        "y": 3211
+      },
+      "quality": "bad",
+      "routeDistance": 143,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "draynor_bank",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
+        "--allow-frontier",
+        "--direct-if-preview",
+        "--probe-toward-target"
+      ],
+      "routeStepCount": 22,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 3045,
+          "y": 3204
+        },
+        {
+          "height": 0,
+          "x": 3036,
+          "y": 3203
+        },
+        {
+          "height": 0,
+          "x": 3029,
+          "y": 3203
+        },
+        {
+          "height": 0,
+          "x": 3027,
+          "y": 3210
+        },
+        {
+          "height": 0,
+          "x": 3028,
+          "y": 3217
+        },
+        {
+          "height": 0,
+          "x": 3028,
+          "y": 3227
+        },
+        {
+          "height": 0,
+          "x": 3028,
+          "y": 3237
+        },
+        {
+          "height": 0,
+          "x": 3030,
+          "y": 3242
+        },
+        {
+          "height": 0,
+          "x": 3035,
+          "y": 3246
+        },
+        {
+          "height": 0,
+          "x": 3036,
+          "y": 3251
+        },
+        {
+          "height": 0,
+          "x": 3043,
+          "y": 3259
+        },
+        {
+          "height": 0,
+          "x": 3045,
+          "y": 3263
+        },
+        {
+          "height": 0,
+          "x": 3050,
+          "y": 3265
+        },
+        {
+          "height": 0,
+          "x": 3054,
+          "y": 3270
+        },
+        {
+          "height": 0,
+          "x": 3060,
+          "y": 3270
+        },
+        {
+          "height": 0,
+          "x": 3067,
+          "y": 3277
+        },
+        {
+          "height": 0,
+          "x": 3077,
+          "y": 3271
+        },
+        {
+          "height": 0,
+          "x": 3078,
+          "y": 3264
+        },
+        {
+          "height": 0,
+          "x": 3080,
+          "y": 3256
+        },
+        {
+          "height": 0,
+          "x": 3085,
+          "y": 3253
+        },
+        {
+          "height": 0,
+          "x": 3089,
+          "y": 3250
+        },
+        {
+          "height": 0,
+          "x": 3092,
+          "y": 3246
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 143,
+        "runTileDistance": 59,
+        "segmentCount": 2,
+        "walkTileDistance": 84
+      },
+      "runSegments": [
+        {
+          "distance": 22,
+          "endIndex": 101,
+          "from": {
+            "height": 0,
+            "x": 3045,
+            "y": 3263
+          },
+          "hazardIds": [
+            "draynor_black_knight_dark_wizard_crossroads",
+            "draynor_southeast_black_knight_edge"
+          ],
+          "minRunEnergy": 40,
+          "startIndex": 79,
+          "to": {
+            "height": 0,
+            "x": 3066,
+            "y": 3276
+          }
+        },
+        {
+          "distance": 37,
+          "endIndex": 143,
+          "from": {
+            "height": 0,
+            "x": 3071,
+            "y": 3277
+          },
+          "hazardIds": [
+            "draynor_black_knight_dark_wizard_crossroads",
+            "draynor_southeast_black_knight_edge"
+          ],
+          "minRunEnergy": 40,
+          "startIndex": 106,
+          "to": {
+            "height": 0,
+            "x": 3092,
+            "y": 3246
+          }
+        }
+      ],
+      "score": 2410.592,
+      "selectedOverLearned": null,
+      "status": "ok",
+      "targetDistanceIncreases": 6,
+      "to": "draynor_bank"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 1.078,
+      "directCandidate": null,
+      "edgeSources": {
+        "model_trace": 81
+      },
+      "estimatedTicks": 81.0,
+      "from": "rimmington_center",
+      "mlScore": {
+        "confidence": 0.879738,
+        "predictedTicks": 60.72,
+        "riskScore": 0.025,
+        "score": 203.467,
+        "sourceMix": {
+          "region": 7
+        }
+      },
+      "mode": null,
+      "name": "rimmington_to_port_sarim_south",
+      "next": {
+        "height": 0,
+        "x": 2972,
+        "y": 3198
+      },
+      "quality": "watch",
+      "routeDistance": 111,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "port_sarim_south_coast_frontier",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl"
+      ],
+      "routeStepCount": 18,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 2957,
+          "y": 3218
+        },
+        {
+          "height": 0,
+          "x": 2958,
+          "y": 3214
+        },
+        {
+          "height": 0,
+          "x": 2960,
+          "y": 3208
+        },
+        {
+          "height": 0,
+          "x": 2965,
+          "y": 3201
+        },
+        {
+          "height": 0,
+          "x": 2971,
+          "y": 3198
+        },
+        {
+          "height": 0,
+          "x": 2976,
+          "y": 3199
+        },
+        {
+          "height": 0,
+          "x": 2982,
+          "y": 3193
+        },
+        {
+          "height": 0,
+          "x": 2985,
+          "y": 3184
+        },
+        {
+          "height": 0,
+          "x": 2987,
+          "y": 3179
+        },
+        {
+          "height": 0,
+          "x": 2989,
+          "y": 3174
+        },
+        {
+          "height": 0,
+          "x": 2991,
+          "y": 3168
+        },
+        {
+          "height": 0,
+          "x": 2997,
+          "y": 3162
+        },
+        {
+          "height": 0,
+          "x": 2997,
+          "y": 3152
+        },
+        {
+          "height": 0,
+          "x": 2995,
+          "y": 3142
+        },
+        {
+          "height": 0,
+          "x": 2998,
+          "y": 3137
+        },
+        {
+          "height": 0,
+          "x": 2999,
+          "y": 3128
+        },
+        {
+          "height": 0,
+          "x": 2999,
+          "y": 3120
+        },
+        {
+          "height": 0,
+          "x": 3000,
+          "y": 3119
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 111,
+        "runTileDistance": 0,
+        "segmentCount": 0,
+        "walkTileDistance": 111
+      },
+      "runSegments": null,
+      "score": 203.467,
+      "selectedOverLearned": null,
+      "status": "ok",
+      "targetDistanceIncreases": 1,
+      "to": "port_sarim_south_coast_frontier"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 1.065,
+      "directCandidate": null,
+      "edgeSources": {
+        "route_hint": 8
+      },
+      "estimatedTicks": 168.0,
+      "from": "varrock_east_bank",
+      "mlScore": {
+        "confidence": 0.976851,
+        "predictedTicks": 115.33,
+        "riskScore": 0.006579,
+        "score": 344.121,
+        "sourceMix": {
+          "region": 6
+        }
+      },
+      "mode": null,
+      "name": "varrock_to_barbarian_village",
+      "next": {
+        "height": 0,
+        "x": 3237,
+        "y": 3428
+      },
+      "quality": "watch",
+      "routeDistance": 179,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "barbarian_village",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl"
+      ],
+      "routeStepCount": 23,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 3253,
+          "y": 3420
+        },
+        {
+          "height": 0,
+          "x": 3253,
+          "y": 3428
+        },
+        {
+          "height": 0,
+          "x": 3243,
+          "y": 3428
+        },
+        {
+          "height": 0,
+          "x": 3233,
+          "y": 3428
+        },
+        {
+          "height": 0,
+          "x": 3223,
+          "y": 3428
+        },
+        {
+          "height": 0,
+          "x": 3218,
+          "y": 3428
+        },
+        {
+          "height": 0,
+          "x": 3208,
+          "y": 3425
+        },
+        {
+          "height": 0,
+          "x": 3198,
+          "y": 3428
+        },
+        {
+          "height": 0,
+          "x": 3189,
+          "y": 3428
+        },
+        {
+          "height": 0,
+          "x": 3179,
+          "y": 3429
+        },
+        {
+          "height": 0,
+          "x": 3169,
+          "y": 3429
+        },
+        {
+          "height": 0,
+          "x": 3164,
+          "y": 3426
+        },
+        {
+          "height": 0,
+          "x": 3157,
+          "y": 3424
+        },
+        {
+          "height": 0,
+          "x": 3152,
+          "y": 3419
+        },
+        {
+          "height": 0,
+          "x": 3146,
+          "y": 3419
+        },
+        {
+          "height": 0,
+          "x": 3136,
+          "y": 3422
+        },
+        {
+          "height": 0,
+          "x": 3131,
+          "y": 3422
+        },
+        {
+          "height": 0,
+          "x": 3122,
+          "y": 3419
+        },
+        {
+          "height": 0,
+          "x": 3112,
+          "y": 3419
+        },
+        {
+          "height": 0,
+          "x": 3102,
+          "y": 3420
+        },
+        {
+          "height": 0,
+          "x": 3096,
+          "y": 3425
+        },
+        {
+          "height": 0,
+          "x": 3089,
+          "y": 3426
+        },
+        {
+          "height": 0,
+          "x": 3085,
+          "y": 3425
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 179,
+        "runTileDistance": 28,
+        "segmentCount": 1,
+        "walkTileDistance": 151
+      },
+      "runSegments": [
+        {
+          "distance": 28,
+          "endIndex": 179,
+          "from": {
+            "height": 0,
+            "x": 3110,
+            "y": 3419
+          },
+          "hazardIds": [
+            "barbarian_village_unverified_combat_zone"
+          ],
+          "minRunEnergy": 20,
+          "startIndex": 151,
+          "to": {
+            "height": 0,
+            "x": 3085,
+            "y": 3425
+          }
+        }
+      ],
+      "score": 344.121,
+      "selectedOverLearned": null,
+      "status": "ok",
+      "targetDistanceIncreases": 1,
+      "to": "barbarian_village"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 1.387,
+      "directCandidate": {
+        "detourRatio": 1.387,
+        "directDistance": 31,
+        "edgeSources": {
+          "cache_direct": 43
+        },
+        "endTile": {
+          "height": 0,
+          "x": 3213,
+          "y": 3415
+        },
+        "mode": "cache_direct",
+        "next": {
+          "height": 0,
+          "x": 3200,
+          "y": 3430
+        },
+        "quality": "watch",
+        "routeDistance": 43,
+        "routeStepCount": 8,
+        "runPlan": {
+          "policy": "conserve_run_until_hazard_segments",
+          "routeDistance": 43,
+          "runTileDistance": 0,
+          "segmentCount": 0,
+          "walkTileDistance": 43
+        },
+        "status": "ok",
+        "targetDistanceIncreases": 2
+      },
+      "edgeSources": {
+        "route_hint": 5
+      },
+      "estimatedTicks": 32.0,
+      "from": "varrock_west_bank",
+      "mlScore": {
+        "confidence": 0.983764,
+        "predictedTicks": 17.47,
+        "riskScore": 0.002778,
+        "score": 337.522,
+        "sourceMix": {
+          "region": 2
+        }
+      },
+      "mode": null,
+      "name": "varrock_bank_to_general_store",
+      "next": {
+        "height": 0,
+        "x": 3200,
+        "y": 3430
+      },
+      "quality": "watch",
+      "routeDistance": 43,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "varrock_general_store",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
+        "--allow-frontier",
+        "--direct-if-preview",
+        "--probe-toward-target"
+      ],
+      "routeStepCount": 8,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 3185,
+          "y": 3436
+        },
+        {
+          "height": 0,
+          "x": 3182,
+          "y": 3434
+        },
+        {
+          "height": 0,
+          "x": 3190,
+          "y": 3432
+        },
+        {
+          "height": 0,
+          "x": 3198,
+          "y": 3432
+        },
+        {
+          "height": 0,
+          "x": 3203,
+          "y": 3428
+        },
+        {
+          "height": 0,
+          "x": 3207,
+          "y": 3423
+        },
+        {
+          "height": 0,
+          "x": 3210,
+          "y": 3417
+        },
+        {
+          "height": 0,
+          "x": 3213,
+          "y": 3415
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 43,
+        "runTileDistance": 0,
+        "segmentCount": 0,
+        "walkTileDistance": 43
+      },
+      "runSegments": null,
+      "score": 337.522,
+      "selectedOverLearned": null,
+      "status": "ok",
+      "targetDistanceIncreases": 2,
+      "to": "varrock_general_store"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 2.429,
+      "directCandidate": null,
+      "edgeSources": {
+        "cache_direct": 17
+      },
+      "estimatedTicks": 17.0,
+      "from": "lumbridge_general_store",
+      "mlScore": {
+        "confidence": 0.99,
+        "predictedTicks": 5.07,
+        "riskScore": 0.000903,
+        "score": 1971.708,
+        "sourceMix": {
+          "region": 3
+        }
+      },
+      "mode": "cache_direct",
+      "name": "lumbridge_store_to_tree_stand",
+      "next": {
+        "height": 0,
+        "x": 3207,
+        "y": 3245
+      },
+      "quality": "bad",
+      "routeDistance": 17,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "lumbridge_tree_stand",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
+        "--allow-frontier",
+        "--direct-if-preview",
+        "--probe-toward-target"
+      ],
+      "routeStepCount": 4,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 3212,
+          "y": 3246
+        },
+        {
+          "height": 0,
+          "x": 3215,
+          "y": 3242
+        },
+        {
+          "height": 0,
+          "x": 3208,
+          "y": 3241
+        },
+        {
+          "height": 0,
+          "x": 3207,
+          "y": 3245
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 17,
+        "runTileDistance": 0,
+        "segmentCount": 0,
+        "walkTileDistance": 17
+      },
+      "runSegments": null,
+      "score": 1971.708,
+      "selectedOverLearned": {
+        "previousQuality": "bad",
+        "previousRouteDistance": 22,
+        "previousStatus": "ok",
+        "reason": "cache-direct path reached the requested target with a shorter hazard-costed clipped route",
+        "savedTiles": 5
+      },
+      "status": "ok",
+      "targetDistanceIncreases": 2,
+      "to": "lumbridge_tree_stand"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 1.131,
+      "directCandidate": null,
+      "edgeSources": {
+        "route_hint": 25
+      },
+      "estimatedTicks": 290.0,
+      "from": "varrock_square",
+      "mlScore": {
+        "confidence": 0.971459,
+        "predictedTicks": 163.58,
+        "riskScore": 0.0125,
+        "score": 328.271,
+        "sourceMix": {
+          "global": 4,
+          "region": 7
+        }
+      },
+      "mode": null,
+      "name": "varrock_to_falador",
+      "next": {
+        "height": 0,
+        "x": 3186,
+        "y": 3429
+      },
+      "quality": "ok",
+      "routeDistance": 267,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "falador_shield_shop",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl"
+      ],
+      "routeStepCount": 34,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 3210,
+          "y": 3424
+        },
+        {
+          "height": 0,
+          "x": 3205,
+          "y": 3428
+        },
+        {
+          "height": 0,
+          "x": 3195,
+          "y": 3428
+        },
+        {
+          "height": 0,
+          "x": 3189,
+          "y": 3428
+        },
+        {
+          "height": 0,
+          "x": 3179,
+          "y": 3429
+        },
+        {
+          "height": 0,
+          "x": 3169,
+          "y": 3429
+        },
+        {
+          "height": 0,
+          "x": 3164,
+          "y": 3426
+        },
+        {
+          "height": 0,
+          "x": 3157,
+          "y": 3424
+        },
+        {
+          "height": 0,
+          "x": 3152,
+          "y": 3419
+        },
+        {
+          "height": 0,
+          "x": 3146,
+          "y": 3419
+        },
+        {
+          "height": 0,
+          "x": 3136,
+          "y": 3422
+        },
+        {
+          "height": 0,
+          "x": 3131,
+          "y": 3422
+        },
+        {
+          "height": 0,
+          "x": 3122,
+          "y": 3419
+        },
+        {
+          "height": 0,
+          "x": 3112,
+          "y": 3419
+        },
+        {
+          "height": 0,
+          "x": 3102,
+          "y": 3420
+        },
+        {
+          "height": 0,
+          "x": 3098,
+          "y": 3415
+        },
+        {
+          "height": 0,
+          "x": 3095,
+          "y": 3410
+        },
+        {
+          "height": 0,
+          "x": 3091,
+          "y": 3405
+        },
+        {
+          "height": 0,
+          "x": 3081,
+          "y": 3398
+        },
+        {
+          "height": 0,
+          "x": 3074,
+          "y": 3391
+        },
+        {
+          "height": 0,
+          "x": 3064,
+          "y": 3391
+        },
+        {
+          "height": 0,
+          "x": 3054,
+          "y": 3391
+        },
+        {
+          "height": 0,
+          "x": 3044,
+          "y": 3391
+        },
+        {
+          "height": 0,
+          "x": 3034,
+          "y": 3391
+        },
+        {
+          "height": 0,
+          "x": 3024,
+          "y": 3391
+        },
+        {
+          "height": 0,
+          "x": 3014,
+          "y": 3392
+        },
+        {
+          "height": 0,
+          "x": 3009,
+          "y": 3395
+        },
+        {
+          "height": 0,
+          "x": 2999,
+          "y": 3395
+        },
+        {
+          "height": 0,
+          "x": 2989,
+          "y": 3395
+        },
+        {
+          "height": 0,
+          "x": 2979,
+          "y": 3395
+        },
+        {
+          "height": 0,
+          "x": 2969,
+          "y": 3395
+        },
+        {
+          "height": 0,
+          "x": 2967,
+          "y": 3387
+        },
+        {
+          "height": 0,
+          "x": 2967,
+          "y": 3382
+        },
+        {
+          "height": 0,
+          "x": 2971,
+          "y": 3380
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 267,
+        "runTileDistance": 33,
+        "segmentCount": 1,
+        "walkTileDistance": 234
+      },
+      "runSegments": [
+        {
+          "distance": 33,
+          "endIndex": 133,
+          "from": {
+            "height": 0,
+            "x": 3110,
+            "y": 3419
+          },
+          "hazardIds": [
+            "barbarian_village_unverified_combat_zone"
+          ],
+          "minRunEnergy": 20,
+          "startIndex": 100,
+          "to": {
+            "height": 0,
+            "x": 3084,
+            "y": 3401
+          }
+        }
+      ],
+      "score": 328.271,
+      "selectedOverLearned": null,
+      "status": "ok",
+      "targetDistanceIncreases": 0,
+      "to": "falador_shield_shop"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 1.254,
+      "directCandidate": {
+        "detourRatio": 1.277,
+        "directDistance": 130,
+        "edgeSources": {
+          "cache_direct": 166
+        },
+        "endTile": {
+          "height": 0,
+          "x": 3093,
+          "y": 3246
+        },
+        "mode": "cache_direct",
+        "next": {
+          "height": 0,
+          "x": 3227,
+          "y": 3232
+        },
+        "quality": "watch",
+        "routeDistance": 166,
+        "routeStepCount": 24,
+        "runPlan": {
+          "policy": "conserve_run_until_hazard_segments",
+          "routeDistance": 166,
+          "runTileDistance": 66,
+          "segmentCount": 1,
+          "walkTileDistance": 100
+        },
+        "status": "ok",
+        "targetDistanceIncreases": 3
+      },
+      "edgeSources": {
+        "route_hint": 15
+      },
+      "estimatedTicks": 182.0,
+      "from": "lumbridge_castle_courtyard",
+      "mlScore": {
+        "confidence": 0.973508,
+        "predictedTicks": 86.4,
+        "riskScore": 0.011905,
+        "score": 387.299,
+        "sourceMix": {
+          "global": 3,
+          "region": 4
+        }
+      },
+      "mode": null,
+      "name": "lumbridge_to_draynor_bank",
+      "next": {
+        "height": 0,
+        "x": 3227,
+        "y": 3232
+      },
+      "quality": "watch",
+      "routeDistance": 163,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "draynor_bank",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl"
+      ],
+      "routeStepCount": 23,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 3222,
+          "y": 3218
+        },
+        {
+          "height": 0,
+          "x": 3231,
+          "y": 3218
+        },
+        {
+          "height": 0,
+          "x": 3231,
+          "y": 3226
+        },
+        {
+          "height": 0,
+          "x": 3227,
+          "y": 3234
+        },
+        {
+          "height": 0,
+          "x": 3217,
+          "y": 3237
+        },
+        {
+          "height": 0,
+          "x": 3207,
+          "y": 3237
+        },
+        {
+          "height": 0,
+          "x": 3201,
+          "y": 3237
+        },
+        {
+          "height": 0,
+          "x": 3192,
+          "y": 3243
+        },
+        {
+          "height": 0,
+          "x": 3182,
+          "y": 3243
+        },
+        {
+          "height": 0,
+          "x": 3176,
+          "y": 3243
+        },
+        {
+          "height": 0,
+          "x": 3171,
+          "y": 3247
+        },
+        {
+          "height": 0,
+          "x": 3164,
+          "y": 3247
+        },
+        {
+          "height": 0,
+          "x": 3159,
+          "y": 3246
+        },
+        {
+          "height": 0,
+          "x": 3149,
+          "y": 3249
+        },
+        {
+          "height": 0,
+          "x": 3141,
+          "y": 3249
+        },
+        {
+          "height": 0,
+          "x": 3136,
+          "y": 3252
+        },
+        {
+          "height": 0,
+          "x": 3129,
+          "y": 3252
+        },
+        {
+          "height": 0,
+          "x": 3121,
+          "y": 3251
+        },
+        {
+          "height": 0,
+          "x": 3115,
+          "y": 3254
+        },
+        {
+          "height": 0,
+          "x": 3108,
+          "y": 3251
+        },
+        {
+          "height": 0,
+          "x": 3098,
+          "y": 3250
+        },
+        {
+          "height": 0,
+          "x": 3093,
+          "y": 3247
+        },
+        {
+          "height": 0,
+          "x": 3093,
+          "y": 3246
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 163,
+        "runTileDistance": 64,
+        "segmentCount": 1,
+        "walkTileDistance": 99
+      },
+      "runSegments": [
+        {
+          "distance": 64,
+          "endIndex": 163,
+          "from": {
+            "height": 0,
+            "x": 3154,
+            "y": 3249
+          },
+          "hazardIds": [
+            "draynor_black_knight_dark_wizard_crossroads",
+            "draynor_jail_guard_edge",
+            "draynor_southeast_black_knight_edge"
+          ],
+          "minRunEnergy": 40,
+          "startIndex": 99,
+          "to": {
+            "height": 0,
+            "x": 3093,
+            "y": 3246
+          }
+        }
+      ],
+      "score": 387.299,
+      "selectedOverLearned": null,
+      "status": "ok",
+      "targetDistanceIncreases": 2,
+      "to": "draynor_bank"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 1.614,
+      "directCandidate": {
+        "detourRatio": 1.614,
+        "directDistance": 220,
+        "edgeSources": {
+          "cache_direct": 355
+        },
+        "endTile": {
+          "height": 0,
+          "x": 3206,
+          "y": 3428
+        },
+        "mode": "cache_direct",
+        "next": {
+          "height": 0,
+          "x": 3027,
+          "y": 3211
+        },
+        "quality": "suspicious",
+        "routeDistance": 355,
+        "routeStepCount": 51,
+        "runPlan": {
+          "policy": "conserve_run_until_hazard_segments",
+          "routeDistance": 355,
+          "runTileDistance": 51,
+          "segmentCount": 2,
+          "walkTileDistance": 304
+        },
+        "status": "ok",
+        "targetDistanceIncreases": 11
+      },
+      "edgeSources": {
+        "route_hint": 50
+      },
+      "estimatedTicks": 418.0,
+      "from": "port_sarim_dock",
+      "mlScore": {
+        "confidence": 0.959453,
+        "predictedTicks": 213.42,
+        "riskScore": 0.041667,
+        "score": 1083.76,
+        "sourceMix": {
+          "edge": 1,
+          "global": 7,
+          "region": 8
+        }
+      },
+      "mode": null,
+      "name": "port_sarim_to_varrock",
+      "next": {
+        "height": 0,
+        "x": 3027,
+        "y": 3211
+      },
+      "quality": "suspicious",
+      "routeDistance": 355,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "varrock_square",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
+        "--allow-frontier",
+        "--direct-if-preview",
+        "--probe-toward-target"
+      ],
+      "routeStepCount": 47,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 3045,
+          "y": 3204
+        },
+        {
+          "height": 0,
+          "x": 3036,
+          "y": 3203
+        },
+        {
+          "height": 0,
+          "x": 3029,
+          "y": 3203
+        },
+        {
+          "height": 0,
+          "x": 3027,
+          "y": 3213
+        },
+        {
+          "height": 0,
+          "x": 3027,
+          "y": 3223
+        },
+        {
+          "height": 0,
+          "x": 3027,
+          "y": 3233
+        },
+        {
+          "height": 0,
+          "x": 3028,
+          "y": 3240
+        },
+        {
+          "height": 0,
+          "x": 3034,
+          "y": 3246
+        },
+        {
+          "height": 0,
+          "x": 3036,
+          "y": 3251
+        },
+        {
+          "height": 0,
+          "x": 3043,
+          "y": 3260
+        },
+        {
+          "height": 0,
+          "x": 3046,
+          "y": 3264
+        },
+        {
+          "height": 0,
+          "x": 3050,
+          "y": 3266
+        },
+        {
+          "height": 0,
+          "x": 3056,
+          "y": 3270
+        },
+        {
+          "height": 0,
+          "x": 3061,
+          "y": 3271
+        },
+        {
+          "height": 0,
+          "x": 3068,
+          "y": 3278
+        },
+        {
+          "height": 0,
+          "x": 3071,
+          "y": 3286
+        },
+        {
+          "height": 0,
+          "x": 3072,
+          "y": 3296
+        },
+        {
+          "height": 0,
+          "x": 3072,
+          "y": 3306
+        },
+        {
+          "height": 0,
+          "x": 3080,
+          "y": 3316
+        },
+        {
+          "height": 0,
+          "x": 3083,
+          "y": 3321
+        },
+        {
+          "height": 0,
+          "x": 3085,
+          "y": 3326
+        },
+        {
+          "height": 0,
+          "x": 3081,
+          "y": 3333
+        },
+        {
+          "height": 0,
+          "x": 3083,
+          "y": 3342
+        },
+        {
+          "height": 0,
+          "x": 3077,
+          "y": 3348
+        },
+        {
+          "height": 0,
+          "x": 3077,
+          "y": 3354
+        },
+        {
+          "height": 0,
+          "x": 3078,
+          "y": 3364
+        },
+        {
+          "height": 0,
+          "x": 3076,
+          "y": 3371
+        },
+        {
+          "height": 0,
+          "x": 3082,
+          "y": 3377
+        },
+        {
+          "height": 0,
+          "x": 3083,
+          "y": 3381
+        },
+        {
+          "height": 0,
+          "x": 3084,
+          "y": 3389
+        },
+        {
+          "height": 0,
+          "x": 3094,
+          "y": 3398
+        },
+        {
+          "height": 0,
+          "x": 3100,
+          "y": 3405
+        },
+        {
+          "height": 0,
+          "x": 3099,
+          "y": 3414
+        },
+        {
+          "height": 0,
+          "x": 3100,
+          "y": 3420
+        },
+        {
+          "height": 0,
+          "x": 3110,
+          "y": 3420
+        },
+        {
+          "height": 0,
+          "x": 3117,
+          "y": 3420
+        },
+        {
+          "height": 0,
+          "x": 3127,
+          "y": 3418
+        },
+        {
+          "height": 0,
+          "x": 3137,
+          "y": 3417
+        },
+        {
+          "height": 0,
+          "x": 3147,
+          "y": 3417
+        },
+        {
+          "height": 0,
+          "x": 3157,
+          "y": 3417
+        },
+        {
+          "height": 0,
+          "x": 3166,
+          "y": 3425
+        },
+        {
+          "height": 0,
+          "x": 3174,
+          "y": 3425
+        },
+        {
+          "height": 0,
+          "x": 3182,
+          "y": 3426
+        },
+        {
+          "height": 0,
+          "x": 3187,
+          "y": 3429
+        },
+        {
+          "height": 0,
+          "x": 3197,
+          "y": 3429
+        },
+        {
+          "height": 0,
+          "x": 3205,
+          "y": 3429
+        },
+        {
+          "height": 0,
+          "x": 3206,
+          "y": 3428
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 355,
+        "runTileDistance": 51,
+        "segmentCount": 2,
+        "walkTileDistance": 304
+      },
+      "runSegments": [
+        {
+          "distance": 22,
+          "endIndex": 101,
+          "from": {
+            "height": 0,
+            "x": 3045,
+            "y": 3263
+          },
+          "hazardIds": [
+            "draynor_black_knight_dark_wizard_crossroads",
+            "draynor_southeast_black_knight_edge"
+          ],
+          "minRunEnergy": 40,
+          "startIndex": 79,
+          "to": {
+            "height": 0,
+            "x": 3066,
+            "y": 3276
+          }
+        },
+        {
+          "distance": 29,
+          "endIndex": 258,
+          "from": {
+            "height": 0,
+            "x": 3095,
+            "y": 3400
+          },
+          "hazardIds": [
+            "barbarian_village_unverified_combat_zone"
+          ],
+          "minRunEnergy": 20,
+          "startIndex": 229,
+          "to": {
+            "height": 0,
+            "x": 3109,
+            "y": 3420
+          }
+        }
+      ],
+      "score": 1083.76,
+      "selectedOverLearned": null,
+      "status": "ok",
+      "targetDistanceIncreases": 6,
+      "to": "varrock_square"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 1.431,
+      "directCandidate": null,
+      "edgeSources": {
+        "cache_direct": 362
+      },
+      "estimatedTicks": 362.0,
+      "from": "rimmington_center",
+      "mlScore": {
+        "confidence": 0.951918,
+        "predictedTicks": 230.48,
+        "riskScore": 0.041667,
+        "score": 1041.615,
+        "sourceMix": {
+          "edge": 1,
+          "global": 22,
+          "region": 27
+        }
+      },
+      "mode": "cache_direct",
+      "name": "rimmington_to_varrock",
+      "next": {
+        "height": 0,
+        "x": 2959,
+        "y": 3242
+      },
+      "quality": "suspicious",
+      "routeDistance": 362,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "varrock_square",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
+        "--allow-frontier",
+        "--direct-if-preview",
+        "--probe-toward-target"
+      ],
+      "routeStepCount": 51,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 2957,
+          "y": 3218
+        },
+        {
+          "height": 0,
+          "x": 2964,
+          "y": 3225
+        },
+        {
+          "height": 0,
+          "x": 2966,
+          "y": 3230
+        },
+        {
+          "height": 0,
+          "x": 2963,
+          "y": 3235
+        },
+        {
+          "height": 0,
+          "x": 2959,
+          "y": 3242
+        },
+        {
+          "height": 0,
+          "x": 2961,
+          "y": 3247
+        },
+        {
+          "height": 0,
+          "x": 2963,
+          "y": 3252
+        },
+        {
+          "height": 0,
+          "x": 2971,
+          "y": 3261
+        },
+        {
+          "height": 0,
+          "x": 2974,
+          "y": 3267
+        },
+        {
+          "height": 0,
+          "x": 2978,
+          "y": 3273
+        },
+        {
+          "height": 0,
+          "x": 2977,
+          "y": 3278
+        },
+        {
+          "height": 0,
+          "x": 2978,
+          "y": 3283
+        },
+        {
+          "height": 0,
+          "x": 2982,
+          "y": 3287
+        },
+        {
+          "height": 0,
+          "x": 2983,
+          "y": 3296
+        },
+        {
+          "height": 0,
+          "x": 2988,
+          "y": 3299
+        },
+        {
+          "height": 0,
+          "x": 2996,
+          "y": 3301
+        },
+        {
+          "height": 0,
+          "x": 3002,
+          "y": 3304
+        },
+        {
+          "height": 0,
+          "x": 3011,
+          "y": 3313
+        },
+        {
+          "height": 0,
+          "x": 3021,
+          "y": 3314
+        },
+        {
+          "height": 0,
+          "x": 3027,
+          "y": 3317
+        },
+        {
+          "height": 0,
+          "x": 3033,
+          "y": 3318
+        },
+        {
+          "height": 0,
+          "x": 3038,
+          "y": 3321
+        },
+        {
+          "height": 0,
+          "x": 3043,
+          "y": 3326
+        },
+        {
+          "height": 0,
+          "x": 3053,
+          "y": 3326
+        },
+        {
+          "height": 0,
+          "x": 3061,
+          "y": 3327
+        },
+        {
+          "height": 0,
+          "x": 3064,
+          "y": 3332
+        },
+        {
+          "height": 0,
+          "x": 3067,
+          "y": 3339
+        },
+        {
+          "height": 0,
+          "x": 3074,
+          "y": 3347
+        },
+        {
+          "height": 0,
+          "x": 3078,
+          "y": 3355
+        },
+        {
+          "height": 0,
+          "x": 3078,
+          "y": 3364
+        },
+        {
+          "height": 0,
+          "x": 3080,
+          "y": 3372
+        },
+        {
+          "height": 0,
+          "x": 3082,
+          "y": 3377
+        },
+        {
+          "height": 0,
+          "x": 3084,
+          "y": 3385
+        },
+        {
+          "height": 0,
+          "x": 3086,
+          "y": 3391
+        },
+        {
+          "height": 0,
+          "x": 3094,
+          "y": 3398
+        },
+        {
+          "height": 0,
+          "x": 3100,
+          "y": 3405
+        },
+        {
+          "height": 0,
+          "x": 3099,
+          "y": 3411
+        },
+        {
+          "height": 0,
+          "x": 3098,
+          "y": 3418
+        },
+        {
+          "height": 0,
+          "x": 3108,
+          "y": 3420
+        },
+        {
+          "height": 0,
+          "x": 3117,
+          "y": 3420
+        },
+        {
+          "height": 0,
+          "x": 3127,
+          "y": 3418
+        },
+        {
+          "height": 0,
+          "x": 3137,
+          "y": 3417
+        },
+        {
+          "height": 0,
+          "x": 3147,
+          "y": 3417
+        },
+        {
+          "height": 0,
+          "x": 3157,
+          "y": 3417
+        },
+        {
+          "height": 0,
+          "x": 3166,
+          "y": 3425
+        },
+        {
+          "height": 0,
+          "x": 3174,
+          "y": 3425
+        },
+        {
+          "height": 0,
+          "x": 3182,
+          "y": 3426
+        },
+        {
+          "height": 0,
+          "x": 3187,
+          "y": 3429
+        },
+        {
+          "height": 0,
+          "x": 3197,
+          "y": 3429
+        },
+        {
+          "height": 0,
+          "x": 3205,
+          "y": 3429
+        },
+        {
+          "height": 0,
+          "x": 3206,
+          "y": 3428
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 362,
+        "runTileDistance": 44,
+        "segmentCount": 2,
+        "walkTileDistance": 318
+      },
+      "runSegments": [
+        {
+          "distance": 15,
+          "endIndex": 85,
+          "from": {
+            "height": 0,
+            "x": 2981,
+            "y": 3286
+          },
+          "hazardIds": [
+            "port_sarim_highwayman_road_contact"
+          ],
+          "minRunEnergy": 30,
+          "startIndex": 70,
+          "to": {
+            "height": 0,
+            "x": 2988,
+            "y": 3299
+          }
+        },
+        {
+          "distance": 29,
+          "endIndex": 265,
+          "from": {
+            "height": 0,
+            "x": 3095,
+            "y": 3400
+          },
+          "hazardIds": [
+            "barbarian_village_unverified_combat_zone"
+          ],
+          "minRunEnergy": 20,
+          "startIndex": 236,
+          "to": {
+            "height": 0,
+            "x": 3109,
+            "y": 3420
+          }
+        }
+      ],
+      "score": 1041.615,
+      "selectedOverLearned": {
+        "previousQuality": "suspicious",
+        "previousRouteDistance": 441,
+        "previousStatus": "ok",
+        "reason": "cache-direct path reached the requested target with a shorter hazard-costed clipped route",
+        "savedTiles": 79
+      },
+      "status": "ok",
+      "targetDistanceIncreases": 10,
+      "to": "varrock_square"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 1.596,
+      "directCandidate": {
+        "detourRatio": 1.596,
+        "directDistance": 141,
+        "edgeSources": {
+          "cache_direct": 225
+        },
+        "endTile": {
+          "height": 0,
+          "x": 3092,
+          "y": 3246
+        },
+        "mode": "cache_direct",
+        "next": {
+          "height": 0,
+          "x": 2990,
+          "y": 3368
+        },
+        "quality": "suspicious",
+        "routeDistance": 225,
+        "routeStepCount": 35,
+        "runPlan": {
+          "policy": "conserve_run_until_hazard_segments",
+          "routeDistance": 225,
+          "runTileDistance": 37,
+          "segmentCount": 1,
+          "walkTileDistance": 188
+        },
+        "status": "ok",
+        "targetDistanceIncreases": 9
+      },
+      "edgeSources": {
+        "route_hint": 34
+      },
+      "estimatedTicks": 214.0,
+      "from": "falador_shield_shop",
+      "mlScore": {
+        "confidence": 0.951127,
+        "predictedTicks": 151.48,
+        "riskScore": 0.0125,
+        "score": 1041.317,
+        "sourceMix": {
+          "region": 9
+        }
+      },
+      "mode": null,
+      "name": "falador_to_draynor_bank",
+      "next": {
+        "height": 0,
+        "x": 2990,
+        "y": 3368
+      },
+      "quality": "suspicious",
+      "routeDistance": 225,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "draynor_bank",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
+        "--allow-frontier",
+        "--direct-if-preview",
+        "--probe-toward-target"
+      ],
+      "routeStepCount": 36,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 2974,
+          "y": 3383
+        },
+        {
+          "height": 0,
+          "x": 2971,
+          "y": 3381
+        },
+        {
+          "height": 0,
+          "x": 2977,
+          "y": 3375
+        },
+        {
+          "height": 0,
+          "x": 2982,
+          "y": 3371
+        },
+        {
+          "height": 0,
+          "x": 2988,
+          "y": 3368
+        },
+        {
+          "height": 0,
+          "x": 2994,
+          "y": 3366
+        },
+        {
+          "height": 0,
+          "x": 3000,
+          "y": 3360
+        },
+        {
+          "height": 0,
+          "x": 3000,
+          "y": 3355
+        },
+        {
+          "height": 0,
+          "x": 3006,
+          "y": 3349
+        },
+        {
+          "height": 0,
+          "x": 3006,
+          "y": 3339
+        },
+        {
+          "height": 0,
+          "x": 3006,
+          "y": 3329
+        },
+        {
+          "height": 0,
+          "x": 3009,
+          "y": 3324
+        },
+        {
+          "height": 0,
+          "x": 3011,
+          "y": 3322
+        },
+        {
+          "height": 0,
+          "x": 3016,
+          "y": 3320
+        },
+        {
+          "height": 0,
+          "x": 3020,
+          "y": 3323
+        },
+        {
+          "height": 0,
+          "x": 3025,
+          "y": 3322
+        },
+        {
+          "height": 0,
+          "x": 3030,
+          "y": 3321
+        },
+        {
+          "height": 0,
+          "x": 3037,
+          "y": 3322
+        },
+        {
+          "height": 0,
+          "x": 3043,
+          "y": 3326
+        },
+        {
+          "height": 0,
+          "x": 3049,
+          "y": 3326
+        },
+        {
+          "height": 0,
+          "x": 3054,
+          "y": 3325
+        },
+        {
+          "height": 0,
+          "x": 3059,
+          "y": 3327
+        },
+        {
+          "height": 0,
+          "x": 3066,
+          "y": 3325
+        },
+        {
+          "height": 0,
+          "x": 3071,
+          "y": 3328
+        },
+        {
+          "height": 0,
+          "x": 3071,
+          "y": 3318
+        },
+        {
+          "height": 0,
+          "x": 3071,
+          "y": 3308
+        },
+        {
+          "height": 0,
+          "x": 3071,
+          "y": 3298
+        },
+        {
+          "height": 0,
+          "x": 3071,
+          "y": 3293
+        },
+        {
+          "height": 0,
+          "x": 3072,
+          "y": 3283
+        },
+        {
+          "height": 0,
+          "x": 3072,
+          "y": 3276
+        },
+        {
+          "height": 0,
+          "x": 3077,
+          "y": 3272
+        },
+        {
+          "height": 0,
+          "x": 3078,
+          "y": 3264
+        },
+        {
+          "height": 0,
+          "x": 3080,
+          "y": 3256
+        },
+        {
+          "height": 0,
+          "x": 3085,
+          "y": 3253
+        },
+        {
+          "height": 0,
+          "x": 3089,
+          "y": 3250
+        },
+        {
+          "height": 0,
+          "x": 3092,
+          "y": 3246
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 225,
+        "runTileDistance": 37,
+        "segmentCount": 1,
+        "walkTileDistance": 188
+      },
+      "runSegments": [
+        {
+          "distance": 37,
+          "endIndex": 225,
+          "from": {
+            "height": 0,
+            "x": 3072,
+            "y": 3277
+          },
+          "hazardIds": [
+            "draynor_black_knight_dark_wizard_crossroads",
+            "draynor_southeast_black_knight_edge"
+          ],
+          "minRunEnergy": 40,
+          "startIndex": 188,
+          "to": {
+            "height": 0,
+            "x": 3092,
+            "y": 3246
+          }
+        }
+      ],
+      "score": 1041.317,
+      "selectedOverLearned": null,
+      "status": "ok",
+      "targetDistanceIncreases": 8,
+      "to": "draynor_bank"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 1.615,
+      "directCandidate": {
+        "detourRatio": 1.615,
+        "directDistance": 182,
+        "edgeSources": {
+          "cache_direct": 294
+        },
+        "endTile": {
+          "height": 0,
+          "x": 3206,
+          "y": 3428
+        },
+        "mode": "cache_direct",
+        "next": {
+          "height": 0,
+          "x": 3102,
+          "y": 3264
+        },
+        "quality": "suspicious",
+        "routeDistance": 294,
+        "routeStepCount": 41,
+        "runPlan": {
+          "policy": "conserve_run_until_hazard_segments",
+          "routeDistance": 294,
+          "runTileDistance": 65,
+          "segmentCount": 2,
+          "walkTileDistance": 229
+        },
+        "status": "ok",
+        "targetDistanceIncreases": 8
+      },
+      "edgeSources": {
+        "route_hint": 37
+      },
+      "estimatedTicks": 289.0,
+      "from": "draynor_bank",
+      "mlScore": {
+        "confidence": 0.948962,
+        "predictedTicks": 154.88,
+        "riskScore": 0.041667,
+        "score": 1051.909,
+        "sourceMix": {
+          "edge": 1,
+          "global": 7,
+          "region": 5
+        }
+      },
+      "mode": null,
+      "name": "draynor_bank_to_varrock",
+      "next": {
+        "height": 0,
+        "x": 3102,
+        "y": 3264
+      },
+      "quality": "suspicious",
+      "routeDistance": 294,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "varrock_square",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
+        "--allow-frontier",
+        "--direct-if-preview",
+        "--probe-toward-target"
+      ],
+      "routeStepCount": 40,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 3092,
+          "y": 3242
+        },
+        {
+          "height": 0,
+          "x": 3092,
+          "y": 3247
+        },
+        {
+          "height": 0,
+          "x": 3100,
+          "y": 3255
+        },
+        {
+          "height": 0,
+          "x": 3102,
+          "y": 3263
+        },
+        {
+          "height": 0,
+          "x": 3103,
+          "y": 3273
+        },
+        {
+          "height": 0,
+          "x": 3103,
+          "y": 3282
+        },
+        {
+          "height": 0,
+          "x": 3096,
+          "y": 3285
+        },
+        {
+          "height": 0,
+          "x": 3093,
+          "y": 3289
+        },
+        {
+          "height": 0,
+          "x": 3091,
+          "y": 3299
+        },
+        {
+          "height": 0,
+          "x": 3092,
+          "y": 3304
+        },
+        {
+          "height": 0,
+          "x": 3095,
+          "y": 3309
+        },
+        {
+          "height": 0,
+          "x": 3095,
+          "y": 3314
+        },
+        {
+          "height": 0,
+          "x": 3086,
+          "y": 3324
+        },
+        {
+          "height": 0,
+          "x": 3081,
+          "y": 3330
+        },
+        {
+          "height": 0,
+          "x": 3083,
+          "y": 3335
+        },
+        {
+          "height": 0,
+          "x": 3083,
+          "y": 3342
+        },
+        {
+          "height": 0,
+          "x": 3077,
+          "y": 3348
+        },
+        {
+          "height": 0,
+          "x": 3077,
+          "y": 3354
+        },
+        {
+          "height": 0,
+          "x": 3078,
+          "y": 3364
+        },
+        {
+          "height": 0,
+          "x": 3076,
+          "y": 3371
+        },
+        {
+          "height": 0,
+          "x": 3082,
+          "y": 3377
+        },
+        {
+          "height": 0,
+          "x": 3083,
+          "y": 3381
+        },
+        {
+          "height": 0,
+          "x": 3084,
+          "y": 3389
+        },
+        {
+          "height": 0,
+          "x": 3094,
+          "y": 3398
+        },
+        {
+          "height": 0,
+          "x": 3100,
+          "y": 3405
+        },
+        {
+          "height": 0,
+          "x": 3099,
+          "y": 3414
+        },
+        {
+          "height": 0,
+          "x": 3100,
+          "y": 3420
+        },
+        {
+          "height": 0,
+          "x": 3110,
+          "y": 3420
+        },
+        {
+          "height": 0,
+          "x": 3117,
+          "y": 3420
+        },
+        {
+          "height": 0,
+          "x": 3127,
+          "y": 3418
+        },
+        {
+          "height": 0,
+          "x": 3137,
+          "y": 3417
+        },
+        {
+          "height": 0,
+          "x": 3147,
+          "y": 3417
+        },
+        {
+          "height": 0,
+          "x": 3157,
+          "y": 3417
+        },
+        {
+          "height": 0,
+          "x": 3166,
+          "y": 3425
+        },
+        {
+          "height": 0,
+          "x": 3174,
+          "y": 3425
+        },
+        {
+          "height": 0,
+          "x": 3182,
+          "y": 3426
+        },
+        {
+          "height": 0,
+          "x": 3187,
+          "y": 3429
+        },
+        {
+          "height": 0,
+          "x": 3197,
+          "y": 3429
+        },
+        {
+          "height": 0,
+          "x": 3205,
+          "y": 3429
+        },
+        {
+          "height": 0,
+          "x": 3206,
+          "y": 3428
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 294,
+        "runTileDistance": 65,
+        "segmentCount": 2,
+        "walkTileDistance": 229
+      },
+      "runSegments": [
+        {
+          "distance": 36,
+          "endIndex": 36,
+          "from": {
+            "height": 0,
+            "x": 3092,
+            "y": 3242
+          },
+          "hazardIds": [
+            "draynor_black_knight_dark_wizard_crossroads",
+            "draynor_jail_guard_edge",
+            "draynor_southeast_black_knight_edge"
+          ],
+          "minRunEnergy": 40,
+          "startIndex": 0,
+          "to": {
+            "height": 0,
+            "x": 3103,
+            "y": 3276
+          }
+        },
+        {
+          "distance": 29,
+          "endIndex": 197,
+          "from": {
+            "height": 0,
+            "x": 3095,
+            "y": 3400
+          },
+          "hazardIds": [
+            "barbarian_village_unverified_combat_zone"
+          ],
+          "minRunEnergy": 20,
+          "startIndex": 168,
+          "to": {
+            "height": 0,
+            "x": 3109,
+            "y": 3420
+          }
+        }
+      ],
+      "score": 1051.909,
+      "selectedOverLearned": null,
+      "status": "ok",
+      "targetDistanceIncreases": 7,
+      "to": "varrock_square"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 1.122,
+      "directCandidate": null,
+      "edgeSources": {
+        "cache_direct": 248
+      },
+      "estimatedTicks": 248.0,
+      "from": "barbarian_village",
+      "mlScore": {
+        "confidence": 0.919978,
+        "predictedTicks": 165.97,
+        "riskScore": 0.05,
+        "score": 361.513,
+        "sourceMix": {
+          "edge": 2,
+          "global": 10,
+          "region": 20
+        }
+      },
+      "mode": "cache_direct",
+      "name": "barbarian_village_to_port_sarim",
+      "next": {
+        "height": 0,
+        "x": 3085,
+        "y": 3402
+      },
+      "quality": "watch",
+      "routeDistance": 248,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "port_sarim_dock",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
+        "--allow-frontier",
+        "--direct-if-preview",
+        "--probe-toward-target"
+      ],
+      "routeStepCount": 33,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 3085,
+          "y": 3425
+        },
+        {
+          "height": 0,
+          "x": 3085,
+          "y": 3416
+        },
+        {
+          "height": 0,
+          "x": 3088,
+          "y": 3406
+        },
+        {
+          "height": 0,
+          "x": 3084,
+          "y": 3401
+        },
+        {
+          "height": 0,
+          "x": 3084,
+          "y": 3392
+        },
+        {
+          "height": 0,
+          "x": 3076,
+          "y": 3384
+        },
+        {
+          "height": 0,
+          "x": 3074,
+          "y": 3379
+        },
+        {
+          "height": 0,
+          "x": 3074,
+          "y": 3369
+        },
+        {
+          "height": 0,
+          "x": 3074,
+          "y": 3361
+        },
+        {
+          "height": 0,
+          "x": 3072,
+          "y": 3351
+        },
+        {
+          "height": 0,
+          "x": 3072,
+          "y": 3341
+        },
+        {
+          "height": 0,
+          "x": 3072,
+          "y": 3331
+        },
+        {
+          "height": 0,
+          "x": 3072,
+          "y": 3321
+        },
+        {
+          "height": 0,
+          "x": 3072,
+          "y": 3311
+        },
+        {
+          "height": 0,
+          "x": 3072,
+          "y": 3301
+        },
+        {
+          "height": 0,
+          "x": 3072,
+          "y": 3291
+        },
+        {
+          "height": 0,
+          "x": 3072,
+          "y": 3281
+        },
+        {
+          "height": 0,
+          "x": 3067,
+          "y": 3277
+        },
+        {
+          "height": 0,
+          "x": 3061,
+          "y": 3271
+        },
+        {
+          "height": 0,
+          "x": 3056,
+          "y": 3270
+        },
+        {
+          "height": 0,
+          "x": 3050,
+          "y": 3266
+        },
+        {
+          "height": 0,
+          "x": 3045,
+          "y": 3263
+        },
+        {
+          "height": 0,
+          "x": 3043,
+          "y": 3257
+        },
+        {
+          "height": 0,
+          "x": 3037,
+          "y": 3251
+        },
+        {
+          "height": 0,
+          "x": 3036,
+          "y": 3247
+        },
+        {
+          "height": 0,
+          "x": 3031,
+          "y": 3242
+        },
+        {
+          "height": 0,
+          "x": 3029,
+          "y": 3236
+        },
+        {
+          "height": 0,
+          "x": 3028,
+          "y": 3226
+        },
+        {
+          "height": 0,
+          "x": 3028,
+          "y": 3221
+        },
+        {
+          "height": 0,
+          "x": 3028,
+          "y": 3211
+        },
+        {
+          "height": 0,
+          "x": 3029,
+          "y": 3205
+        },
+        {
+          "height": 0,
+          "x": 3037,
+          "y": 3203
+        },
+        {
+          "height": 0,
+          "x": 3040,
+          "y": 3203
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 248,
+        "runTileDistance": 47,
+        "segmentCount": 2,
+        "walkTileDistance": 201
+      },
+      "runSegments": [
+        {
+          "distance": 25,
+          "endIndex": 25,
+          "from": {
+            "height": 0,
+            "x": 3085,
+            "y": 3425
+          },
+          "hazardIds": [
+            "barbarian_village_unverified_combat_zone"
+          ],
+          "minRunEnergy": 20,
+          "startIndex": 0,
+          "to": {
+            "height": 0,
+            "x": 3084,
+            "y": 3401
+          }
+        },
+        {
+          "distance": 22,
+          "endIndex": 173,
+          "from": {
+            "height": 0,
+            "x": 3067,
+            "y": 3277
+          },
+          "hazardIds": [
+            "draynor_black_knight_dark_wizard_crossroads",
+            "draynor_southeast_black_knight_edge"
+          ],
+          "minRunEnergy": 40,
+          "startIndex": 151,
+          "to": {
+            "height": 0,
+            "x": 3046,
+            "y": 3263
+          }
+        }
+      ],
+      "score": 361.513,
+      "selectedOverLearned": {
+        "previousQuality": "suspicious",
+        "previousRouteDistance": 336,
+        "previousStatus": "ok",
+        "reason": "cache-direct path reached the requested target with a shorter hazard-costed clipped route",
+        "savedTiles": 88
+      },
+      "status": "ok",
+      "targetDistanceIncreases": 2,
+      "to": "port_sarim_dock"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 1.242,
+      "directCandidate": null,
+      "edgeSources": {
+        "cache_direct": 257
+      },
+      "estimatedTicks": 257.0,
+      "from": "lumbridge_castle_courtyard",
+      "mlScore": {
+        "confidence": 0.966234,
+        "predictedTicks": 135.64,
+        "riskScore": 0.019231,
+        "score": 346.877,
+        "sourceMix": {
+          "global": 21,
+          "region": 19
+        }
+      },
+      "mode": "cache_direct",
+      "name": "lumbridge_to_barbarian_village",
+      "next": {
+        "height": 0,
+        "x": 3227,
+        "y": 3232
+      },
+      "quality": "watch",
+      "routeDistance": 257,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "barbarian_village",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
+        "--allow-frontier",
+        "--direct-if-preview",
+        "--probe-toward-target"
+      ],
+      "routeStepCount": 41,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 3222,
+          "y": 3218
+        },
+        {
+          "height": 0,
+          "x": 3228,
+          "y": 3220
+        },
+        {
+          "height": 0,
+          "x": 3232,
+          "y": 3221
+        },
+        {
+          "height": 0,
+          "x": 3231,
+          "y": 3226
+        },
+        {
+          "height": 0,
+          "x": 3227,
+          "y": 3234
+        },
+        {
+          "height": 0,
+          "x": 3220,
+          "y": 3241
+        },
+        {
+          "height": 0,
+          "x": 3215,
+          "y": 3241
+        },
+        {
+          "height": 0,
+          "x": 3208,
+          "y": 3241
+        },
+        {
+          "height": 0,
+          "x": 3202,
+          "y": 3245
+        },
+        {
+          "height": 0,
+          "x": 3195,
+          "y": 3255
+        },
+        {
+          "height": 0,
+          "x": 3191,
+          "y": 3258
+        },
+        {
+          "height": 0,
+          "x": 3187,
+          "y": 3264
+        },
+        {
+          "height": 0,
+          "x": 3182,
+          "y": 3269
+        },
+        {
+          "height": 0,
+          "x": 3182,
+          "y": 3275
+        },
+        {
+          "height": 0,
+          "x": 3179,
+          "y": 3280
+        },
+        {
+          "height": 0,
+          "x": 3176,
+          "y": 3283
+        },
+        {
+          "height": 0,
+          "x": 3171,
+          "y": 3288
+        },
+        {
+          "height": 0,
+          "x": 3168,
+          "y": 3291
+        },
+        {
+          "height": 0,
+          "x": 3167,
+          "y": 3299
+        },
+        {
+          "height": 0,
+          "x": 3162,
+          "y": 3304
+        },
+        {
+          "height": 0,
+          "x": 3153,
+          "y": 3314
+        },
+        {
+          "height": 0,
+          "x": 3152,
+          "y": 3320
+        },
+        {
+          "height": 0,
+          "x": 3151,
+          "y": 3330
+        },
+        {
+          "height": 0,
+          "x": 3148,
+          "y": 3338
+        },
+        {
+          "height": 0,
+          "x": 3146,
+          "y": 3345
+        },
+        {
+          "height": 0,
+          "x": 3136,
+          "y": 3355
+        },
+        {
+          "height": 0,
+          "x": 3131,
+          "y": 3358
+        },
+        {
+          "height": 0,
+          "x": 3131,
+          "y": 3367
+        },
+        {
+          "height": 0,
+          "x": 3130,
+          "y": 3373
+        },
+        {
+          "height": 0,
+          "x": 3126,
+          "y": 3378
+        },
+        {
+          "height": 0,
+          "x": 3123,
+          "y": 3381
+        },
+        {
+          "height": 0,
+          "x": 3119,
+          "y": 3385
+        },
+        {
+          "height": 0,
+          "x": 3116,
+          "y": 3387
+        },
+        {
+          "height": 0,
+          "x": 3109,
+          "y": 3394
+        },
+        {
+          "height": 0,
+          "x": 3104,
+          "y": 3395
+        },
+        {
+          "height": 0,
+          "x": 3098,
+          "y": 3400
+        },
+        {
+          "height": 0,
+          "x": 3098,
+          "y": 3408
+        },
+        {
+          "height": 0,
+          "x": 3099,
+          "y": 3413
+        },
+        {
+          "height": 0,
+          "x": 3098,
+          "y": 3419
+        },
+        {
+          "height": 0,
+          "x": 3091,
+          "y": 3419
+        },
+        {
+          "height": 0,
+          "x": 3089,
+          "y": 3421
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 257,
+        "runTileDistance": 28,
+        "segmentCount": 1,
+        "walkTileDistance": 229
+      },
+      "runSegments": [
+        {
+          "distance": 28,
+          "endIndex": 257,
+          "from": {
+            "height": 0,
+            "x": 3098,
+            "y": 3400
+          },
+          "hazardIds": [
+            "barbarian_village_unverified_combat_zone"
+          ],
+          "minRunEnergy": 20,
+          "startIndex": 229,
+          "to": {
+            "height": 0,
+            "x": 3089,
+            "y": 3421
+          }
+        }
+      ],
+      "score": 346.877,
+      "selectedOverLearned": {
+        "previousQuality": "bad",
+        "previousRouteDistance": 436,
+        "previousStatus": "ok",
+        "reason": "cache-direct path reached the requested target with a shorter hazard-costed clipped route",
+        "savedTiles": 179
+      },
+      "status": "ok",
+      "targetDistanceIncreases": 3,
+      "to": "barbarian_village"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 1.136,
+      "directCandidate": null,
+      "edgeSources": {
+        "route_hint": 3
+      },
+      "estimatedTicks": 21.0,
+      "from": "al_kharid_bank",
+      "mlScore": {
+        "confidence": 0.5,
+        "predictedTicks": 23.0,
+        "riskScore": 0.05,
+        "score": 290.42,
+        "sourceMix": {
+          "edge": 1
+        }
+      },
+      "mode": null,
+      "name": "al_kharid_bank_to_scimitar_shop",
+      "next": {
+        "height": 0,
+        "x": 3285,
+        "y": 3185
+      },
+      "quality": "ok",
+      "routeDistance": 25,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "al_kharid_scimitar_shop",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl"
+      ],
+      "routeStepCount": 6,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 3269,
+          "y": 3167
+        },
+        {
+          "height": 0,
+          "x": 3273,
+          "y": 3167
+        },
+        {
+          "height": 0,
+          "x": 3275,
+          "y": 3175
+        },
+        {
+          "height": 0,
+          "x": 3282,
+          "y": 3182
+        },
+        {
+          "height": 0,
+          "x": 3285,
+          "y": 3185
+        },
+        {
+          "height": 0,
+          "x": 3286,
+          "y": 3186
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 25,
+        "runTileDistance": 0,
+        "segmentCount": 0,
+        "walkTileDistance": 25
+      },
+      "runSegments": null,
+      "score": 290.42,
+      "selectedOverLearned": null,
+      "status": "ok",
+      "targetDistanceIncreases": 0,
+      "to": "al_kharid_scimitar_shop"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 1.174,
+      "directCandidate": null,
+      "edgeSources": {
+        "route_hint": 25
+      },
+      "estimatedTicks": 280.0,
+      "from": "al_kharid_bank",
+      "mlScore": {
+        "confidence": 0.976238,
+        "predictedTicks": 138.39,
+        "riskScore": 0.013158,
+        "score": 4022.497,
+        "sourceMix": {
+          "global": 5,
+          "region": 7
+        }
+      },
+      "mode": null,
+      "name": "al_kharid_bank_to_varrock_east_bank",
+      "next": {
+        "height": 0,
+        "x": 3280,
+        "y": 3187
+      },
+      "quality": "watch",
+      "routeDistance": 297,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "varrock_east_bank",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl"
+      ],
+      "routeStepCount": 39,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 3269,
+          "y": 3167
+        },
+        {
+          "height": 0,
+          "x": 3273,
+          "y": 3167
+        },
+        {
+          "height": 0,
+          "x": 3275,
+          "y": 3177
+        },
+        {
+          "height": 0,
+          "x": 3280,
+          "y": 3183
+        },
+        {
+          "height": 0,
+          "x": 3280,
+          "y": 3193
+        },
+        {
+          "height": 0,
+          "x": 3280,
+          "y": 3203
+        },
+        {
+          "height": 0,
+          "x": 3281,
+          "y": 3208
+        },
+        {
+          "height": 0,
+          "x": 3274,
+          "y": 3215
+        },
+        {
+          "height": 0,
+          "x": 3274,
+          "y": 3225
+        },
+        {
+          "height": 0,
+          "x": 3274,
+          "y": 3235
+        },
+        {
+          "height": 0,
+          "x": 3274,
+          "y": 3245
+        },
+        {
+          "height": 0,
+          "x": 3274,
+          "y": 3255
+        },
+        {
+          "height": 0,
+          "x": 3274,
+          "y": 3265
+        },
+        {
+          "height": 0,
+          "x": 3274,
+          "y": 3275
+        },
+        {
+          "height": 0,
+          "x": 3274,
+          "y": 3285
+        },
+        {
+          "height": 0,
+          "x": 3274,
+          "y": 3295
+        },
+        {
+          "height": 0,
+          "x": 3274,
+          "y": 3305
+        },
+        {
+          "height": 0,
+          "x": 3274,
+          "y": 3315
+        },
+        {
+          "height": 0,
+          "x": 3274,
+          "y": 3324
+        },
+        {
+          "height": 0,
+          "x": 3279,
+          "y": 3329
+        },
+        {
+          "height": 0,
+          "x": 3284,
+          "y": 3335
+        },
+        {
+          "height": 0,
+          "x": 3284,
+          "y": 3340
+        },
+        {
+          "height": 0,
+          "x": 3285,
+          "y": 3345
+        },
+        {
+          "height": 0,
+          "x": 3295,
+          "y": 3355
+        },
+        {
+          "height": 0,
+          "x": 3295,
+          "y": 3364
+        },
+        {
+          "height": 0,
+          "x": 3294,
+          "y": 3370
+        },
+        {
+          "height": 0,
+          "x": 3294,
+          "y": 3375
+        },
+        {
+          "height": 0,
+          "x": 3294,
+          "y": 3385
+        },
+        {
+          "height": 0,
+          "x": 3294,
+          "y": 3392
+        },
+        {
+          "height": 0,
+          "x": 3288,
+          "y": 3398
+        },
+        {
+          "height": 0,
+          "x": 3288,
+          "y": 3406
+        },
+        {
+          "height": 0,
+          "x": 3288,
+          "y": 3410
+        },
+        {
+          "height": 0,
+          "x": 3281,
+          "y": 3415
+        },
+        {
+          "height": 0,
+          "x": 3279,
+          "y": 3419
+        },
+        {
+          "height": 0,
+          "x": 3277,
+          "y": 3424
+        },
+        {
+          "height": 0,
+          "x": 3268,
+          "y": 3426
+        },
+        {
+          "height": 0,
+          "x": 3261,
+          "y": 3426
+        },
+        {
+          "height": 0,
+          "x": 3256,
+          "y": 3427
+        },
+        {
+          "height": 0,
+          "x": 3254,
+          "y": 3421
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 297,
+        "runTileDistance": 0,
+        "segmentCount": 0,
+        "walkTileDistance": 297
+      },
+      "runSegments": null,
+      "score": 4022.497,
+      "selectedOverLearned": null,
+      "status": "ok",
+      "targetDistanceIncreases": 2,
+      "to": "varrock_east_bank"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 1.216,
+      "directCandidate": null,
+      "edgeSources": {
+        "cache_direct": 45
+      },
+      "estimatedTicks": 45.0,
+      "from": "varrock_west_bank",
+      "mlScore": {
+        "confidence": 0.946475,
+        "predictedTicks": 22.47,
+        "riskScore": 0.020833,
+        "score": 632.275,
+        "sourceMix": {
+          "global": 2,
+          "region": 5
+        }
+      },
+      "mode": "cache_direct",
+      "name": "varrock_west_bank_to_sword_shop",
+      "next": {
+        "height": 0,
+        "x": 3195,
+        "y": 3420
+      },
+      "quality": "watch",
+      "routeDistance": 45,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "varrock_sword_shop",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
+        "--allow-frontier",
+        "--direct-if-preview",
+        "--probe-toward-target"
+      ],
+      "routeStepCount": 8,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 3185,
+          "y": 3436
+        },
+        {
+          "height": 0,
+          "x": 3182,
+          "y": 3434
+        },
+        {
+          "height": 0,
+          "x": 3186,
+          "y": 3428
+        },
+        {
+          "height": 0,
+          "x": 3192,
+          "y": 3428
+        },
+        {
+          "height": 0,
+          "x": 3195,
+          "y": 3420
+        },
+        {
+          "height": 0,
+          "x": 3202,
+          "y": 3413
+        },
+        {
+          "height": 0,
+          "x": 3210,
+          "y": 3404
+        },
+        {
+          "height": 0,
+          "x": 3209,
+          "y": 3400
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 45,
+        "runTileDistance": 8,
+        "segmentCount": 1,
+        "walkTileDistance": 37
+      },
+      "runSegments": [
+        {
+          "distance": 8,
+          "endIndex": 45,
+          "from": {
+            "height": 0,
+            "x": 3207,
+            "y": 3407
+          },
+          "hazardIds": [
+            "varrock_south_dark_wizards_unverified"
+          ],
+          "minRunEnergy": 60,
+          "startIndex": 37,
+          "to": {
+            "height": 0,
+            "x": 3209,
+            "y": 3400
+          }
+        }
+      ],
+      "score": 632.275,
+      "selectedOverLearned": {
+        "completionAddedTiles": 14,
+        "previousQuality": "watch",
+        "previousRouteDistance": 31,
+        "previousStatus": "no-learned-route",
+        "reason": "learned graph only reached a frontier; cache-direct path is selected because it reaches the requested target"
+      },
+      "status": "ok",
+      "targetDistanceIncreases": 1,
+      "to": "varrock_sword_shop"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 1.088,
+      "directCandidate": null,
+      "edgeSources": {
+        "route_hint": 22
+      },
+      "estimatedTicks": 248.0,
+      "from": "varrock_west_bank",
+      "mlScore": {
+        "confidence": 0.968031,
+        "predictedTicks": 160.65,
+        "riskScore": 0.0125,
+        "score": 316.361,
+        "sourceMix": {
+          "global": 4,
+          "region": 6
+        }
+      },
+      "mode": null,
+      "name": "varrock_west_bank_to_falador_west_bank",
+      "next": {
+        "height": 0,
+        "x": 3164,
+        "y": 3424
+      },
+      "quality": "ok",
+      "routeDistance": 259,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "falador_west_bank",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl"
+      ],
+      "routeStepCount": 32,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 3185,
+          "y": 3436
+        },
+        {
+          "height": 0,
+          "x": 3182,
+          "y": 3434
+        },
+        {
+          "height": 0,
+          "x": 3174,
+          "y": 3425
+        },
+        {
+          "height": 0,
+          "x": 3165,
+          "y": 3425
+        },
+        {
+          "height": 0,
+          "x": 3157,
+          "y": 3417
+        },
+        {
+          "height": 0,
+          "x": 3147,
+          "y": 3417
+        },
+        {
+          "height": 0,
+          "x": 3137,
+          "y": 3417
+        },
+        {
+          "height": 0,
+          "x": 3128,
+          "y": 3417
+        },
+        {
+          "height": 0,
+          "x": 3119,
+          "y": 3418
+        },
+        {
+          "height": 0,
+          "x": 3114,
+          "y": 3420
+        },
+        {
+          "height": 0,
+          "x": 3104,
+          "y": 3420
+        },
+        {
+          "height": 0,
+          "x": 3098,
+          "y": 3418
+        },
+        {
+          "height": 0,
+          "x": 3096,
+          "y": 3413
+        },
+        {
+          "height": 0,
+          "x": 3091,
+          "y": 3406
+        },
+        {
+          "height": 0,
+          "x": 3087,
+          "y": 3404
+        },
+        {
+          "height": 0,
+          "x": 3077,
+          "y": 3394
+        },
+        {
+          "height": 0,
+          "x": 3067,
+          "y": 3391
+        },
+        {
+          "height": 0,
+          "x": 3057,
+          "y": 3391
+        },
+        {
+          "height": 0,
+          "x": 3047,
+          "y": 3391
+        },
+        {
+          "height": 0,
+          "x": 3037,
+          "y": 3391
+        },
+        {
+          "height": 0,
+          "x": 3031,
+          "y": 3394
+        },
+        {
+          "height": 0,
+          "x": 3021,
+          "y": 3394
+        },
+        {
+          "height": 0,
+          "x": 3011,
+          "y": 3395
+        },
+        {
+          "height": 0,
+          "x": 3001,
+          "y": 3395
+        },
+        {
+          "height": 0,
+          "x": 2991,
+          "y": 3395
+        },
+        {
+          "height": 0,
+          "x": 2981,
+          "y": 3395
+        },
+        {
+          "height": 0,
+          "x": 2971,
+          "y": 3395
+        },
+        {
+          "height": 0,
+          "x": 2967,
+          "y": 3390
+        },
+        {
+          "height": 0,
+          "x": 2961,
+          "y": 3384
+        },
+        {
+          "height": 0,
+          "x": 2951,
+          "y": 3376
+        },
+        {
+          "height": 0,
+          "x": 2946,
+          "y": 3374
+        },
+        {
+          "height": 0,
+          "x": 2946,
+          "y": 3369
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 259,
+        "runTileDistance": 33,
+        "segmentCount": 1,
+        "walkTileDistance": 226
+      },
+      "runSegments": [
+        {
+          "distance": 33,
+          "endIndex": 111,
+          "from": {
+            "height": 0,
+            "x": 3110,
+            "y": 3420
+          },
+          "hazardIds": [
+            "barbarian_village_unverified_combat_zone"
+          ],
+          "minRunEnergy": 20,
+          "startIndex": 78,
+          "to": {
+            "height": 0,
+            "x": 3084,
+            "y": 3401
+          }
+        }
+      ],
+      "score": 316.361,
+      "selectedOverLearned": null,
+      "status": "ok",
+      "targetDistanceIncreases": 0,
+      "to": "falador_west_bank"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 1.148,
+      "directCandidate": null,
+      "edgeSources": {
+        "route_hint": 3
+      },
+      "estimatedTicks": 28.0,
+      "from": "falador_west_bank",
+      "mlScore": {
+        "confidence": 0.946671,
+        "predictedTicks": 22.33,
+        "riskScore": 0.01087,
+        "score": 277.683,
+        "sourceMix": {
+          "region": 2
+        }
+      },
+      "mode": null,
+      "name": "falador_west_bank_to_shield_shop",
+      "next": {
+        "height": 0,
+        "x": 2964,
+        "y": 3379
+      },
+      "quality": "watch",
+      "routeDistance": 31,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "falador_shield_shop",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl"
+      ],
+      "routeStepCount": 6,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 2947,
+          "y": 3368
+        },
+        {
+          "height": 0,
+          "x": 2946,
+          "y": 3374
+        },
+        {
+          "height": 0,
+          "x": 2954,
+          "y": 3379
+        },
+        {
+          "height": 0,
+          "x": 2964,
+          "y": 3379
+        },
+        {
+          "height": 0,
+          "x": 2970,
+          "y": 3379
+        },
+        {
+          "height": 0,
+          "x": 2971,
+          "y": 3380
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 31,
+        "runTileDistance": 0,
+        "segmentCount": 0,
+        "walkTileDistance": 31
+      },
+      "runSegments": null,
+      "score": 277.683,
+      "selectedOverLearned": null,
+      "status": "ok",
+      "targetDistanceIncreases": 1,
+      "to": "falador_shield_shop"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 1.179,
+      "directCandidate": null,
+      "edgeSources": {
+        "route_hint": 14
+      },
+      "estimatedTicks": 173.0,
+      "from": "falador_east_bank",
+      "mlScore": {
+        "confidence": 0.899014,
+        "predictedTicks": 141.76,
+        "riskScore": 0.314394,
+        "score": 748.952,
+        "sourceMix": {
+          "region": 7
+        }
+      },
+      "mode": null,
+      "name": "falador_east_bank_to_port_sarim",
+      "next": {
+        "height": 0,
+        "x": 3008,
+        "y": 3343
+      },
+      "quality": "watch",
+      "routeDistance": 178,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "port_sarim_dock",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
+        "--allow-frontier",
+        "--direct-if-preview",
+        "--probe-toward-target"
+      ],
+      "routeStepCount": 22,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 3015,
+          "y": 3355
+        },
+        {
+          "height": 0,
+          "x": 3012,
+          "y": 3359
+        },
+        {
+          "height": 0,
+          "x": 3008,
+          "y": 3353
+        },
+        {
+          "height": 0,
+          "x": 3008,
+          "y": 3343
+        },
+        {
+          "height": 0,
+          "x": 3008,
+          "y": 3333
+        },
+        {
+          "height": 0,
+          "x": 3008,
+          "y": 3323
+        },
+        {
+          "height": 0,
+          "x": 3008,
+          "y": 3318
+        },
+        {
+          "height": 0,
+          "x": 3007,
+          "y": 3308
+        },
+        {
+          "height": 0,
+          "x": 3007,
+          "y": 3298
+        },
+        {
+          "height": 0,
+          "x": 3007,
+          "y": 3288
+        },
+        {
+          "height": 0,
+          "x": 3007,
+          "y": 3278
+        },
+        {
+          "height": 0,
+          "x": 3013,
+          "y": 3268
+        },
+        {
+          "height": 0,
+          "x": 3016,
+          "y": 3262
+        },
+        {
+          "height": 0,
+          "x": 3018,
+          "y": 3253
+        },
+        {
+          "height": 0,
+          "x": 3018,
+          "y": 3248
+        },
+        {
+          "height": 0,
+          "x": 3025,
+          "y": 3241
+        },
+        {
+          "height": 0,
+          "x": 3028,
+          "y": 3232
+        },
+        {
+          "height": 0,
+          "x": 3028,
+          "y": 3222
+        },
+        {
+          "height": 0,
+          "x": 3027,
+          "y": 3212
+        },
+        {
+          "height": 0,
+          "x": 3027,
+          "y": 3207
+        },
+        {
+          "height": 0,
+          "x": 3035,
+          "y": 3203
+        },
+        {
+          "height": 0,
+          "x": 3041,
+          "y": 3203
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 178,
+        "runTileDistance": 50,
+        "segmentCount": 1,
+        "walkTileDistance": 128
+      },
+      "runSegments": [
+        {
+          "distance": 50,
+          "endIndex": 117,
+          "from": {
+            "height": 0,
+            "x": 3007,
+            "y": 3300
+          },
+          "hazardIds": [
+            "port_sarim_highwayman_road_contact"
+          ],
+          "minRunEnergy": 30,
+          "startIndex": 67,
+          "to": {
+            "height": 0,
+            "x": 3018,
+            "y": 3251
+          }
+        }
+      ],
+      "score": 748.952,
+      "selectedOverLearned": null,
+      "status": "ok",
+      "targetDistanceIncreases": 3,
+      "to": "port_sarim_dock"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 1.32,
+      "directCandidate": {
+        "detourRatio": 1.32,
+        "directDistance": 150,
+        "edgeSources": {
+          "cache_direct": 198
+        },
+        "endTile": {
+          "height": 0,
+          "x": 2956,
+          "y": 3224
+        },
+        "mode": "cache_direct",
+        "next": {
+          "height": 0,
+          "x": 2963,
+          "y": 3373
+        },
+        "quality": "watch",
+        "routeDistance": 198,
+        "routeStepCount": 28,
+        "runPlan": {
+          "policy": "conserve_run_until_hazard_segments",
+          "routeDistance": 198,
+          "runTileDistance": 0,
+          "segmentCount": 0,
+          "walkTileDistance": 198
+        },
+        "status": "ok",
+        "targetDistanceIncreases": 4
+      },
+      "edgeSources": {
+        "route_hint": 19
+      },
+      "estimatedTicks": 191.0,
+      "from": "falador_west_bank",
+      "mlScore": {
+        "confidence": 0.944134,
+        "predictedTicks": 135.59,
+        "riskScore": 0.017857,
+        "score": 510.775,
+        "sourceMix": {
+          "global": 3,
+          "region": 6
+        }
+      },
+      "mode": null,
+      "name": "falador_west_bank_to_rimmington",
+      "next": {
+        "height": 0,
+        "x": 2963,
+        "y": 3373
+      },
+      "quality": "watch",
+      "routeDistance": 198,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "rimmington_center",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
+        "--allow-frontier",
+        "--direct-if-preview",
+        "--probe-toward-target"
+      ],
+      "routeStepCount": 28,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 2947,
+          "y": 3368
+        },
+        {
+          "height": 0,
+          "x": 2946,
+          "y": 3374
+        },
+        {
+          "height": 0,
+          "x": 2954,
+          "y": 3379
+        },
+        {
+          "height": 0,
+          "x": 2961,
+          "y": 3376
+        },
+        {
+          "height": 0,
+          "x": 2970,
+          "y": 3366
+        },
+        {
+          "height": 0,
+          "x": 2975,
+          "y": 3366
+        },
+        {
+          "height": 0,
+          "x": 2980,
+          "y": 3364
+        },
+        {
+          "height": 0,
+          "x": 2987,
+          "y": 3360
+        },
+        {
+          "height": 0,
+          "x": 2994,
+          "y": 3360
+        },
+        {
+          "height": 0,
+          "x": 3004,
+          "y": 3351
+        },
+        {
+          "height": 0,
+          "x": 3006,
+          "y": 3341
+        },
+        {
+          "height": 0,
+          "x": 3006,
+          "y": 3331
+        },
+        {
+          "height": 0,
+          "x": 3006,
+          "y": 3323
+        },
+        {
+          "height": 0,
+          "x": 2997,
+          "y": 3314
+        },
+        {
+          "height": 0,
+          "x": 2987,
+          "y": 3306
+        },
+        {
+          "height": 0,
+          "x": 2980,
+          "y": 3302
+        },
+        {
+          "height": 0,
+          "x": 2978,
+          "y": 3294
+        },
+        {
+          "height": 0,
+          "x": 2980,
+          "y": 3287
+        },
+        {
+          "height": 0,
+          "x": 2977,
+          "y": 3282
+        },
+        {
+          "height": 0,
+          "x": 2977,
+          "y": 3272
+        },
+        {
+          "height": 0,
+          "x": 2974,
+          "y": 3267
+        },
+        {
+          "height": 0,
+          "x": 2971,
+          "y": 3261
+        },
+        {
+          "height": 0,
+          "x": 2963,
+          "y": 3253
+        },
+        {
+          "height": 0,
+          "x": 2961,
+          "y": 3247
+        },
+        {
+          "height": 0,
+          "x": 2959,
+          "y": 3240
+        },
+        {
+          "height": 0,
+          "x": 2958,
+          "y": 3235
+        },
+        {
+          "height": 0,
+          "x": 2956,
+          "y": 3225
+        },
+        {
+          "height": 0,
+          "x": 2956,
+          "y": 3224
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 198,
+        "runTileDistance": 0,
+        "segmentCount": 0,
+        "walkTileDistance": 198
+      },
+      "runSegments": null,
+      "score": 510.775,
+      "selectedOverLearned": null,
+      "status": "ok",
+      "targetDistanceIncreases": 4,
+      "to": "rimmington_center"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 3.021,
+      "directCandidate": {
+        "detourRatio": 3.021,
+        "directDistance": 47,
+        "edgeSources": {
+          "cache_direct": 142
+        },
+        "endTile": {
+          "height": 0,
+          "x": 3040,
+          "y": 3203
+        },
+        "mode": "cache_direct",
+        "next": {
+          "height": 0,
+          "x": 3082,
+          "y": 3261
+        },
+        "quality": "bad",
+        "routeDistance": 142,
+        "routeStepCount": 22,
+        "runPlan": {
+          "policy": "conserve_run_until_hazard_segments",
+          "routeDistance": 142,
+          "runTileDistance": 62,
+          "segmentCount": 2,
+          "walkTileDistance": 80
+        },
+        "status": "ok",
+        "targetDistanceIncreases": 11
+      },
+      "edgeSources": {
+        "route_hint": 16
+      },
+      "estimatedTicks": 164.0,
+      "from": "draynor_bank",
+      "mlScore": {
+        "confidence": 0.951263,
+        "predictedTicks": 105.99,
+        "riskScore": 0.016667,
+        "score": 2543.267,
+        "sourceMix": {
+          "region": 7
+        }
+      },
+      "mode": null,
+      "name": "draynor_bank_to_port_sarim",
+      "next": {
+        "height": 0,
+        "x": 3080,
+        "y": 3261
+      },
+      "quality": "bad",
+      "routeDistance": 142,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "port_sarim_dock",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
+        "--allow-frontier",
+        "--direct-if-preview",
+        "--probe-toward-target"
+      ],
+      "routeStepCount": 23,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 3092,
+          "y": 3242
+        },
+        {
+          "height": 0,
+          "x": 3092,
+          "y": 3247
+        },
+        {
+          "height": 0,
+          "x": 3085,
+          "y": 3251
+        },
+        {
+          "height": 0,
+          "x": 3080,
+          "y": 3256
+        },
+        {
+          "height": 0,
+          "x": 3080,
+          "y": 3262
+        },
+        {
+          "height": 0,
+          "x": 3077,
+          "y": 3268
+        },
+        {
+          "height": 0,
+          "x": 3071,
+          "y": 3272
+        },
+        {
+          "height": 0,
+          "x": 3066,
+          "y": 3276
+        },
+        {
+          "height": 0,
+          "x": 3061,
+          "y": 3271
+        },
+        {
+          "height": 0,
+          "x": 3055,
+          "y": 3270
+        },
+        {
+          "height": 0,
+          "x": 3048,
+          "y": 3263
+        },
+        {
+          "height": 0,
+          "x": 3045,
+          "y": 3261
+        },
+        {
+          "height": 0,
+          "x": 3043,
+          "y": 3257
+        },
+        {
+          "height": 0,
+          "x": 3037,
+          "y": 3251
+        },
+        {
+          "height": 0,
+          "x": 3036,
+          "y": 3247
+        },
+        {
+          "height": 0,
+          "x": 3031,
+          "y": 3242
+        },
+        {
+          "height": 0,
+          "x": 3029,
+          "y": 3236
+        },
+        {
+          "height": 0,
+          "x": 3028,
+          "y": 3226
+        },
+        {
+          "height": 0,
+          "x": 3028,
+          "y": 3221
+        },
+        {
+          "height": 0,
+          "x": 3027,
+          "y": 3212
+        },
+        {
+          "height": 0,
+          "x": 3027,
+          "y": 3205
+        },
+        {
+          "height": 0,
+          "x": 3037,
+          "y": 3203
+        },
+        {
+          "height": 0,
+          "x": 3040,
+          "y": 3203
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 142,
+        "runTileDistance": 67,
+        "segmentCount": 1,
+        "walkTileDistance": 75
+      },
+      "runSegments": [
+        {
+          "distance": 67,
+          "endIndex": 67,
+          "from": {
+            "height": 0,
+            "x": 3092,
+            "y": 3242
+          },
+          "hazardIds": [
+            "draynor_black_knight_dark_wizard_crossroads",
+            "draynor_southeast_black_knight_edge"
+          ],
+          "minRunEnergy": 40,
+          "startIndex": 0,
+          "to": {
+            "height": 0,
+            "x": 3046,
+            "y": 3263
+          }
+        }
+      ],
+      "score": 2543.267,
+      "selectedOverLearned": null,
+      "status": "ok",
+      "targetDistanceIncreases": 10,
+      "to": "port_sarim_dock"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 1.15,
+      "directCandidate": null,
+      "edgeSources": {
+        "route_hint": 14
+      },
+      "estimatedTicks": 134.0,
+      "from": "draynor_bank",
+      "mlScore": {
+        "confidence": 0.979321,
+        "predictedTicks": 61.23,
+        "riskScore": 0.008929,
+        "score": 225.608,
+        "sourceMix": {
+          "global": 3,
+          "region": 3
+        }
+      },
+      "mode": null,
+      "name": "draynor_bank_to_lumbridge_general_store",
+      "next": {
+        "height": 0,
+        "x": 3108,
+        "y": 3261
+      },
+      "quality": "ok",
+      "routeDistance": 138,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "lumbridge_general_store",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl"
+      ],
+      "routeStepCount": 22,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 3092,
+          "y": 3242
+        },
+        {
+          "height": 0,
+          "x": 3092,
+          "y": 3246
+        },
+        {
+          "height": 0,
+          "x": 3096,
+          "y": 3251
+        },
+        {
+          "height": 0,
+          "x": 3102,
+          "y": 3255
+        },
+        {
+          "height": 0,
+          "x": 3105,
+          "y": 3261
+        },
+        {
+          "height": 0,
+          "x": 3111,
+          "y": 3261
+        },
+        {
+          "height": 0,
+          "x": 3121,
+          "y": 3264
+        },
+        {
+          "height": 0,
+          "x": 3126,
+          "y": 3265
+        },
+        {
+          "height": 0,
+          "x": 3132,
+          "y": 3265
+        },
+        {
+          "height": 0,
+          "x": 3138,
+          "y": 3267
+        },
+        {
+          "height": 0,
+          "x": 3143,
+          "y": 3266
+        },
+        {
+          "height": 0,
+          "x": 3153,
+          "y": 3265
+        },
+        {
+          "height": 0,
+          "x": 3159,
+          "y": 3263
+        },
+        {
+          "height": 0,
+          "x": 3164,
+          "y": 3258
+        },
+        {
+          "height": 0,
+          "x": 3171,
+          "y": 3255
+        },
+        {
+          "height": 0,
+          "x": 3181,
+          "y": 3253
+        },
+        {
+          "height": 0,
+          "x": 3190,
+          "y": 3243
+        },
+        {
+          "height": 0,
+          "x": 3195,
+          "y": 3241
+        },
+        {
+          "height": 0,
+          "x": 3205,
+          "y": 3242
+        },
+        {
+          "height": 0,
+          "x": 3214,
+          "y": 3241
+        },
+        {
+          "height": 0,
+          "x": 3213,
+          "y": 3245
+        },
+        {
+          "height": 0,
+          "x": 3212,
+          "y": 3246
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 138,
+        "runTileDistance": 69,
+        "segmentCount": 1,
+        "walkTileDistance": 69
+      },
+      "runSegments": [
+        {
+          "distance": 69,
+          "endIndex": 69,
+          "from": {
+            "height": 0,
+            "x": 3092,
+            "y": 3242
+          },
+          "hazardIds": [
+            "draynor_black_knight_dark_wizard_crossroads",
+            "draynor_jail_guard_edge",
+            "draynor_southeast_black_knight_edge"
+          ],
+          "minRunEnergy": 40,
+          "startIndex": 0,
+          "to": {
+            "height": 0,
+            "x": 3153,
+            "y": 3265
+          }
+        }
+      ],
+      "score": 225.608,
+      "selectedOverLearned": null,
+      "status": "ok",
+      "targetDistanceIncreases": 0,
+      "to": "lumbridge_general_store"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 1.846,
+      "directCandidate": {
+        "detourRatio": 1.846,
+        "directDistance": 91,
+        "edgeSources": {
+          "cache_direct": 168
+        },
+        "endTile": {
+          "height": 0,
+          "x": 3184,
+          "y": 3436
+        },
+        "mode": "cache_direct",
+        "next": {
+          "height": 0,
+          "x": 3080,
+          "y": 3473
+        },
+        "quality": "bad",
+        "routeDistance": 168,
+        "routeStepCount": 23,
+        "runPlan": {
+          "policy": "conserve_run_until_hazard_segments",
+          "routeDistance": 168,
+          "runTileDistance": 47,
+          "segmentCount": 1,
+          "walkTileDistance": 121
+        },
+        "status": "ok",
+        "targetDistanceIncreases": 7
+      },
+      "edgeSources": {
+        "route_hint": 15
+      },
+      "estimatedTicks": 159.0,
+      "from": "edgeville_bank",
+      "mlScore": {
+        "confidence": 0.883251,
+        "predictedTicks": 103.94,
+        "riskScore": 0.05,
+        "score": 2248.905,
+        "sourceMix": {
+          "edge": 1,
+          "global": 2,
+          "region": 4
+        }
+      },
+      "mode": null,
+      "name": "edgeville_bank_to_varrock_west_bank",
+      "next": {
+        "height": 0,
+        "x": 3080,
+        "y": 3473
+      },
+      "quality": "bad",
+      "routeDistance": 168,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "varrock_west_bank",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
+        "--allow-frontier",
+        "--direct-if-preview",
+        "--probe-toward-target"
+      ],
+      "routeStepCount": 23,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 3094,
+          "y": 3494
+        },
+        {
+          "height": 0,
+          "x": 3090,
+          "y": 3491
+        },
+        {
+          "height": 0,
+          "x": 3082,
+          "y": 3483
+        },
+        {
+          "height": 0,
+          "x": 3081,
+          "y": 3478
+        },
+        {
+          "height": 0,
+          "x": 3080,
+          "y": 3468
+        },
+        {
+          "height": 0,
+          "x": 3089,
+          "y": 3461
+        },
+        {
+          "height": 0,
+          "x": 3096,
+          "y": 3453
+        },
+        {
+          "height": 0,
+          "x": 3091,
+          "y": 3448
+        },
+        {
+          "height": 0,
+          "x": 3091,
+          "y": 3443
+        },
+        {
+          "height": 0,
+          "x": 3095,
+          "y": 3439
+        },
+        {
+          "height": 0,
+          "x": 3101,
+          "y": 3433
+        },
+        {
+          "height": 0,
+          "x": 3101,
+          "y": 3427
+        },
+        {
+          "height": 0,
+          "x": 3099,
+          "y": 3422
+        },
+        {
+          "height": 0,
+          "x": 3109,
+          "y": 3421
+        },
+        {
+          "height": 0,
+          "x": 3116,
+          "y": 3421
+        },
+        {
+          "height": 0,
+          "x": 3126,
+          "y": 3418
+        },
+        {
+          "height": 0,
+          "x": 3136,
+          "y": 3417
+        },
+        {
+          "height": 0,
+          "x": 3146,
+          "y": 3417
+        },
+        {
+          "height": 0,
+          "x": 3156,
+          "y": 3417
+        },
+        {
+          "height": 0,
+          "x": 3166,
+          "y": 3425
+        },
+        {
+          "height": 0,
+          "x": 3174,
+          "y": 3425
+        },
+        {
+          "height": 0,
+          "x": 3182,
+          "y": 3432
+        },
+        {
+          "height": 0,
+          "x": 3184,
+          "y": 3436
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 168,
+        "runTileDistance": 47,
+        "segmentCount": 1,
+        "walkTileDistance": 121
+      },
+      "runSegments": [
+        {
+          "distance": 47,
+          "endIndex": 90,
+          "from": {
+            "height": 0,
+            "x": 3091,
+            "y": 3458
+          },
+          "hazardIds": [
+            "barbarian_village_unverified_combat_zone"
+          ],
+          "minRunEnergy": 20,
+          "startIndex": 43,
+          "to": {
+            "height": 0,
+            "x": 3109,
+            "y": 3421
+          }
+        }
+      ],
+      "score": 2248.905,
+      "selectedOverLearned": null,
+      "status": "ok",
+      "targetDistanceIncreases": 7,
+      "to": "varrock_west_bank"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 1.029,
+      "directCandidate": null,
+      "edgeSources": {
+        "route_hint": 7
+      },
+      "estimatedTicks": 65.0,
+      "from": "edgeville_bank",
+      "mlScore": {
+        "confidence": 0.904575,
+        "predictedTicks": 34.55,
+        "riskScore": 0.025,
+        "score": 198.039,
+        "sourceMix": {
+          "global": 1,
+          "region": 2
+        }
+      },
+      "mode": null,
+      "name": "edgeville_bank_to_barbarian_village",
+      "next": {
+        "height": 0,
+        "x": 3080,
+        "y": 3473
+      },
+      "quality": "ok",
+      "routeDistance": 71,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "barbarian_village",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl"
+      ],
+      "routeStepCount": 11,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 3094,
+          "y": 3494
+        },
+        {
+          "height": 0,
+          "x": 3091,
+          "y": 3491
+        },
+        {
+          "height": 0,
+          "x": 3083,
+          "y": 3483
+        },
+        {
+          "height": 0,
+          "x": 3081,
+          "y": 3478
+        },
+        {
+          "height": 0,
+          "x": 3080,
+          "y": 3468
+        },
+        {
+          "height": 0,
+          "x": 3086,
+          "y": 3464
+        },
+        {
+          "height": 0,
+          "x": 3086,
+          "y": 3454
+        },
+        {
+          "height": 0,
+          "x": 3086,
+          "y": 3444
+        },
+        {
+          "height": 0,
+          "x": 3086,
+          "y": 3439
+        },
+        {
+          "height": 0,
+          "x": 3088,
+          "y": 3433
+        },
+        {
+          "height": 0,
+          "x": 3089,
+          "y": 3429
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 71,
+        "runTileDistance": 29,
+        "segmentCount": 1,
+        "walkTileDistance": 42
+      },
+      "runSegments": [
+        {
+          "distance": 29,
+          "endIndex": 71,
+          "from": {
+            "height": 0,
+            "x": 3086,
+            "y": 3458
+          },
+          "hazardIds": [
+            "barbarian_village_unverified_combat_zone"
+          ],
+          "minRunEnergy": 20,
+          "startIndex": 42,
+          "to": {
+            "height": 0,
+            "x": 3089,
+            "y": 3429
+          }
+        }
+      ],
+      "score": 198.039,
+      "selectedOverLearned": null,
+      "status": "ok",
+      "targetDistanceIncreases": 0,
+      "to": "barbarian_village"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 2.789,
+      "directCandidate": {
+        "error": "no cache-clipped direct path",
+        "mode": "cache_direct",
+        "quality": "bad",
+        "status": "error"
+      },
+      "edgeSources": {
+        "route_hint": 40
+      },
+      "estimatedTicks": 355.0,
+      "from": "catherby_bank",
+      "mlScore": {
+        "confidence": 0.947741,
+        "predictedTicks": 214.89,
+        "riskScore": 0.167094,
+        "score": 3344.526,
+        "sourceMix": {
+          "region": 16
+        }
+      },
+      "mode": null,
+      "name": "catherby_bank_to_falador_west_bank",
+      "next": {
+        "height": 0,
+        "x": 2835,
+        "y": 3435
+      },
+      "quality": "bad",
+      "routeDistance": 371,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "falador_west_bank",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
+        "--allow-frontier",
+        "--direct-if-preview",
+        "--probe-toward-target"
+      ],
+      "routeStepCount": 55,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 2814,
+          "y": 3440
+        },
+        {
+          "height": 0,
+          "x": 2815,
+          "y": 3436
+        },
+        {
+          "height": 0,
+          "x": 2825,
+          "y": 3436
+        },
+        {
+          "height": 0,
+          "x": 2832,
+          "y": 3436
+        },
+        {
+          "height": 0,
+          "x": 2842,
+          "y": 3435
+        },
+        {
+          "height": 0,
+          "x": 2851,
+          "y": 3435
+        },
+        {
+          "height": 0,
+          "x": 2855,
+          "y": 3444
+        },
+        {
+          "height": 0,
+          "x": 2848,
+          "y": 3447
+        },
+        {
+          "height": 0,
+          "x": 2846,
+          "y": 3453
+        },
+        {
+          "height": 0,
+          "x": 2846,
+          "y": 3460
+        },
+        {
+          "height": 0,
+          "x": 2843,
+          "y": 3467
+        },
+        {
+          "height": 0,
+          "x": 2845,
+          "y": 3471
+        },
+        {
+          "height": 0,
+          "x": 2847,
+          "y": 3477
+        },
+        {
+          "height": 0,
+          "x": 2847,
+          "y": 3482
+        },
+        {
+          "height": 0,
+          "x": 2850,
+          "y": 3487
+        },
+        {
+          "height": 0,
+          "x": 2851,
+          "y": 3492
+        },
+        {
+          "height": 0,
+          "x": 2848,
+          "y": 3495
+        },
+        {
+          "height": 0,
+          "x": 2842,
+          "y": 3499
+        },
+        {
+          "height": 0,
+          "x": 2844,
+          "y": 3505
+        },
+        {
+          "height": 0,
+          "x": 2853,
+          "y": 3508
+        },
+        {
+          "height": 0,
+          "x": 2861,
+          "y": 3503
+        },
+        {
+          "height": 0,
+          "x": 2861,
+          "y": 3493
+        },
+        {
+          "height": 0,
+          "x": 2857,
+          "y": 3486
+        },
+        {
+          "height": 0,
+          "x": 2857,
+          "y": 3479
+        },
+        {
+          "height": 0,
+          "x": 2854,
+          "y": 3472
+        },
+        {
+          "height": 0,
+          "x": 2856,
+          "y": 3466
+        },
+        {
+          "height": 0,
+          "x": 2861,
+          "y": 3460
+        },
+        {
+          "height": 0,
+          "x": 2863,
+          "y": 3451
+        },
+        {
+          "height": 0,
+          "x": 2866,
+          "y": 3441
+        },
+        {
+          "height": 0,
+          "x": 2868,
+          "y": 3435
+        },
+        {
+          "height": 0,
+          "x": 2874,
+          "y": 3429
+        },
+        {
+          "height": 0,
+          "x": 2882,
+          "y": 3429
+        },
+        {
+          "height": 0,
+          "x": 2886,
+          "y": 3428
+        },
+        {
+          "height": 0,
+          "x": 2889,
+          "y": 3433
+        },
+        {
+          "height": 0,
+          "x": 2898,
+          "y": 3442
+        },
+        {
+          "height": 0,
+          "x": 2902,
+          "y": 3446
+        },
+        {
+          "height": 0,
+          "x": 2912,
+          "y": 3446
+        },
+        {
+          "height": 0,
+          "x": 2917,
+          "y": 3446
+        },
+        {
+          "height": 0,
+          "x": 2922,
+          "y": 3451
+        },
+        {
+          "height": 0,
+          "x": 2931,
+          "y": 3451
+        },
+        {
+          "height": 0,
+          "x": 2936,
+          "y": 3451
+        },
+        {
+          "height": 0,
+          "x": 2941,
+          "y": 3450
+        },
+        {
+          "height": 0,
+          "x": 2946,
+          "y": 3445
+        },
+        {
+          "height": 0,
+          "x": 2952,
+          "y": 3435
+        },
+        {
+          "height": 0,
+          "x": 2953,
+          "y": 3429
+        },
+        {
+          "height": 0,
+          "x": 2958,
+          "y": 3423
+        },
+        {
+          "height": 0,
+          "x": 2958,
+          "y": 3414
+        },
+        {
+          "height": 0,
+          "x": 2960,
+          "y": 3408
+        },
+        {
+          "height": 0,
+          "x": 2964,
+          "y": 3398
+        },
+        {
+          "height": 0,
+          "x": 2964,
+          "y": 3391
+        },
+        {
+          "height": 0,
+          "x": 2961,
+          "y": 3384
+        },
+        {
+          "height": 0,
+          "x": 2951,
+          "y": 3378
+        },
+        {
+          "height": 0,
+          "x": 2946,
+          "y": 3374
+        },
+        {
+          "height": 0,
+          "x": 2946,
+          "y": 3369
+        },
+        {
+          "height": 0,
+          "x": 2947,
+          "y": 3368
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 371,
+        "runTileDistance": 0,
+        "segmentCount": 0,
+        "walkTileDistance": 371
+      },
+      "runSegments": null,
+      "score": 3344.526,
+      "selectedOverLearned": null,
+      "status": "ok",
+      "targetDistanceIncreases": 34,
+      "to": "falador_west_bank"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 1.224,
+      "directCandidate": {
+        "detourRatio": 1.224,
+        "directDistance": 49,
+        "edgeSources": {
+          "cache_direct": 60
+        },
+        "endTile": {
+          "height": 0,
+          "x": 2622,
+          "y": 3328
+        },
+        "mode": "cache_direct",
+        "next": {
+          "height": 0,
+          "x": 2633,
+          "y": 3294
+        },
+        "quality": "watch",
+        "routeDistance": 60,
+        "routeStepCount": 12,
+        "runPlan": {
+          "policy": "conserve_run_until_hazard_segments",
+          "routeDistance": 60,
+          "runTileDistance": 0,
+          "segmentCount": 0,
+          "walkTileDistance": 60
+        },
+        "status": "ok",
+        "targetDistanceIncreases": 1
+      },
+      "edgeSources": {
+        "route_hint": 7
+      },
+      "estimatedTicks": 59.0,
+      "from": "ardougne_south_bank",
+      "mlScore": {
+        "confidence": 0.897557,
+        "predictedTicks": 44.5,
+        "riskScore": 0.025,
+        "score": 336.872,
+        "sourceMix": {
+          "region": 3
+        }
+      },
+      "mode": null,
+      "name": "ardougne_south_to_north_bank",
+      "next": {
+        "height": 0,
+        "x": 2633,
+        "y": 3294
+      },
+      "quality": "watch",
+      "routeDistance": 60,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "ardougne_north_bank",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl"
+      ],
+      "routeStepCount": 11,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 2654,
+          "y": 3283
+        },
+        {
+          "height": 0,
+          "x": 2649,
+          "y": 3283
+        },
+        {
+          "height": 0,
+          "x": 2640,
+          "y": 3284
+        },
+        {
+          "height": 0,
+          "x": 2633,
+          "y": 3292
+        },
+        {
+          "height": 0,
+          "x": 2632,
+          "y": 3297
+        },
+        {
+          "height": 0,
+          "x": 2628,
+          "y": 3302
+        },
+        {
+          "height": 0,
+          "x": 2625,
+          "y": 3307
+        },
+        {
+          "height": 0,
+          "x": 2625,
+          "y": 3312
+        },
+        {
+          "height": 0,
+          "x": 2623,
+          "y": 3322
+        },
+        {
+          "height": 0,
+          "x": 2623,
+          "y": 3328
+        },
+        {
+          "height": 0,
+          "x": 2622,
+          "y": 3328
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 60,
+        "runTileDistance": 0,
+        "segmentCount": 0,
+        "walkTileDistance": 60
+      },
+      "runSegments": null,
+      "score": 336.872,
+      "selectedOverLearned": null,
+      "status": "ok",
+      "targetDistanceIncreases": 1,
+      "to": "ardougne_north_bank"
+    },
+    {
+      "actionable": true,
+      "detourRatio": 2.5,
+      "directCandidate": {
+        "error": "no cache-clipped direct path",
+        "mode": "cache_direct",
+        "quality": "bad",
+        "status": "error"
+      },
+      "edgeSources": {
+        "route_hint": 37
+      },
+      "estimatedTicks": 340.0,
+      "from": "ardougne_north_bank",
+      "mlScore": {
+        "confidence": 0.915845,
+        "predictedTicks": 208.39,
+        "riskScore": 0.017857,
+        "score": 2737.136,
+        "sourceMix": {
+          "region": 13
+        }
+      },
+      "mode": null,
+      "name": "ardougne_north_bank_to_gnome_agility",
+      "next": {
+        "height": 0,
+        "x": 2608,
+        "y": 3326
+      },
+      "quality": "bad",
+      "routeDistance": 360,
+      "routeRunnerCommand": [
+        "python3",
+        "agent-navigation/tools/route_runner.py",
+        "--to",
+        "gnome_agility_course",
+        "--run-reserve",
+        "auto",
+        "--max-batches",
+        "8",
+        "--max-batch-distance",
+        "24",
+        "--evidence-jsonl",
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
+        "--allow-frontier",
+        "--direct-if-preview",
+        "--probe-toward-target"
+      ],
+      "routeStepCount": 50,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 2618,
+          "y": 3332
+        },
+        {
+          "height": 0,
+          "x": 2616,
+          "y": 3336
+        },
+        {
+          "height": 0,
+          "x": 2610,
+          "y": 3339
+        },
+        {
+          "height": 0,
+          "x": 2608,
+          "y": 3329
+        },
+        {
+          "height": 0,
+          "x": 2608,
+          "y": 3319
+        },
+        {
+          "height": 0,
+          "x": 2608,
+          "y": 3309
+        },
+        {
+          "height": 0,
+          "x": 2608,
+          "y": 3299
+        },
+        {
+          "height": 0,
+          "x": 2598,
+          "y": 3297
+        },
+        {
+          "height": 0,
+          "x": 2593,
+          "y": 3298
+        },
+        {
+          "height": 0,
+          "x": 2593,
+          "y": 3306
+        },
+        {
+          "height": 0,
+          "x": 2587,
+          "y": 3313
+        },
+        {
+          "height": 0,
+          "x": 2585,
+          "y": 3318
+        },
+        {
+          "height": 0,
+          "x": 2589,
+          "y": 3320
+        },
+        {
+          "height": 0,
+          "x": 2593,
+          "y": 3324
+        },
+        {
+          "height": 0,
+          "x": 2586,
+          "y": 3334
+        },
+        {
+          "height": 0,
+          "x": 2586,
+          "y": 3339
+        },
+        {
+          "height": 0,
+          "x": 2580,
+          "y": 3342
+        },
+        {
+          "height": 0,
+          "x": 2573,
+          "y": 3342
+        },
+        {
+          "height": 0,
+          "x": 2568,
+          "y": 3345
+        },
+        {
+          "height": 0,
+          "x": 2560,
+          "y": 3347
+        },
+        {
+          "height": 0,
+          "x": 2555,
+          "y": 3350
+        },
+        {
+          "height": 0,
+          "x": 2555,
+          "y": 3358
+        },
+        {
+          "height": 0,
+          "x": 2549,
+          "y": 3363
+        },
+        {
+          "height": 0,
+          "x": 2545,
+          "y": 3364
+        },
+        {
+          "height": 0,
+          "x": 2542,
+          "y": 3367
+        },
+        {
+          "height": 0,
+          "x": 2541,
+          "y": 3372
+        },
+        {
+          "height": 0,
+          "x": 2537,
+          "y": 3381
+        },
+        {
+          "height": 0,
+          "x": 2532,
+          "y": 3387
+        },
+        {
+          "height": 0,
+          "x": 2532,
+          "y": 3397
+        },
+        {
+          "height": 0,
+          "x": 2523,
+          "y": 3392
+        },
+        {
+          "height": 0,
+          "x": 2513,
+          "y": 3392
+        },
+        {
+          "height": 0,
+          "x": 2503,
+          "y": 3384
+        },
+        {
+          "height": 0,
+          "x": 2498,
+          "y": 3381
+        },
+        {
+          "height": 0,
+          "x": 2495,
+          "y": 3372
+        },
+        {
+          "height": 0,
+          "x": 2488,
+          "y": 3368
+        },
+        {
+          "height": 0,
+          "x": 2484,
+          "y": 3365
+        },
+        {
+          "height": 0,
+          "x": 2481,
+          "y": 3361
+        },
+        {
+          "height": 0,
+          "x": 2471,
+          "y": 3360
+        },
+        {
+          "height": 0,
+          "x": 2468,
+          "y": 3364
+        },
+        {
+          "height": 0,
+          "x": 2463,
+          "y": 3369
+        },
+        {
+          "height": 0,
+          "x": 2463,
+          "y": 3375
+        },
+        {
+          "height": 0,
+          "x": 2462,
+          "y": 3380
+        },
+        {
+          "height": 0,
+          "x": 2459,
+          "y": 3389
+        },
+        {
+          "height": 0,
+          "x": 2459,
+          "y": 3399
+        },
+        {
+          "height": 0,
+          "x": 2459,
+          "y": 3409
+        },
+        {
+          "height": 0,
+          "x": 2459,
+          "y": 3419
+        },
+        {
+          "height": 0,
+          "x": 2459,
+          "y": 3424
+        },
+        {
+          "height": 0,
+          "x": 2464,
+          "y": 3429
+        },
+        {
+          "height": 0,
+          "x": 2464,
+          "y": 3434
+        },
+        {
+          "height": 0,
+          "x": 2469,
+          "y": 3435
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 360,
+        "runTileDistance": 0,
+        "segmentCount": 0,
+        "walkTileDistance": 360
+      },
+      "runSegments": null,
+      "score": 2737.136,
+      "selectedOverLearned": null,
+      "status": "ok",
+      "targetDistanceIncreases": 18,
+      "to": "gnome_agility_course"
+    }
+  ],
+  "runId": "route-pack-20260525T174700Z",
+  "schemaVersion": 1,
+  "suspiciousOrBadCount": 10
+}

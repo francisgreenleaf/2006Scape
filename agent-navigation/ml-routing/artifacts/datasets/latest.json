@@ -1,0 +1,40 @@
+{
+  "counts": {
+    "edgeExamples": 21643,
+    "objectTransitions": 867,
+    "routeAttempts": 1177,
+    "routeHintEdges": 777
+  },
+  "generatedAt": "2026-05-25T17:59:06Z",
+  "graph": {
+    "blockers": 0,
+    "edges": 21643,
+    "nodes": 8474,
+    "traceRecords": 36512,
+    "traceSessions": 866
+  },
+  "inputs": {
+    "includeAgentBatchTraces": false,
+    "includeLegacyRecorderTraces": false,
+    "includeUnscopedTraces": false,
+    "traceFile": []
+  },
+  "outputDir": "artifacts/datasets/route-pack-20260525T174700Z",
+  "pipelineVersion": "0.1.0",
+  "profile": "mrflame",
+  "routeAttemptRunWarnings": {
+    "": 1177
+  },
+  "routeAttemptStatuses": {
+    "arrived": 1043,
+    "bad_route": 4,
+    "blocked": 4,
+    "ok": 27,
+    "oscillation": 12,
+    "partial": 6,
+    "success": 52,
+    "unknown": 29
+  },
+  "runId": "route-pack-20260525T174700Z",
+  "schemaVersion": 1
+}

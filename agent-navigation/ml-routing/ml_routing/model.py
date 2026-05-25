@@ -11,7 +11,7 @@ from typing import Any, Dict, Iterable, List, Tuple
 
 from . import VERSION
 from .common import chunked, distance, iter_jsonl, parse_tile, tile_key, utcnow, write_json
-from .paths import ARTIFACT_ROOT, ensure_artifact_dirs, latest_json, timestamp_id
+from .paths import ARTIFACT_ROOT, ensure_artifact_dirs, latest_json, portable_artifact_path, resolve_artifact_path, timestamp_id
 
 
 MODEL_TYPE = "empirical_edge_cost_risk_v1"
@@ -170,7 +170,7 @@ def train_model(args: SimpleNamespace) -> Dict[str, Any]:
         if not latest:
             raise SystemExit("no dataset found; run export first")
         summary = __import__("json").load(latest.open())
-        dataset_dir = Path(summary["outputDir"]).resolve()
+        dataset_dir = resolve_artifact_path(summary["outputDir"])
     records = _load_edges(dataset_dir)
     if not records:
         raise SystemExit("dataset has no edge examples: {}".format(dataset_dir))
@@ -211,8 +211,8 @@ def train_model(args: SimpleNamespace) -> Dict[str, Any]:
         "modelType": MODEL_TYPE,
         "modelId": model_id,
         "trainedAt": now.isoformat().replace("+00:00", "Z"),
-        "datasetDir": str(dataset_dir),
-        "modelPath": str(output_dir / "model.json"),
+        "datasetDir": portable_artifact_path(dataset_dir),
+        "modelPath": portable_artifact_path(output_dir / "model.json"),
         "training": {
             "workers": workers,
             "records": len(records),
@@ -236,10 +236,10 @@ def train_model(args: SimpleNamespace) -> Dict[str, Any]:
     write_json(output_dir / "model.json", model)
     if getattr(args, "update_latest", True):
         write_json(ARTIFACT_ROOT / "models" / "latest.json", {
-            "modelPath": str(output_dir / "model.json"),
+            "modelPath": portable_artifact_path(output_dir / "model.json"),
             "modelId": model_id,
             "trainedAt": model["trainedAt"],
-            "datasetDir": str(dataset_dir),
+            "datasetDir": portable_artifact_path(dataset_dir),
         })
     return model
 
@@ -254,7 +254,7 @@ def load_model(path: str | None = None) -> Dict[str, Any] | None:
         if not latest:
             return None
         latest_payload = json.load(latest.open())
-        model_path = Path(latest_payload["modelPath"])
+        model_path = resolve_artifact_path(latest_payload["modelPath"])
     if not model_path.exists():
         return None
     with model_path.open("r", encoding="utf-8") as handle:
