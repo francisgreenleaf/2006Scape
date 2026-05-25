@@ -8,10 +8,13 @@ bounded, current, and cheap enough for tactical route debugging.
 import argparse
 import json
 import os
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+import map_grid
 import render_context_map
+from usage_log import log_usage
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -49,8 +52,13 @@ def requested_paths(args):
 
 
 def main():
+    log_usage("render_agent_context_map", surface="full", argv=sys.argv[1:])
     parser = argparse.ArgumentParser(description="Render the fast bounded map agents should use while routing.")
     parser.add_argument("--center", default="latest", help="latest/current, x,y,h, or place id/name.")
+    parser.add_argument("--grid-cell",
+                        help="Level-0 map grid cell such as AU21. Renders that cell instead of --center.")
+    parser.add_argument("--grid-padding-tiles", type=nonnegative_int, default=4,
+                        help="Extra tiles around --grid-cell bounds.")
     parser.add_argument("--segment-from")
     parser.add_argument("--segment-to")
     parser.add_argument("--radius-tiles", type=positive_int, default=64)
@@ -76,15 +84,21 @@ def main():
     parser.add_argument("--no-place-markers", action="store_true")
     parser.add_argument("--no-place-labels", action="store_true")
     parser.add_argument("--max-place-markers", type=positive_int, default=60)
+    parser.add_argument("--no-reference-grid", action="store_true",
+                        help="Hide the level-0 reference grid overlay.")
     args = parser.parse_args()
 
     if bool(args.segment_from) != bool(args.segment_to):
         raise SystemExit("--segment-from and --segment-to must be used together")
+    if args.grid_cell and (args.segment_from or args.segment_to):
+        raise SystemExit("--grid-cell cannot be combined with --segment-from/--segment-to")
 
     output, summary = requested_paths(args)
     render_args = SimpleNamespace(
         center=args.center,
         bounds=None,
+        grid_cell=args.grid_cell,
+        grid_padding_tiles=args.grid_padding_tiles,
         radius_tiles=args.radius_tiles,
         padding_tiles=args.padding_tiles,
         max_span_tiles=args.max_span_tiles,
@@ -106,6 +120,14 @@ def main():
         place_labels=not args.no_place_labels,
         max_place_markers=args.max_place_markers,
         grid_interval=0,
+        reference_grid=not args.no_reference_grid,
+        reference_grid_cell_tiles=map_grid.DEFAULT_GRID_CELL_TILES,
+        reference_grid_row_origin=map_grid.DEFAULT_ROW_ORIGIN,
+        reference_grid_alpha=0.30,
+        reference_grid_major_alpha=0.48,
+        reference_grid_major_every=4,
+        reference_grid_cell_labels="all",
+        reference_grid_label_scale=2,
         output=output,
         summary=summary,
         artifact_dir=args.artifact_dir,
@@ -128,6 +150,15 @@ def main():
         "totalTraceRecords": result["totalTraceRecords"],
         "traceRecordsConsidered": result["traceRecordsConsidered"],
         "maxTraceRecords": result["maxTraceRecords"],
+        "currentGridCell": result.get("currentGridCell"),
+        "centerGridCell": result.get("centerGridCell"),
+        "referenceGrid": result.get("referenceGrid"),
+        "referenceGridCellTiles": result.get("referenceGridCellTiles"),
+        "referenceGridCells": result.get("referenceGridCells", []),
+        "referenceGridColumnStartLabel": result.get("referenceGridColumnStartLabel"),
+        "referenceGridColumnEndLabel": result.get("referenceGridColumnEndLabel"),
+        "referenceGridRowStartLabel": result.get("referenceGridRowStartLabel"),
+        "referenceGridRowEndLabel": result.get("referenceGridRowEndLabel"),
     }
     print(json.dumps(compact, sort_keys=True))
 

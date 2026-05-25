@@ -87,6 +87,8 @@ print(json.dumps({"tool": tool, "arguments": args}, separators=(",", ":")))
 PY
 )"
 
+python3 "$SCRIPT_DIR/usage_log.py" --tool rs-tool --surface full "$TOOL" "$ARGS_JSON" >/dev/null 2>&1 || true
+
 curl -sS -X POST "$TOOL_URL" \
   -H "X-Agent-Token: $token" \
   -H 'Content-Type: application/json' \

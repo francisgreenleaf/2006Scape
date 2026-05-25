@@ -76,16 +76,16 @@ Edges:
 
 Each edge should carry distance, ticks, run-energy cost, failure count, combat count, HP loss, deaths, source, confidence, and recency.
 
-## Current Deterministic Baseline
+## Current Baseline
 
-The baseline stack should stay strong:
+ML1 (`route_ml_XS.py define`) is now the preferred route-selection surface for agents. Full `route_ml.py define` remains available when XS omits fields needed for debugging. The older deterministic stack should stay strong as a benchmark and fallback diagnostic path:
 
 1. `navdb.py` validates places/routes/hazards and loads unified traces.
 2. `router.py` builds a hybrid graph from passive traces, curated routes, and hazards.
-3. `route_runner.py` uses the router, preflights each batch through server `preview_local_path`, then executes normal bridge movement with `stopOnCombat` and `stopOnStall`.
+3. `route_runner.py` is a deprecated standalone live-routing method and compatibility executor. It can still preflight batches through server `preview_local_path`, but agents should not use bare `route_runner.py --to ...` as normal travel.
 4. Object transitions are recorded as explicit route steps, never inferred from a successful click alone.
 
-This baseline is the benchmark all learned methods must beat.
+This baseline is the benchmark ML1 must beat or explain.
 
 ## Model Roadmap
 
@@ -157,8 +157,8 @@ Keep test routes fixed for regression:
 2. Summarize new passive traces and failures.
 3. Add only durable schema or graph improvements.
 4. Run fixed benchmark routes in dry-run mode.
-5. Render a bounded context or segment map with `render_agent_context_map.py` when a route looks indirect, overly historical, or likely to hide a shortcut.
-6. If live proof is needed, execute one bounded route with `route_runner.py`.
+5. Render a bounded context or segment map with `render_agent_context_map_XS.py` when a route looks indirect, overly historical, or likely to hide a shortcut. Use the full renderer only when XS omits needed marker/detail fields.
+6. If live proof is needed, request ML1 with `route_ml_XS.py define` and follow the returned `steps`/route definition through normal bridge movement primitives. Use Route Runner only for compatibility-executor regression checks.
 7. Render global topology only when the user needs a human-facing graph review or the graph changed materially.
 8. Record any repeatable planner lesson in the relevant skill or reference.
 

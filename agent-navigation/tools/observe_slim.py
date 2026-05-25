@@ -5,6 +5,8 @@ import json
 import subprocess
 from pathlib import Path
 
+from usage_log import log_usage
+
 ROOT = Path(__file__).resolve().parents[1]
 RSTOOL = ROOT / "tools" / "rs-tool.sh"
 
@@ -56,6 +58,7 @@ def compact_object(obj):
 
 
 def main():
+    log_usage("observe-slim", surface="legacy")
     raw = subprocess.check_output([str(RSTOOL), "observe_state", "{}"], cwd=str(ROOT.parent), text=True)
     data = json.loads(raw)
     if not data.get("success"):

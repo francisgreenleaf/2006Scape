@@ -1,6 +1,6 @@
 ---
 name: 2006scape-gameplay-progression
-description: "Use when controlling the selected 2006Scape profile through normal gameplay for combat, food, banking, shops, smithing, mining, woodcutting, fishing, cooking, durable combat goals, gear upgrades, money-making, or character-growth automation through rs tools and agent-navigation/tools/rs-tool.sh. Use for progression tasks rather than route database editing or bridge development."
+description: "Use when controlling the selected 2006Scape profile through normal gameplay for combat, food, banking, shops, smithing, mining, woodcutting, fishing, cooking, durable combat goals, gear upgrades, money-making, or character-growth automation through rs tools and agent-navigation/tools/rs-tool_XS.sh. Use for progression tasks rather than route database editing or bridge development."
 ---
 
 # 2006Scape Gameplay Progression
@@ -12,16 +12,18 @@ Use this skill for in-game character growth with normal mechanics. Pair it with 
 Use only repo-side bridge tools:
 
 ```sh
-agent-navigation/tools/observe-slim.sh
-RS_PROFILE=MrGem agent-navigation/tools/observe-slim.sh
-agent-navigation/tools/rs-tool.sh <tool> '<json-args>'
+agent-navigation/tools/observe_XS.sh
+RS_PROFILE=MrGem agent-navigation/tools/observe_XS.sh
+agent-navigation/tools/rs-tool_XS.sh <tool> '<json-args>'
 ```
+
+Use `observe-slim.sh` or `rs-tool.sh` only when XS omits a field needed for debugging, complete evidence, or a new workflow.
 
 Do not use admin teleports, item spawning, direct player-state edits, raw bridge tokens, screen automation, or game-source changes. Other agents may be active; observe first and treat unexpected state as possibly user-driven.
 
 ## First Observation
 
-Start with `observe-slim` for routine state. Use full `observe_state` only when you need bank, skills, equipment, interfaces, `agentPersonality`, nearby objects, or detailed combat readiness.
+Start with `observe_XS.sh` for routine state. It keeps compact player, combat, inventory, nearby object/NPC, bank, equipment, and recent XP context while dropping bulky repeated fields. Use full `observe_state` only when you need a missing bank/skill/equipment/interface/profile field, `agentPersonality`, or complete evidence.
 
 Check:
 

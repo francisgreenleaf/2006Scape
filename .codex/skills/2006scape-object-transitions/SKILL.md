@@ -26,27 +26,29 @@ Passive telemetry now records manual and bridge-driven object clicks as `object_
 ## Starter Commands
 
 ```sh
-agent-navigation/tools/rs-tool.sh observe_state '{}'
-agent-navigation/tools/rs-tool.sh find_nearest_object '{"name":"gate","maxDistance":20}'
-agent-navigation/tools/rs-tool.sh preview_local_path '{"x":X,"y":Y,"height":0,"moveNear":true,"applyBounds":true,"maxWalkDistance":48}'
-agent-navigation/tools/rs-tool.sh walk_to_tile_until_arrived '{"x":X,"y":Y,"height":0,"stopDistance":0,"maxTicks":80,"maxWalkDistance":48,"stopOnCombat":true,"stopOnStall":true}'
-agent-navigation/tools/rs-tool.sh interact_object '{"objectId":OBJECT_ID,"x":X,"y":Y,"option":"first"}'
-agent-navigation/tools/rs-tool.sh walk_path_steps '{"steps":[{"x":X,"y":Y,"height":0}],"allowObjectTransition":true,"run":true}'
-agent-navigation/tools/rs-tool.sh wait_until_idle '{"maxTicks":10,"movement":true,"skilling":false,"combat":false}'
+agent-navigation/tools/observe_XS.sh
+agent-navigation/tools/rs-tool_XS.sh find_nearest_object '{"name":"gate","maxDistance":20}'
+agent-navigation/tools/rs-tool_XS.sh preview_local_path '{"x":X,"y":Y,"height":0,"moveNear":true,"applyBounds":true,"maxWalkDistance":48}'
+agent-navigation/tools/rs-tool_XS.sh walk_to_tile_until_arrived '{"x":X,"y":Y,"height":0,"stopDistance":0,"maxTicks":80,"maxWalkDistance":48,"stopOnCombat":true,"stopOnStall":true}'
+agent-navigation/tools/rs-tool_XS.sh interact_object '{"objectId":OBJECT_ID,"x":X,"y":Y,"option":"first"}'
+agent-navigation/tools/rs-tool_XS.sh walk_path_steps '{"steps":[{"x":X,"y":Y,"height":0}],"allowObjectTransition":true,"run":true}'
+agent-navigation/tools/rs-tool_XS.sh wait_until_idle '{"maxTicks":10,"movement":true,"skilling":false,"combat":false}'
 agent-navigation/tools/capture-cardinal-screenshots.sh --prefix transition-reason
-python3 agent-navigation/tools/navdb.py validate
-python3 agent-navigation/tools/navdb.py self-test
+python3 agent-navigation/tools/navdb_XS.py validate
+python3 agent-navigation/tools/navdb_XS.py self-test
 ```
+
+Use full `rs-tool.sh` only when XS omits an object, interface, or post-state field required for proof.
 
 ## Workflow
 
-1. Observe full state and identify the object from bridge data.
+1. Observe XS state and identify the object from bridge data; use full state only if XS omitted required proof fields.
 2. Preview or walk to the object's interaction target; do not click from an unknown side.
 3. Capture compact screenshots if object geometry or live open/closed state is ambiguous after API/context-map checks.
 4. Interact once with the intended option.
 5. Wait/observe and compare pre-state to post-state.
 6. Record the transition in route data only after proof exists.
-7. Validate `navdb.py`; unresolved object transitions should fail validation or remain clearly marked as unverified.
+7. Validate with `navdb_XS.py`; unresolved object transitions should fail validation or remain clearly marked as unverified. Use full `navdb.py` only when XS omits proof details needed for debugging.
 
 ## Boundaries
 

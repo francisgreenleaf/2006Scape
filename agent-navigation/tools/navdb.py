@@ -10,6 +10,8 @@ import sys
 import uuid
 from pathlib import Path
 
+from usage_log import log_usage
+
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"
@@ -1522,8 +1524,10 @@ def build_parser():
 
 
 def main(argv=None):
+    argv_list = list(sys.argv[1:] if argv is None else argv)
     parser = build_parser()
-    args = parser.parse_args(argv)
+    args = parser.parse_args(argv_list)
+    log_usage("navdb", surface="full", argv=argv_list)
     return args.func(args)
 
 

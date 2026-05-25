@@ -15,7 +15,9 @@ Use the cache renderer as the source of static world context. Do not restart or 
 
 - `agent-navigation/tools/cache_world_map.py`: cache decoder and minimap-style world-map renderer.
 - `agent-navigation/tools/map_labels.py`: shared place/static label definitions used by cache-world exports and active topology maps. Add town/place display labels here instead of maintaining separate label lists.
-- `agent-navigation/tools/render_agent_context_map.py`: fast agent-facing bounded cache-map wrapper for current location and route-segment debugging, including all cache mapfunction icons in bounds and machine-readable marker labels.
+- `agent-navigation/tools/map_grid.py`: level-0 cache-map reference grid API for converting world tiles to cells such as `AU21`, getting cell bounds, and listing cells in a bounded map.
+- `agent-navigation/tools/render_agent_context_map_XS.py`: default compact agent-facing bounded cache-map wrapper for current location and route-segment debugging, including all cache mapfunction icons in bounds and machine-readable marker labels.
+- `agent-navigation/tools/render_agent_context_map.py`: full context-map output for debugging when XS omits needed marker/detail fields.
 - `agent-navigation/tools/render_context_map.py`: lower-level bounded lossless cache-map window around a tile/place/latest trace, with optional recent-path or segment overlay. Its `draw_static_context_layers` helper is the shared way to add cache mapfunction icons and place labels to bounded map images, including ML comparison maps.
 - `agent-navigation/tools/render_movement_topology_v2.py`: shared movement topology render engine used by the active maps. It preserves exact full-resolution output with quantized bounds, direct byte-level overlay loops, cached static base canvases, cached topology prefixes, cached full-resolution heat/fog coverage masks, and spatial-indexed fog-hidden POI checks.
 - `agent-navigation/tools/render_profile_map.py`: active `Mr. Flame` profile movement map with cache icons, labels, and run-tinted routes.
@@ -67,10 +69,12 @@ agent-navigation/tools/cache_world_map.py \
 Render a small current-location agent context map instead of loading the full world:
 
 ```sh
-python3 agent-navigation/tools/render_agent_context_map.py --center latest
+python3 agent-navigation/tools/render_agent_context_map_XS.py --center latest
+python3 agent-navigation/tools/render_agent_context_map_XS.py --grid-cell AU21 --grid-padding-tiles 4
+python3 agent-navigation/tools/map_grid.py locate --tile 3222,3218,0
 ```
 
-Use `render_agent_context_map.py` for live agent routing and route debugging. It caps trace records, bounds the output, draws every cache `mapfunction` icon in bounds, adds simple place labels, and writes unique ignored artifacts under `agent-navigation/.local/context-maps/<date>/` by default. Filenames include timestamp, mode, resolved center tile, radius, and pixel scale so Router/debug renders do not overwrite each other. The JSON includes `mapFunctionMarkers`, `placeMarkers`, and artifact metadata for machine-readable context. Segment maps default to enough padding/max span to keep nearby route geometry such as Port Sarim dock planks visible without rendering the full world. Use integer `--pixels-per-tile` values for lossless, pixel-perfect map windows. Increase `--radius-tiles` for more context or lower `--pixels-per-tile` for a smaller image; do not render the full world when a bounded window answers the question. Use explicit `--output`/`--summary` only when a stable path is intentionally needed.
+Use `render_agent_context_map_XS.py` for live agent routing and route debugging. It caps trace records, bounds the output, draws every cache `mapfunction` icon in bounds, adds simple place labels, overlays the same level-0 32-tile reference grid used by the profile map, and writes unique ignored artifacts under `agent-navigation/.local/context-maps/<date>/` by default. Filenames include timestamp, mode, resolved center tile, radius, and pixel scale so Router/debug renders do not overwrite each other. The compact JSON keeps paths, bounds, marker counts, grid cells, and marker samples. Use full `render_agent_context_map.py` only when XS omits marker/detail fields needed for debugging. Segment maps default to enough padding/max span to keep nearby route geometry such as Port Sarim dock planks visible without rendering the full world. Use integer `--pixels-per-tile` values for lossless, pixel-perfect map windows. Increase `--radius-tiles` for more context, use `--grid-cell CELL` for a named grid window, or lower `--pixels-per-tile` for a smaller image; do not render the full world when a bounded window answers the question. Use explicit `--output`/`--summary` only when a stable path is intentionally needed.
 
 If another bounded renderer needs a nice static base, reuse `render_context_map.draw_static_context_layers` after `cache_world_map.draw_world_map`. Do not duplicate mapfunction sprite loading, place marker sorting, or marker summary formatting.
 
@@ -136,10 +140,10 @@ When changing map behavior:
 After renderer edits, run:
 
 ```sh
-python3 -m py_compile agent-navigation/tools/cache_world_map.py agent-navigation/tools/map_labels.py agent-navigation/tools/render_context_map.py agent-navigation/tools/render_agent_context_map.py agent-navigation/tools/render_movement_topology_v2.py agent-navigation/tools/render_profile_map.py agent-navigation/tools/render_heat_map.py agent-navigation/tools/render_fog_map.py
+python3 -m py_compile agent-navigation/tools/cache_world_map.py agent-navigation/tools/map_labels.py agent-navigation/tools/map_grid.py agent-navigation/tools/render_context_map.py agent-navigation/tools/render_agent_context_map.py agent-navigation/tools/render_agent_context_map_XS.py agent-navigation/tools/render_movement_topology_v2.py agent-navigation/tools/render_profile_map.py agent-navigation/tools/render_heat_map.py agent-navigation/tools/render_fog_map.py
 python3 -m py_compile agent-navigation/tools/active_map_refresher.py agent-navigation/tools/refresh_active_maps.py
 agent-navigation/tools/cache_world_map.py --bounds 3200,3200,3210,3210 --output /tmp/2006scape-cache-map-smoke.png --summary /tmp/2006scape-cache-map-smoke.json
-python3 agent-navigation/tools/render_agent_context_map.py --center 3205,3205,0 --radius-tiles 12 --recent-seconds 0 --output /tmp/2006scape-agent-context-map-smoke.png --summary /tmp/2006scape-agent-context-map-smoke.json
+python3 agent-navigation/tools/render_agent_context_map_XS.py --center 3205,3205,0 --radius-tiles 12 --recent-seconds 0 --output /tmp/2006scape-agent-context-map-smoke.png --summary /tmp/2006scape-agent-context-map-smoke.json
 agent-navigation/tools/refresh_active_maps.py --once --only heat-map
 agent-navigation/tools/active_map_refresher.py status
 ```

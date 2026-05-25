@@ -30,6 +30,7 @@ if str(SCRIPT_DIR) not in sys.path:
 import navdb  # noqa: E402
 import router  # noqa: E402
 import route_eval  # noqa: E402
+from usage_log import log_usage  # noqa: E402
 
 
 RS_TOOL = SCRIPT_DIR / "rs-tool.sh"
@@ -60,8 +61,9 @@ def write_evidence(args, event, data):
         "event": event,
         "timestamp": utc_now(),
     }
-    if getattr(args, "profile", ""):
-        record["profile"] = args.profile
+    profile = getattr(args, "profile", "") or getattr(args, "trace_profile", "") or os.environ.get("RS_PROFILE", "")
+    if profile:
+        record["profile"] = profile
     record.update(data)
     with output.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n")
@@ -255,7 +257,11 @@ def planned_tiles_for_run_policy(plan, target_place, args):
     for key in ("next", "frontierTile", "endTile"):
         if isinstance(plan.get(key), dict):
             tiles.append(plan[key])
-    tiles.extend((plan.get("waypoints") or [])[:args.run_reserve_waypoints])
+    waypoints = plan.get("waypoints") or []
+    if plan.get("routeDefinition"):
+        tiles.extend(waypoints)
+    else:
+        tiles.extend(waypoints[:args.run_reserve_waypoints])
     if isinstance(target_place.get("tile"), dict):
         tiles.append(target_place["tile"])
     return tiles
@@ -299,6 +305,9 @@ def choose_run_state(player, run_policy, batch_hazards, args, estimated_run_cost
         return False, "empty"
     if batch_hazards:
         return True, "hazard"
+    min_useful_energy = min(10, max(3, int(estimated_run_cost or 0)))
+    if energy < min_useful_energy:
+        return False, "low-energy"
     reserve = int(run_policy.get("reserve", 0) or 0)
     if reserve <= 0:
         return True, "default"
@@ -439,6 +448,107 @@ def route_hazard_blocker(db, tile, plan_args):
     if penalty >= 8000.0 and not plan_args.allow_lethal:
         return warnings
     return []
+
+
+def route_definition_path(path_text):
+    path = Path(path_text)
+    if path.is_absolute() or path.exists():
+        return path
+    repo_root = SCRIPT_DIR.parents[1]
+    for candidate in (repo_root / path, ROOT / path):
+        if candidate.exists():
+            return candidate
+    return path
+
+
+def load_route_definition(path_text):
+    if not path_text:
+        return None
+    path = route_definition_path(path_text)
+    with path.open("r", encoding="utf-8") as handle:
+        definition = json.load(handle)
+    if definition.get("api") != "2006scape.route-definition":
+        raise RuntimeError("--route-definition is not a 2006scape route definition: {}".format(path))
+    return definition
+
+
+def normalize_route_tile(raw):
+    if isinstance(raw, dict):
+        return {
+            "x": int(raw["x"]),
+            "y": int(raw["y"]),
+            "height": int(raw.get("height", raw.get("h", 0))),
+        }
+    if isinstance(raw, str):
+        return navdb.tile_from_arg(raw)
+    return None
+
+
+def route_definition_steps(definition, target_tile, arrival_radius):
+    steps = []
+    for raw in definition.get("routeSteps") or []:
+        tile = normalize_route_tile(raw)
+        if tile is not None:
+            steps.append(tile)
+    final_tile = normalize_route_tile(definition.get("targetTile")) if definition.get("targetTile") else target_tile
+    if final_tile and (not steps or navdb.distance(steps[-1], final_tile) > max(0, arrival_radius)):
+        steps.append(final_tile)
+    return steps
+
+
+def route_definition_target(current_tile, steps, target_tile, arrival_radius, args):
+    if not steps:
+        return None, {
+            "status": "empty",
+            "routeStepCount": 0,
+        }
+    nearest_index = min(
+        range(len(steps)),
+        key=lambda index: (navdb.distance(current_tile, steps[index]), index),
+    )
+    target_index = nearest_index
+    if navdb.distance(current_tile, steps[target_index]) <= max(args.stop_distance, 2) and target_index + 1 < len(steps):
+        target_index += 1
+    while target_index + 1 < len(steps) and navdb.distance(current_tile, steps[target_index + 1]) <= args.max_batch_distance:
+        target_index += 1
+    target = steps[target_index]
+    remaining = steps[nearest_index:]
+    if navdb.distance(current_tile, target_tile) <= arrival_radius:
+        target = target_tile
+        target_index = len(steps) - 1
+        remaining = [target_tile]
+    return target, {
+        "status": "ok",
+        "nearestIndex": nearest_index,
+        "targetIndex": target_index,
+        "routeStepCount": len(steps),
+        "remainingStepCount": max(0, len(steps) - nearest_index),
+        "remainingWaypoints": remaining,
+    }
+
+
+def build_route_definition_plan(definition, current_tile, target_place, arrival_radius, args):
+    steps = route_definition_steps(definition, target_place["tile"], arrival_radius)
+    target, meta = route_definition_target(current_tile, steps, target_place["tile"], arrival_radius, args)
+    plan = {
+        "status": meta.get("status", "ok"),
+        "next": target,
+        "targetTile": target_place["tile"],
+        "endTile": target_place["tile"],
+        "waypoints": meta.get("remainingWaypoints") or [],
+        "routeDefinition": {
+            "routeId": definition.get("routeId"),
+            "nearestIndex": meta.get("nearestIndex"),
+            "targetIndex": meta.get("targetIndex"),
+            "routeStepCount": meta.get("routeStepCount"),
+            "remainingStepCount": meta.get("remainingStepCount"),
+            "quality": definition.get("quality"),
+            "mode": definition.get("mode"),
+        },
+    }
+    if definition.get("routeId"):
+        plan["routesUsed"] = [definition.get("routeId")]
+    return plan
 
 
 def run_batch_diagnostics(start_player, result, preview, requested_run, run_reason,
@@ -593,6 +703,7 @@ def compact_plan(plan):
     keys = (
         "status", "cost", "next", "frontierTile", "frontierDistanceToTarget",
         "frontierScore", "edgeSources", "routesUsed", "hazardWarnings", "objectSteps",
+        "routeDefinition",
     )
     compact = {key: plan.get(key) for key in keys if plan.get(key) not in (None, [], {})}
     if "objectSteps" in compact:
@@ -667,6 +778,9 @@ def render_orient_context_map(evaluation, plan, current_tile, args):
                 "summary": rendered.get("summary"),
                 "artifact": rendered.get("artifact"),
                 "bounds": rendered.get("bounds"),
+                "currentGridCell": rendered.get("currentGridCell"),
+                "centerGridCell": rendered.get("centerGridCell"),
+                "referenceGridCells": rendered.get("referenceGridCells"),
                 "mapFunctionMarkerCount": rendered.get("mapFunctionMarkerCount"),
                 "placeLabelsDrawn": rendered.get("placeLabelsDrawn"),
             })
@@ -749,6 +863,7 @@ def run(args):
     observed = call_tool("observe_state", {})
     player = player_from(observed)
     db = navdb.load_db()
+    route_definition = load_route_definition(args.route_definition)
     target_place = navdb.place_or_tile_target(db, args.to)
     if not target_place:
         raise RuntimeError("unknown target place or tile: {}".format(args.to))
@@ -763,8 +878,13 @@ def run(args):
             return 0
 
         plan_args = build_router_args(args, player, current_tile)
-        plan = router.build_plan(plan_args)
-        target, mode = target_from_plan(plan, args, current_tile)
+        if route_definition is not None:
+            plan = build_route_definition_plan(route_definition, current_tile, target_place, arrival_radius, args)
+            target = plan.get("next")
+            mode = "route-definition"
+        else:
+            plan = router.build_plan(plan_args)
+            target, mode = target_from_plan(plan, args, current_tile)
         run_policy = parse_run_reserve(args, db, plan, target_place)
         log_object_steps(plan)
         if target is None:
@@ -903,6 +1023,7 @@ def run(args):
 
 def main(argv=None):
     global RUN_PROFILE
+    argv_list = list(sys.argv[1:] if argv is None else argv)
     parser = argparse.ArgumentParser(description="Run learned routes with local server-path preview.")
     parser.add_argument("--profile", default=os.environ.get("RS_PROFILE") or os.environ.get("RSBRIDGE_PROFILE") or "",
                         help="Use this profile's bridge session and matching trace profile.")
@@ -939,6 +1060,8 @@ def main(argv=None):
                         help="Minimum preview path length that counts as a long leg for the pre-batch run refresh.")
     parser.add_argument("--evidence-jsonl", default="",
                         help="Append structured per-batch route/run-efficiency evidence to this JSONL file.")
+    parser.add_argument("--route-definition", default="",
+                        help="Execute compact routeSteps from a saved 2006scape route definition instead of re-planning each batch.")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--allow-frontier", action="store_true",
                         help="If the target is not connected, move to the best learned frontier.")
@@ -978,7 +1101,8 @@ def main(argv=None):
     parser.add_argument("--orient-map-qualities", nargs="*", default=["suspicious", "bad"])
     parser.add_argument("--orient-map-radius", type=int, default=80)
     parser.add_argument("--orient-map-pixels-per-tile", type=int, default=4)
-    args = parser.parse_args(argv)
+    args = parser.parse_args(argv_list)
+    log_usage("route_runner", surface="full", argv=argv_list)
     if args.profile and not args.trace_profile:
         args.trace_profile = args.profile
     RUN_PROFILE = args.profile
