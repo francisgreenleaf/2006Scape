@@ -3,7 +3,7 @@
 
 This keeps the repetitive chop -> fletch -> sell loop out of the AI token loop.
 It uses normal bridge gameplay only and leaves movement evidence to the passive
-server traces plus route_runner evidence when route travel is needed.
+server traces plus ML route executor evidence when route travel is needed.
 """
 
 import argparse
@@ -11,17 +11,16 @@ import datetime as dt
 import json
 import os
 import subprocess
-import sys
-import time
 import uuid
 from pathlib import Path
+
+import bridge_script as bridge
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT = SCRIPT_DIR.parents[0]
 REPO_ROOT = SCRIPT_DIR.parents[1]
 RS_TOOL = SCRIPT_DIR / "rs-tool.sh"
-ROUTE_RUNNER = SCRIPT_DIR / "route_runner.py"
 RUNS_DIR = ROOT / "data" / "fletching" / "runs"
 RUN_PROFILE = ""
 
@@ -109,6 +108,7 @@ def compact_player(player):
     skills = player.get("skills") or {}
     woodcutting = skills.get("woodcutting") or {}
     fletching = skills.get("fletching") or {}
+    coins = coin_summary(player)
     return {
         "tile": {
             "x": int(player.get("x", 0) or 0),
@@ -125,11 +125,16 @@ def compact_player(player):
         "woodcuttingXp": int(float(woodcutting.get("xp", 0) or 0)),
         "fletchingLevel": int(fletching.get("level", 0) or 0),
         "fletchingXp": int(float(fletching.get("xp", 0) or 0)),
+        "coins": coins,
     }
 
 
 def inventory(player):
     return player.get("inventory") or []
+
+
+def bank(player):
+    return player.get("bank") or []
 
 
 def equipment(player):
@@ -142,6 +147,28 @@ def count_inventory_item(player, item_id):
         if int(item.get("id", -1)) == int(item_id):
             total += int(item.get("amount", 1) or 1)
     return total
+
+
+def count_bank_item(player, item_id):
+    total = 0
+    for item in bank(player):
+        if int(item.get("id", item.get("itemId", -1)) or -1) == int(item_id):
+            total += int(item.get("amount", 1) or 1)
+    return total
+
+
+def total_item_count(player, item_id):
+    return count_inventory_item(player, item_id) + count_bank_item(player, item_id)
+
+
+def coin_summary(player):
+    inventory_coins = count_inventory_item(player, 995)
+    bank_coins = count_bank_item(player, 995)
+    return {
+        "inventory": inventory_coins,
+        "bank": bank_coins,
+        "total": inventory_coins + bank_coins,
+    }
 
 
 def count_inventory_ids(player, item_ids):
@@ -507,51 +534,14 @@ def pickup_nearby_bird_nests(args, handle, reason):
 
 
 def route_to(target, args, handle, reason):
-    command = [
-        sys.executable,
-        str(ROUTE_RUNNER),
-        "--to",
-        target,
-        "--max-batches",
-        str(args.route_max_batches),
-        "--max-walk-distance",
-        str(args.route_max_walk_distance),
-        "--max-batch-distance",
-        str(args.route_max_batch_distance),
-        "--allow-frontier",
-        "--direct-if-preview",
-        "--direct-preview-distance",
-        str(args.route_direct_preview_distance),
-        "--probe-toward-target",
-        "--probe-distance",
-        str(args.route_probe_distance),
-        "--run-reserve",
-        args.run_reserve,
-    ]
-    if args.route_evidence_jsonl:
-        command.extend(["--evidence-jsonl", str(args.route_evidence_jsonl)])
-    env = os.environ.copy()
-    if RUN_PROFILE:
-        env["RS_PROFILE"] = RUN_PROFILE
-    write_event(handle, "route_start", {"reason": reason, "target": target, "command": command})
-    proc = subprocess.run(
-        command,
-        cwd=str(REPO_ROOT),
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        env=env,
-    )
-    write_event(handle, "route_done", {
-        "reason": reason,
-        "target": target,
-        "returncode": proc.returncode,
-        "stdoutTail": proc.stdout.strip().splitlines()[-8:],
-        "stderrTail": proc.stderr.strip().splitlines()[-8:],
-    })
-    if proc.returncode != 0:
-        raise RuntimeError("route_runner failed while routing to {}: {}".format(
-            target, proc.stderr.strip() or proc.stdout.strip()))
+    extra_args = {
+        "runner_max_batches": args.route_max_batches,
+        "max_batch_distance": args.route_max_batch_distance,
+        "run_mode": args.route_run_mode,
+        "eat_at": args.route_eat_at,
+        "evidence_jsonl": args.route_evidence_jsonl,
+    }
+    bridge.route_to(target, profile=RUN_PROFILE, handle=handle, reason=reason, extra_args=extra_args)
 
 
 def sell_products(args, handle, reason):
@@ -569,7 +559,7 @@ def sell_products(args, handle, reason):
             "fallback": "try_open_nearest_shop",
             })
         player = observe()
-    opened = call_tool("open_nearest_shop", {"name": "general", "maxDistance": args.shop_max_distance})
+    opened = call_tool("open_nearest_shop", {"name": args.shop_name, "maxDistance": args.shop_max_distance})
     write_event(handle, "open_shop", {"reason": reason, "result": opened.get("message"), "player": compact_player(opened["player"])})
     sold = call_tool("sell_inventory_items", {"category": "fletching_products", "amount": args.sell_amount})
     write_event(handle, "sell_products", {
@@ -580,14 +570,15 @@ def sell_products(args, handle, reason):
     })
     player = close_interfaces_if_needed(sold["player"], handle, "after_sell")
     if args.bank_coins and count_inventory_item(player, 995) > 0:
-        if not args.bank:
+        coin_bank = args.coin_bank or args.bank
+        if not coin_bank:
             write_event(handle, "bank_coins_deferred", {
                 "reason": reason,
                 "coins": count_inventory_item(player, 995),
                 "player": compact_player(player),
             })
             return player
-        route_to(args.bank, args, handle, "bank_sale_coins")
+        route_to(coin_bank, args, handle, "bank_sale_coins")
         player = observe()
         deposited = call_tool("deposit_inventory_items", {
             "itemIds": [995],
@@ -600,6 +591,30 @@ def sell_products(args, handle, reason):
         })
         player = deposited["player"]
     return player
+
+
+def bank_products_if_needed(player, args, handle, reason):
+    if product_count(player) < 1:
+        return player
+    if not args.bank:
+        write_event(handle, "bank_products_deferred", {
+            "reason": reason,
+            "products": product_count(player),
+            "player": compact_player(player),
+        })
+        return player
+    route_to(args.bank, args, handle, "bank_products")
+    player = observe()
+    deposited = call_tool("deposit_inventory_items", {
+        "itemIds": sorted(FLETCHING_PRODUCT_IDS),
+        "amount": product_count(player),
+    })
+    write_event(handle, "bank_products", {
+        "reason": reason,
+        "depositedAmount": deposited.get("depositedAmount", 0),
+        "player": compact_player(deposited["player"]),
+    })
+    return deposited["player"]
 
 
 def bank_bird_nests_if_needed(player, args, handle, reason):
@@ -630,6 +645,8 @@ def bank_bird_nests_if_needed(player, args, handle, reason):
 
 def stop_reason(player, args):
     compact = compact_player(player)
+    if args.target_coins > 0 and compact["coins"]["total"] >= args.target_coins:
+        return "target_coins"
     if args.stop_at_bird_nests > 0 and bird_nest_count(player) >= args.stop_at_bird_nests:
         return "bird_nests"
     if args.stop_at_fletching_level > 0 and compact["fletchingLevel"] >= args.stop_at_fletching_level:
@@ -652,6 +669,8 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description="Run normal-gameplay woodcutting and fletching loops.")
     parser.add_argument("--target-woodcutting-level", type=int, default=50)
     parser.add_argument("--target-fletching-level", type=int, default=50)
+    parser.add_argument("--target-coins", type=int, default=0,
+                        help="Stop once inventory plus visible bank coins reaches this amount.")
     parser.add_argument("--stop-at-woodcutting-level", type=int, default=0)
     parser.add_argument("--stop-at-fletching-level", type=int, default=0)
     parser.add_argument("--stop-at-bird-nests", type=int, default=0)
@@ -672,6 +691,8 @@ def main(argv=None):
                         help="Fall back to the legacy chop tool if the live runtime has not been restarted with primitives.")
     parser.add_argument("--min-run-energy", type=int, default=10)
     parser.add_argument("--run-reserve", default="auto")
+    parser.add_argument("--route-run-mode", choices=["auto", "always", "never", "preserve"], default="auto")
+    parser.add_argument("--route-eat-at", type=int, default=10)
     parser.add_argument("--route-max-batches", type=int, default=60)
     parser.add_argument("--route-max-walk-distance", type=int, default=80)
     parser.add_argument("--route-max-batch-distance", type=int, default=48)
@@ -679,8 +700,13 @@ def main(argv=None):
     parser.add_argument("--route-probe-distance", type=int, default=48)
     parser.add_argument("--shop", default="varrock_general_store")
     parser.add_argument("--bank", default="varrock_west_bank")
+    parser.add_argument("--coin-bank", default="",
+                        help="Optional route target used only for banking sale coins. Defaults to --bank.")
     parser.add_argument("--bank-coins", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--shop-name", default="general")
     parser.add_argument("--shop-max-distance", type=int, default=14)
+    parser.add_argument("--bank-products", action=argparse.BooleanOptionalAction, default=False,
+                        help="Bank fletching products on inventory pressure instead of selling them.")
     parser.add_argument("--sell-amount", type=int, default=28000)
     parser.add_argument("--sell-at-free-slots", type=int, default=6)
     parser.add_argument("--pickup-bird-nests", action=argparse.BooleanOptionalAction, default=True)
@@ -722,14 +748,16 @@ def main(argv=None):
                 "player": compact,
                 "logs": fletchable_log_count(player),
                 "products": product_count(player),
+                "coins": compact["coins"],
             })
-            log("cycle {} wc={} fletch={} free={} logs={} products={} run={}".format(
+            log("cycle {} wc={} fletch={} free={} logs={} products={} coins={} run={}".format(
                 cycle,
                 compact["woodcuttingLevel"],
                 compact["fletchingLevel"],
                 compact["freeSlots"],
                 fletchable_log_count(player),
                 product_count(player),
+                compact["coins"]["total"],
                 compact["runEnergy"],
             ), args)
 
@@ -767,7 +795,10 @@ def main(argv=None):
                 continue
 
             if product_count(player) > 0 and compact_player(player)["freeSlots"] <= args.sell_at_free_slots:
-                player = sell_products(args, handle, "inventory_pressure")
+                if args.bank_products:
+                    player = bank_products_if_needed(player, args, handle, "inventory_pressure")
+                else:
+                    player = sell_products(args, handle, "inventory_pressure")
                 continue
 
             tree = choose_tree(player, args.tree)
@@ -820,10 +851,16 @@ def main(argv=None):
                 "products": product_count(player),
             })
         if not args.no_final_sell and product_count(player) > 0:
-            try:
-                player = sell_products(args, handle, "final")
-            except Exception as exc:
-                write_event(handle, "final_sell_failed", {"error": str(exc), "player": compact_player(observe())})
+            if args.bank_products:
+                try:
+                    player = bank_products_if_needed(player, args, handle, "final")
+                except Exception as exc:
+                    write_event(handle, "final_bank_products_failed", {"error": str(exc), "player": compact_player(observe())})
+            else:
+                try:
+                    player = sell_products(args, handle, "final")
+                except Exception as exc:
+                    write_event(handle, "final_sell_failed", {"error": str(exc), "player": compact_player(observe())})
         write_event(handle, "done", {"player": compact_player(observe()), "runLog": str(run_path)})
         log("run log: {}".format(run_path), args, force=True)
     return 0
