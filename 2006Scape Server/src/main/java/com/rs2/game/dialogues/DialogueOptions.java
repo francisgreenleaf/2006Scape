@@ -3,7 +3,7 @@ package com.rs2.game.dialogues;
 import com.rs2.Constants;
 import com.rs2.game.bots.Bot;
 import com.rs2.game.bots.BotHandler;
-import com.rs2.game.content.quests.custom.lumbridge.pantrypanic.PantryPanic;
+import com.rs2.game.content.custom.CustomContent;
 import com.rs2.game.content.skills.crafting.JewelryMaking;
 import com.rs2.game.items.impl.Flowers;
 import com.rs2.game.items.impl.Teles;
@@ -17,7 +17,7 @@ import com.rs2.game.players.Player;
 public class DialogueOptions {
 	
 	public static void handleDialogueOptions(Player player, int buttonId) {
-		if (PantryPanic.handleDialogueOption(player, buttonId)) {
+		if (CustomContent.handleDialogueOption(player, buttonId)) {
 			return;
 		}
 		switch (buttonId) {

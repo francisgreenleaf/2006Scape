@@ -1,7 +1,7 @@
 package com.rs2.net.packets.impl;
 
 import com.rs2.event.impl.ItemOnNpcEvent;
-import com.rs2.game.content.quests.custom.lumbridge.pantrypanic.PantryPanic;
+import com.rs2.game.content.custom.CustomContent;
 import com.rs2.game.content.skills.SkillHandler;
 import com.rs2.game.items.UseItem;
 import com.rs2.game.npcs.NpcHandler;
@@ -22,7 +22,7 @@ public class ItemOnNpc implements PacketType {
 		if (player.playerRights == 3) {
 			player.getPacketSender().sendMessage("Item id: " + itemId + " slot: " + slot + " i: " + i);
 		}
-		if (PantryPanic.handleItemOnNpc(player, itemId, npcId)) {
+		if (CustomContent.handleItemOnNpc(player, itemId, npcId)) {
 			return;
 		}
 		if (player.getItemAssistant().freeSlots() < 1) {
