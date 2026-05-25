@@ -21,33 +21,25 @@ The renderer is intentionally practical rather than a full scene renderer. It gi
 
 ## Generated Artifacts
 
-Canonical active map outputs live under `agent-navigation/topology/`:
+Canonical reusable and active map outputs live under `agent-navigation/topology/`:
 
 ```text
+cache-world-map-full.png
+cache-world-map-level0.png
 movement-topology-v4.png
 movement-topology-v5-heatmap.png
 movement-topology-v6.png
 ```
 
-The active movement maps are the profile movement map, `Heat Map`, and profile fog; they overlay learned movement traces, failures, deaths, combat edges, visited tiles, route density, and fog-of-war coverage on top of bounded cache-map backgrounds. JSON summaries and auxiliary full cache-map or route-overview renders default to ignored files under `agent-navigation/.local/map-summaries/`. Legacy movement-topology outputs may exist for old experiments, but they are not current user-facing maps.
+`cache-world-map-full.png` is the labeled full cache-bounds base export. `cache-world-map-level0.png` is the labeled level-0 surface export cropped to the main surface region. Both are 4 px/tile, north-up, generated without resizing, and contain no movement overlays. Other local scripts that need a static base map should use one of these exports instead of sampling the Java client or creating one-off copies.
+
+Place labels for the cache exports and active topology maps come from `agent-navigation/tools/map_labels.py`. That helper combines town/hub labels from `agent-navigation/data/places.json` with curated static labels such as Port Sarim, Ice Mountain, and Edgeville.
+
+The active movement maps are the profile movement map, `Heat Map`, and profile fog; they overlay learned movement traces, routing issues, deaths, combat edges, visited tiles, route density, and fog-of-war coverage on top of bounded cache-map backgrounds. JSON summaries and auxiliary route-overview renders default to ignored files under `agent-navigation/.local/map-summaries/`. Legacy movement-topology outputs may exist for old experiments, but they are not current user-facing maps.
 
 Agent context maps are not canonical topology exports. By default, `render_agent_context_map.py` and `render_context_map.py` write unique ignored artifacts under `agent-navigation/.local/context-maps/<date>/`; use explicit `--output` and `--summary` only for a deliberate smoke test or a user-facing comparison.
 
-Current full-map summary:
-
-```text
-bounds: 1728,2560 through 3839,10367
-plane: 0
-pixels per tile: 2
-regions: 660
-tiles: 2,128,515
-objects: 948,982
-object definitions: 14,974
-mapscene sprites: 80
-mapscene objects: 47,723
-footprint objects: 31,028
-mapfunction objects: 933
-```
+Current cache-map summaries are written to `agent-navigation/.local/map-summaries/cache-world-map-full.json` and `agent-navigation/.local/map-summaries/cache-world-map-level0.json`. Use those summaries for exact bounds, pixel dimensions, region counts, tile counts, object counts, bridge-tile counts, and label metadata.
 
 Render the full map from repo root:
 
@@ -55,6 +47,24 @@ Render the full map from repo root:
 agent-navigation/tools/cache_world_map.py \
   --output agent-navigation/.local/map-summaries/cache-world-map.png \
   --summary agent-navigation/.local/map-summaries/cache-world-map.json
+```
+
+Render the reusable labeled base-map exports:
+
+```sh
+agent-navigation/tools/cache_world_map.py \
+  --bounds all \
+  --pixels-per-tile 4 \
+  --labels \
+  --output agent-navigation/topology/cache-world-map-full.png \
+  --summary agent-navigation/.local/map-summaries/cache-world-map-full.json
+
+agent-navigation/tools/cache_world_map.py \
+  --bounds 1728,2560,3839,4031 \
+  --pixels-per-tile 4 \
+  --labels \
+  --output agent-navigation/topology/cache-world-map-level0.png \
+  --summary agent-navigation/.local/map-summaries/cache-world-map-level0.json
 ```
 
 Render a bounded preview:
@@ -101,7 +111,7 @@ The renderer uses local Python cache decoding helpers. It does not invoke the Ja
 `load_cache_world_map(bounds, plane)` returns a dictionary with static map data:
 
 - `tiles`: tuples of world x/y, plane, underlay RGB, overlay RGB, overlay shape, and overlay rotation.
-- `objects`: dictionaries of object id, name, world x/y, height, type, orientation, width, length, mapscene id, and mapfunction id.
+- `objects`: dictionaries of object id, name, world x/y, display height, source height, type, orientation, width, length, mapscene id, and mapfunction id.
 - `bounds`: requested or inferred world tile bounds.
 - `regions`: selected map region count.
 - `textures`: decoded texture color count.
@@ -113,9 +123,10 @@ The high-level pipeline:
 1. Load `map_index` and select regions intersecting the requested bounds.
 2. Decode `flo.dat`, `loc.dat`, `loc.idx`, texture colors, and mapscene sprites.
 3. Decode terrain regions into underlays, overlays, overlay shapes, overlay rotations, and settings.
-4. Decode object regions into object placements.
-5. Join object placements to `loc` definitions for dimensions and minimap metadata.
-6. Draw terrain, object footprints, mapscene sprites, mapfunction markers, and wall linework.
+4. Apply the same bridge/downshift rule used by the client minimap: when `settings[1] & 2` is set for a tile, plane `n + 1` is displayed on plane `n`. This keeps walkable-over-water surfaces such as Lumbridge bridges and Port Sarim docks visible in the base map.
+5. Decode object regions into object placements.
+6. Join object placements to `loc` definitions for dimensions and minimap metadata.
+7. Draw terrain, object footprints, mapscene sprites, mapfunction markers, and wall linework.
 
 ## Terrain Rendering
 
@@ -160,16 +171,16 @@ The active wrappers reuse the same cache-map helpers and canonical movement trac
 
 `render_movement_topology_v2.py` is the shared engine for active wrappers. Do not present its direct `movement-topology-v2.*` defaults, the original `movement-topology.*`, or old one-off proof/shortcut exports as current products.
 
-Disable the cache background with:
+Disable the cache background on the plain-name active wrappers with:
 
 ```sh
-agent-navigation/tools/render_movement_topology_v4.py --no-world-map
+agent-navigation/tools/render_profile_map.py --no-world-map
 ```
 
 or:
 
 ```sh
-agent-navigation/tools/render_movement_topology_v4.py --world-map-source none
+agent-navigation/tools/render_heat_map.py --world-map-source none
 ```
 
 ## Reuse From Python
@@ -204,8 +215,7 @@ For web, GIS, or custom tile applications, consume `tiles` and `objects` directl
 
 ## Limitations
 
-- One plane is rendered at a time.
-- Client-style bridge and upper-plane compositing is simplified.
+- The renderer mirrors the client minimap's bridge/downshift rule, but it still renders one requested display plane at a time rather than a full 3D scene.
 - Dynamic object variants from varbits/varps are not resolved against live state.
 - The base `draw_world_map()` helper uses simple mapfunction markers; agent context maps and active movement maps draw decoded `mapfunction` sprites as an overlay.
 - Large-object footprints are approximate.
@@ -219,7 +229,7 @@ Treat the cache map as durable static context. Use `rs.observe_state`, movement 
 Useful next improvements:
 
 - Promote the mapfunction sprite overlay into `draw_world_map()` if the full cache-world PNG needs the same icon fidelity as agent context maps.
-- Add optional plane/bridge compositing closer to the Java client minimap.
+- Add optional upper-plane overlay compositing closer to the rest of the Java client minimap path.
 - Export vector or tile-indexed JSON for browser map viewers.
 - Add command-line layer toggles for terrain, mapscene, footprints, walls, and mapfunction markers.
 - Add deterministic color legends for object types useful to the navigation harness.

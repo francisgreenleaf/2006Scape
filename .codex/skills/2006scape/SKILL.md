@@ -62,7 +62,7 @@ python3 agent-navigation/tools/navdb.py validate
 python3 agent-navigation/tools/navdb.py self-test
 python3 agent-navigation/tools/route_runner.py --to PLACE --orient --json --run-reserve auto
 agent-navigation/tools/route_runner.py --to PLACE --run-reserve auto
-agent-navigation/tools/render_navigation_png.py --region all --output agent-navigation/topology/surface-routes.png
+agent-navigation/tools/render_navigation_png.py --region all --output agent-navigation/.local/map-summaries/surface-routes.png
 
 # 2006scape-route-planner-dev: graph planning and planner validation
 python3 agent-navigation/tools/router.py plan --from X,Y,H --to PLACE --combat-level N --food N --run-energy N --run-enabled
@@ -121,13 +121,14 @@ python3 agent-navigation/tools/script_registry.py run agility -- --laps 10
 
 # 2006scape-cache-map: static cache-backed map rendering
 agent-navigation/tools/cache_world_map.py --bounds 3200,3200,3210,3210 --output /tmp/2006scape-cache-map-smoke.png --summary /tmp/2006scape-cache-map-smoke.json
-agent-navigation/tools/cache_world_map.py --output agent-navigation/topology/cache-world-map.png --summary agent-navigation/topology/cache-world-map.json
+agent-navigation/tools/cache_world_map.py --bounds all --pixels-per-tile 4 --labels --output agent-navigation/topology/cache-world-map-full.png --summary agent-navigation/.local/map-summaries/cache-world-map-full.json
 python3 agent-navigation/tools/render_agent_context_map.py --center latest
 
 # 2006scape-map-visualization: canonical map visuals
-agent-navigation/tools/render_movement_topology_v4.py
-agent-navigation/tools/render_movement_topology_v5.py
-agent-navigation/tools/render_movement_topology_v6.py
+agent-navigation/tools/render_profile_map.py
+agent-navigation/tools/render_heat_map.py
+agent-navigation/tools/render_fog_map.py
+agent-navigation/tools/active_map_refresher.py status
 python3 agent-navigation/tools/render_agent_context_map.py --segment-from FROM_PLACE --segment-to TO_PLACE
 
 # 2006scape-agent-session-logs: inspect logs and summarize event types

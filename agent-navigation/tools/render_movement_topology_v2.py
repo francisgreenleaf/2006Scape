@@ -16,6 +16,17 @@ import textwrap
 from pathlib import Path
 
 from cache_world_map import CACHE_DIR, draw_world_map, load_background_sprites, load_cache_world_map
+from map_labels import (
+    MAP_LABELS_PATH,
+    PLACES_PATH,
+    in_bounds,
+    load_places,
+    merge_labels,
+    place_labels_in_bounds,
+    poi_kind,
+    short_place_label,
+    static_labels_in_bounds,
+)
 from navdb import default_trace_profile, iter_movement_traces, record_matches_profile, tile_from_record, trace_paths
 from render_movement_topology import (
     empty_edge,
@@ -29,14 +40,13 @@ from render_navigation_png import Canvas
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "topology"
-PLACES_PATH = ROOT / "data" / "places.json"
 RUNESCAPE_FONT = ROOT / "assets" / "fonts" / "runescape_uf.ttf"
 RUNESCAPE_FONT_SOURCE = "https://www.dafont.com/runescape-uf.font"
 DEFAULT_COVERAGE_CACHE_DIR = ROOT / ".local" / "topology-render-cache"
 FOG_REVEAL_CACHE_VERSION = 1
 HEAT_MASK_CACHE_VERSION = 3
-CANVAS_LAYER_CACHE_VERSION = 2
-POI_CACHE_VERSION = 3
+CANVAS_LAYER_CACHE_VERSION = 4
+POI_CACHE_VERSION = 4
 TOPOLOGY_CACHE_VERSION = 1
 PLAYER_TRACE_PART = "player-movement-traces"
 AGENT_TRACE_PART = "agent-movement-traces"
@@ -90,106 +100,6 @@ COVERAGE_HEAT_STOPS = [
     (0.66, (255, 232, 86)),
     (1.00, (255, 78, 45)),
 ]
-
-STATIC_LABELS = [
-    {
-        "text": "Port Sarim",
-        "tile": {"x": 3026, "y": 3218, "height": 0},
-        "dx": -34,
-        "dy": -18,
-        "color": "yellow",
-    },
-    {
-        "text": "Falador",
-        "tile": {"x": 2965, "y": 3378, "height": 0},
-        "dx": -30,
-        "dy": -18,
-        "color": "yellow",
-    },
-    {
-        "text": "Rimmington",
-        "tile": {"x": 2957, "y": 3215, "height": 0},
-        "dx": -44,
-        "dy": -18,
-        "color": "yellow",
-    },
-    {
-        "text": "Draynor",
-        "tile": {"x": 3093, "y": 3245, "height": 0},
-        "dx": -30,
-        "dy": -18,
-        "color": "yellow",
-    },
-    {
-        "text": "Al Kharid",
-        "tile": {"x": 3295, "y": 3183, "height": 0},
-        "dx": -38,
-        "dy": -18,
-        "color": "yellow",
-    },
-    {
-        "text": "Ice Mountain",
-        "tile": {"x": 3008, "y": 3478, "height": 0},
-        "dx": -64,
-        "dy": -30,
-        "color": "white",
-        "outline": True,
-    },
-    {
-        "text": "Tree Gnome Stronghold",
-        "tile": {"x": 2464, "y": 3435, "height": 0},
-        "dx": -102,
-        "dy": -22,
-        "color": "yellow",
-    },
-    {
-        "text": "Seers' Village",
-        "tile": {"x": 2708, "y": 3488, "height": 0},
-        "dx": -58,
-        "dy": -20,
-        "color": "yellow",
-    },
-    {
-        "text": "Fishing Guild",
-        "tile": {"x": 2605, "y": 3415, "height": 0},
-        "dx": -54,
-        "dy": -18,
-        "color": "yellow",
-    },
-    {
-        "text": "Ranging Guild",
-        "tile": {"x": 2658, "y": 3438, "height": 0},
-        "dx": -56,
-        "dy": -18,
-        "color": "yellow",
-    },
-    {
-        "text": "Ardougne",
-        "tile": {"x": 2662, "y": 3305, "height": 0},
-        "dx": -40,
-        "dy": -18,
-        "color": "yellow",
-    },
-    {
-        "text": "Port Khazard",
-        "tile": {"x": 2665, "y": 3161, "height": 0},
-        "dx": -52,
-        "dy": -18,
-        "color": "yellow",
-    },
-    {
-        "text": "Yanille",
-        "tile": {"x": 2606, "y": 3093, "height": 0},
-        "dx": -28,
-        "dy": -18,
-        "color": "yellow",
-    },
-]
-
-SUPPRESSED_PLACE_LABELS = {
-    "Rimmington Center",
-}
-
 
 def clamp(value, lo, hi):
     return max(lo, min(hi, value))
@@ -639,7 +549,10 @@ def cache_source_fingerprint():
 
 
 def places_fingerprint():
-    return file_metadata(PLACES_PATH)
+    return {
+        "places": file_metadata(PLACES_PATH),
+        "labels": file_metadata(MAP_LABELS_PATH),
+    }
 
 
 def load_fog_reveal_cache(args, cache_key, expected_length, current_node_keys):
@@ -1696,55 +1609,6 @@ def dedup_death_sites(tiles):
     return unique_tiles(sites)
 
 
-def load_places():
-    if not PLACES_PATH.exists():
-        return []
-    data = json.loads(PLACES_PATH.read_text(encoding="utf-8"))
-    return data.get("places", [])
-
-
-def in_bounds(tile, bounds):
-    return (
-        tile is not None
-        and int(tile.get("height", 0)) == 0
-        and bounds["minX"] <= int(tile["x"]) <= bounds["maxX"]
-        and bounds["minY"] <= int(tile["y"]) <= bounds["maxY"]
-    )
-
-
-def poi_kind(place):
-    kind = str(place.get("kind") or "").lower()
-    tags = [str(tag).lower() for tag in place.get("tags", [])]
-    if kind in ("hub", "town"):
-        return "town"
-    if kind == "bank":
-        return "bank"
-    if kind == "shop":
-        return "shop"
-    if kind != "surface_checkpoint" and ("city" in tags or "village" in tags):
-        return "town"
-    return None
-
-
-def short_place_label(name):
-    replacements = [
-        ("Lumbridge Castle Courtyard", "Lumbridge"),
-        ("Varrock Square", "Varrock"),
-    ]
-    for source, target in replacements:
-        if name == source:
-            return target
-    return name
-
-
-def static_labels_in_bounds(bounds):
-    labels = []
-    for label in STATIC_LABELS:
-        if in_bounds(label.get("tile"), bounds):
-            labels.append(label)
-    return labels
-
-
 def nearest_map_function(place_tile, objects, max_distance=8):
     best = None
     best_distance = max_distance + 1
@@ -1756,50 +1620,6 @@ def nearest_map_function(place_tile, objects, max_distance=8):
             best = obj
             best_distance = distance
     return best
-
-
-def place_labels_in_bounds(bounds):
-    labels = []
-    seen = set()
-    for place in load_places():
-        tile = place.get("tile")
-        if not in_bounds(tile, bounds):
-            continue
-        kind = poi_kind(place)
-        if kind != "town":
-            continue
-        name = str(place.get("name") or place.get("id") or "").strip()
-        if not name:
-            continue
-        if name in SUPPRESSED_PLACE_LABELS:
-            continue
-        text = short_place_label(name)
-        if text in seen:
-            continue
-        seen.add(text)
-        labels.append({
-            "kind": kind,
-            "text": text,
-            "tile": {
-                "x": int(tile["x"]),
-                "y": int(tile["y"]),
-                "height": int(tile.get("height", 0)),
-            },
-            "color": "yellow",
-        })
-    return labels
-
-
-def merge_labels(labels):
-    merged = []
-    seen = set()
-    for label in labels:
-        key = str(label.get("text") or "")
-        if not key or key in seen:
-            continue
-        seen.add(key)
-        merged.append(label)
-    return merged
 
 
 def build_pois(world_map, bounds, args):

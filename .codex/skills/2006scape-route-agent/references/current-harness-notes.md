@@ -8,10 +8,15 @@ Important local files:
 - `agent-navigation/tools/capture-cardinal-screenshots.sh`: compact north/east/south/west client screenshots.
 - `agent-navigation/tools/navdb.py`: route DB decisions, observations, validation, tests.
 - `agent-navigation/tools/route_runner.py`: low-token learned-route executor around `router.py`.
-- `agent-navigation/tools/render_navigation_png.py`: canonical surface map renderer.
+- `agent-navigation/tools/render_navigation_png.py`: surface route overview renderer for ignored analysis artifacts.
 - `agent-navigation/tools/cache_world_map.py`: cache-backed world-map renderer.
-- `agent-navigation/topology/surface-routes.png`: current route map.
-- `agent-navigation/topology/cache-world-map.png`: cache-backed world map.
+- `agent-navigation/tools/render_agent_context_map.py`: bounded cache-backed tactical map wrapper for current-tile and segment checks.
+- `agent-navigation/tools/map_labels.py`: shared place/static labels for cache-world exports and active topology maps.
+- `agent-navigation/topology/cache-world-map-full.png`: reusable labeled full cache-bounds base map.
+- `agent-navigation/topology/cache-world-map-level0.png`: reusable labeled level-0 surface base map.
+- `agent-navigation/topology/movement-topology-v4.png`: active profile movement map.
+- `agent-navigation/topology/movement-topology-v5-heatmap.png`: active Heat Map.
+- `agent-navigation/topology/movement-topology-v6.png`: active profile fog map.
 
 Current important places/routes:
 

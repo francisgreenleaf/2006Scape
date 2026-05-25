@@ -150,13 +150,13 @@ Do not load high-resolution screenshots into context unless visually debugging a
 
 The old screenshot-based minimap map collector has been removed. Do not start any background screen sampler or focus-stealing client capture loop.
 
-Render the canonical map by overwriting one file:
+Render a route overview map as an ignored analysis artifact:
 
 ```sh
-agent-navigation/tools/render_navigation_png.py --region all --output agent-navigation/topology/surface-routes.png
+agent-navigation/tools/render_navigation_png.py --region all --output agent-navigation/.local/map-summaries/surface-routes.png
 ```
 
-The map is surface-only and uses `6 px = 1 step tile` unless changed deliberately.
+The map is surface-only and uses `6 px = 1 step tile` unless changed deliberately. Keep `agent-navigation/topology/` for the three active movement PNGs and the two reusable cache-world base exports.
 
 For local map context around the player or a route segment, prefer bounded cache-backed renders:
 
@@ -189,4 +189,4 @@ Non-aggressive NPCs can still become route-contact risks if the player/user atta
 - Do not treat `Bank table` objects as proof of a bank; they are often decorative. Prefer minimap bank symbols from context maps, actual Bank booth/chest/Banker evidence, `inBankArea=true`, or a proven bank interface.
 - Always re-observe after user intervention.
 - Door routes need multi-object chain proof.
-- Keep topology PNGs canonical: replace `agent-navigation/topology/surface-routes.png`, do not create timestamp/version clutter.
+- Keep topology PNGs canonical: route overview renders belong under ignored `.local/map-summaries`; do not add timestamp/version clutter to `agent-navigation/topology/`.
