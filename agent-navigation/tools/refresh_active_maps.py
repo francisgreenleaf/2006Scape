@@ -61,7 +61,6 @@ ACTIVE_JOBS = (
         command_name="render_profile_map.py",
         args=("--output", "{output}", "--summary", "{summary}", "--coverage-cache-dir", "{render_cache_dir}"),
         render_cache_namespace="mr-flame",
-        continuous=True,
     ),
     MapJob(
         job_id="heat-map",
@@ -445,7 +444,7 @@ def parse_args():
                         help="Only render movement traces for this profile.")
     parser.add_argument("--include-unscoped-traces", action="store_true",
                         help="When filtering by profile, also include legacy traces with no player name.")
-    parser.add_argument("--interval-seconds", type=positive_float, default=30.0,
+    parser.add_argument("--interval-seconds", type=positive_float, default=300.0,
                         help="Target cadence per map. If a render exceeds this, its next pass starts immediately.")
     parser.add_argument("--stagger-seconds", type=nonnegative_float, default=8.0,
                         help="Initial delay between parallel workers.")

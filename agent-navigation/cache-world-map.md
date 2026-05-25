@@ -86,7 +86,7 @@ agent-navigation/tools/active_map_refresher.py stop
 - `agent-navigation/topology/movement-topology-v5-heatmap.png`
 - `agent-navigation/topology/movement-topology-v6.png`
 
-The `mr-flame` profile movement map is a continuous hot loop: as soon as one render finishes, the next starts. `Heat Map` and profile fog target a 30-second cadence. If a non-hot render takes longer than 30 seconds, that map starts its next pass immediately after the previous pass finishes; it never overlaps two renders for the same map. Auxiliary cache-map and route-overview renders are ignored `.local` artifacts, not topology exports.
+All three active map workers target a five-minute cadence. If a render takes longer than five minutes, that map starts its next pass immediately after the previous pass finishes; it never overlaps two renders for the same map. Auxiliary cache-map and route-overview renders are ignored `.local` artifacts, not topology exports.
 
 The watcher renders to ignored temp files first, then atomically replaces the canonical PNG after a successful run and writes matching ignored summaries to `agent-navigation/.local/map-summaries/`. It prints start/done/failure lines and writes ignored status JSON to `agent-navigation/.local/map-refresh/status.json`, including the latest duration, records/nodes/edges/deaths, cache fields, and heat/fog coverage-cache fields when available. Parallel topology workers use separate persistent cache subdirectories under `agent-navigation/.local/topology-render-cache/` so their cache writes do not collide; each map still gets warm-cache behavior across its own repeats.
 
@@ -95,7 +95,7 @@ Movement map workers honor the same trace-profile filtering as the topology rend
 Useful options:
 
 ```sh
-agent-navigation/tools/active_map_refresher.py restart --only mr-flame --interval-seconds 30
+agent-navigation/tools/active_map_refresher.py restart --only mr-flame --interval-seconds 300
 agent-navigation/tools/active_map_refresher.py restart --serial
 agent-navigation/tools/active_map_refresher.py restart --refresh-world-map
 agent-navigation/tools/active_map_refresher.py restart --trace-profile mrflame

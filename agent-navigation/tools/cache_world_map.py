@@ -770,9 +770,11 @@ def draw_object_footprint(canvas, obj, project, scale):
     obj_type = int(obj.get("type", 0))
     map_scene = int(obj.get("mapScene", -1))
     width_tiles, length_tiles = object_dimensions(obj)
-    if map_scene < 0 and obj_type not in (10, 11):
+    if map_scene >= 0:
         return
-    if map_scene < 0 and width_tiles <= 1 and length_tiles <= 1:
+    if obj_type not in (10, 11):
+        return
+    if width_tiles <= 1 and length_tiles <= 1:
         return
     px, py = project(obj)
     block = max(1, int(round(scale)))
@@ -781,10 +783,7 @@ def draw_object_footprint(canvas, obj, project, scale):
     y1 = py
     y0 = py - max(1, int(round(length_tiles * scale))) + 1
     color = PALETTE["footprint"]
-    alpha = 0.32
-    if map_scene >= 0:
-        alpha = 0.46
-    canvas.blend_rect(x0, y0, x1, y1, color, alpha)
+    canvas.blend_rect(x0, y0, x1, y1, color, 0.32)
     if width_tiles > 1 or length_tiles > 1:
         canvas.line(x0, y0, x1, y0, color, width=max(1, block // 3))
         canvas.line(x0, y1, x1, y1, color, width=max(1, block // 3))

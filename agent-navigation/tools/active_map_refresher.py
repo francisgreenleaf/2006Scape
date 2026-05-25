@@ -226,7 +226,7 @@ def add_start_options(parser):
     parser.add_argument("--trace-profile",
                         default=os.environ.get("RS_TRACE_PROFILE") or os.environ.get("RS_PROFILE") or os.environ.get("RSBRIDGE_PROFILE") or "")
     parser.add_argument("--include-unscoped-traces", action="store_true")
-    parser.add_argument("--interval-seconds", type=float, default=30.0)
+    parser.add_argument("--interval-seconds", type=float, default=300.0)
     parser.add_argument("--stagger-seconds", type=float, default=8.0)
     parser.add_argument("--only", action="append", choices=("mr-flame", "heat-map", "mr-flame-fog"))
     parser.add_argument("--serial", action="store_true")

@@ -35,8 +35,8 @@ RUNESCAPE_FONT_SOURCE = "https://www.dafont.com/runescape-uf.font"
 DEFAULT_COVERAGE_CACHE_DIR = ROOT / ".local" / "topology-render-cache"
 FOG_REVEAL_CACHE_VERSION = 1
 HEAT_MASK_CACHE_VERSION = 3
-CANVAS_LAYER_CACHE_VERSION = 1
-POI_CACHE_VERSION = 1
+CANVAS_LAYER_CACHE_VERSION = 2
+POI_CACHE_VERSION = 3
 TOPOLOGY_CACHE_VERSION = 1
 PLAYER_TRACE_PART = "player-movement-traces"
 AGENT_TRACE_PART = "agent-movement-traces"
@@ -121,12 +121,68 @@ STATIC_LABELS = [
         "color": "yellow",
     },
     {
+        "text": "Al Kharid",
+        "tile": {"x": 3295, "y": 3183, "height": 0},
+        "dx": -38,
+        "dy": -18,
+        "color": "yellow",
+    },
+    {
         "text": "Ice Mountain",
         "tile": {"x": 3008, "y": 3478, "height": 0},
         "dx": -64,
         "dy": -30,
         "color": "white",
         "outline": True,
+    },
+    {
+        "text": "Tree Gnome Stronghold",
+        "tile": {"x": 2464, "y": 3435, "height": 0},
+        "dx": -102,
+        "dy": -22,
+        "color": "yellow",
+    },
+    {
+        "text": "Seers' Village",
+        "tile": {"x": 2708, "y": 3488, "height": 0},
+        "dx": -58,
+        "dy": -20,
+        "color": "yellow",
+    },
+    {
+        "text": "Fishing Guild",
+        "tile": {"x": 2605, "y": 3415, "height": 0},
+        "dx": -54,
+        "dy": -18,
+        "color": "yellow",
+    },
+    {
+        "text": "Ranging Guild",
+        "tile": {"x": 2658, "y": 3438, "height": 0},
+        "dx": -56,
+        "dy": -18,
+        "color": "yellow",
+    },
+    {
+        "text": "Ardougne",
+        "tile": {"x": 2662, "y": 3305, "height": 0},
+        "dx": -40,
+        "dy": -18,
+        "color": "yellow",
+    },
+    {
+        "text": "Port Khazard",
+        "tile": {"x": 2665, "y": 3161, "height": 0},
+        "dx": -52,
+        "dy": -18,
+        "color": "yellow",
+    },
+    {
+        "text": "Yanille",
+        "tile": {"x": 2606, "y": 3093, "height": 0},
+        "dx": -28,
+        "dy": -18,
+        "color": "yellow",
     },
 ]
 
