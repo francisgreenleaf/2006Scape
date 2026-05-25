@@ -325,20 +325,45 @@ def draw_place_markers(canvas, project, db, bounds, scale, max_places, draw_labe
         tile = place.get("tile")
         if tile_in_bounds(tile, bounds):
             places.append(place)
-    places = sorted(places, key=lambda place: place["id"])[:max_places]
+    places = sorted(places, key=lambda place: (context_anchor_priority(place), str(place["id"])))[:max_places]
     marker = max(2, scale // 2)
+    label_boxes = []
+    results = []
     for place in places:
         x, y = project(place["tile"])
         canvas.rect(x - marker - 1, y - marker - 1, x + marker + 1, y + marker + 1, PALETTE["place_outline"])
         canvas.rect(x - marker, y - marker, x + marker, y + marker, PALETTE["place"])
+        label_drawn = False
         if draw_labels:
-            draw_label(canvas, x + marker + 3, y - marker - 8, place.get("name") or place.get("id"))
-    return [{
-        "id": place["id"],
-        "name": place["name"],
-        "kind": place.get("kind"),
-        "tile": place["tile"],
-    } for place in places]
+            label = sanitize_label(place.get("name") or place.get("id"))
+            label_x = x + marker + 3
+            label_y = y - marker - 8
+            box = label_bounds(label_x, label_y, label)
+            if label and not any(boxes_overlap(box, existing) for existing in label_boxes):
+                label_drawn = draw_label(canvas, label_x, label_y, label)
+                if label_drawn:
+                    label_boxes.append(box)
+        results.append({
+            "id": place["id"],
+            "name": place["name"],
+            "kind": place.get("kind"),
+            "tile": place["tile"],
+            "labelDrawn": label_drawn,
+        })
+    return results
+
+
+def label_bounds(x, y, text, scale=1):
+    return (int(x), int(y), int(x) + len(str(text)) * 4 * int(scale), int(y) + 7 * int(scale))
+
+
+def boxes_overlap(left, right, padding=2):
+    return not (
+        left[2] + padding < right[0]
+        or right[2] + padding < left[0]
+        or left[3] + padding < right[1]
+        or right[3] + padding < left[1]
+    )
 
 
 def draw_grid(canvas, bounds, project, scale, interval):
@@ -564,6 +589,41 @@ def draw_mapfunction_icons(canvas, project, markers, scale, draw_labels=False):
     return drawn
 
 
+def draw_static_context_layers(canvas, project, world_map, db, bounds, scale,
+                               mapfunction_icons=True, mapfunction_labels=False,
+                               place_markers=True, place_labels=True,
+                               max_place_markers=40):
+    """Draw reusable POI layers on top of a cache world map.
+
+    This is shared by tactical context maps and ML comparison maps so agents get
+    the same banks, shops, docks, and named places without custom renderer work.
+    """
+    mapfunction_markers_in_bounds = mapfunction_markers(world_map, bounds, db) if mapfunction_icons else []
+    mapfunction_icons_drawn = draw_mapfunction_icons(
+        canvas,
+        project,
+        mapfunction_markers_in_bounds,
+        scale,
+        draw_labels=mapfunction_labels,
+    ) if mapfunction_icons else 0
+    places = draw_place_markers(
+        canvas,
+        project,
+        db,
+        bounds,
+        scale,
+        max_place_markers,
+        draw_labels=place_labels,
+    ) if place_markers else []
+    return {
+        "mapFunctionMarkerCount": len(mapfunction_markers_in_bounds),
+        "mapFunctionIconsDrawn": mapfunction_icons_drawn,
+        "mapFunctionMarkers": mapfunction_markers_in_bounds,
+        "placeMarkers": places,
+        "placeLabelsDrawn": sum(1 for place in places if place.get("labelDrawn")),
+    }
+
+
 def render(args):
     db = navdb.load_db()
     all_records = sorted_trace_records(args.trace_file, args.player)
@@ -629,24 +689,19 @@ def render(args):
     grid_lines = draw_grid(canvas, bounds, project, args.pixels_per_tile, args.grid_interval)
     segment_edges = draw_trace(canvas, project, segment_records, bounds, args.pixels_per_tile, PALETTE["segment"])
     recent_edges = draw_trace(canvas, project, recent, bounds, args.pixels_per_tile, PALETTE["recent"])
-    mapfunction_enabled = getattr(args, "mapfunction_icons", True)
-    mapfunction_markers_in_bounds = mapfunction_markers(world_map, bounds, db) if mapfunction_enabled else []
-    mapfunction_icons_drawn = draw_mapfunction_icons(
+    context_layers = draw_static_context_layers(
         canvas,
         project,
-        mapfunction_markers_in_bounds,
-        args.pixels_per_tile,
-        draw_labels=getattr(args, "mapfunction_labels", False),
-    ) if mapfunction_enabled else 0
-    places = draw_place_markers(
-        canvas,
-        project,
+        world_map,
         db,
         bounds,
         args.pixels_per_tile,
-        args.max_place_markers,
-        draw_labels=getattr(args, "place_labels", False),
-    ) if args.place_markers else []
+        mapfunction_icons=getattr(args, "mapfunction_icons", True),
+        mapfunction_labels=getattr(args, "mapfunction_labels", False),
+        place_markers=args.place_markers,
+        place_labels=getattr(args, "place_labels", False),
+        max_place_markers=args.max_place_markers,
+    )
 
     if segment_records:
         start_tile = navdb.tile_from_record(segment_records[0], "tile")
@@ -688,11 +743,11 @@ def render(args):
         "segment": segment_info,
         "contextAnchors": context_anchors,
         "segmentEdgesDrawn": segment_edges,
-        "mapFunctionMarkerCount": len(mapfunction_markers_in_bounds),
-        "mapFunctionIconsDrawn": mapfunction_icons_drawn,
-        "mapFunctionMarkers": mapfunction_markers_in_bounds,
-        "placeMarkers": places,
-        "placeLabelsDrawn": len(places) if getattr(args, "place_labels", False) else 0,
+        "mapFunctionMarkerCount": context_layers["mapFunctionMarkerCount"],
+        "mapFunctionIconsDrawn": context_layers["mapFunctionIconsDrawn"],
+        "mapFunctionMarkers": context_layers["mapFunctionMarkers"],
+        "placeMarkers": context_layers["placeMarkers"],
+        "placeLabelsDrawn": context_layers["placeLabelsDrawn"],
         "gridLines": grid_lines,
         "lossless": True,
     }

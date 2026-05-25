@@ -12,12 +12,14 @@ Use this skill for how map outputs should look and be reviewed. Use `2006scape-c
 - `agent-navigation/topology/movement-topology-v4.png`: active profile movement map.
 - `agent-navigation/topology/movement-topology-v5-heatmap.png`: active `Heat Map` with transparent coverage density for route-learning/ML inspection.
 - `agent-navigation/topology/movement-topology-v6.png`: active profile fog topology with route/icon overlays and dimmed unvisited map context.
+- `agent-navigation/topology/cache-world-map-full.png`: reusable full cache-bounds base map export with labels and no movement overlays.
+- `agent-navigation/topology/cache-world-map-level0.png`: reusable labeled level-0 surface base map export for scripts that need a static base map.
 - `agent-navigation/.local/map-summaries/*.json`: ignored summaries for active map renders and auxiliary map outputs.
 - `agent-navigation/.local/context-maps/<date>/*.png`: ignored, timestamped agent context-map artifacts for current-location and segment debugging.
 - `agent-navigation/.local/context-maps/<date>/*.json`: matching machine-readable context-map summaries with bounds, center, POI markers, and place markers.
 - `agent-navigation/analysis/movement-topology-<date>.png`: dated analysis renders when comparison is useful.
 
-`agent-navigation/topology/` should stay uncluttered: keep only the three active user-facing PNGs there. Avoid timestamp clutter, JSON sidecars, surface-route renders, full cache renders, and one-off proof/shortcut/context exports in `topology/`; those belong under ignored `.local/` paths unless the user explicitly asks for a shareable artifact.
+`agent-navigation/topology/` should stay uncluttered: keep only the three active user-facing movement PNGs plus the two reusable cache-world-map base exports there. Avoid timestamp clutter, JSON sidecars, surface-route renders, and one-off proof/shortcut/context exports in `topology/`; those belong under ignored `.local/` paths unless the user explicitly asks for a shareable artifact.
 
 ## Render Commands
 
@@ -83,9 +85,12 @@ Maps should be useful at a glance:
 - keep coordinate grid overlays disabled on active movement topology maps unless the user explicitly asks for coordinate debugging;
 - preserve north-up world coordinates and explain bounds/pixels-per-tile when sharing analysis.
 - use integer pixel scales for bounded context maps so the result stays lossless and pixel-perfect without resampling.
+- use `cache-world-map-full.png` or `cache-world-map-level0.png` when another script needs a static labeled base map instead of re-rendering or sampling the client.
+- keep user-facing place labels centralized in `agent-navigation/tools/map_labels.py` so cache-world exports, the profile map, `Heat Map`, and profile fog agree on Varrock, Barbarian Village, Edgeville, Ice Mountain, and other named places.
 - keep agent context maps bounded, compact, and archived under `.local/context-maps`; use `render_agent_context_map.py` rather than full topology or heatmap renderers for tactical routing.
 - keep nearby route geometry visible in agent segment maps, including docks, ports, bridges, and useful POI surroundings; use padding/max-span options rather than a full-world render when the default crop is too tight.
 - include all cache mapfunction icons in agent context maps, and rely on JSON marker labels before opening images when visual labels are too dense.
+- reuse `render_context_map.draw_static_context_layers` for new bounded route comparison images so mapfunction icons and place labels stay consistent across agent tools.
 - for `Heat Map`, keep the gradient legend separate from route-state items; do not reintroduce the old `DENSE` legend item because coverage now represents trace density.
 - for `Heat Map`, the optimized cached mask is applied once with a non-saturating max radial mask. If every explored tile looks dense, inspect the heat mask/cache version and summary before changing unrelated map layers.
 - for `Heat Map` and profile fog, keep the title short and use the larger title-bar paragraph for the evidence-backed Gielinor navigation graph, GPT-5.5 planning, deterministic routing, and ML-scoring context.

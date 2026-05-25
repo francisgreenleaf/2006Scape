@@ -11,19 +11,24 @@ import argparse
 import bz2
 import json
 import math
+import shutil
 import struct
+import subprocess
 import zlib
 from pathlib import Path
 
+from map_labels import labels_in_bounds
 from render_navigation_png import Canvas
 
 
 ROOT = Path(__file__).resolve().parents[1]
 CACHE_DIR = ROOT.parent / "2006Scape Server" / "data" / "cache"
 OUT = ROOT / ".local" / "map-summaries"
+RUNESCAPE_FONT = ROOT / "assets" / "fonts" / "runescape_uf.ttf"
 
 REGION_SIZE = 64
 PLANES = 4
+BRIDGE_TILE_FLAG = 2
 SHAPE_MASKS = [
     [0 for _i in range(16)],
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -54,6 +59,9 @@ PALETTE = {
     "footprint": (104, 92, 73),
     "ground_decoration": (99, 116, 77),
     "map_function": (145, 96, 28),
+    "osrs_yellow": (255, 255, 0),
+    "text_shadow": (0, 0, 0),
+    "white": (255, 255, 255),
 }
 
 
@@ -291,6 +299,11 @@ def load_loc_defs(cache=None):
             "mapScene": -1,
             "hasActions": False,
             "blocks": True,
+            "solid": True,
+            "impenetrable": True,
+            "interactive": False,
+            "clipped": True,
+            "obstructive": False,
         }
         action_flag = -1
         models_present = False
@@ -317,8 +330,9 @@ def load_loc_defs(cache=None):
                 definition["length"] = buf.u8()
             elif opcode == 17:
                 definition["blocks"] = False
+                definition["solid"] = False
             elif opcode == 18:
-                pass
+                definition["impenetrable"] = False
             elif opcode == 19:
                 action_flag = buf.u8()
             elif opcode in (21, 22, 23):
@@ -340,7 +354,11 @@ def load_loc_defs(cache=None):
                 buf.skip(recolors * 4)
             elif opcode == 60:
                 definition["mapFunction"] = buf.u16()
-            elif opcode in (62, 64, 73, 74):
+            elif opcode == 64:
+                definition["clipped"] = False
+            elif opcode == 73:
+                definition["obstructive"] = True
+            elif opcode in (62, 74):
                 pass
             elif opcode in (65, 66, 67):
                 buf.u16()
@@ -368,8 +386,10 @@ def load_loc_defs(cache=None):
                 raise ValueError("unknown loc opcode %d for object %d" % (opcode, object_id))
         if action_flag == -1:
             definition["hasActions"] = (models_present and True) or actions_present
+            definition["interactive"] = actions_present
         else:
             definition["hasActions"] = action_flag == 1 or actions_present
+            definition["interactive"] = action_flag == 1 or actions_present
         objects.append(definition)
     return objects
 
@@ -616,6 +636,13 @@ def region_intersects(record, bounds):
     )
 
 
+def display_source_plane(terrain, plane, local_x, local_y):
+    """Mirror the client bridge shift: plane 1 flag bit 2 moves upper ground down."""
+    if plane < PLANES - 1 and (terrain["settings"][1][local_x][local_y] & BRIDGE_TILE_FLAG) == BRIDGE_TILE_FLAG:
+        return plane + 1
+    return plane
+
+
 def load_cache_world_map(bounds, plane=0, cache_dir=CACHE_DIR):
     cache = CacheReader(cache_dir)
     records = load_map_index(cache)
@@ -628,12 +655,15 @@ def load_cache_world_map(bounds, plane=0, cache_dir=CACHE_DIR):
     tiles = []
     objects = []
     regions = 0
+    wall_types_by_object_id = {}
     stats = {
         "objectDefs": len(loc_defs),
         "mapSceneSprites": len(map_scenes),
         "mapSceneObjects": 0,
         "mapFunctionObjects": 0,
         "footprintObjects": 0,
+        "bridgeTiles": 0,
+        "bridgeObjects": 0,
     }
     for record in records:
         if not region_intersects(record, bounds):
@@ -653,11 +683,14 @@ def load_cache_world_map(bounds, plane=0, cache_dir=CACHE_DIR):
         max_ly = min(REGION_SIZE - 1, bounds["maxY"] - record["regionY"])
         for local_x in range(min_lx, max_lx + 1):
             for local_y in range(min_ly, max_ly + 1):
+                source_plane = display_source_plane(terrain, plane, local_x, local_y)
+                if source_plane != plane:
+                    stats["bridgeTiles"] += 1
                 underlay_color, overlay_color = tile_colors(
                     flo_defs,
                     texture_colors,
-                    terrain["underlays"][plane][local_x][local_y],
-                    terrain["overlays"][plane][local_x][local_y],
+                    terrain["underlays"][source_plane][local_x][local_y],
+                    terrain["overlays"][source_plane][local_x][local_y],
                 )
                 if underlay_color is not None or overlay_color is not None:
                     underlay_color = underlay_color or overlay_color
@@ -672,8 +705,9 @@ def load_cache_world_map(bounds, plane=0, cache_dir=CACHE_DIR):
                         overlay_color[0],
                         overlay_color[1],
                         overlay_color[2],
-                        terrain["overlayShapes"][plane][local_x][local_y],
-                        terrain["overlayRotations"][plane][local_x][local_y],
+                        terrain["overlayShapes"][source_plane][local_x][local_y],
+                        terrain["overlayRotations"][source_plane][local_x][local_y],
+                        source_plane,
                     ))
         if object_file is None:
             continue
@@ -682,11 +716,17 @@ def load_cache_world_map(bounds, plane=0, cache_dir=CACHE_DIR):
         except Exception:
             continue
         for obj in decoded_objects:
-            if obj["height"] != plane:
+            source_plane = display_source_plane(terrain, plane, obj["x"], obj["y"])
+            if obj["height"] != source_plane:
                 continue
+            is_bridge_projection = source_plane != plane
+            if obj["type"] in (0, 2, 3, 9):
+                wall_types_by_object_id.setdefault(obj["id"], set()).add(obj["type"])
             x = record["regionX"] + obj["x"]
             y = record["regionY"] + obj["y"]
             if bounds["minX"] <= x <= bounds["maxX"] and bounds["minY"] <= y <= bounds["maxY"]:
+                if is_bridge_projection:
+                    stats["bridgeObjects"] += 1
                 loc = loc_defs[obj["id"]] if obj["id"] < len(loc_defs) else {}
                 width = int(loc.get("width", 1))
                 length = int(loc.get("length", 1))
@@ -704,15 +744,26 @@ def load_cache_world_map(bounds, plane=0, cache_dir=CACHE_DIR):
                     "x": x,
                     "y": y,
                     "height": plane,
+                    "sourceHeight": source_plane,
                     "type": obj["type"],
                     "orientation": obj["orientation"],
                     "width": width,
                     "length": length,
                     "mapScene": map_scene,
                     "mapFunction": map_function,
+                    "solid": bool(loc.get("solid", loc.get("blocks", True))),
+                    "interactive": bool(loc.get("interactive", False)),
+                    "clipped": bool(loc.get("clipped", True)),
+                    "impenetrable": bool(loc.get("impenetrable", True)),
                 })
+    light_wall_object_ids = [
+        object_id for object_id, types in wall_types_by_object_id.items()
+        if 9 in types and any(wall_type in types for wall_type in (0, 2, 3))
+    ]
+    stats["lightWallObjectIds"] = len(light_wall_object_ids)
     return {"tiles": tiles, "objects": objects, "regions": regions, "bounds": bounds,
-            "textures": len(texture_colors), "mapScenes": map_scenes, "stats": stats}
+            "textures": len(texture_colors), "mapScenes": map_scenes,
+            "lightWallObjectIds": sorted(light_wall_object_ids), "stats": stats}
 
 
 def draw_tile(canvas, tile, project, scale):
@@ -840,6 +891,17 @@ def draw_mapfunction_marker(canvas, obj, project, scale):
     canvas.rect(cx, cy - radius, cx, cy + radius, PALETTE["map_function"])
 
 
+def wall_line_color(obj, light_wall_object_ids):
+    if int(obj.get("type", 0)) == 9:
+        return PALETTE["wall_light"]
+    if int(obj.get("id", -1)) in light_wall_object_ids:
+        return PALETTE["wall_light"]
+    name = str(obj.get("name") or "").lower()
+    if "fence" in name or "gate" in name or "railing" in name or "stile" in name:
+        return PALETTE["wall_light"]
+    return PALETTE["wall"]
+
+
 def draw_world_map(canvas, world_map, project, scale):
     block = max(1, int(round(scale)))
     for tile in world_map.get("tiles", []):
@@ -855,6 +917,7 @@ def draw_world_map(canvas, world_map, project, scale):
     for obj in objects:
         draw_mapfunction_marker(canvas, obj, project, scale)
     width = max(1, int(round(scale / 3.0)))
+    light_wall_object_ids = set(int(object_id) for object_id in world_map.get("lightWallObjectIds", []))
     for index, obj in enumerate(objects):
         obj_type = obj.get("type")
         if index in mapscene_drawn:
@@ -866,7 +929,7 @@ def draw_world_map(canvas, world_map, project, scale):
         y0 = y - block + 1
         x1 = x + block - 1
         y1 = y
-        color = PALETTE["wall_light"] if obj_type == 9 else PALETTE["wall"]
+        color = wall_line_color(obj, light_wall_object_ids)
         orientation = int(obj.get("orientation", 0))
         if obj_type == 9:
             if orientation in (0, 2):
@@ -896,7 +959,66 @@ def parse_bounds(text):
     return {"minX": parts[0], "minY": parts[1], "maxX": parts[2], "maxY": parts[3]}
 
 
-def render_png(bounds, output, plane=0, pixels_per_tile=4.0):
+def image_color(color):
+    return "#%02x%02x%02x" % tuple(color)
+
+
+def add_label_text(command, x, y, pointsize, text, color, outline=False):
+    if outline:
+        radius = max(1, int(round(pointsize / 10.0)))
+        for dx, dy in (
+            (-radius, -radius), (0, -radius), (radius, -radius),
+            (-radius, 0), (radius, 0),
+            (-radius, radius), (0, radius), (radius, radius),
+        ):
+            command.extend([
+                "-fill", image_color(PALETTE["text_shadow"]),
+                "-stroke", "none",
+                "-annotate", "+%d+%d" % (int(x) + dx, int(y) + dy),
+                text,
+            ])
+        command.extend([
+            "-fill", image_color(color),
+            "-annotate", "+%d+%d" % (int(x), int(y)),
+            text,
+        ])
+        return
+    command.extend([
+        "-fill", image_color(PALETTE["text_shadow"]),
+        "-stroke", "none",
+        "-annotate", "+%d+%d" % (int(x) + 2, int(y) + 2),
+        text,
+        "-fill", image_color(color),
+        "-annotate", "+%d+%d" % (int(x), int(y)),
+        text,
+    ])
+
+
+def apply_world_labels(output, bounds, width, height, plane, pixels_per_tile, pointsize):
+    magick = shutil.which("magick")
+    if not magick or not RUNESCAPE_FONT.exists():
+        return {"applied": False, "count": 0, "reason": "missing-magick-or-font"}
+    labels = labels_in_bounds(bounds, plane=plane)
+    if not labels:
+        return {"applied": True, "count": 0, "font": str(RUNESCAPE_FONT)}
+    command = [
+        magick,
+        str(output),
+        "-font", str(RUNESCAPE_FONT),
+        "-pointsize", str(int(pointsize)),
+    ]
+    for label in labels:
+        tile = label["tile"]
+        x = int((int(tile["x"]) - bounds["minX"]) * pixels_per_tile) + int(label.get("dx", -24))
+        y = int(height - 1 - (int(tile["y"]) - bounds["minY"]) * pixels_per_tile) + int(label.get("dy", -18))
+        color = PALETTE["white"] if label.get("color") == "white" else PALETTE["osrs_yellow"]
+        add_label_text(command, x, y, pointsize, label["text"], color, bool(label.get("outline", False)))
+    command.append(str(output))
+    subprocess.run(command, check=True)
+    return {"applied": True, "count": len(labels), "font": str(RUNESCAPE_FONT)}
+
+
+def render_png(bounds, output, plane=0, pixels_per_tile=4.0, labels=False, label_pointsize=28):
     world_map = load_cache_world_map(bounds, plane=plane)
     bounds = world_map["bounds"]
     span_x = max(1, bounds["maxX"] - bounds["minX"] + 1)
@@ -914,10 +1036,14 @@ def render_png(bounds, output, plane=0, pixels_per_tile=4.0):
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
     canvas.save_png(output)
+    label_info = apply_world_labels(
+        output, bounds, width, height, plane, pixels_per_tile, label_pointsize
+    ) if labels else {"applied": False, "count": 0}
     return {"output": str(output), "bounds": bounds, "plane": plane, "tiles": len(world_map["tiles"]),
             "objects": len(world_map["objects"]), "regions": world_map["regions"],
             "textures": world_map.get("textures", 0), **world_map.get("stats", {}),
             "pixelWidth": width, "pixelHeight": height, "pixelsPerTile": pixels_per_tile,
+            "labels": label_info,
             "source": "2006Scape Server/data/cache"}
 
 
@@ -926,10 +1052,13 @@ def main():
     parser.add_argument("--bounds", default="all", type=parse_bounds, help="minX,minY,maxX,maxY or all")
     parser.add_argument("--plane", type=int, default=0)
     parser.add_argument("--pixels-per-tile", type=float, default=2.0)
+    parser.add_argument("--labels", action="store_true", help="Draw static RuneScape-style world labels.")
+    parser.add_argument("--label-pointsize", type=int, default=28)
     parser.add_argument("--output", default=str(OUT / "cache-world-map.png"))
     parser.add_argument("--summary", default=str(OUT / "cache-world-map.json"))
     args = parser.parse_args()
-    summary = render_png(args.bounds, args.output, args.plane, args.pixels_per_tile)
+    summary = render_png(args.bounds, args.output, args.plane, args.pixels_per_tile,
+                         labels=args.labels, label_pointsize=args.label_pointsize)
     summary_path = Path(args.summary)
     summary_path.parent.mkdir(parents=True, exist_ok=True)
     summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")

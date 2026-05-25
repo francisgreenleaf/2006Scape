@@ -14,8 +14,9 @@ Use the cache renderer as the source of static world context. Do not restart or 
 ## Main Files
 
 - `agent-navigation/tools/cache_world_map.py`: cache decoder and minimap-style world-map renderer.
+- `agent-navigation/tools/map_labels.py`: shared place/static label definitions used by cache-world exports and active topology maps. Add town/place display labels here instead of maintaining separate label lists.
 - `agent-navigation/tools/render_agent_context_map.py`: fast agent-facing bounded cache-map wrapper for current location and route-segment debugging, including all cache mapfunction icons in bounds and machine-readable marker labels.
-- `agent-navigation/tools/render_context_map.py`: lower-level bounded lossless cache-map window around a tile/place/latest trace, with optional recent-path or segment overlay.
+- `agent-navigation/tools/render_context_map.py`: lower-level bounded lossless cache-map window around a tile/place/latest trace, with optional recent-path or segment overlay. Its `draw_static_context_layers` helper is the shared way to add cache mapfunction icons and place labels to bounded map images, including ML comparison maps.
 - `agent-navigation/tools/render_movement_topology_v2.py`: shared movement topology render engine used by the active maps. It preserves exact full-resolution output with quantized bounds, direct byte-level overlay loops, cached static base canvases, cached topology prefixes, cached full-resolution heat/fog coverage masks, and spatial-indexed fog-hidden POI checks.
 - `agent-navigation/tools/render_profile_map.py`: active `Mr. Flame` profile movement map with cache icons, labels, and run-tinted routes.
 - `agent-navigation/tools/render_heat_map.py`: active `Heat Map` with transparent trace-coverage density for route-learning/ML inspection.
@@ -25,6 +26,8 @@ Use the cache renderer as the source of static world context. Do not restart or 
 - Legacy versioned movement-topology scripts may exist for old experiments or compatibility; leave them on disk, but use the plain-name scripts above for current maps. Old one-off PNG/JSON exports should not be kept in `agent-navigation/topology/`.
 - `agent-navigation/.local/context-maps/<date>/*.png`: ignored, timestamped bounded context-map artifacts for agent routing/debugging.
 - `agent-navigation/.local/context-maps/<date>/*.json`: matching context-map summaries with bounds, center, mapfunction markers, and place markers.
+- `agent-navigation/topology/cache-world-map-full.png`: reusable full cache-bounds base map export with labels, 4 px/tile, no movement overlays.
+- `agent-navigation/topology/cache-world-map-level0.png`: reusable level-0 surface base map export with labels, 4 px/tile, cropped to the main surface region.
 - `agent-navigation/topology/movement-topology-v4.png`: active profile movement map.
 - `agent-navigation/topology/movement-topology-v5-heatmap.png`: active `Heat Map` with run tinting and transparent coverage density.
 - `agent-navigation/topology/movement-topology-v6.png`: active profile fog map with unvisited map areas dimmed.
@@ -35,12 +38,30 @@ Read `references/cache-world-map.md` when the task asks how the map works, how t
 
 ## Render Commands
 
-From the repo root, render the canonical full cache map:
+From the repo root, render a disposable full cache-map preview:
 
 ```sh
 agent-navigation/tools/cache_world_map.py \
   --output agent-navigation/.local/map-summaries/cache-world-map.png \
   --summary agent-navigation/.local/map-summaries/cache-world-map.json
+```
+
+Render the reusable labeled base-map exports for other scripts:
+
+```sh
+agent-navigation/tools/cache_world_map.py \
+  --bounds all \
+  --pixels-per-tile 4 \
+  --labels \
+  --output agent-navigation/topology/cache-world-map-full.png \
+  --summary agent-navigation/.local/map-summaries/cache-world-map-full.json
+
+agent-navigation/tools/cache_world_map.py \
+  --bounds 1728,2560,3839,4031 \
+  --pixels-per-tile 4 \
+  --labels \
+  --output agent-navigation/topology/cache-world-map-level0.png \
+  --summary agent-navigation/.local/map-summaries/cache-world-map-level0.json
 ```
 
 Render a small current-location agent context map instead of loading the full world:
@@ -50,6 +71,8 @@ python3 agent-navigation/tools/render_agent_context_map.py --center latest
 ```
 
 Use `render_agent_context_map.py` for live agent routing and route debugging. It caps trace records, bounds the output, draws every cache `mapfunction` icon in bounds, adds simple place labels, and writes unique ignored artifacts under `agent-navigation/.local/context-maps/<date>/` by default. Filenames include timestamp, mode, resolved center tile, radius, and pixel scale so Router/debug renders do not overwrite each other. The JSON includes `mapFunctionMarkers`, `placeMarkers`, and artifact metadata for machine-readable context. Segment maps default to enough padding/max span to keep nearby route geometry such as Port Sarim dock planks visible without rendering the full world. Use integer `--pixels-per-tile` values for lossless, pixel-perfect map windows. Increase `--radius-tiles` for more context or lower `--pixels-per-tile` for a smaller image; do not render the full world when a bounded window answers the question. Use explicit `--output`/`--summary` only when a stable path is intentionally needed.
+
+If another bounded renderer needs a nice static base, reuse `render_context_map.draw_static_context_layers` after `cache_world_map.draw_world_map`. Do not duplicate mapfunction sprite loading, place marker sorting, or marker summary formatting.
 
 Render the active profile movement map:
 
@@ -103,6 +126,7 @@ When changing map behavior:
    - `2006Scape Client/src/main/java/ObjectManager.java`
    - `2006Scape Client/src/main/java/WorldController.java`
    - `2006Scape Client/src/main/java/ObjectDef.java`
+   The base cache renderer intentionally mirrors the client minimap bridge/downshift path: `ObjectManager.method171` shifts plane-1 bridge tiles down when `settings[1] & 2`, and `Game.method24` then paints those surfaces into the minimap. Preserve that behavior so Lumbridge bridges, Port Sarim docks, and similar walkable-over-water surfaces do not disappear.
 2. Keep changes scoped to static map decoding/rendering unless the user asks for navigation or gameplay changes.
 3. Preserve canonical output paths for full/player-facing maps. Context maps are agent artifacts and should default to ignored timestamped paths under `agent-navigation/.local/context-maps/` unless a stable path is explicitly requested.
 4. Update `references/cache-world-map.md` and `agent-navigation/cache-world-map.md` when the workflow, layers, or outputs change.
@@ -112,7 +136,7 @@ When changing map behavior:
 After renderer edits, run:
 
 ```sh
-python3 -m py_compile agent-navigation/tools/cache_world_map.py agent-navigation/tools/render_context_map.py agent-navigation/tools/render_agent_context_map.py agent-navigation/tools/render_movement_topology_v2.py agent-navigation/tools/render_profile_map.py agent-navigation/tools/render_heat_map.py agent-navigation/tools/render_fog_map.py
+python3 -m py_compile agent-navigation/tools/cache_world_map.py agent-navigation/tools/map_labels.py agent-navigation/tools/render_context_map.py agent-navigation/tools/render_agent_context_map.py agent-navigation/tools/render_movement_topology_v2.py agent-navigation/tools/render_profile_map.py agent-navigation/tools/render_heat_map.py agent-navigation/tools/render_fog_map.py
 python3 -m py_compile agent-navigation/tools/active_map_refresher.py agent-navigation/tools/refresh_active_maps.py
 agent-navigation/tools/cache_world_map.py --bounds 3200,3200,3210,3210 --output /tmp/2006scape-cache-map-smoke.png --summary /tmp/2006scape-cache-map-smoke.json
 python3 agent-navigation/tools/render_agent_context_map.py --center 3205,3205,0 --radius-tiles 12 --recent-seconds 0 --output /tmp/2006scape-agent-context-map-smoke.png --summary /tmp/2006scape-agent-context-map-smoke.json
