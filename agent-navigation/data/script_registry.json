@@ -31,7 +31,7 @@
       "name": "Adaptive Mining Runner",
       "path": "agent-navigation/tools/mining_runner.py",
       "kind": "gameplay_runner",
-      "description": "Discovers cache-backed mine clusters, routes between banks and rocks, chooses the best live ore target, mines through bridge batches, and banks ores for Mining training.",
+      "description": "Discovers cache-backed mine clusters, routes between banks and rocks, chooses the best live ore target, mines through bridge batches, banks ores for Mining training, and logs run-policy plus route-batch run-efficiency diagnostics.",
       "aliases": [
         "mining",
         "mine",
@@ -53,11 +53,37 @@
       ]
     },
     {
+      "id": "fletching_runner",
+      "name": "Adaptive Fletching Runner",
+      "path": "agent-navigation/tools/fletching_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Runs normal-gameplay woodcutting and fletching loops with bridge batch tools, bird nest pickup/banking, simple axe/knife handling, product selling, run enabling, quiet progress, and JSONL evidence.",
+      "aliases": [
+        "fletching",
+        "fletch",
+        "woodcutting fletching",
+        "bow runner",
+        "fletching training"
+      ],
+      "tags": [
+        "gameplay",
+        "woodcutting",
+        "fletching",
+        "training",
+        "runner",
+        "routing"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/script_registry.py run fletching -- --target-woodcutting-level 50 --target-fletching-level 50 --quiet",
+        "python3 agent-navigation/tools/fletching_runner.py --max-cycles 10 --tree auto --quiet"
+      ]
+    },
+    {
       "id": "route_runner",
       "name": "Route Runner",
       "path": "agent-navigation/tools/route_runner.py",
       "kind": "navigation_runner",
-      "description": "Runs learned routes and frontier probes using graph planning, local clipped previews, hazard checks, and run-energy policy.",
+      "description": "Runs learned routes and frontier probes using graph planning, local clipped previews, hazard checks, run-energy policy, per-batch run diagnostics, and optional JSONL run-efficiency evidence.",
       "aliases": [
         "route",
         "navigate",
@@ -141,6 +167,102 @@
       "examples": [
         "python3 agent-navigation/tools/script_registry.py run context-map -- --center latest",
         "python3 agent-navigation/tools/render_agent_context_map.py --segment-from FROM_PLACE --segment-to TO_PLACE"
+      ]
+    },
+    {
+      "id": "active_map_refresher",
+      "name": "Active Map Refresher",
+      "path": "agent-navigation/tools/active_map_refresher.py",
+      "kind": "map_tool",
+      "description": "Starts, stops, restarts, and inspects the background worker that keeps the three canonical active map PNGs current: Mr. Flame, Heat Map, and Mr. Flame Fog.",
+      "aliases": [
+        "active-map-refresher",
+        "map refresher",
+        "active maps",
+        "continuous maps",
+        "map watcher"
+      ],
+      "tags": [
+        "map",
+        "visualization",
+        "background",
+        "refresh"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/script_registry.py run active-map-refresher -- status",
+        "agent-navigation/tools/active_map_refresher.py restart --only mr-flame"
+      ]
+    },
+    {
+      "id": "profile_map",
+      "name": "Mr. Flame Map",
+      "path": "agent-navigation/tools/render_profile_map.py",
+      "kind": "map_tool",
+      "description": "Renders the active profile movement map with latest movement traces, cache icons, labels, run tinting, death sites, and current-position marker.",
+      "aliases": [
+        "profile-map",
+        "mr flame map",
+        "profile map",
+        "movement map",
+        "main map"
+      ],
+      "tags": [
+        "map",
+        "movement",
+        "visualization",
+        "profile"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/script_registry.py run profile-map -- --output /tmp/profile-map.png --summary /tmp/profile-map.json",
+        "agent-navigation/tools/render_profile_map.py"
+      ]
+    },
+    {
+      "id": "heat_map",
+      "name": "Heat Map",
+      "path": "agent-navigation/tools/render_heat_map.py",
+      "kind": "map_tool",
+      "description": "Renders the active movement heat map with latest traces and full-resolution cached coverage density.",
+      "aliases": [
+        "heat-map",
+        "heat map",
+        "coverage heat",
+        "movement heatmap",
+        "trace density"
+      ],
+      "tags": [
+        "map",
+        "movement",
+        "heatmap",
+        "visualization"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/script_registry.py run heat-map -- --output /tmp/heat-map.png --summary /tmp/heat-map.json",
+        "agent-navigation/tools/render_heat_map.py"
+      ]
+    },
+    {
+      "id": "fog_map",
+      "name": "Mr. Flame Fog",
+      "path": "agent-navigation/tools/render_fog_map.py",
+      "kind": "map_tool",
+      "description": "Renders the active fog-of-war movement map with latest traces, dark unexplored context, and POIs hidden outside explored coverage.",
+      "aliases": [
+        "fog-map",
+        "fog map",
+        "fog of war",
+        "mr flame fog",
+        "exploration fog"
+      ],
+      "tags": [
+        "map",
+        "movement",
+        "fog",
+        "visualization"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/script_registry.py run fog-map -- --output /tmp/fog-map.png --summary /tmp/fog-map.json",
+        "agent-navigation/tools/render_fog_map.py"
       ]
     },
     {

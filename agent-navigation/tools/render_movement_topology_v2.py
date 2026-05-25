@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Shared engine for the active movement topology map renders.
 
-The current user-facing maps are the V4/V5/V6 wrappers. Running this module
+The current user-facing maps use the plain-name wrappers. Running this module
 directly is only useful for engine debugging or legacy comparison output.
 """
 
@@ -34,9 +34,12 @@ RUNESCAPE_FONT = ROOT / "assets" / "fonts" / "runescape_uf.ttf"
 RUNESCAPE_FONT_SOURCE = "https://www.dafont.com/runescape-uf.font"
 DEFAULT_COVERAGE_CACHE_DIR = ROOT / ".local" / "topology-render-cache"
 FOG_REVEAL_CACHE_VERSION = 1
+HEAT_MASK_CACHE_VERSION = 3
 CANVAS_LAYER_CACHE_VERSION = 1
 POI_CACHE_VERSION = 1
 TOPOLOGY_CACHE_VERSION = 1
+PLAYER_TRACE_PART = "player-movement-traces"
+AGENT_TRACE_PART = "agent-movement-traces"
 _RADIAL_HEAT_KERNELS = {}
 _FOG_REVEAL_KERNELS = {}
 
@@ -134,6 +137,18 @@ SUPPRESSED_PLACE_LABELS = {
 
 def clamp(value, lo, hi):
     return max(lo, min(hi, value))
+
+
+def quantize_render_bounds(min_x, max_x, min_y, max_y, quantum):
+    quantum = int(quantum or 0)
+    if quantum <= 1:
+        return int(min_x), int(max_x), int(min_y), int(max_y)
+    q = quantum
+    q_min_x = (int(min_x) // q) * q
+    q_min_y = (int(min_y) // q) * q
+    q_max_x = ((int(max_x) + q) // q) * q - 1
+    q_max_y = ((int(max_y) + q) // q) * q - 1
+    return q_min_x, q_max_x, q_min_y, q_max_y
 
 
 def mix(a, b, t):
@@ -235,19 +250,57 @@ def blend_line(canvas, x0, y0, x1, y1, color, alpha=1.0, width=1):
     sy = 1 if y0 < y1 else -1
     err = dx + dy
     radius = max(0, int(width) // 2)
-    while True:
-        for yy in range(y0 - radius, y0 + radius + 1):
-            for xx in range(x0 - radius, x0 + radius + 1):
-                canvas.blend(xx, yy, color, alpha)
-        if x0 == x1 and y0 == y1:
-            break
-        e2 = 2 * err
-        if e2 >= dy:
-            err += dy
-            x0 += sx
-        if e2 <= dx:
-            err += dx
-            y0 += sy
+    pixels = canvas.pixels
+    canvas_width = canvas.width
+    canvas_height = canvas.height
+    stride = canvas_width * 3
+    cr, cg, cb = color
+    if alpha >= 1.0:
+        while True:
+            for yy in range(y0 - radius, y0 + radius + 1):
+                if yy < 0 or yy >= canvas_height:
+                    continue
+                row = yy * stride
+                for xx in range(x0 - radius, x0 + radius + 1):
+                    if 0 <= xx < canvas_width:
+                        index = row + xx * 3
+                        pixels[index] = cr
+                        pixels[index + 1] = cg
+                        pixels[index + 2] = cb
+            if x0 == x1 and y0 == y1:
+                break
+            e2 = 2 * err
+            if e2 >= dy:
+                err += dy
+                x0 += sx
+            if e2 <= dx:
+                err += dx
+                y0 += sy
+    else:
+        inv = 1.0 - alpha
+        ar = cr * alpha
+        ag = cg * alpha
+        ab = cb * alpha
+        while True:
+            for yy in range(y0 - radius, y0 + radius + 1):
+                if yy < 0 or yy >= canvas_height:
+                    continue
+                row = yy * stride
+                for xx in range(x0 - radius, x0 + radius + 1):
+                    if 0 <= xx < canvas_width:
+                        index = row + xx * 3
+                        pixels[index] = int(pixels[index] * inv + ar)
+                        pixels[index + 1] = int(pixels[index + 1] * inv + ag)
+                        pixels[index + 2] = int(pixels[index + 2] * inv + ab)
+            if x0 == x1 and y0 == y1:
+                break
+            e2 = 2 * err
+            if e2 >= dy:
+                err += dy
+                x0 += sx
+            if e2 <= dx:
+                err += dx
+                y0 += sy
 
 
 def blend_circle(canvas, cx, cy, r, color, alpha=1.0, outline=False, outline_width=2):
@@ -256,11 +309,36 @@ def blend_circle(canvas, cx, cy, r, color, alpha=1.0, outline=False, outline_wid
     r = int(round(r))
     rr = r * r
     inner = max(0, r - outline_width) ** 2 if outline else 0
-    for y in range(cy - r, cy + r + 1):
-        for x in range(cx - r, cx + r + 1):
+    pixels = canvas.pixels
+    stride = canvas.width * 3
+    cr, cg, cb = color
+    y0 = max(0, cy - r)
+    y1 = min(canvas.height - 1, cy + r)
+    x0 = max(0, cx - r)
+    x1 = min(canvas.width - 1, cx + r)
+    if alpha >= 1.0:
+        for y in range(y0, y1 + 1):
+            dy = y - cy
+            index = y * stride + x0 * 3
+            for x in range(x0, x1 + 1):
+                d = (x - cx) * (x - cx) + dy * dy
+                if d <= rr and d >= inner:
+                    pixels[index] = cr
+                    pixels[index + 1] = cg
+                    pixels[index + 2] = cb
+                index += 3
+        return
+    inv = 1.0 - alpha
+    for y in range(y0, y1 + 1):
+        dy = y - cy
+        index = y * stride + x0 * 3
+        for x in range(x0, x1 + 1):
             d = (x - cx) * (x - cx) + (y - cy) * (y - cy)
             if d <= rr and d >= inner:
-                canvas.blend(x, y, color, alpha)
+                pixels[index] = int(pixels[index] * inv + cr * alpha)
+                pixels[index + 1] = int(pixels[index + 1] * inv + cg * alpha)
+                pixels[index + 2] = int(pixels[index + 2] * inv + cb * alpha)
+            index += 3
 
 
 def clipped_run(center, run_start, run_length, limit):
@@ -352,6 +430,13 @@ def coverage_cache_paths(args, cache_key):
         return None
     digest = cache_digest(cache_key)
     return cache_dir(args) / ("fog-%s.json" % digest), cache_dir(args) / ("fog-%s.mask" % digest)
+
+
+def heat_cache_paths(args, cache_key):
+    if not getattr(args, "coverage_cache", True):
+        return None
+    digest = cache_digest(cache_key)
+    return cache_dir(args) / ("heat-%s.json" % digest), cache_dir(args) / ("heat-%s.mask" % digest)
 
 
 def generic_cache_paths(args, prefix, cache_key, body_suffix):
@@ -543,6 +628,56 @@ def write_fog_reveal_cache(args, cache_key, reveal, node_keys):
         return False
 
 
+def load_heat_mask_cache(args, cache_key, expected_length, current_node_values):
+    paths = heat_cache_paths(args, cache_key)
+    if paths is None:
+        return None, {}, "disabled"
+    meta_path, mask_path = paths
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        if meta.get("version") != HEAT_MASK_CACHE_VERSION or not cache_key_matches(meta.get("cacheKey"), cache_key):
+            return None, {}, "miss"
+        cached_node_values = {
+            str(key): int(value)
+            for key, value in (meta.get("nodeValues") or {}).items()
+        }
+        current_keys = set(current_node_values)
+        cached_keys = set(cached_node_values)
+        if not cached_keys.issubset(current_keys):
+            return None, {}, "stale"
+        for key, cached_value in cached_node_values.items():
+            if int(current_node_values.get(key, -1)) < int(cached_value):
+                return None, {}, "stale"
+        mask = mask_path.read_bytes()
+        if len(mask) != expected_length:
+            return None, {}, "stale"
+        return bytearray(mask), cached_node_values, "hit"
+    except (OSError, ValueError):
+        return None, {}, "miss"
+
+
+def write_heat_mask_cache(args, cache_key, mask, node_values):
+    paths = heat_cache_paths(args, cache_key)
+    if paths is None:
+        return False
+    meta_path, mask_path = paths
+    try:
+        meta_path.parent.mkdir(parents=True, exist_ok=True)
+        mask_tmp = mask_path.with_suffix(mask_path.suffix + ".tmp")
+        meta_tmp = meta_path.with_suffix(meta_path.suffix + ".tmp")
+        mask_tmp.write_bytes(bytes(mask))
+        meta_tmp.write_text(json.dumps({
+            "version": HEAT_MASK_CACHE_VERSION,
+            "cacheKey": cache_key,
+            "nodeValues": {key: int(node_values[key]) for key in sorted(node_values)},
+        }, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        mask_tmp.replace(mask_path)
+        meta_tmp.replace(meta_path)
+        return True
+    except OSError:
+        return False
+
+
 def blend_radial_heat(canvas, cx, cy, r, color, alpha):
     cx = int(round(cx))
     cy = int(round(cy))
@@ -591,7 +726,7 @@ def draw_heat_gradient(canvas, x, y, width, height, alpha=1.0):
     canvas.rect(x + width, y - 1, x + width, y + height, PALETTE["frame"])
 
 
-def draw_coverage_heatmap(canvas, nodes, project, work_scale, args):
+def draw_coverage_heatmap(canvas, nodes, project, map_x0, map_y0, map_w, map_h, work_scale, args, bounds=None):
     if not getattr(args, "coverage_heatmap", False):
         return {
             "coverageHeatNodes": 0,
@@ -599,6 +734,9 @@ def draw_coverage_heatmap(canvas, nodes, project, work_scale, args):
             "coverageHeatHighVisits": 0,
             "coverageHeatRadiusTiles": 0.0,
             "coverageHeatAlpha": 0.0,
+            "coverageHeatCache": "disabled",
+            "coverageHeatCachedNodes": 0,
+            "coverageHeatRenderedNodes": 0,
         }
     visit_values = sorted(max(1, int(node["visits"])) for node in nodes.values())
     max_visits = visit_values[-1] if visit_values else 0
@@ -609,20 +747,108 @@ def draw_coverage_heatmap(canvas, nodes, project, work_scale, args):
             "coverageHeatHighVisits": 0,
             "coverageHeatRadiusTiles": args.coverage_heat_radius_tiles,
             "coverageHeatAlpha": args.coverage_heat_alpha,
+            "coverageHeatCache": "disabled",
+            "coverageHeatCachedNodes": 0,
+            "coverageHeatRenderedNodes": 0,
         }
 
     radius = max(3, int(round(float(args.coverage_heat_radius_tiles) * work_scale)))
     high_visits = max(2, percentile_value(visit_values, args.coverage_heat_high_percentile))
     denom = max(1.0, math.log(high_visits, 8))
     gamma = max(0.2, float(args.coverage_heat_gamma))
-    for node in sorted(nodes.values(), key=lambda item: item["visits"]):
+    current_node_values = {}
+    for node in nodes.values():
         visits = max(1, int(node["visits"]))
         intensity = clamp(math.log(visits, 8) / denom, 0.0, 1.0)
         intensity = math.pow(intensity, gamma)
-        x, y = project(node["tile"])
+        current_node_values[tile_key(node["tile"])] = max(1, int(round(255.0 * intensity)))
+
+    cache_key = {
+        "version": HEAT_MASK_CACHE_VERSION,
+        "kind": "coverage-heat-mask",
+        "bounds": bounds or {},
+        "mapWidth": int(map_w),
+        "mapHeight": int(map_h),
+        "workScale": repr(float(work_scale)),
+        "radius": int(radius),
+        "highVisits": int(high_visits),
+        "highPercentile": repr(float(args.coverage_heat_high_percentile)),
+        "gamma": repr(float(args.coverage_heat_gamma)),
+        "algorithm": "max-radial-square-falloff-mask-v3",
+    }
+    mask, cached_node_values, cache_status = load_heat_mask_cache(
+        args, cache_key, max(1, map_w * map_h), current_node_values
+    )
+    if mask is None:
+        mask = bytearray(max(1, map_w * map_h))
+        cached_node_values = {}
+    nodes_to_render = [
+        (node, current_node_values.get(tile_key(node["tile"]), 0))
+        for node in nodes.values()
+        if current_node_values.get(tile_key(node["tile"]), 0) > cached_node_values.get(tile_key(node["tile"]), 0)
+    ]
+    if cache_status == "hit" and nodes_to_render:
+        cache_status = "delta"
+
+    kernel = radial_heat_kernel(radius)
+    for node, node_value in nodes_to_render:
+        if node_value <= 0:
+            continue
+        cx, cy = project(node["tile"])
+        lx = int(cx - map_x0)
+        ly = int(cy - map_y0)
+        if lx < -radius or lx >= map_w + radius or ly < -radius or ly >= map_h + radius:
+            continue
+        for dy, run_start, weights in kernel:
+            y = ly + dy
+            if y < 0 or y >= map_h:
+                continue
+            clipped = clipped_run(lx, run_start, len(weights), map_w)
+            if clipped is None:
+                continue
+            x0, offset_start, offset_end = clipped
+            index = y * map_w + x0
+            for offset in range(offset_start, offset_end):
+                falloff = weights[offset]
+                value = int(node_value * falloff * falloff)
+                if value > mask[index]:
+                    mask[index] = value
+                index += 1
+
+    cache_written = False
+    if nodes_to_render or cache_status in ("miss", "stale"):
+        cache_written = write_heat_mask_cache(args, cache_key, mask, current_node_values)
+
+    heat_lut = []
+    heat_alpha = float(args.coverage_heat_alpha)
+    for value in range(256):
+        if value <= 0:
+            heat_lut.append(None)
+            continue
+        intensity = value / 255.0
+        alpha = heat_alpha * (0.34 + 0.66 * intensity)
+        if alpha <= 0.003:
+            heat_lut.append(None)
+            continue
         color = heat_color(intensity)
-        alpha = float(args.coverage_heat_alpha) * (0.34 + 0.66 * intensity)
-        blend_radial_heat(canvas, x, y, radius, color, alpha)
+        heat_lut.append((1.0 - alpha, color[0] * alpha, color[1] * alpha, color[2] * alpha))
+
+    pixels = canvas.pixels
+    canvas_width = canvas.width
+    heat_pixels = 0
+    for y in range(map_h):
+        mask_row = y * map_w
+        pixel_row = (map_y0 + y) * canvas_width * 3 + map_x0 * 3
+        for x in range(map_w):
+            item = heat_lut[mask[mask_row + x]]
+            if item is None:
+                continue
+            inv, ar, ag, ab = item
+            index = pixel_row + x * 3
+            pixels[index] = int(pixels[index] * inv + ar)
+            pixels[index + 1] = int(pixels[index + 1] * inv + ag)
+            pixels[index + 2] = int(pixels[index + 2] * inv + ab)
+            heat_pixels += 1
 
     return {
         "coverageHeatNodes": len(nodes),
@@ -632,6 +858,12 @@ def draw_coverage_heatmap(canvas, nodes, project, work_scale, args):
         "coverageHeatGamma": args.coverage_heat_gamma,
         "coverageHeatRadiusTiles": args.coverage_heat_radius_tiles,
         "coverageHeatAlpha": args.coverage_heat_alpha,
+        "coverageHeatPixelRadius": radius,
+        "coverageHeatPixels": heat_pixels,
+        "coverageHeatCache": cache_status,
+        "coverageHeatCacheWritten": cache_written,
+        "coverageHeatCachedNodes": len(cached_node_values),
+        "coverageHeatRenderedNodes": len(nodes_to_render),
     }
 
 
@@ -710,19 +942,26 @@ def draw_coverage_fog(canvas, nodes, project, map_x0, map_y0, map_w, map_h, work
     canvas_width = canvas.width
     fog_alpha = float(args.coverage_fog_alpha)
     fr, fg, fb = PALETTE["fog"]
+    fog_lut = []
+    for value in range(256):
+        local_alpha = fog_alpha * (1.0 - (value / 255.0))
+        if local_alpha <= 0.002:
+            fog_lut.append(None)
+        else:
+            fog_lut.append((1.0 - local_alpha, fr * local_alpha, fg * local_alpha, fb * local_alpha))
     fogged_pixels = 0
     for y in range(map_h):
         mask_row = y * map_w
         pixel_row = (map_y0 + y) * canvas_width * 3 + map_x0 * 3
         for x in range(map_w):
-            local_alpha = fog_alpha * (1.0 - (reveal[mask_row + x] / 255.0))
-            if local_alpha <= 0.002:
+            item = fog_lut[reveal[mask_row + x]]
+            if item is None:
                 continue
-            inv = 1.0 - local_alpha
+            inv, ar, ag, ab = item
             index = pixel_row + x * 3
-            pixels[index] = int(pixels[index] * inv + fr * local_alpha)
-            pixels[index + 1] = int(pixels[index + 1] * inv + fg * local_alpha)
-            pixels[index + 2] = int(pixels[index + 2] * inv + fb * local_alpha)
+            pixels[index] = int(pixels[index] * inv + ar)
+            pixels[index + 1] = int(pixels[index + 1] * inv + ag)
+            pixels[index + 2] = int(pixels[index + 2] * inv + ab)
             fogged_pixels += 1
 
     return {
@@ -805,6 +1044,19 @@ def downsample_canvas(canvas, factor):
     source = canvas.pixels
     target = out.pixels
     source_stride = canvas.width * 3
+    if factor == 2:
+        out_index = 0
+        for y in range(height):
+            row0 = (y * 2) * source_stride
+            row1 = row0 + source_stride
+            for x in range(width):
+                i0 = row0 + x * 6
+                i1 = row1 + x * 6
+                target[out_index] = (source[i0] + source[i0 + 3] + source[i1] + source[i1 + 3]) // 4
+                target[out_index + 1] = (source[i0 + 1] + source[i0 + 4] + source[i1 + 1] + source[i1 + 4]) // 4
+                target[out_index + 2] = (source[i0 + 2] + source[i0 + 5] + source[i1 + 2] + source[i1 + 5]) // 4
+                out_index += 3
+        return out
     factor_area = factor * factor
     out_index = 0
     for y in range(height):
@@ -914,6 +1166,18 @@ def include_trace_tile(tile, surface_only):
     return True
 
 
+def record_in_combat(record):
+    if record.get("isInCombat") is not True:
+        return False
+    if safe_int(record.get("npcIndex"), 0) > 0:
+        return True
+    if safe_int(record.get("underAttackBy"), 0) > 0:
+        return True
+    if safe_int(record.get("underAttackBy2"), 0) > 0:
+        return True
+    return safe_int(record.get("hitpointsLost"), 0) > 0
+
+
 def record_running_evidence(record, previous, current):
     activity = record.get("activity") if isinstance(record.get("activity"), dict) else {}
     explicit = activity.get("runningStep") is True
@@ -1010,9 +1274,10 @@ def process_topology_record(topology, record, surface_only):
     current_key = tile_key(current)
     failed = record_failed(record)
     died = record_death(record)
+    in_combat = record_in_combat(record)
     node = topology["nodes"].setdefault(current_key, empty_node(current))
     node["visits"] += 1
-    if record.get("isInCombat") is True:
+    if in_combat:
         node["combatTicks"] += 1
     if failed:
         node["failures"] += 1
@@ -1041,7 +1306,7 @@ def process_topology_record(topology, record, surface_only):
         edge["failures"] += 1
     else:
         edge["successes"] += 1
-    if record.get("isInCombat") is True:
+    if in_combat:
         edge["combatTicks"] += 1
     edge["hitpointsLost"] += max(0, safe_int(record.get("hitpointsLost"), 0))
     edge["energySpent"] += max(0, safe_int(record.get("runEnergySpent"), 0))
@@ -1116,8 +1381,41 @@ def iter_jsonl_from_offset(path, offset, start_line):
                 continue
 
 
+def source_is_agent_batch(source):
+    return AGENT_TRACE_PART in Path(source).parts
+
+
+def source_is_player_trace(source):
+    return PLAYER_TRACE_PART in Path(source).parts
+
+
+def passive_trace_start(extra_paths, trace_profile=None, include_unscoped_traces=False):
+    first = ""
+    for path in trace_paths(extra_paths, include_agent_batch=False, include_legacy_recorder=False):
+        for record, source, _line_no in iter_jsonl_from_offset(path, 0, 0):
+            if not source_is_player_trace(source):
+                continue
+            if tile_from_record(record, "tile") is None:
+                continue
+            if not record_matches_profile(record, trace_profile, source, include_unscoped_traces):
+                continue
+            timestamp = str(record.get("timestamp") or "")
+            if timestamp and (not first or timestamp < first):
+                first = timestamp
+    return first
+
+
+def skip_trace_record(record, source, agent_batch_before=""):
+    if agent_batch_before and source_is_agent_batch(source):
+        timestamp = str(record.get("timestamp") or "")
+        if not timestamp or timestamp >= agent_batch_before:
+            return True
+    return False
+
+
 def process_trace_file(path, topology, surface_only, offset=0, start_line=0,
-                       trace_profile=None, include_unscoped_traces=False):
+                       trace_profile=None, include_unscoped_traces=False,
+                       agent_batch_before=""):
     processed = 0
     line_count = int(start_line)
     for record, source, line_no in iter_jsonl_from_offset(path, offset, start_line):
@@ -1126,6 +1424,8 @@ def process_trace_file(path, topology, surface_only, offset=0, start_line=0,
             continue
         if not record_matches_profile(record, trace_profile, source, include_unscoped_traces):
             continue
+        if skip_trace_record(record, source, agent_batch_before):
+            continue
         record["_sourcePath"] = source
         record["_sourceLine"] = line_no
         if process_topology_record(topology, record, surface_only):
@@ -1133,13 +1433,17 @@ def process_trace_file(path, topology, surface_only, offset=0, start_line=0,
     return processed, line_count
 
 
-def topology_cache_key(extra_paths, surface_only, trace_profile=None, include_unscoped_traces=False):
+def topology_cache_key(extra_paths, surface_only, trace_profile=None, include_unscoped_traces=False,
+                       include_agent_batch=False, include_legacy_recorder=False, agent_batch_before=""):
     return {
         "version": TOPOLOGY_CACHE_VERSION,
         "kind": "movement-topology-prefix",
         "surfaceOnly": bool(surface_only),
         "traceProfile": trace_profile or "",
         "includeUnscopedTraces": bool(include_unscoped_traces),
+        "includeAgentBatchTraces": bool(include_agent_batch),
+        "includeLegacyRecorderTraces": bool(include_legacy_recorder),
+        "agentBatchBefore": agent_batch_before or "",
         "extraPaths": [str(Path(path).expanduser()) for path in (extra_paths or [])],
     }
 
@@ -1183,9 +1487,9 @@ def read_topology_cache(args, cache_key):
         return None, "miss"
 
 
-def current_trace_entries(extra_paths):
+def current_trace_entries(extra_paths, include_agent_batch=None, include_legacy_recorder=None):
     entries = []
-    for path in trace_paths(extra_paths):
+    for path in trace_paths(extra_paths, include_agent_batch, include_legacy_recorder):
         meta = file_metadata(path)
         if not meta.get("missing"):
             entries.append(meta)
@@ -1201,8 +1505,23 @@ def build_file_cache_entry(path, line_count):
 
 
 def load_topology_with_cache(extra_paths, surface_only, args):
-    cache_key = topology_cache_key(extra_paths, surface_only, args.trace_profile, args.include_unscoped_traces)
-    current_entries = current_trace_entries(extra_paths)
+    include_full_agent_batch = bool(getattr(args, "include_agent_batch_traces", False))
+    include_historical_agent_batch = bool(getattr(args, "include_historical_agent_batch_traces", False))
+    include_agent_batch = include_full_agent_batch or include_historical_agent_batch
+    include_legacy_recorder = bool(getattr(args, "include_legacy_recorder_traces", False))
+    agent_batch_before = ""
+    if include_historical_agent_batch and not include_full_agent_batch:
+        agent_batch_before = passive_trace_start(extra_paths, args.trace_profile, args.include_unscoped_traces)
+    cache_key = topology_cache_key(
+        extra_paths,
+        surface_only,
+        args.trace_profile,
+        args.include_unscoped_traces,
+        include_agent_batch,
+        include_legacy_recorder,
+        agent_batch_before,
+    )
+    current_entries = current_trace_entries(extra_paths, include_agent_batch, include_legacy_recorder)
     current_paths = [entry["path"] for entry in current_entries]
     cached, initial_status = read_topology_cache(args, cache_key)
     cold_reason = None
@@ -1264,7 +1583,8 @@ def load_topology_with_cache(extra_paths, surface_only, args):
         if cold_reason is not None:
             break
         processed, line_count = process_trace_file(
-            path, topology, surface_only, offset, start_line, args.trace_profile, args.include_unscoped_traces)
+            path, topology, surface_only, offset, start_line, args.trace_profile, args.include_unscoped_traces,
+            agent_batch_before)
         processed_files += 1
         processed_records += processed
         cache_files[path] = build_file_cache_entry(path, line_count)
@@ -1277,7 +1597,8 @@ def load_topology_with_cache(extra_paths, surface_only, args):
         for entry in current_entries:
             path = entry["path"]
             processed, line_count = process_trace_file(
-                path, topology, surface_only, 0, 0, args.trace_profile, args.include_unscoped_traces)
+                path, topology, surface_only, 0, 0, args.trace_profile, args.include_unscoped_traces,
+                agent_batch_before)
             processed_files += 1
             processed_records += processed
             cache_files[path] = build_file_cache_entry(path, line_count)
@@ -1303,17 +1624,19 @@ def load_topology_with_cache(extra_paths, surface_only, args):
         "topologyCacheProcessedFiles": processed_files,
         "topologyCacheProcessedRecords": processed_records,
         "topologyCacheLatestSeen": latest.get("lastSeen") if latest else "",
+        "topologyIncludeAgentBatchTraces": include_agent_batch,
+        "topologyIncludeHistoricalAgentBatchTraces": include_historical_agent_batch and not include_full_agent_batch,
+        "topologyIncludeLegacyRecorderTraces": include_legacy_recorder,
+        "topologyAgentBatchBefore": agent_batch_before,
     }
     return topology
 
 
 def dedup_death_sites(tiles):
     sites = []
-    last = None
     for tile in tiles:
-        if last is None or tile_distance(last, tile) > 8:
+        if not any(tile_distance(site, tile) <= 8 for site in sites):
             sites.append(tile)
-        last = tile
     return unique_tiles(sites)
 
 
@@ -1754,6 +2077,18 @@ def wrapped_lines(text, max_chars, max_lines):
     return clipped
 
 
+def title_paragraph_layout(args, width, title):
+    if args.title_paragraph_x >= 0:
+        note_x = int(args.title_paragraph_x)
+    else:
+        note_x = max(540, min(width - 780, int(30 + len(title) * args.title_pointsize * 0.40)))
+    right_margin = max(0, int(args.title_paragraph_right_margin))
+    char_width = max(8, args.meta_pointsize * args.title_paragraph_char_factor)
+    note_width = max(34, int((width - note_x - right_margin) / char_width))
+    lines = wrapped_lines(args.title_paragraph, note_width, args.title_paragraph_lines)
+    return note_x, right_margin, lines
+
+
 def add_outline_text(command, x, y, pointsize, text, color, stroke_width=2):
     radius = max(1, int(stroke_width))
     for dx, dy in (
@@ -1836,14 +2171,7 @@ def apply_runescape_text(path, width, footer_top, stats, args):
     title = args.title_text or "MRFLAME MOVEMENT TOPOLOGY %s" % args.map_version
     add_shadow_text(command, 30, 90, args.title_pointsize, title)
     if args.title_paragraph:
-        if args.title_paragraph_x >= 0:
-            note_x = int(args.title_paragraph_x)
-        else:
-            note_x = max(540, min(width - 780, int(30 + len(title) * args.title_pointsize * 0.40)))
-        right_margin = max(0, int(args.title_paragraph_right_margin))
-        char_width = max(8, args.meta_pointsize * args.title_paragraph_char_factor)
-        note_width = max(34, int((width - note_x - right_margin) / char_width))
-        paragraph_lines = wrapped_lines(args.title_paragraph, note_width, args.title_paragraph_lines)
+        note_x, right_margin, paragraph_lines = title_paragraph_layout(args, width, title)
         for line_index, line in enumerate(paragraph_lines):
             y = args.title_paragraph_y + line_index * (args.meta_pointsize + 8)
             color = PALETTE["osrs_yellow"] if line_index == 0 else PALETTE["muted"]
@@ -1960,9 +2288,13 @@ def write_summary(path, topology, render_info, png_path, args):
         "pois": render_info.get("pois", []),
         "poiHiddenByFog": render_info.get("poiHiddenByFog", 0),
         "bounds": render_info["bounds"],
+        "movementBounds": render_info.get("movementBounds", {}),
+        "rawRenderBounds": render_info.get("rawRenderBounds", {}),
+        "boundsQuantumTiles": render_info.get("boundsQuantumTiles", 0),
         "pixelsPerTile": render_info["pixelsPerTile"],
         "pixelWidth": render_info["pixelWidth"],
         "pixelHeight": render_info["pixelHeight"],
+        "titleHeight": render_info.get("titleHeight", 0),
         "png": str(png_path),
         "fontApplied": render_info.get("fontApplied", False),
         "font": {
@@ -1984,6 +2316,7 @@ def write_summary(path, topology, render_info, png_path, args):
             "routeWidth": args.route_width,
             "nodeAlpha": args.node_alpha,
             "maxEdgeDistance": args.max_edge_distance,
+            "boundsQuantumTiles": args.bounds_quantum_tiles,
             "showPOIs": args.show_pois,
             "poiMode": args.poi_mode,
             "poiIconScale": args.poi_icon_scale,
@@ -2015,6 +2348,12 @@ def write_summary(path, topology, render_info, png_path, args):
             "coverageHeatGamma": render_info.get("coverageHeatGamma", 0.0),
             "coverageHeatRadiusTiles": render_info.get("coverageHeatRadiusTiles", 0.0),
             "coverageHeatAlpha": render_info.get("coverageHeatAlpha", 0.0),
+            "coverageHeatPixelRadius": render_info.get("coverageHeatPixelRadius", 0),
+            "coverageHeatPixels": render_info.get("coverageHeatPixels", 0),
+            "coverageHeatCache": render_info.get("coverageHeatCache", "disabled"),
+            "coverageHeatCacheWritten": render_info.get("coverageHeatCacheWritten", False),
+            "coverageHeatCachedNodes": render_info.get("coverageHeatCachedNodes", 0),
+            "coverageHeatRenderedNodes": render_info.get("coverageHeatRenderedNodes", 0),
             "coverageHeatGradient": [
                 {"value": value, "color": "#%02X%02X%02X" % color}
                 for value, color in COVERAGE_HEAT_STOPS
@@ -2058,10 +2397,13 @@ def render(topology, args):
     tile_max_y = max(tile["y"] for tile in tiles)
     movement_span_x = max(1, tile_max_x - tile_min_x + 1)
     movement_span_y = max(1, tile_max_y - tile_min_y + 1)
-    min_x = tile_min_x - pad
-    max_x = tile_max_x + pad
-    min_y = tile_min_y - pad
-    max_y = tile_max_y + pad
+    raw_min_x = tile_min_x - pad
+    raw_max_x = tile_max_x + pad
+    raw_min_y = tile_min_y - pad
+    raw_max_y = tile_max_y + pad
+    min_x, max_x, min_y, max_y = quantize_render_bounds(
+        raw_min_x, raw_max_x, raw_min_y, raw_max_y, args.bounds_quantum_tiles
+    )
     span_x = max(1, max_x - min_x + 1)
     span_y = max(1, max_y - min_y + 1)
     ss = max(1, int(args.supersample))
@@ -2078,11 +2420,13 @@ def render(topology, args):
     map_w = int(math.ceil(span_x * scale)) + 1
     map_h = int(math.ceil(span_y * scale)) + 1
     margin = 28
+    width = max(map_w + margin * 2, 980)
     title_h = 150
     if args.title_paragraph:
-        title_h = max(180, int(args.title_paragraph_y + args.title_paragraph_lines * (args.meta_pointsize + 8) + 28))
+        title = args.title_text or "MRFLAME MOVEMENT TOPOLOGY %s" % args.map_version
+        paragraph_lines = title_paragraph_layout(args, width, title)[2]
+        title_h = max(150, int(args.title_paragraph_y + len(paragraph_lines) * (args.meta_pointsize + 8) + 24))
     footer_h = FOOTER_HEIGHT
-    width = max(map_w + margin * 2, 980)
     height = map_h + title_h + footer_h
     map_x0 = (width - map_w) // 2
     map_y0 = title_h
@@ -2100,6 +2444,8 @@ def render(topology, args):
         y = int(work_map_y0 + work_map_h - 1 - (int(tile["y"]) - min_y) * work_scale)
         return x, y
 
+    movement_bounds = {"minX": tile_min_x, "maxX": tile_max_x, "minY": tile_min_y, "maxY": tile_max_y}
+    raw_render_bounds = {"minX": raw_min_x, "maxX": raw_max_x, "minY": raw_min_y, "maxY": raw_max_y}
     bounds = {"minX": min_x, "maxX": max_x, "minY": min_y, "maxY": max_y}
     cache_source = cache_source_fingerprint()
     expected_world_map_source = "none" if args.no_world_map or args.world_map_source == "none" else "2006Scape Server/data/cache"
@@ -2110,6 +2456,7 @@ def render(topology, args):
         "kind": "movement-topology-base",
         "mapVersion": args.map_version,
         "bounds": bounds,
+        "boundsQuantumTiles": int(args.bounds_quantum_tiles),
         "plane": int(args.plane),
         "worldMapSource": expected_world_map_source,
         "cacheSource": cache_source,
@@ -2158,7 +2505,8 @@ def render(topology, args):
 
     fog_info = draw_coverage_fog(canvas, nodes, project, work_map_x0, work_map_y0,
                                  work_map_w, work_map_h, work_scale, args, bounds=bounds)
-    heat_info = draw_coverage_heatmap(canvas, nodes, project, work_scale, args)
+    heat_info = draw_coverage_heatmap(canvas, nodes, project, work_map_x0, work_map_y0,
+                                      work_map_w, work_map_h, work_scale, args, bounds=bounds)
 
     grid_start_x = int(min_x // 10 * 10)
     grid_start_y = int(min_y // 10 * 10)
@@ -2302,6 +2650,9 @@ def render(topology, args):
     font_applied = apply_runescape_text(output, width, map_y0 + map_h, legend_stats, args)
     return {
         "bounds": bounds,
+        "movementBounds": movement_bounds,
+        "rawRenderBounds": raw_render_bounds,
+        "boundsQuantumTiles": int(args.bounds_quantum_tiles),
         "movementSpanTiles": {
             "x": movement_span_x,
             "y": movement_span_y,
@@ -2309,6 +2660,7 @@ def render(topology, args):
         "pixelsPerTile": scale,
         "pixelWidth": width,
         "pixelHeight": height,
+        "titleHeight": title_h,
         "worldMapTiles": world_info.get("worldMapTiles", 0),
         "worldMapObjects": world_info.get("worldMapObjects", 0),
         "worldMapRegions": world_info.get("worldMapRegions", 0),
@@ -2339,22 +2691,35 @@ def main(default_output=None, default_summary=None, default_map_version="V2",
          default_coverage_fog=False, default_coverage_fog_alpha=0.40,
          default_coverage_fog_radius_tiles=18.0, default_coverage_fog_core_fraction=0.34,
          default_hide_fogged_pois=False, default_coverage_fog_poi_extra_tiles=30.0,
+         default_coverage_heat_radius_tiles=18.0, default_coverage_heat_alpha=0.12,
+         default_coverage_heat_high_percentile=0.98, default_coverage_heat_gamma=1.25,
          default_title_text=None, default_title_paragraph=None,
          default_title_paragraph_x=-1, default_title_paragraph_y=35,
          default_title_paragraph_lines=5, default_title_paragraph_align="left",
          default_title_paragraph_right_margin=34, default_title_paragraph_char_factor=0.56,
-         default_meta_pointsize=18):
+         default_meta_pointsize=18, default_include_historical_agent_batch_traces=False):
     parser = argparse.ArgumentParser(
-        description="Render movement topology with the shared engine used by the active V4/V5/V6 maps."
+        description="Render movement topology with the shared engine used by the active profile, heat, and fog maps."
     )
     parser.add_argument("--trace-file", action="append", help="Extra trace JSONL file or directory to include.")
     parser.add_argument("--trace-profile", default=default_trace_profile(),
                         help="Only use traces recorded by this player/profile. Defaults to RS_TRACE_PROFILE or RS_PROFILE.")
     parser.add_argument("--include-unscoped-traces", action="store_true",
                         help="When filtering by profile, also include legacy traces with no player name.")
+    parser.add_argument("--include-agent-batch-traces", action="store_true",
+                        help="Include all agent batch movement traces in addition to passive player traces.")
+    parser.add_argument("--include-historical-agent-batch-traces", action="store_true",
+                        default=default_include_historical_agent_batch_traces,
+                        help="Backfill agent batch movement traces recorded before passive player tracing began.")
+    parser.add_argument("--no-historical-agent-batch-traces", dest="include_historical_agent_batch_traces",
+                        action="store_false")
+    parser.add_argument("--include-legacy-recorder-traces", action="store_true",
+                        help="Include legacy local movement_traces*.jsonl recorder files.")
     parser.add_argument("--pixels-per-tile", type=float, default=4.0)
     parser.add_argument("--max-map-pixels", type=int, default=3200)
     parser.add_argument("--padding-tiles", type=int, default=20)
+    parser.add_argument("--bounds-quantum-tiles", type=int, default=64,
+                        help="Quantize render bounds to this tile grid so small trace growth does not invalidate base caches.")
     parser.add_argument("--surface-only", action="store_true", default=True)
     parser.add_argument("--include-underground", action="store_true")
     parser.add_argument("--plane", type=int, default=0)
@@ -2399,11 +2764,11 @@ def main(default_output=None, default_summary=None, default_map_version="V2",
     parser.add_argument("--coverage-heatmap", action="store_true", default=default_coverage_heatmap,
                         help="Draw a transparent visit-density heatmap under route overlays.")
     parser.add_argument("--no-coverage-heatmap", dest="coverage_heatmap", action="store_false")
-    parser.add_argument("--coverage-heat-radius-tiles", type=float, default=18.0)
-    parser.add_argument("--coverage-heat-alpha", type=float, default=0.12)
-    parser.add_argument("--coverage-heat-high-percentile", type=float, default=0.98,
+    parser.add_argument("--coverage-heat-radius-tiles", type=float, default=default_coverage_heat_radius_tiles)
+    parser.add_argument("--coverage-heat-alpha", type=float, default=default_coverage_heat_alpha)
+    parser.add_argument("--coverage-heat-high-percentile", type=float, default=default_coverage_heat_high_percentile,
                         help="Visit-count percentile that should render as high coverage.")
-    parser.add_argument("--coverage-heat-gamma", type=float, default=1.25,
+    parser.add_argument("--coverage-heat-gamma", type=float, default=default_coverage_heat_gamma,
                         help="Gamma curve for coverage heat intensity; higher keeps low coverage cooler.")
     parser.add_argument("--coverage-fog", action="store_true", default=default_coverage_fog,
                         help="Dim unvisited map context while softly revealing observed movement corridors.")
@@ -2450,6 +2815,7 @@ def main(default_output=None, default_summary=None, default_map_version="V2",
     args.title_paragraph_lines = max(1, min(8, int(args.title_paragraph_lines)))
     args.title_paragraph_right_margin = max(0, int(args.title_paragraph_right_margin))
     args.title_paragraph_char_factor = clamp(args.title_paragraph_char_factor, 0.25, 0.80)
+    args.bounds_quantum_tiles = max(0, int(args.bounds_quantum_tiles))
 
     topology = load_topology_with_cache(args.trace_file, args.surface_only, args)
     topology = filter_implausible_topology(topology, args.min_world_coordinate)

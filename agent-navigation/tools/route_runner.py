@@ -13,6 +13,7 @@ outside normal bridge gameplay tools.
 """
 
 import argparse
+import datetime as dt
 import json
 import os
 import subprocess
@@ -43,6 +44,27 @@ def tile_str(tile):
 def log(*args, **kwargs):
     kwargs.setdefault("flush", True)
     print(*args, **kwargs)
+
+
+def utc_now():
+    return dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def write_evidence(args, event, data):
+    path = getattr(args, "evidence_jsonl", "") or ""
+    if not path:
+        return
+    output = Path(path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    record = {
+        "event": event,
+        "timestamp": utc_now(),
+    }
+    if getattr(args, "profile", ""):
+        record["profile"] = args.profile
+    record.update(data)
+    with output.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n")
 
 
 def call_tool(tool, arguments=None):
@@ -285,13 +307,34 @@ def choose_run_state(player, run_policy, batch_hazards, args, estimated_run_cost
     return False, "reserve"
 
 
-def ensure_run_state(player, should_run):
+def ensure_run_state(player, should_run, force=False, force_reason=""):
+    monitor = {
+        "requestedRun": should_run,
+        "runEnabledBefore": bool(player.get("runEnabled", False)),
+        "runEnergyBefore": int(player.get("runEnergy", 0) or 0),
+        "attemptedSetRun": False,
+        "forceSetRun": bool(force and should_run is True),
+        "forceReason": force_reason if force and should_run is True else "",
+    }
     if should_run is None:
-        return
+        monitor["runEnabledAfter"] = monitor["runEnabledBefore"]
+        monitor["runEnergyAfter"] = monitor["runEnergyBefore"]
+        return monitor
     current = bool(player.get("runEnabled", False))
-    if current != bool(should_run):
-        call_tool("set_run", {"enabled": bool(should_run)})
-        player["runEnabled"] = bool(should_run)
+    if current != bool(should_run) or (force and bool(should_run)):
+        monitor["attemptedSetRun"] = True
+        result = call_tool("set_run", {"enabled": bool(should_run)})
+        monitor["setRunSuccess"] = bool(result.get("success"))
+        if result.get("message"):
+            monitor["setRunMessage"] = result.get("message")
+        updated = result.get("player")
+        if isinstance(updated, dict):
+            player.update(updated)
+        else:
+            player["runEnabled"] = bool(should_run)
+    monitor["runEnabledAfter"] = bool(player.get("runEnabled", False))
+    monitor["runEnergyAfter"] = int(player.get("runEnergy", 0) or 0)
+    return monitor
 
 
 def object_step_text(step):
@@ -398,10 +441,107 @@ def route_hazard_blocker(db, tile, plan_args):
     return []
 
 
-def print_batch_summary(batch_index, mode, target, walk_target, preview, result):
+def run_batch_diagnostics(start_player, result, preview, requested_run, run_reason,
+                          run_monitor, estimated_run_cost, args):
+    player = player_from(result)
+    steps = int(preview.get("pathLength") or 0)
+    ticks = int(result.get("batchTicks") or 0)
+    run_before = int(start_player.get("runEnergy", 0) or 0)
+    run_after = int(player.get("runEnergy", 0) or 0)
+    spent = max(0, run_before - run_after)
+    moved = navdb.distance(player_tile(start_player), player_tile(player))
+    expected_run_spend = int(estimated_run_cost or 0)
+    expected_walk_ticks = steps if steps > 0 else None
+    expected_run_ticks = (steps + 1) // 2 if steps > 0 else None
+    expected_saved_ticks = (
+        expected_walk_ticks - expected_run_ticks
+        if expected_walk_ticks is not None and expected_run_ticks is not None else None
+    )
+    ticks_per_step = round(float(ticks) / float(steps), 3) if steps > 0 else None
+    preview_tiles_per_tick = round(float(steps) / float(ticks), 3) if ticks > 0 else None
+    tiles_per_tick = round(float(moved) / float(ticks), 3) if ticks > 0 else None
+    observed_saved_vs_walk = (
+        expected_walk_ticks - ticks
+        if expected_walk_ticks is not None and ticks > 0 else None
+    )
+    observed_extra_vs_run = (
+        ticks - expected_run_ticks
+        if expected_run_ticks is not None and ticks > 0 else None
+    )
+    warnings = []
+    run_enabled_at_walk_start = bool(start_player.get("runEnabled", False))
+    run_enabled_after_batch = bool(player.get("runEnabled", False))
+    if requested_run is True:
+        if not run_enabled_at_walk_start:
+            warnings.append("run_toggle_off_at_batch_start")
+        if run_monitor and not bool(run_monitor.get("runEnabledAfter", run_enabled_at_walk_start)):
+            warnings.append("run_disabled_before_walk_command")
+        if not run_enabled_after_batch:
+            warnings.append("run_disabled_after_batch")
+        if steps >= args.run_diagnostics_min_steps and ticks_per_step is not None:
+            slow = ticks_per_step >= args.run_walk_warning_ticks_per_step
+            no_spend = spent <= args.run_warning_max_energy_spent
+            if slow and no_spend:
+                warnings.append("run_requested_but_speed_looks_like_walking")
+    if requested_run is False and run_enabled_at_walk_start:
+        warnings.append("run_enabled_despite_reserve_policy")
+    if run_monitor and run_monitor.get("attemptedSetRun") and not run_monitor.get("setRunSuccess", True):
+        warnings.append("set_run_failed")
+    return {
+        "requestedRun": requested_run,
+        "requestedRunState": requested_run,
+        "runReason": run_reason,
+        "runBefore": {
+            "enabled": bool((run_monitor or {}).get("runEnabledBefore", run_enabled_at_walk_start)),
+            "energy": int((run_monitor or {}).get("runEnergyBefore", run_before) or 0),
+        },
+        "runAtWalkStart": {
+            "enabled": run_enabled_at_walk_start,
+            "energy": run_before,
+        },
+        "runAfter": {
+            "enabled": run_enabled_after_batch,
+            "energy": run_after,
+        },
+        "runEnabledBefore": run_enabled_at_walk_start,
+        "runEnabledAfter": run_enabled_after_batch,
+        "runEnabledBeforePolicy": bool((run_monitor or {}).get("runEnabledBefore", run_enabled_at_walk_start)),
+        "runEnergyBefore": run_before,
+        "runEnergyAfter": run_after,
+        "runEnergyBeforePolicy": int((run_monitor or {}).get("runEnergyBefore", run_before) or 0),
+        "runEnergySpent": spent,
+        "expectedRunSpend": expected_run_spend,
+        "expectedWalkTicks": expected_walk_ticks,
+        "expectedRunTicks": expected_run_ticks,
+        "expectedSavedTicksFromRun": expected_saved_ticks,
+        "observedSavedTicksVsWalkEstimate": observed_saved_vs_walk,
+        "observedExtraTicksVsRunEstimate": observed_extra_vs_run,
+        "previewSteps": steps,
+        "batchTicks": ticks,
+        "movedDistance": moved,
+        "ticksPerStep": ticks_per_step,
+        "previewTilesPerTick": preview_tiles_per_tick,
+        "tilesPerTick": tiles_per_tick,
+        "actualTilesPerTick": tiles_per_tick,
+        "setRun": run_monitor or {},
+        "warnings": warnings,
+    }
+
+
+def print_batch_summary(batch_index, mode, target, walk_target, preview, result,
+                        start_player, requested_run, run_reason, run_monitor,
+                        estimated_run_cost, args):
     player = player_from(result)
     status = result.get("batchStatus") or ("arrived" if result.get("complete") else "incomplete")
-    log("batch {} {} target={} walkTarget={} previewSteps={} status={} final={} ticks={} hp={} run={} combat={} dead={}".format(
+    diagnostics = run_batch_diagnostics(
+        start_player, result, preview, requested_run, run_reason, run_monitor,
+        estimated_run_cost, args)
+    ticks_per_step = diagnostics["ticksPerStep"]
+    ticks_per_step_text = "{:.3f}".format(ticks_per_step) if ticks_per_step is not None else "na"
+    tiles_per_tick = diagnostics["previewTilesPerTick"]
+    tiles_per_tick_text = "{:.3f}".format(tiles_per_tick) if tiles_per_tick is not None else "na"
+    warning_text = ",".join(diagnostics["warnings"]) if diagnostics["warnings"] else "none"
+    log("batch {} {} target={} walkTarget={} previewSteps={} status={} final={} ticks={} hp={} run={} combat={} dead={} runReq={} runReason={} runBefore={} runAfter={} runSpent={} expectedRunSpend={} tps={} tilesPerTick={} walkSave={} runExtra={} runWarn={}".format(
         batch_index,
         mode,
         tile_str(target),
@@ -414,7 +554,19 @@ def print_batch_summary(batch_index, mode, target, walk_target, preview, result)
         int(player.get("runEnergy", 0) or 0),
         bool(player.get("isInCombat", False)),
         bool(player.get("isDead", False)),
+        requested_run,
+        run_reason,
+        diagnostics["runEnergyBefore"],
+        diagnostics["runEnergyAfter"],
+        diagnostics["runEnergySpent"],
+        diagnostics["expectedRunSpend"],
+        ticks_per_step_text,
+        tiles_per_tick_text,
+        diagnostics["observedSavedTicksVsWalkEstimate"],
+        diagnostics["observedExtraTicksVsRunEstimate"],
+        warning_text,
     ))
+    return diagnostics
 
 
 def compact_route_eval(result):
@@ -653,14 +805,31 @@ def run(args):
             return 3
 
         if args.dry_run:
-            log("dry-run mode={} target={} walkTarget={} previewSteps={} planStatus={} run={} runReason={} reserve={} estimatedRunCost={}".format(
+            force_run = bool(
+                should_run is True
+                and args.force_run_before_long_leg
+                and estimated_run_cost >= args.force_run_min_preview_steps
+            )
+            log("dry-run mode={} target={} walkTarget={} previewSteps={} planStatus={} run={} runReason={} reserve={} estimatedRunCost={} forceRun={}".format(
                 mode, tile_str(target), tile_str(walk_target), int(preview.get("pathLength") or 0),
-                plan["status"], should_run, run_reason, run_policy.get("reserve", 0), estimated_run_cost))
+                plan["status"], should_run, run_reason, run_policy.get("reserve", 0), estimated_run_cost,
+                force_run))
             if plan.get("waypoints"):
                 log("waypoints:", " ".join(tile_str(tile) for tile in plan["waypoints"][:12]))
             return 0
 
-        ensure_run_state(player, should_run)
+        force_run = bool(
+            should_run is True
+            and args.force_run_before_long_leg
+            and estimated_run_cost >= args.force_run_min_preview_steps
+        )
+        run_monitor = ensure_run_state(
+            player,
+            should_run,
+            force=force_run,
+            force_reason="long_leg_pre_batch" if force_run else "",
+        )
+        batch_start_player = dict(player)
         result = call_tool("walk_to_tile_until_arrived", {
             "x": walk_target["x"],
             "y": walk_target["y"],
@@ -671,8 +840,54 @@ def run(args):
             "stopOnCombat": True,
             "stopOnStall": True,
         })
-        print_batch_summary(batch, mode, target, walk_target, preview, result)
+        diagnostics = print_batch_summary(
+            batch, mode, target, walk_target, preview, result,
+            batch_start_player, should_run, run_reason, run_monitor,
+            estimated_run_cost, args)
         player = player_from(result)
+        before_hitpoints = int(batch_start_player.get("hitpoints", batch_start_player.get("hp", 0)) or 0)
+        after_hitpoints = int(player.get("hitpoints", player.get("hp", 0)) or 0)
+        write_evidence(args, "route_batch", {
+            "batch": batch,
+            "tool": "route_runner",
+            "targetPlace": target_place["id"],
+            "targetPlaceTile": target_place["tile"],
+            "mode": mode,
+            "currentTile": current_tile,
+            "previousTile": current_tile,
+            "targetTile": target,
+            "walkTarget": walk_target,
+            "finalTile": player_tile(player),
+            "tile": player_tile(player),
+            "target": walk_target,
+            "runEnabled": bool(diagnostics["runAtWalkStart"]["enabled"]),
+            "runEnergySpent": int(diagnostics["runEnergySpent"]),
+            "batchTicks": int(result.get("batchTicks") or 0),
+            "hitpointsLost": max(0, before_hitpoints - after_hitpoints),
+            "isDead": bool(player.get("isDead", False)),
+            "isInCombat": bool(player.get("isInCombat", False)),
+            "batchStatus": result.get("batchStatus"),
+            "plan": compact_plan(plan),
+            "preview": compact_preview(preview, target, mode),
+            "runPolicy": {
+                **run_policy,
+                "batchHazards": batch_hazards[:5],
+                "wouldRun": should_run,
+                "reason": run_reason,
+                "estimatedRunCost": estimated_run_cost,
+                "forceRunBeforeLongLeg": force_run,
+            },
+            "runEfficiency": diagnostics,
+            "result": {
+                "success": bool(result.get("success")),
+                "batchStatus": result.get("batchStatus"),
+                "complete": bool(result.get("complete")),
+                "message": result.get("message"),
+                "batchTicks": int(result.get("batchTicks") or 0),
+            },
+            "playerBefore": compact_player(batch_start_player),
+            "playerAfter": compact_player(player),
+        })
         if not is_success(result):
             return 4
         if player.get("isDead") or player.get("isInCombat"):
@@ -710,6 +925,20 @@ def main(argv=None):
                         help="Extra energy added to the fixed/auto reserve.")
     parser.add_argument("--run-reserve-waypoints", type=int, default=12,
                         help="Number of planned waypoints to scan for auto run reserve hazards.")
+    parser.add_argument("--run-diagnostics-min-steps", type=int, default=8,
+                        help="Minimum preview path length before warning about walking-speed run batches.")
+    parser.add_argument("--run-walk-warning-ticks-per-step", type=float, default=0.85,
+                        help="Warn when a run-requested batch takes at least this many ticks per preview step.")
+    parser.add_argument("--run-warning-max-energy-spent", type=int, default=0,
+                        help="Warn only when integer run energy spent is at or below this value.")
+    parser.add_argument("--force-run-before-long-leg", action="store_true", default=True,
+                        help="Issue set_run true immediately before long run-approved batches, even if run already appears enabled.")
+    parser.add_argument("--no-force-run-before-long-leg", dest="force_run_before_long_leg", action="store_false",
+                        help="Do not refresh run state before long run-approved batches.")
+    parser.add_argument("--force-run-min-preview-steps", type=int, default=8,
+                        help="Minimum preview path length that counts as a long leg for the pre-batch run refresh.")
+    parser.add_argument("--evidence-jsonl", default="",
+                        help="Append structured per-batch route/run-efficiency evidence to this JSONL file.")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--allow-frontier", action="store_true",
                         help="If the target is not connected, move to the best learned frontier.")

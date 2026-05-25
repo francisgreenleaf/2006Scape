@@ -2,29 +2,25 @@
 
 This document explains the cache-backed world map used by the 2006Scape navigation harness. The map is generated from `2006Scape Server/data/cache`, not from screenshots or the live client window. It replaced the old visible-minimap sampling workflow, so it does not focus the Java client, steal macOS window focus, or depend on a logged-in player.
 
-The main implementation is `agent-navigation/tools/cache_world_map.py`. The active movement maps use it through the shared topology engine in `agent-navigation/tools/render_movement_topology_v2.py`, with current user-facing wrappers for the main profile map, `Heat Map`, and the fog-of-war map.
+The main implementation is `agent-navigation/tools/cache_world_map.py`. The active movement maps use it through the shared topology engine in `agent-navigation/tools/render_movement_topology_v2.py`, with plain-name user-facing wrappers: `render_profile_map.py`, `render_heat_map.py`, and `render_fog_map.py`.
 
 ## Outputs
 
 Canonical generated files:
 
 ```sh
-agent-navigation/topology/cache-world-map.png
-agent-navigation/topology/cache-world-map.json
 agent-navigation/topology/movement-topology-v4.png
-agent-navigation/topology/movement-topology-v4.json
 agent-navigation/topology/movement-topology-v5-heatmap.png
-agent-navigation/topology/movement-topology-v5-heatmap.json
 agent-navigation/topology/movement-topology-v6.png
-agent-navigation/topology/movement-topology-v6.json
-agent-navigation/topology/surface-routes.png
 ```
 
-`cache-world-map.png` is the full cache render for one plane. `movement-topology-v4.png` is the active main movement map. `movement-topology-v5-heatmap.png` is the active `Heat Map`. `movement-topology-v6.png` is the active fog-of-war map. `surface-routes.png` is the route database overview.
+`movement-topology-v4.png` is the active main movement map. `movement-topology-v5-heatmap.png` is the active `Heat Map`. `movement-topology-v6.png` is the active fog-of-war map. The movement PNG filenames are retained for compatibility; new code should use the plain-name scripts above instead of versioned renderer names. JSON summaries, full cache-map renders, and route overview renders default to ignored paths under `agent-navigation/.local/map-summaries/` so `agent-navigation/topology/` stays limited to the three user-facing PNGs.
+
+The active movement wrappers use passive player traces as the main evidence stream and backfill agent-batch traces only for the historical period before passive player tracing began. That keeps early exploration and death sites visible without reintroducing duplicate newer batch telemetry.
 
 Agent context maps are disposable debug artifacts. By default, `render_agent_context_map.py` and `render_context_map.py` write unique ignored PNG/JSON pairs under `agent-navigation/.local/context-maps/<date>/`. Do not add stable `agent-context-map.*` or one-off shortcut/proof renders under `agent-navigation/topology/` unless the user explicitly asks for a shareable artifact.
 
-Current full-map summary, from `cache-world-map.json`:
+Current full-map summary, from the cache-map renderer:
 
 - bounds: `1728,2560` through `3839,10367`
 - plane: `0`
@@ -44,8 +40,8 @@ Render the full cache map:
 
 ```sh
 agent-navigation/tools/cache_world_map.py \
-  --output agent-navigation/topology/cache-world-map.png \
-  --summary agent-navigation/topology/cache-world-map.json
+  --output agent-navigation/.local/map-summaries/cache-world-map.png \
+  --summary agent-navigation/.local/map-summaries/cache-world-map.json
 ```
 
 Render a smaller bounded map:
@@ -61,17 +57,17 @@ agent-navigation/tools/cache_world_map.py \
 Render movement topology with the cache map as the background:
 
 ```sh
-agent-navigation/tools/render_movement_topology_v4.py
+agent-navigation/tools/render_profile_map.py
 ```
 
 Render the active analysis variants:
 
 ```sh
-agent-navigation/tools/render_movement_topology_v5.py
-agent-navigation/tools/render_movement_topology_v6.py
+agent-navigation/tools/render_heat_map.py
+agent-navigation/tools/render_fog_map.py
 ```
 
-Use `--no-world-map` or `--world-map-source none` on an active wrapper when you only want the movement graph without terrain. Legacy `render_movement_topology.py` and direct V2 outputs may remain on disk for comparison, but they are not current map products.
+Use `--no-world-map` or `--world-map-source none` on an active wrapper when you only want the movement graph without terrain. Legacy versioned topology wrappers, direct V2 outputs, and old experiment scripts may remain on disk for comparison, but they are not current map products.
 
 ## Continuous Refresh
 
@@ -86,14 +82,13 @@ agent-navigation/tools/active_map_refresher.py stop
 
 `active_map_refresher.py` is the small background controller for the lower-level `refresh_active_maps.py` worker. By default it refreshes these canonical files in parallel worker loops:
 
-- `agent-navigation/topology/surface-routes.png`
-- `agent-navigation/topology/movement-topology-v4.png` / `.json`
-- `agent-navigation/topology/movement-topology-v5-heatmap.png` / `.json`
-- `agent-navigation/topology/movement-topology-v6.png` / `.json`
+- `agent-navigation/topology/movement-topology-v4.png`
+- `agent-navigation/topology/movement-topology-v5-heatmap.png`
+- `agent-navigation/topology/movement-topology-v6.png`
 
-The profile movement map (`mr-flame` / V4) is a continuous hot loop: as soon as one V4 render finishes, the next starts. The other active workers target a 30-second cadence. If a non-hot render takes longer than 30 seconds, that map starts its next pass immediately after the previous pass finishes; it never overlaps two renders for the same map. The full `cache-world-map.png` is only rendered when missing or when `--refresh-world-map` is passed.
+The `mr-flame` profile movement map is a continuous hot loop: as soon as one render finishes, the next starts. `Heat Map` and profile fog target a 30-second cadence. If a non-hot render takes longer than 30 seconds, that map starts its next pass immediately after the previous pass finishes; it never overlaps two renders for the same map. Auxiliary cache-map and route-overview renders are ignored `.local` artifacts, not topology exports.
 
-The watcher renders to ignored temp files first, then atomically replaces the canonical PNG/JSON after a successful run. It prints start/done/failure lines and writes ignored status JSON to `agent-navigation/.local/map-refresh/status.json`, including the latest duration, records/nodes/edges/deaths, cache fields, and fog-cache fields when available. Parallel topology workers use separate persistent cache subdirectories under `agent-navigation/.local/topology-render-cache/` so their cache writes do not collide; each map still gets warm-cache behavior across its own repeats.
+The watcher renders to ignored temp files first, then atomically replaces the canonical PNG after a successful run and writes matching ignored summaries to `agent-navigation/.local/map-summaries/`. It prints start/done/failure lines and writes ignored status JSON to `agent-navigation/.local/map-refresh/status.json`, including the latest duration, records/nodes/edges/deaths, cache fields, and heat/fog coverage-cache fields when available. Parallel topology workers use separate persistent cache subdirectories under `agent-navigation/.local/topology-render-cache/` so their cache writes do not collide; each map still gets warm-cache behavior across its own repeats.
 
 Movement map workers honor the same trace-profile filtering as the topology renderer. Use `--trace-profile <profile>` or set `RS_TRACE_PROFILE`/`RS_PROFILE` when you need one player/profile's traces only; add `--include-unscoped-traces` to keep legacy records with no player name.
 

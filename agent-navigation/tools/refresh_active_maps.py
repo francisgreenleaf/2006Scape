@@ -25,6 +25,7 @@ REPO_ROOT = ROOT.parent
 TOOLS = ROOT / "tools"
 TOPOLOGY = ROOT / "topology"
 LOCAL = ROOT / ".local" / "map-refresh"
+MAP_SUMMARIES = ROOT / ".local" / "map-summaries"
 DEFAULT_STATUS = LOCAL / "status.json"
 DEFAULT_TMP = LOCAL / "tmp"
 DEFAULT_RENDER_CACHE = ROOT / ".local" / "topology-render-cache"
@@ -45,27 +46,19 @@ class MapJob:
 WORLD_MAP = MapJob(
     job_id="cache-world-map",
     label="Cache World Map",
-    output=TOPOLOGY / "cache-world-map.png",
-    summary=TOPOLOGY / "cache-world-map.json",
+    output=MAP_SUMMARIES / "cache-world-map.png",
+    summary=MAP_SUMMARIES / "cache-world-map.json",
     command_name="cache_world_map.py",
     args=("--output", "{output}", "--summary", "{summary}"),
 )
 
 ACTIVE_JOBS = (
     MapJob(
-        job_id="surface-routes",
-        label="Surface Routes",
-        output=TOPOLOGY / "surface-routes.png",
-        summary=None,
-        command_name="render_navigation_png.py",
-        args=("--region", "all", "--output", "{output}"),
-    ),
-    MapJob(
         job_id="mr-flame",
         label="Mr. Flame",
         output=TOPOLOGY / "movement-topology-v4.png",
-        summary=TOPOLOGY / "movement-topology-v4.json",
-        command_name="render_movement_topology_v4.py",
+        summary=MAP_SUMMARIES / "movement-topology-v4.json",
+        command_name="render_profile_map.py",
         args=("--output", "{output}", "--summary", "{summary}", "--coverage-cache-dir", "{render_cache_dir}"),
         render_cache_namespace="mr-flame",
         continuous=True,
@@ -74,8 +67,8 @@ ACTIVE_JOBS = (
         job_id="heat-map",
         label="Heat Map",
         output=TOPOLOGY / "movement-topology-v5-heatmap.png",
-        summary=TOPOLOGY / "movement-topology-v5-heatmap.json",
-        command_name="render_movement_topology_v5.py",
+        summary=MAP_SUMMARIES / "movement-topology-v5-heatmap.json",
+        command_name="render_heat_map.py",
         args=("--output", "{output}", "--summary", "{summary}", "--coverage-cache-dir", "{render_cache_dir}"),
         render_cache_namespace="heat-map",
     ),
@@ -83,8 +76,8 @@ ACTIVE_JOBS = (
         job_id="mr-flame-fog",
         label="Mr. Flame Fog",
         output=TOPOLOGY / "movement-topology-v6.png",
-        summary=TOPOLOGY / "movement-topology-v6.json",
-        command_name="render_movement_topology_v6.py",
+        summary=MAP_SUMMARIES / "movement-topology-v6.json",
+        command_name="render_fog_map.py",
         args=("--output", "{output}", "--summary", "{summary}", "--coverage-cache-dir", "{render_cache_dir}"),
         render_cache_namespace="mr-flame-fog",
     ),
@@ -145,9 +138,9 @@ def build_command(job: MapJob, output: Path, summary: Path | None, args) -> list
     }
     command = [sys.executable, str(TOOLS / job.command_name)]
     command.extend(arg.format(**values) for arg in job.args)
-    if job.command_name.startswith("render_movement_topology_") and args.trace_profile:
+    if job.render_cache_namespace and args.trace_profile:
         command.extend(["--trace-profile", args.trace_profile])
-    if job.command_name.startswith("render_movement_topology_") and args.include_unscoped_traces:
+    if job.render_cache_namespace and args.include_unscoped_traces:
         command.append("--include-unscoped-traces")
     return command
 
@@ -242,6 +235,14 @@ def summarize_metadata(metadata: dict) -> str:
         )
     if metadata.get("coverageHeatmap"):
         parts.append(f"heatRadius={metadata.get('coverageHeatRadiusTiles')}")
+        if metadata.get("coverageHeatCache"):
+            parts.append(
+                "heat={cache} cached={cached} rendered={rendered}".format(
+                    cache=metadata.get("coverageHeatCache"),
+                    cached=metadata.get("coverageHeatCachedNodes"),
+                    rendered=metadata.get("coverageHeatRenderedNodes"),
+                )
+            )
     return " ".join(parts)
 
 
@@ -304,14 +305,18 @@ def run_job(job: MapJob, args, reason: str = "scheduled") -> bool:
     metadata = {}
     if summary_tmp is not None and job.summary is not None:
         metadata = normalize_summary(summary_tmp, job.output, job.summary)
+        job.summary.parent.mkdir(parents=True, exist_ok=True)
         os.replace(output_tmp, job.output)
         os.replace(summary_tmp, job.summary)
     else:
         os.replace(output_tmp, job.output)
         metadata = json_tail(stdout)
+    duplicate_copies = cleanup_numbered_export_copies(job.output)
 
     detail = summarize_metadata(metadata)
     suffix = f" {detail}" if detail else ""
+    if duplicate_copies:
+        suffix = suffix + f" cleanedCopies={duplicate_copies}"
     log(f"done {job.label}: {duration:.1f}s -> {job.output}{suffix}")
     update_status(
         args.status_file,
@@ -340,6 +345,9 @@ def compact_metadata(metadata: dict) -> dict:
         "pixelHeight",
         "coverageHeatmap",
         "coverageHeatRadiusTiles",
+        "coverageHeatCache",
+        "coverageHeatCachedNodes",
+        "coverageHeatRenderedNodes",
         "coverageFogCache",
         "coverageFogCachedNodes",
         "coverageFogRenderedNodes",
@@ -359,6 +367,20 @@ def cleanup_temp(output: Path, summary: Path | None) -> None:
                 path.unlink()
             except FileNotFoundError:
                 pass
+
+
+def cleanup_numbered_export_copies(output: Path) -> int:
+    deleted = 0
+    pattern = output.stem + " [0-9]*" + output.suffix
+    for path in output.parent.glob(pattern):
+        if not path.is_file():
+            continue
+        try:
+            path.unlink()
+            deleted += 1
+        except OSError:
+            pass
+    return deleted
 
 
 def worker(job: MapJob, args, initial_delay: float) -> None:

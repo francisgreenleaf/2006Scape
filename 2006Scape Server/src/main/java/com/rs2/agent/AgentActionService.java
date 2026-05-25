@@ -256,6 +256,9 @@ public class AgentActionService {
         if ("chop_tree_until_inventory_full".equals(tool)) {
             return chopTreeUntilInventoryFull(token, arguments == null ? new JsonObject() : arguments);
         }
+        if ("fletch_logs_until_inventory_empty".equals(tool)) {
+            return fletchLogsUntilInventoryEmpty(token, arguments == null ? new JsonObject() : arguments);
+        }
         if ("wait_until_idle".equals(tool)) {
             return waitUntilIdle(token, arguments == null ? new JsonObject() : arguments);
         }
@@ -546,6 +549,57 @@ public class AgentActionService {
             }
         }
         return addBatchStatus(lastResult == null ? AgentToolService.failure("No woodcutting action was attempted.") : lastResult,
+                "max_ticks_reached", maxTicks);
+    }
+
+    private JsonObject fletchLogsUntilInventoryEmpty(final String token, final JsonObject arguments) {
+        int maxTicks = Math.max(1, Math.min(250, getInt(arguments, "maxTicks", 120)));
+        final int targetFletchingLevel = getInt(arguments, "targetFletchingLevel",
+                getInt(arguments, "targetLevel", -1));
+        JsonObject lastResult = null;
+        for (int tick = 0; tick < maxTicks; tick++) {
+            lastResult = submitOnGameTick(token, new Callable<JsonObject>() {
+                @Override
+                public JsonObject call() {
+                    AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
+                    if (session == null) {
+                        return AgentToolService.failure("Agent session is no longer valid.");
+                    }
+                    Player player = session.getPlayer();
+                    if (player == null) {
+                        return AgentToolService.failure("The claimed player is no longer online.");
+                    }
+                    if (targetFletchingLevel > 0 && player.playerLevel[Constants.FLETCHING] >= targetFletchingLevel) {
+                        return AgentToolService.observeState(player);
+                    }
+                    if (AgentToolService.countInventoryFletchableLogs(player) < 1) {
+                        return AgentToolService.observeState(player);
+                    }
+                    if (player.playerIsFletching || player.isFletching || player.isMoving) {
+                        return AgentToolService.observeState(player);
+                    }
+                    return AgentToolService.handle(player, "fletch_logs", arguments);
+                }
+            });
+            if (!isSuccess(lastResult)) {
+                return addBatchStatus(lastResult, "blocked", tick + 1);
+            }
+            JsonObject player = playerObject(lastResult);
+            if (player != null && getBoolean(player, "isDead", false)) {
+                return addBatchStatus(lastResult, "player_dead", tick + 1);
+            }
+            AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
+            Player livePlayer = session == null ? null : session.getPlayer();
+            if (livePlayer != null && targetFletchingLevel > 0
+                    && livePlayer.playerLevel[Constants.FLETCHING] >= targetFletchingLevel) {
+                return addBatchStatus(lastResult, "target_level_reached", tick + 1);
+            }
+            if (livePlayer != null && AgentToolService.countInventoryFletchableLogs(livePlayer) < 1
+                    && !livePlayer.playerIsFletching && !livePlayer.isFletching) {
+                return addBatchStatus(lastResult, "inventory_empty", tick + 1);
+            }
+        }
+        return addBatchStatus(lastResult == null ? AgentToolService.failure("No fletching action was attempted.") : lastResult,
                 "max_ticks_reached", maxTicks);
     }
 

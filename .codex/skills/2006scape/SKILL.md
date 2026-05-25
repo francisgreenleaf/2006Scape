@@ -68,6 +68,7 @@ python3 agent-navigation/tools/router.py plan --from X,Y,H --to PLACE --combat-l
 python3 agent-navigation/tools/route_eval.py --from X,Y,H --to PLACE --combat-level N --food N --run-energy N --run-enabled
 python3 agent-navigation/tools/route_runner.py --to PLACE --orient --json --run-reserve auto
 python3 agent-navigation/tools/route_runner.py --to PLACE --max-walk-distance 48 --max-batches 6 --dry-run
+python3 agent-navigation/tools/route_runner.py --to PLACE --run-reserve auto --evidence-jsonl agent-navigation/.local/run-evidence/route.routes.jsonl
 python3 agent-navigation/tools/marathon_runner.py --laps 10 --run-reserve auto
 python3 agent-navigation/tools/render_agent_context_map.py --center X,Y,H --radius-tiles 72 --pixels-per-tile 5 --recent-seconds 60
 python3 agent-navigation/tools/navdb.py graph-summary
@@ -123,7 +124,7 @@ For read-only questions, inspect the relevant docs or source first and answer wi
 
 For file edits, use `2006scape-dev-editing` plus the subsystem skill. Keep edits away from unrelated dirty files and preserve generated/local-only files.
 
-For live gameplay, observe first and use repo-side bridge wrappers. Prefer batch tools and treat their returned state as the next observation.
+For live gameplay, observe first and use repo-side bridge wrappers. Prefer batch tools and treat their returned state as the next observation. If a long batch command is already running, wait near the expected completion interval before polling output instead of short-polling every few seconds. For route/mining movement, `route_runner.py` refreshes `set_run true` before long run-approved legs, unless reserve policy says not to run. Batch lines expose `runReq`, `runBefore`, `runAfter`, `runSpent`, `expectedRunSpend`, `tps`, `tilesPerTick`, and `runWarn`; if `runWarn` is not `none`, treat it as evidence that run was requested but not effective. Use `--evidence-jsonl PATH` for structured route-batch run-efficiency evidence, and expect `mining_runner.py` to write a sibling `.routes.jsonl` automatically.
 
 For visual route ambiguity, use compact screenshots through `agent-navigation/tools/capture-cardinal-screenshots.sh --prefix REASON`; do not load oversized full-screen captures.
 

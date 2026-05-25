@@ -38,13 +38,15 @@ Prefer batch or planner tools over tiny polling loops:
 - Movement: `travel_to_landmark_until_arrived`, `walk_to_tile_until_arrived`, then treat the returned state as the next observation.
 - Combat: `plan_combat_training`, `train_combat`, `wait_until_idle '{"combat":true}'`, `eat_best_food`, `equip_best_items`.
 - Durable combat: `start_combat_goal`, `observe_goal`, `stop_goal` for long grinds that should continue after the turn.
-- Mining: prefer `python3 agent-navigation/tools/mining_runner.py --target-mining-level N --auto-buy-bronze-pickaxe` for long mining goals because it discovers cache-backed mine sites, routes with `route_runner.py`, chooses live ore targets, mines with `mine_ore_until_inventory_full`, and banks ores. Use direct `mine_ore_until_inventory_full` for short local batches.
+- Mining: prefer `python3 agent-navigation/tools/mining_runner.py --target-mining-level N --auto-buy-bronze-pickaxe` for long mining goals because it discovers cache-backed mine sites, routes with `route_runner.py`, chooses live ore targets, mines with `mine_ore_until_inventory_full`, and banks ores. It enables run when energy is available and records route `runWarn` lines, run-energy deltas, and sibling `.routes.jsonl` route-batch run-efficiency evidence. Use direct `mine_ore_until_inventory_full` for short local batches.
 - Woodcutting: `chop_tree_until_inventory_full`; bank logs unless the user explicitly asks to drop them.
 - Food: `fish_food`, `light_fire`, `cook_food`, and bank/carry cooked food as supplies.
 - Shops: travel to a shop, `open_nearest_shop`, then buy/sell through shop tools.
 - Smithing profit: `plan_smithing`, `train_smithing_profit`, and `wait_until_idle` when smelting or smithing starts.
 
 Use direct single-action tools only for setup, recovery, or a specific user request.
+
+When a long batch command is already running, estimate its completion time from `maxTicks` or the tool's expected loop duration and wait close to that interval before polling terminal output. A 250-tick mining batch can take about 150 seconds; if the expected next material output is 60-90 seconds away, use a long wait instead of polling every few seconds. Short-poll only when combat, death, a blocker, movement uncertainty, or near-term completion is likely.
 
 ## Progression Policy
 

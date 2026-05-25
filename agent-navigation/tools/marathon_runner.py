@@ -46,7 +46,10 @@ BATCH_RE = re.compile(
     r"walkTarget=(?P<walkTarget>\S+) previewSteps=(?P<previewSteps>\d+) "
     r"status=(?P<status>\S+) final=(?P<final>\S+)"
     r"(?: ticks=(?P<ticks>\d+) hp=(?P<hp>\d+) run=(?P<run>\d+) "
-    r"combat=(?P<combat>\S+) dead=(?P<dead>\S+))?"
+    r"combat=(?P<combat>\S+) dead=(?P<dead>\S+)"
+    r"(?: runReq=(?P<runReq>\S+) runReason=(?P<runReason>\S+) "
+    r"runBefore=(?P<runBefore>\d+) runAfter=(?P<runAfter>\d+) "
+    r"runSpent=(?P<runSpent>\d+) tps=(?P<tps>\S+) runWarn=(?P<runWarn>\S+))?)?"
 )
 ARRIVED_RE = re.compile(r"^arrived target=(?P<target>\S+) tile=(?P<tile>\S+)")
 MAX_BATCH_RE = re.compile(r"^max batches reached target=(?P<target>\S+) final=(?P<tile>\S+)")
@@ -61,6 +64,18 @@ def utc_now():
 
 def parse_bool(value):
     return str(value).lower() == "true"
+
+
+def parse_optional_bool(value):
+    if value is None or str(value).lower() == "none":
+        return None
+    return parse_bool(value)
+
+
+def parse_optional_float(value):
+    if value is None or str(value).lower() == "na":
+        return None
+    return float(value)
 
 
 def call_tool(tool, arguments=None):
@@ -127,7 +142,7 @@ def parse_route_runner_line(line):
     match = BATCH_RE.match(line)
     if match:
         data = match.groupdict()
-        return "batch", {
+        parsed = {
             "batch": int(data["batch"]),
             "mode": data["mode"],
             "target": data["target"],
@@ -141,6 +156,17 @@ def parse_route_runner_line(line):
             "combat": parse_bool(data["combat"] or "false"),
             "dead": parse_bool(data["dead"] or "false"),
         }
+        if data.get("runReq") is not None:
+            parsed.update({
+                "requestedRun": parse_optional_bool(data.get("runReq")),
+                "runReason": data.get("runReason"),
+                "runEnergyBefore": int(data.get("runBefore") or 0),
+                "runEnergyAfter": int(data.get("runAfter") or 0),
+                "runEnergySpent": int(data.get("runSpent") or 0),
+                "ticksPerStep": parse_optional_float(data.get("tps")),
+                "runWarnings": [] if data.get("runWarn") == "none" else str(data.get("runWarn") or "").split(","),
+            })
+        return "batch", parsed
     match = ARRIVED_RE.match(line)
     if match:
         return "arrived", match.groupdict()

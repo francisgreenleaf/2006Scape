@@ -21,20 +21,15 @@ The renderer is intentionally practical rather than a full scene renderer. It gi
 
 ## Generated Artifacts
 
-Canonical outputs live under `agent-navigation/topology/`:
+Canonical active map outputs live under `agent-navigation/topology/`:
 
 ```text
-cache-world-map.png
-cache-world-map.json
 movement-topology-v4.png
-movement-topology-v4.json
 movement-topology-v5-heatmap.png
-movement-topology-v5-heatmap.json
 movement-topology-v6.png
-movement-topology-v6.json
 ```
 
-`cache-world-map.png` is the full static cache render for one plane. The active movement maps are the profile movement map, `Heat Map`, and profile fog; they overlay learned movement traces, failures, deaths, combat edges, visited tiles, route density, and fog-of-war coverage on top of bounded cache-map backgrounds. Legacy movement-topology outputs may exist for old experiments, but they are not current user-facing maps.
+The active movement maps are the profile movement map, `Heat Map`, and profile fog; they overlay learned movement traces, failures, deaths, combat edges, visited tiles, route density, and fog-of-war coverage on top of bounded cache-map backgrounds. JSON summaries and auxiliary full cache-map or route-overview renders default to ignored files under `agent-navigation/.local/map-summaries/`. Legacy movement-topology outputs may exist for old experiments, but they are not current user-facing maps.
 
 Agent context maps are not canonical topology exports. By default, `render_agent_context_map.py` and `render_context_map.py` write unique ignored artifacts under `agent-navigation/.local/context-maps/<date>/`; use explicit `--output` and `--summary` only for a deliberate smoke test or a user-facing comparison.
 
@@ -58,8 +53,8 @@ Render the full map from repo root:
 
 ```sh
 agent-navigation/tools/cache_world_map.py \
-  --output agent-navigation/topology/cache-world-map.png \
-  --summary agent-navigation/topology/cache-world-map.json
+  --output agent-navigation/.local/map-summaries/cache-world-map.png \
+  --summary agent-navigation/.local/map-summaries/cache-world-map.json
 ```
 
 Render a bounded preview:
@@ -75,18 +70,18 @@ agent-navigation/tools/cache_world_map.py \
 Render the active movement maps:
 
 ```sh
-agent-navigation/tools/render_movement_topology_v4.py
-agent-navigation/tools/render_movement_topology_v5.py
-agent-navigation/tools/render_movement_topology_v6.py
+agent-navigation/tools/render_profile_map.py
+agent-navigation/tools/render_heat_map.py
+agent-navigation/tools/render_fog_map.py
 ```
 
 Keep active exports fresh while traces are changing:
 
 ```sh
-agent-navigation/tools/refresh_active_maps.py
+agent-navigation/tools/active_map_refresher.py start
 ```
 
-The refresher runs `surface-routes`, the profile movement map, `Heat Map`, and profile fog in independent non-overlapping worker loops. It targets a 30-second cadence per map, starts the next pass immediately when a render takes longer than the target interval, writes status/temp files under ignored `agent-navigation/.local/map-refresh/`, gives parallel topology workers separate persistent cache subdirectories under `agent-navigation/.local/topology-render-cache/`, passes trace-profile filters through to movement renderers, and atomically replaces canonical outputs only after successful renders. The full static `cache-world-map` is rendered only when missing or when `--refresh-world-map` is passed.
+The refresher runs the profile movement map, `Heat Map`, and profile fog in independent non-overlapping worker loops. The profile map is a continuous hot loop; the other active maps target a 30-second cadence. It writes status/temp files under ignored `agent-navigation/.local/map-refresh/`, writes summaries under ignored `agent-navigation/.local/map-summaries/`, gives parallel topology workers separate persistent cache subdirectories under `agent-navigation/.local/topology-render-cache/`, passes trace-profile filters through to movement renderers, and atomically replaces the three canonical PNG outputs only after successful renders.
 
 ## Cache Inputs
 

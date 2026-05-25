@@ -433,8 +433,10 @@ public class AgentPassiveTraceLog {
     }
 
     private boolean isInCombat(Player player) {
-        return player.npcIndex > 0 || player.killingNpcIndex > 0 || player.underAttackBy > 0
-                || player.underAttackBy2 > 0;
+        if (player.isDead || player.respawnTimer > 0) {
+            return false;
+        }
+        return player.npcIndex > 0 || player.underAttackBy > 0 || player.underAttackBy2 > 0;
     }
 
     private int safeHitpoints(Player player) {
