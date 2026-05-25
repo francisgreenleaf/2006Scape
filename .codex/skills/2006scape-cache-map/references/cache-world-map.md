@@ -81,7 +81,7 @@ Keep active exports fresh while traces are changing:
 agent-navigation/tools/active_map_refresher.py start
 ```
 
-The refresher runs the profile movement map, `Heat Map`, and profile fog in independent non-overlapping worker loops. The profile map is a continuous hot loop; the other active maps target a 30-second cadence. It writes status/temp files under ignored `agent-navigation/.local/map-refresh/`, writes summaries under ignored `agent-navigation/.local/map-summaries/`, gives parallel topology workers separate persistent cache subdirectories under `agent-navigation/.local/topology-render-cache/`, passes trace-profile filters through to movement renderers, and atomically replaces the three canonical PNG outputs only after successful renders.
+The refresher runs the profile movement map, `Heat Map`, and profile fog in independent non-overlapping worker loops on a five-minute target cadence. It writes status/temp files under ignored `agent-navigation/.local/map-refresh/`, writes summaries under ignored `agent-navigation/.local/map-summaries/`, gives parallel topology workers separate persistent cache subdirectories under `agent-navigation/.local/topology-render-cache/`, passes trace-profile filters through to movement renderers, and atomically replaces the three canonical PNG outputs only after successful renders.
 
 ## Cache Inputs
 
