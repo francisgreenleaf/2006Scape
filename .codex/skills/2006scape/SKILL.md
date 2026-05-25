@@ -142,13 +142,15 @@ For read-only questions, inspect the relevant docs or source first and answer wi
 
 For file edits, use `2006scape-dev-editing` plus the subsystem skill. Keep edits away from unrelated dirty files and preserve generated/local-only files.
 
+For live navigation, use this context ladder before spending tokens: `observe-slim` for current state, `route_runner.py --to PLACE --orient --json --run-reserve auto` for non-moving A-to-B context, `render_agent_context_map.py` JSON/PNG for suspicious detours or static geometry, then compact screenshots only for live visual ambiguity such as gate/door state, wrong-side positioning, object failures, or API/map disagreement.
+
 For live gameplay, observe first and use repo-side bridge wrappers. Prefer batch tools and treat their returned state as the next observation. If a long batch command is already running, wait near the expected completion interval before polling output instead of short-polling every few seconds. For route/mining movement, `route_runner.py` refreshes `set_run true` before long run-approved legs, unless reserve policy says not to run. Batch lines expose `runReq`, `runBefore`, `runAfter`, `runSpent`, `expectedRunSpend`, `tps`, `tilesPerTick`, and `runWarn`; if `runWarn` is not `none`, treat it as evidence that run was requested but not effective. Use `--evidence-jsonl PATH` for structured route-batch run-efficiency evidence, and expect `mining_runner.py` to write a sibling `.routes.jsonl` automatically.
 
 For new gameplay automation, keep strategy in Python scripts and data. Read `agent-navigation/scripting-primitives.md`; use stable primitives such as `use_item_on_item`, `use_item_on_object`, `click_interface_button`, `select_interface_item`, `interact_object`, `interact_npc`, bank/shop tools, combat tools, and `wait_until_idle` before adding Java. Existing Java skill tools are compatibility surfaces, not the default place for new loops. Current primitive-backed runners cover mining, woodcutting/fletching, food, smithing, combat, and compact bank loadout policies.
 
 For long autonomous gameplay or progression, load the selected character's sparse memory with `character_memory.py show --profile PROFILE --json`. Write new memory only for durable, decision-changing goals or lessons; do not log routine progress, temporary route details, secrets, or facts that belong in route data/session logs. Character memory is profile-scoped so `MrFlame` and `MrGem` stay separate.
 
-For visual route ambiguity, use compact screenshots through `agent-navigation/tools/capture-cardinal-screenshots.sh --prefix REASON`; do not load oversized full-screen captures.
+For visual route ambiguity, use compact screenshots through `agent-navigation/tools/capture-cardinal-screenshots.sh --prefix REASON`; open only the angle(s) needed to answer the question, and do not load oversized full-screen captures.
 
 For runtime management, prefer `agent-navigation/tools/runtime_doctor.py` plus `docs/local-agent-startup.md`, and avoid interrupting active agents unless the user asked for a restart or stop.
 

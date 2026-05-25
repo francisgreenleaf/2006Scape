@@ -125,7 +125,14 @@ python3 agent-navigation/tools/route_runner.py --to X,Y,H --max-walk-distance 48
 
 ## Screenshots and Maps
 
-Use screenshots only when API state is insufficient. For visual route ambiguity, switch to `2006scape-screenshot-capture` and prefer compact four-angle captures.
+Use this navigation context ladder:
+
+1. `observe-slim` or the latest batch result for live state.
+2. `route_runner.py --orient --json --run-reserve auto` for non-moving plan/eval/preview context.
+3. `render_agent_context_map.py` JSON first, then PNG only when static geometry or detours need visual inspection.
+4. Compact screenshots only when live client visuals matter: open/closed gate or door state, wrong side of an object, hidden stairs/ladders/trapdoors, wall pockets, object interaction failures, or API/cache-map disagreement.
+
+For visual route ambiguity, switch to `2006scape-screenshot-capture` and prefer compact four-angle captures. Use a single-angle capture only when one camera direction is clearly enough.
 
 Four-angle evidence command:
 
@@ -139,7 +146,7 @@ Single-angle evidence command:
 agent-navigation/tools/capture-client-screenshot.sh --prefix reason --native-size
 ```
 
-Do not load high-resolution screenshots into context unless visually debugging and the compact capture failed.
+Do not load high-resolution screenshots into context unless visually debugging and the compact capture failed. Open only the returned angle(s) needed to answer the question; record the rest by path if they are just evidence.
 
 The old screenshot-based minimap map collector has been removed. Do not start any background screen sampler or focus-stealing client capture loop.
 

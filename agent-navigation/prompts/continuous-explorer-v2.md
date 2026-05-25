@@ -213,9 +213,9 @@ Do not click visible kitchen/trapdoor objects through walls.
 
 ## Screenshot and map system
 
-Prefer API observations for gameplay decisions.
+Prefer API observations and route JSON for gameplay decisions. Use context-map JSON/PNG for static geometry and detours before screenshots.
 
-Use screenshots only when API state is insufficient:
+Use compact screenshots only when live visual state is still ambiguous:
 
 ```text
 blocked movement,
@@ -223,15 +223,17 @@ wall/door/gate/stair ambiguity,
 wrong side of object,
 object interaction failure,
 unexpected HP/combat/inventory change,
-route state contradicts DB memory.
+route state contradicts DB memory,
+API/cache-map disagreement.
 ```
 
-Evidence screenshot command:
+Four-angle evidence command:
 
 ```sh
-agent-navigation/tools/capture-client-screenshot.sh --prefix blocked-door --native-size
+agent-navigation/tools/capture-cardinal-screenshots.sh --prefix blocked-door
 ```
 
+Use `capture-client-screenshot.sh --prefix REASON --native-size` only when one angle is enough.
 If screenshot output says `mode:"full-screen"` or `rect:null`, record it only as blocker evidence.
 Do not run background screen samplers or focus-stealing screenshot loops. Terrain context should come from the cache-backed map renderer.
 
@@ -327,8 +329,8 @@ agent-navigation/topology/movement-topology-v4.png
 Known map blocker:
 
 ```text
-capture-client-screenshot.sh frequently returns full-screen fallback with rect:null.
-Use those captures only as blocker evidence, not as map terrain input.
+If screenshot helpers return full-screen fallback with rect:null, use those captures only as blocker evidence, not as map terrain input.
+Prefer compact cardinal screenshots for route geometry and context maps for terrain.
 ```
 
 Latest known live state may be stale. Always observe first. If still at `3120,3208,0`, route data for `draynor_southeast_guard_skirt` may need a final `record-observation`, `validate`, and `self-test` before continuing.

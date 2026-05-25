@@ -42,7 +42,7 @@ python3 agent-navigation/tools/navdb.py self-test
 
 1. Observe full state and identify the object from bridge data.
 2. Preview or walk to the object's interaction target; do not click from an unknown side.
-3. Capture compact screenshots if object geometry is ambiguous.
+3. Capture compact screenshots if object geometry or live open/closed state is ambiguous after API/context-map checks.
 4. Interact once with the intended option.
 5. Wait/observe and compare pre-state to post-state.
 6. Record the transition in route data only after proof exists.

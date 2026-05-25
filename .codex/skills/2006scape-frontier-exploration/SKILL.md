@@ -49,3 +49,5 @@ Death can be useful evidence when the user accepts risk, but it is still expensi
 ## Context Maps
 
 Use context-map JSON before loading images into the thread. The JSON gives bounds, center, mapfunction markers, place labels, and artifact paths; open the PNG only when the map geometry itself is needed to resolve a route or blocker.
+
+If a probe stalls near a wall, fence, gate, stair, ladder, trapdoor, or other object and the API/context map cannot prove the live state, switch to `2006scape-screenshot-capture` and take compact cardinal screenshots before recording route data or repeating the same vector.
