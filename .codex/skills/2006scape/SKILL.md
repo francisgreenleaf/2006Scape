@@ -91,10 +91,12 @@ agent-navigation/tools/capture-client-screenshot.sh --prefix reason --native-siz
 agent-navigation/tools/observe-slim.sh
 agent-navigation/tools/rs-tool.sh plan_combat_training '{"targetLevel":10}'
 agent-navigation/tools/rs-tool.sh train_combat '{"npc":"goblin"}'
+python3 agent-navigation/tools/mining_runner.py --target-mining-level 20 --auto-buy-bronze-pickaxe
 
 # 2006scape-script-registry: discover or run known helper scripts
 python3 agent-navigation/tools/script_registry.py list
 python3 agent-navigation/tools/script_registry.py search "agility"
+python3 agent-navigation/tools/script_registry.py search "mining"
 python3 agent-navigation/tools/script_registry.py show route --json
 python3 agent-navigation/tools/script_registry.py run agility -- --laps 10
 

@@ -38,7 +38,7 @@ Prefer batch or planner tools over tiny polling loops:
 - Movement: `travel_to_landmark_until_arrived`, `walk_to_tile_until_arrived`, then treat the returned state as the next observation.
 - Combat: `plan_combat_training`, `train_combat`, `wait_until_idle '{"combat":true}'`, `eat_best_food`, `equip_best_items`.
 - Durable combat: `start_combat_goal`, `observe_goal`, `stop_goal` for long grinds that should continue after the turn.
-- Mining: `mine_ore_until_inventory_full`; bank ores when full.
+- Mining: prefer `python3 agent-navigation/tools/mining_runner.py --target-mining-level N --auto-buy-bronze-pickaxe` for long mining goals because it discovers cache-backed mine sites, routes with `route_runner.py`, chooses live ore targets, mines with `mine_ore_until_inventory_full`, and banks ores. Use direct `mine_ore_until_inventory_full` for short local batches.
 - Woodcutting: `chop_tree_until_inventory_full`; bank logs unless the user explicitly asks to drop them.
 - Food: `fish_food`, `light_fire`, `cook_food`, and bank/carry cooked food as supplies.
 - Shops: travel to a shop, `open_nearest_shop`, then buy/sell through shop tools.

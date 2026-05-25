@@ -27,6 +27,32 @@
       ]
     },
     {
+      "id": "mining_runner",
+      "name": "Adaptive Mining Runner",
+      "path": "agent-navigation/tools/mining_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Discovers cache-backed mine clusters, routes between banks and rocks, chooses the best live ore target, mines through bridge batches, and banks ores for Mining training.",
+      "aliases": [
+        "mining",
+        "mine",
+        "ore mining",
+        "ore runner",
+        "mining training"
+      ],
+      "tags": [
+        "gameplay",
+        "mining",
+        "training",
+        "runner",
+        "routing",
+        "adaptive"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/script_registry.py run mining -- --target-mining-level 20 --auto-buy-bronze-pickaxe",
+        "python3 agent-navigation/tools/mining_runner.py --list-sites --ores copper,tin,iron"
+      ]
+    },
+    {
       "id": "route_runner",
       "name": "Route Runner",
       "path": "agent-navigation/tools/route_runner.py",
