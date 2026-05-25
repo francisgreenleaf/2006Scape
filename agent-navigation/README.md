@@ -198,7 +198,7 @@ Use `--list-sites` for read-only site planning. For live training, the runner wr
 
 ## Fletching Runner
 
-`tools/fletching_runner.py` runs normal-gameplay woodcutting and fletching loops. It chooses trees and fletching products in Python, currently routes through legacy `route_runner.py` compatibility paths, chops through primitive `find_nearest_tree`/`interact_object`/`wait_until_idle` rounds, picks up and banks bird nests, sells products when configured, and records JSONL evidence under `data/fletching/runs/`. New route work should prefer ML1 route definitions instead of adding more bare Route Runner dependencies.
+`tools/fletching_runner.py` runs normal-gameplay woodcutting and fletching loops. It chooses trees and fletching products in Python, requests ML1 route definitions through `bridge_script.route_to`, executes the persisted `routeSteps` with `execute_route_definition.py`, chops through primitive `find_nearest_tree`/`interact_object`/`wait_until_idle` rounds, picks up and banks bird nests, sells or banks products when configured, and records JSONL evidence under `data/fletching/runs/`. Use the route knobs such as `--route-run-mode`, `--route-eat-at`, and `--route-evidence-jsonl` for route execution policy; do not add new bare Route Runner dependencies for normal fletching travel.
 
 ```sh
 python3 agent-navigation/tools/fletching_runner.py --max-cycles 10 --tree auto --quiet
