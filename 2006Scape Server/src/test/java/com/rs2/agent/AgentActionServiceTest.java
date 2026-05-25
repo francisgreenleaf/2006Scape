@@ -274,7 +274,8 @@ public class AgentActionServiceTest {
     @Test
     public void durableGoalDoesNotSaveForChampionsGuildGearBeforeQuestPoints() {
         assertFalse(AgentActionService.isChampionsGuildGearAvailable(1289, 0));
-        assertTrue(AgentActionService.isChampionsGuildGearAvailable(1289, 26));
+        assertFalse(AgentActionService.isChampionsGuildGearAvailable(1289, 26));
+        assertTrue(AgentActionService.isChampionsGuildGearAvailable(1289, 27));
         assertEquals(-1, AgentActionService.recommendedGearMoneyUpgradeId(41, 32, 30, 21710,
                 4, 3, 4, 4, 3, 60, false)); // already has the reachable upgrades
         assertEquals(1289, AgentActionService.recommendedGearMoneyUpgradeId(41, 32, 30, 21710,

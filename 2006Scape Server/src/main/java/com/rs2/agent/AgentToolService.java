@@ -19,11 +19,16 @@ import com.google.gson.JsonObject;
 import com.rs2.Constants;
 import com.rs2.GameEngine;
 import com.rs2.agent.AgentCombatPlanner.TrainingArea;
+import com.rs2.event.impl.ButtonActionEvent;
+import com.rs2.event.impl.NpcFirstClickEvent;
+import com.rs2.event.impl.NpcSecondClickEvent;
+import com.rs2.event.impl.NpcThirdClickEvent;
 import com.rs2.game.content.StaticObjectList;
 import com.rs2.game.content.consumables.Food;
 import com.rs2.game.content.consumables.Kebabs;
 import com.rs2.game.content.skills.SkillHandler;
 import com.rs2.game.content.skills.cooking.Cooking;
+import com.rs2.game.content.skills.cooking.CookingTutorialIsland;
 import com.rs2.game.content.skills.core.Fishing;
 import com.rs2.game.content.skills.core.Mining;
 import com.rs2.agent.AgentSmithingPlanner.ItemValueProvider;
@@ -40,6 +45,7 @@ import com.rs2.game.items.GroundItem;
 import com.rs2.game.items.ItemConstants;
 import com.rs2.game.items.ItemData;
 import com.rs2.game.items.ItemDefinitions;
+import com.rs2.game.items.UseItem;
 import com.rs2.game.npcs.Npc;
 import com.rs2.game.npcs.NpcHandler;
 import com.rs2.game.objects.Objects;
@@ -67,6 +73,7 @@ public class AgentToolService {
     private static final int MAP_REGION_MARGIN = 2;
     private static final int DEFAULT_WALK_CHUNK_DISTANCE = 48;
     private static final int MAX_WALK_CHUNK_DISTANCE = MAP_REGION_SIZE - 2 * MAP_REGION_MARGIN - 1;
+    private static final int MAX_AGENT_WALK_PATH_STEPS = 8;
     private static final long MINING_RECLICK_COOLDOWN_MS = 1800L;
     private static final int COINS = AgentCombatPlanner.coinsItemId();
     private static final int HAMMER = 2347;
@@ -165,8 +172,23 @@ public class AgentToolService {
         if ("set_run".equals(tool)) {
             return setRun(player, arguments);
         }
+        if ("use_item_on_item".equals(tool)) {
+            return useItemOnItem(player, arguments);
+        }
+        if ("use_item_on_object".equals(tool)) {
+            return useItemOnObject(player, arguments);
+        }
+        if ("click_interface_button".equals(tool)) {
+            return clickInterfaceButton(player, arguments);
+        }
+        if ("select_interface_item".equals(tool)) {
+            return selectInterfaceItem(player, arguments);
+        }
         if ("walk_to_tile".equals(tool)) {
             return walkToTile(player, arguments);
+        }
+        if ("walk_path_steps".equals(tool)) {
+            return walkPathSteps(player, arguments);
         }
         if ("travel_to_landmark".equals(tool)) {
             return travelToLandmark(player, arguments);
@@ -176,6 +198,9 @@ public class AgentToolService {
         }
         if ("find_training_npc".equals(tool)) {
             return findTrainingNpc(player, arguments);
+        }
+        if ("interact_npc".equals(tool)) {
+            return interactNpc(player, arguments);
         }
         if ("attack_npc".equals(tool)) {
             return attackNpc(player, arguments);
@@ -371,6 +396,131 @@ public class AgentToolService {
         return result;
     }
 
+    private static JsonObject useItemOnItem(Player player, JsonObject arguments) {
+        ItemMatch item = findPrimitiveInventoryItem(player, arguments, false);
+        if (item == null) {
+            return failure("No matching source inventory item found.");
+        }
+        ItemMatch target = findPrimitiveInventoryItem(player, arguments, true);
+        if (target == null) {
+            return failure("No matching target inventory item found.");
+        }
+        if (item.slot == target.slot) {
+            return failure("Source and target inventory items must be in different slots.");
+        }
+        UseItem.itemOnItem(player, item.itemId, target.itemId);
+        JsonObject result = success("Used " + DeprecatedItems.getItemName(item.itemId)
+                + " on " + DeprecatedItems.getItemName(target.itemId) + ".");
+        result.add("item", itemMatchJson(item));
+        result.add("targetItem", itemMatchJson(target));
+        addPlayerState(result, player);
+        return result;
+    }
+
+    private static JsonObject useItemOnObject(Player player, JsonObject arguments) {
+        ItemMatch item = findPrimitiveInventoryItem(player, arguments, false);
+        if (item == null) {
+            return failure("No matching inventory item found.");
+        }
+        int objectId = getInt(arguments, "objectId", getInt(arguments, "id", -1));
+        int x = getInt(arguments, "x", -1);
+        int y = getInt(arguments, "y", -1);
+        int height = getInt(arguments, "height", player.heightLevel);
+        if (objectId < 0 || x < 0 || y < 0) {
+            return failure("objectId, x, and y are required.");
+        }
+        if (height != player.heightLevel) {
+            return failure("Cannot use an item on an object at a different height level.");
+        }
+        Objects object = Region.getObject(objectId, x, y, height);
+        if (object == null) {
+            object = new Objects(objectId, x, y, height, 0, 10, 0);
+        }
+        int before = countInventoryItem(player, item.itemId);
+        UseItem.itemOnObject(player, objectId, x, y, item.itemId);
+        JsonObject result = success("Used " + DeprecatedItems.getItemName(item.itemId)
+                + " on object " + objectId + ".");
+        result.add("item", itemMatchJson(item));
+        result.add("object", objectJson(player, object,
+                AgentKnowledgeBase.distance(player.absX, player.absY, x, y)));
+        result.addProperty("itemCountBefore", before);
+        result.addProperty("itemCountAfter", countInventoryItem(player, item.itemId));
+        addPlayerState(result, player);
+        return result;
+    }
+
+    private static JsonObject clickInterfaceButton(Player player, JsonObject arguments) {
+        int buttonId = getInt(arguments, "buttonId", getInt(arguments, "actionButtonId",
+                getInt(arguments, "id", -1)));
+        if (buttonId < 0) {
+            return failure("buttonId is required.");
+        }
+        LogCutting.handleClick(player, buttonId);
+        Smelting.getBar(player, buttonId);
+        handleCookingButton(player, buttonId);
+        Climbing.handleLadderButtons(player, buttonId);
+        DialogueOptions.handleDialogueOptions(player, buttonId);
+        player.post(new ButtonActionEvent(buttonId));
+        JsonObject result = success("Clicked interface button " + buttonId + ".");
+        result.addProperty("buttonId", buttonId);
+        addPlayerState(result, player);
+        return result;
+    }
+
+    private static void handleCookingButton(Player player, int buttonId) {
+        int amount = cookingAmountForButton(buttonId);
+        if (amount <= 0) {
+            return;
+        }
+        if (player.tutorialProgress < 36) {
+            CookingTutorialIsland.getAmount(player, amount);
+            return;
+        }
+        Cooking.cookItem(player, player.cookingItem, amount, player.cookingObject);
+    }
+
+    static int cookingAmountForButton(int buttonId) {
+        if (buttonId == 53152) {
+            return 1;
+        }
+        if (buttonId == 53151) {
+            return 5;
+        }
+        if (buttonId == 53150) {
+            return 10;
+        }
+        if (buttonId == 53149) {
+            return 28;
+        }
+        return 0;
+    }
+
+    private static JsonObject selectInterfaceItem(Player player, JsonObject arguments) {
+        int interfaceId = getInt(arguments, "interfaceId", getInt(arguments, "widgetId", -1));
+        int itemId = getInt(arguments, "itemId", getInt(arguments, "id", -1));
+        int slot = getInt(arguments, "slot", -1);
+        int amount = Math.max(1, getInt(arguments, "amount", 1));
+        if (interfaceId < 0 || itemId < 0) {
+            return failure("interfaceId and itemId are required.");
+        }
+        if (!isSmithingSelectionInterface(interfaceId)) {
+            return failure("No normal interface-item handler is exposed for interface " + interfaceId + ".");
+        }
+        player.getSmithing().readInput(player, player.playerLevel[Constants.SMITHING], itemId, amount);
+        JsonObject result = success("Selected interface item.");
+        result.addProperty("interfaceId", interfaceId);
+        result.addProperty("itemId", itemId);
+        result.addProperty("slot", slot);
+        result.addProperty("amount", amount);
+        addPlayerState(result, player);
+        return result;
+    }
+
+    static boolean isSmithingSelectionInterface(int interfaceId) {
+        return interfaceId == 1119 || interfaceId == 1120 || interfaceId == 1121
+                || interfaceId == 1122 || interfaceId == 1123;
+    }
+
     private static JsonObject walkToTile(Player player, JsonObject arguments) {
         int x = getInt(arguments, "x", player.absX);
         int y = getInt(arguments, "y", player.absY);
@@ -396,6 +546,93 @@ public class AgentToolService {
             result.add("walkTarget", tile(walkTarget[0], walkTarget[1], height));
         }
         return result;
+    }
+
+    private static JsonObject walkPathSteps(Player player, JsonObject arguments) {
+        JsonArray requestedSteps = requestedStepArray(arguments);
+        if (requestedSteps == null || requestedSteps.size() == 0) {
+            return failure("steps or path must contain at least one adjacent tile.");
+        }
+        if (requestedSteps.size() > MAX_AGENT_WALK_PATH_STEPS) {
+            return failure("walk_path_steps supports at most " + MAX_AGENT_WALK_PATH_STEPS + " adjacent steps.");
+        }
+
+        boolean allowObjectTransition = getBoolean(arguments, "allowObjectTransition", false);
+        int previousX = player.absX;
+        int previousY = player.absY;
+        int[] localX = new int[requestedSteps.size()];
+        int[] localY = new int[requestedSteps.size()];
+        JsonArray acceptedSteps = new JsonArray();
+        for (int index = 0; index < requestedSteps.size(); index++) {
+            JsonElement element = requestedSteps.get(index);
+            if (element == null || !element.isJsonObject()) {
+                return failure("Each walk_path_steps entry must be a tile object.");
+            }
+            JsonObject step = element.getAsJsonObject();
+            int x = getInt(step, "x", Integer.MIN_VALUE);
+            int y = getInt(step, "y", Integer.MIN_VALUE);
+            int height = getInt(step, "height", getInt(step, "h", player.heightLevel));
+            if (x == Integer.MIN_VALUE || y == Integer.MIN_VALUE) {
+                return failure("Each walk_path_steps entry must include x and y.");
+            }
+            if (height != player.heightLevel) {
+                return failure("Cannot walk_path_steps to a different height level.");
+            }
+            if (!isAdjacentCardinalStep(previousX, previousY, x, y)) {
+                return failure("walk_path_steps only accepts cardinal adjacent steps.");
+            }
+            if (!allowObjectTransition && !Region.getClipping(previousX, previousY, player.heightLevel,
+                    x - previousX, y - previousY)) {
+                return failure("walk_path_steps step is blocked by clipping; use an object transition instead.");
+            }
+            localX[index] = x - player.getMapRegionX() * 8;
+            localY[index] = y - player.getMapRegionY() * 8;
+            acceptedSteps.add(tile(x, y, player.heightLevel));
+            previousX = x;
+            previousY = y;
+        }
+
+        player.getPlayerAssistant().resetFollow();
+        player.getCombatAssistant().resetPlayerAttack();
+        player.endCurrentTask();
+        SkillHandler.resetSkills(player);
+        player.getPacketSender().closeAllWindows();
+        player.isBanking = false;
+        player.isShopping = false;
+        player.newWalkCmdSteps = requestedSteps.size();
+        for (int index = 0; index < requestedSteps.size(); index++) {
+            player.getNewWalkCmdX()[index] = localX[index];
+            player.getNewWalkCmdY()[index] = localY[index];
+        }
+        boolean run = getBoolean(arguments, "run", player.isRunning2);
+        player.setNewWalkCmdIsRunning(run && player.playerEnergy > 0);
+
+        JsonObject result = success("Queued adjacent walking steps.");
+        result.add("steps", acceptedSteps);
+        result.addProperty("queuedSteps", requestedSteps.size());
+        result.addProperty("allowObjectTransition", allowObjectTransition);
+        result.addProperty("run", run && player.playerEnergy > 0);
+        addPlayerState(result, player);
+        return result;
+    }
+
+    private static JsonArray requestedStepArray(JsonObject arguments) {
+        if (arguments == null) {
+            return null;
+        }
+        if (arguments.has("steps") && arguments.get("steps").isJsonArray()) {
+            return arguments.get("steps").getAsJsonArray();
+        }
+        if (arguments.has("path") && arguments.get("path").isJsonArray()) {
+            return arguments.get("path").getAsJsonArray();
+        }
+        return null;
+    }
+
+    public static boolean isAdjacentCardinalStep(int fromX, int fromY, int toX, int toY) {
+        int dx = Math.abs(toX - fromX);
+        int dy = Math.abs(toY - fromY);
+        return dx + dy == 1;
     }
 
     private static JsonObject previewLocalPath(Player player, JsonObject arguments) {
@@ -791,12 +1028,20 @@ public class AgentToolService {
 
     private static JsonObject findNearestNpc(Player player, JsonObject arguments) {
         String name = normalize(getString(arguments, "name", ""));
+        List<Integer> npcIds = getIntList(arguments, "npcIds");
+        int npcId = getInt(arguments, "npcId", getInt(arguments, "type", -1));
+        if (npcId >= 0) {
+            npcIds.add(npcId);
+        }
         int maxDistance = getInt(arguments, "maxDistance", DEFAULT_SCAN_DISTANCE);
         boolean reachableOnly = getBoolean(arguments, "reachable", getBoolean(arguments, "requireReachable", false));
         Npc nearest = null;
         int nearestDistance = Integer.MAX_VALUE;
         for (Npc npc : NpcHandler.npcs) {
-            if (!isNpcCandidate(player, npc)) {
+            if (!isNpcPresent(player, npc)) {
+                continue;
+            }
+            if (!npcIds.isEmpty() && !npcIds.contains(npc.npcType)) {
                 continue;
             }
             String npcName = normalize(npc.name());
@@ -817,6 +1062,55 @@ public class AgentToolService {
         }
         JsonObject result = success("Found nearest NPC.");
         result.add("npc", npcJson(nearest, nearestDistance));
+        return result;
+    }
+
+    private static JsonObject interactNpc(Player player, JsonObject arguments) {
+        Npc npc = findNpcForInteraction(player, arguments);
+        if (npc == null) {
+            return failure("No matching NPC found nearby.");
+        }
+        String option = normalize(getString(arguments, "option", "first"));
+        int optionNumber = optionToNumber(option);
+        if (optionNumber < 1 || optionNumber > 3) {
+            return failure("NPC option must be first, second, or third.");
+        }
+        boolean requireReachable = getBoolean(arguments, "requireReachable", true);
+        boolean inRange = player.goodDistance(player.getX(), player.getY(), npc.getX(), npc.getY(), 2);
+        if (requireReachable && !inRange && !isReachableNpc(player, npc)) {
+            JsonObject result = failure("That NPC is visible but not reachable from the current side.");
+            result.add("npc", npcJson(npc, AgentKnowledgeBase.distance(player.absX, player.absY, npc.absX, npc.absY)));
+            addPlayerState(result, player);
+            return result;
+        }
+
+        player.endCurrentTask();
+        SkillHandler.resetSkills(player);
+        player.getPlayerAssistant().resetFollow();
+        player.getCombatAssistant().resetPlayerAttack();
+        player.npcClickIndex = npc.npcId;
+        player.npcType = npc.npcType;
+        if (!inRange) {
+            player.getPlayerAssistant().playerWalk(npc.getX(), npc.getY());
+        } else {
+            player.turnPlayerTo(npc.getX(), npc.getY());
+            npc.facePlayer(player);
+            if (optionNumber == 1) {
+                player.getNpcs().firstClickNpc(npc.npcType);
+                player.post(new NpcFirstClickEvent(npc.npcType));
+            } else if (optionNumber == 2) {
+                player.getNpcs().secondClickNpc(npc.npcType);
+                player.post(new NpcSecondClickEvent(npc.npcType));
+            } else {
+                player.getNpcs().thirdClickNpc(npc.npcType);
+                player.post(new NpcThirdClickEvent(npc.npcType));
+            }
+        }
+        JsonObject result = success((inRange ? "Interacting with " : "Walking toward ") + npc.name() + ".");
+        result.addProperty("approaching", !inRange);
+        result.addProperty("option", optionNumber);
+        result.add("npc", npcJson(npc, AgentKnowledgeBase.distance(player.absX, player.absY, npc.absX, npc.absY)));
+        addPlayerState(result, player);
         return result;
     }
 
@@ -3334,6 +3628,48 @@ public class AgentToolService {
         return npc != null && npc.heightLevel == player.heightLevel && !npc.isDead;
     }
 
+    private static Npc findNpcForInteraction(Player player, JsonObject arguments) {
+        int npcIndex = getInt(arguments, "npcIndex", -1);
+        if (npcIndex >= 0 && npcIndex < NpcHandler.npcs.length) {
+            Npc npc = NpcHandler.npcs[npcIndex];
+            return isNpcPresent(player, npc) ? npc : null;
+        }
+        String name = normalize(getString(arguments, "name", getString(arguments, "npc", "")));
+        List<Integer> npcIds = getIntList(arguments, "npcIds");
+        int npcId = getInt(arguments, "npcId", getInt(arguments, "type", -1));
+        if (npcId >= 0) {
+            npcIds.add(npcId);
+        }
+        int maxDistance = getInt(arguments, "maxDistance", DEFAULT_SCAN_DISTANCE);
+        boolean reachableOnly = getBoolean(arguments, "reachable", getBoolean(arguments, "requireReachable", false));
+        Npc nearest = null;
+        int nearestDistance = Integer.MAX_VALUE;
+        for (Npc npc : NpcHandler.npcs) {
+            if (!isNpcPresent(player, npc)) {
+                continue;
+            }
+            if (!npcIds.isEmpty() && !npcIds.contains(npc.npcType)) {
+                continue;
+            }
+            String npcName = normalize(npc.name());
+            if (!name.isEmpty() && !npcName.contains(name)) {
+                continue;
+            }
+            int distance = AgentKnowledgeBase.distance(player.absX, player.absY, npc.absX, npc.absY);
+            if (distance > maxDistance) {
+                continue;
+            }
+            if (reachableOnly && !isReachableNpc(player, npc)) {
+                continue;
+            }
+            if (distance < nearestDistance) {
+                nearest = npc;
+                nearestDistance = distance;
+            }
+        }
+        return nearest;
+    }
+
     private static boolean isReachableNpc(Player player, Npc npc) {
         if (player == null || npc == null || npc.heightLevel != player.heightLevel) {
             return false;
@@ -3910,6 +4246,57 @@ public class AgentToolService {
             }
         }
         return null;
+    }
+
+    private static ItemMatch findPrimitiveInventoryItem(Player player, JsonObject arguments, boolean target) {
+        JsonObject lookup = new JsonObject();
+        if (target) {
+            copyFirstInt(arguments, lookup, "slot", "targetSlot", "useWithSlot", "withSlot");
+            copyFirstInt(arguments, lookup, "itemId", "targetItemId", "useWithItemId", "withItemId", "targetId");
+            copyFirstString(arguments, lookup, "name", "targetName", "useWithName", "withName", "targetItem");
+        } else {
+            copyFirstInt(arguments, lookup, "slot", "slot", "sourceSlot", "usedSlot");
+            copyFirstInt(arguments, lookup, "itemId", "itemId", "sourceItemId", "usedItemId");
+            copyFirstString(arguments, lookup, "name", "name", "item", "sourceName", "usedName", "sourceItem");
+        }
+        return findInventoryItem(player, lookup);
+    }
+
+    private static void copyFirstInt(JsonObject source, JsonObject target, String targetKey, String... sourceKeys) {
+        if (source == null || target == null) {
+            return;
+        }
+        for (String sourceKey : sourceKeys) {
+            if (source.has(sourceKey) && source.get(sourceKey).isJsonPrimitive()) {
+                target.addProperty(targetKey, getInt(source, sourceKey, -1));
+                return;
+            }
+        }
+    }
+
+    private static void copyFirstString(JsonObject source, JsonObject target, String targetKey, String... sourceKeys) {
+        if (source == null || target == null) {
+            return;
+        }
+        for (String sourceKey : sourceKeys) {
+            if (source.has(sourceKey) && source.get(sourceKey).isJsonPrimitive()) {
+                target.addProperty(targetKey, getString(source, sourceKey, ""));
+                return;
+            }
+        }
+    }
+
+    private static JsonObject itemMatchJson(ItemMatch item) {
+        JsonObject json = new JsonObject();
+        if (item == null) {
+            return json;
+        }
+        json.addProperty("slot", item.slot);
+        json.addProperty("itemId", item.itemId);
+        json.addProperty("id", item.itemId);
+        json.addProperty("name", DeprecatedItems.getItemName(item.itemId));
+        json.addProperty("amount", item.amount);
+        return json;
     }
 
     private static ItemMatch findShopItem(Player player, JsonObject arguments) {

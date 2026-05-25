@@ -669,7 +669,7 @@ def choose_live_ore(player, site, ores, args, handle):
     return fallback
 
 
-def mine_batch(ore, site, args, handle, start_player=None):
+def legacy_mine_batch(ore, site, args, handle, start_player=None):
     payload = {
         "ore": ore,
         "maxDistance": int(site["rockScanDistance"]),
@@ -701,7 +701,135 @@ def mine_batch(ore, site, args, handle, start_player=None):
         player.get("hitpoints"),
         player.get("runEnergy"),
     ))
+    result["miningMode"] = "legacy_tool"
     return result
+
+
+def primitive_mine_batch(ore, site, args, handle, start_player=None):
+    player = start_player or observe()
+    started = time.monotonic()
+    total_ticks = 0
+    rounds = 0
+    last_result = {"success": True, "player": player, "batchStatus": "not_started", "batchTicks": 0}
+    while total_ticks < int(args.mine_max_ticks):
+        player = observe()
+        if int(player.get("freeInventorySlots", 0) or 0) < 1:
+            last_result = {"success": True, "player": player, "batchStatus": "inventory_full"}
+            break
+        find_result = call_tool("find_nearest_rock", {
+            "resource": ore,
+            "maxDistance": int(site["rockScanDistance"]),
+            "reachable": True,
+        })
+        if not find_result.get("success"):
+            if not args.wait_for_local_respawn:
+                last_result = find_result
+                last_result["player"] = player
+                last_result["batchStatus"] = "blocked"
+                break
+            wait_ticks = min(6, max(1, int(args.mine_max_ticks) - total_ticks))
+            wait_result = call_tool("wait_ticks", {"ticks": wait_ticks})
+            player = player_from(wait_result)
+            total_ticks += wait_ticks
+            write_event(handle, "primitive_mine_wait", {
+                "ore": ore,
+                "siteId": site["id"],
+                "ticks": wait_ticks,
+                "message": find_result.get("message"),
+                "player": compact_player(player),
+            })
+            last_result = wait_result
+            last_result["batchStatus"] = "waiting_for_respawn"
+            continue
+        obj = find_result.get("object") or {}
+        interact_result = call_tool("interact_object", {
+            "objectId": obj.get("objectId"),
+            "x": obj.get("x"),
+            "y": obj.get("y"),
+            "option": "first",
+        })
+        wait_ticks = min(40, max(1, int(args.mine_max_ticks) - total_ticks))
+        wait_result = call_tool("wait_until_idle", {
+            "maxTicks": wait_ticks,
+            "movement": True,
+            "skilling": True,
+            "combat": False,
+        })
+        player = player_from(wait_result)
+        used_ticks = int(wait_result.get("batchTicks", wait_ticks) or wait_ticks)
+        total_ticks += max(1, used_ticks)
+        rounds += 1
+        last_result = wait_result
+        last_result["player"] = player
+        last_result["batchStatus"] = wait_result.get("batchStatus", "round_complete")
+        write_event(handle, "primitive_mine_round", {
+            "ore": ore,
+            "siteId": site["id"],
+            "round": rounds,
+            "object": obj,
+            "interactSuccess": bool(interact_result.get("success")),
+            "waitStatus": wait_result.get("batchStatus"),
+            "player": compact_player(player),
+        })
+        if not interact_result.get("success", False) or not wait_result.get("success", False):
+            last_result["batchStatus"] = "blocked"
+            break
+        if int(player.get("freeInventorySlots", 0) or 0) < 1:
+            last_result["batchStatus"] = "inventory_full"
+            break
+    else:
+        last_result["batchStatus"] = "max_ticks_reached"
+    elapsed = round(time.monotonic() - started, 3)
+    last_result["success"] = bool(last_result.get("success", True))
+    last_result["batchTicks"] = total_ticks
+    last_result["miningMode"] = "primitive_script"
+    write_event(handle, "mine_batch", {
+        "ore": ore,
+        "siteId": site["id"],
+        "payload": {
+            "ore": ore,
+            "maxDistance": int(site["rockScanDistance"]),
+            "maxTicks": int(args.mine_max_ticks),
+            "mode": "primitive_script",
+        },
+        "success": bool(last_result.get("success")),
+        "batchStatus": last_result.get("batchStatus"),
+        "elapsedSeconds": elapsed,
+        "runDelta": run_delta(compact_player(start_player) if start_player else None, compact_player(last_result["player"])),
+        "player": compact_player(last_result["player"]),
+        "message": last_result.get("message"),
+    })
+    log("mined {} mode=primitive status={} level={} xp={} freeSlots={} hp={} run={}".format(
+        ore,
+        last_result.get("batchStatus"),
+        mining_level(last_result["player"]),
+        mining_xp(last_result["player"]),
+        last_result["player"].get("freeInventorySlots"),
+        last_result["player"].get("hitpoints"),
+        last_result["player"].get("runEnergy"),
+    ))
+    return last_result
+
+
+def mine_batch(ore, site, args, handle, start_player=None):
+    if args.legacy_mining_tool:
+        return legacy_mine_batch(ore, site, args, handle, start_player)
+    try:
+        return primitive_mine_batch(ore, site, args, handle, start_player)
+    except RuntimeError as exc:
+        if not args.legacy_mining_fallback:
+            raise
+        text = str(exc)
+        primitive_missing = (
+            "Unknown RuneScape agent tool" in text
+            or "find_nearest_rock" in text
+            or "interact_object" in text
+            or "wait_until_idle" in text
+        )
+        if not primitive_missing:
+            raise
+        write_event(handle, "primitive_mining_fallback", {"ore": ore, "error": text})
+        return legacy_mine_batch(ore, site, args, handle, start_player)
 
 
 def bank_ores(player, site, ores, args, handle):
@@ -901,6 +1029,10 @@ def main(argv=None):
     parser.add_argument("--wait-for-local-respawn", action="store_true", default=True)
     parser.add_argument("--no-wait-for-local-respawn", dest="wait_for_local_respawn", action="store_false")
     parser.add_argument("--mine-max-ticks", type=int, default=250)
+    parser.add_argument("--legacy-mining-tool", action="store_true",
+                        help="Use the legacy server-side mine_ore_until_inventory_full tool instead of primitive object interaction.")
+    parser.add_argument("--legacy-mining-fallback", action=argparse.BooleanOptionalAction, default=True,
+                        help="Fallback to the legacy mining tool when primitive bridge tools are missing on a stale runtime.")
     parser.add_argument("--max-batches-per-leg", type=int, default=8)
     parser.add_argument("--max-walk-distance", type=int, default=48)
     parser.add_argument("--route-max-ticks", type=int, default=180)

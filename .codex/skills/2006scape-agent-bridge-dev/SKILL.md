@@ -13,30 +13,34 @@ Other agents may be using the game. Do not restart the server/client, kill proce
 
 Keep tools server-authoritative. HTTP handlers must not mutate gameplay directly; queue or execute through `AgentActionService`, which runs against the claimed player and existing game mechanics.
 
+Prefer a primitive-first bridge boundary. New gameplay strategies should usually be Python scripts that compose stable primitives such as `use_item_on_item`, `use_item_on_object`, `click_interface_button`, `select_interface_item`, `interact_object`, `interact_npc`, movement, wait, bank, shop, and combat tools. Add Java only when the bridge is missing a reusable gameplay input primitive; do not add a new bespoke Java tool for each skill loop.
+
 Never print or copy bridge tokens. Use `agent-navigation/tools/rs-tool.sh` for live proof.
 
 ## Main Files
 
 - `2006Scape Server/src/main/java/com/rs2/agent/AgentBridgeServer.java`: local HTTP bridge, health, session claim, and tool endpoint.
 - `2006Scape Server/src/main/java/com/rs2/agent/AgentSessionManager.java`: nonce/session ownership and token validation.
-- `2006Scape Server/src/main/java/com/rs2/agent/AgentActionService.java`: batch tools, durable goals, tick-aware action orchestration.
-- `2006Scape Server/src/main/java/com/rs2/agent/AgentToolService.java`: immediate tool handlers and `observe_state`.
+- `2006Scape Server/src/main/java/com/rs2/agent/AgentActionService.java`: tick-aware action queue, movement/wait batches, and legacy compatibility batches.
+- `2006Scape Server/src/main/java/com/rs2/agent/AgentToolService.java`: immediate primitive handlers, legacy tool handlers, and `observe_state`.
 - `2006Scape Server/src/main/java/com/rs2/agent/AgentKnowledgeBase.java`: built-in landmarks and static gameplay knowledge.
 - `2006Scape Client/src/main/java/CodexAppServerClient.java`: dynamic tool metadata and prompt text exposed to Codex.
 - `2006Scape Client/src/main/java/AgentClientController.java` and `AgentBridgeHttpClient.java`: client-side `/agent` control and claim communication.
 
 ## Tool-Change Checklist
 
-When adding or changing an `rs.*` tool:
+When adding or changing an `rs.*` primitive:
 
 1. Define or update the tool metadata in `CodexAppServerClient.java`.
 2. Route the server-side tool name in `AgentToolService` or `AgentActionService`.
-3. Use existing mechanics such as `PlayerAssistant.playerWalk`, `CombatAssistant.attackNpc`, `ClickObject`, Mining, Woodcutting, shops, banking, or dialogue handlers.
+3. Use existing mechanics such as `PlayerAssistant.playerWalk`, `CombatAssistant.attackNpc`, `ClickObject`, `NpcActions`, `UseItem`, shops, banking, or dialogue/interface/item handlers.
 4. Preserve session scoping: reject offline, disconnected, dead, expired-token, and wrong-player sessions.
 5. Return a useful JSON result with `success`, a concise message, and state when it helps the next decision.
 6. Add or update focused tests when behavior is shared, risky, or has already regressed.
 
-Prefer batch tools for long-running actions. `walk_to_tile_until_arrived`, `travel_to_landmark_until_arrived`, `mine_ore_until_inventory_full`, `chop_tree_until_inventory_full`, `wait_until_idle`, and durable goal tools exist to avoid one-tick polling. When observing an already-running batch command from a terminal session, estimate the likely completion interval and wait near that duration instead of polling every few seconds.
+Prefer external scripts for skill loops. Keep `mine_ore_until_inventory_full`, `chop_tree_until_inventory_full`, `fletch_logs_until_inventory_empty`, `fish_food`, `cook_food`, `light_fire`, `smelt_bar`, `smith_item`, `train_combat`, and other legacy tools working, but use them as compatibility tools behind primitive-backed scripts. See `agent-navigation/scripting-primitives.md` for the current boundary.
+
+Prefer batch or wait primitives for long-running actions. `walk_to_tile_until_arrived`, `travel_to_landmark_until_arrived`, `wait_until_idle`, and compatibility batch tools exist to avoid one-tick polling. When observing an already-running command from a terminal session, estimate the likely completion interval and wait near that duration instead of polling every few seconds.
 
 ## Validation
 

@@ -253,14 +253,14 @@
     },
     {
       "id": "lumbridge_courtyard_to_tree_stand",
-      "name": "Lumbridge Courtyard to Tree Stand",
+      "name": "Lumbridge Courtyard to West Tree Stand",
       "from": "lumbridge_castle_courtyard",
       "to": "lumbridge_tree_stand",
-      "status": "derived-from-existing-landmark",
-      "confidence": 0.78,
+      "status": "needs-verification",
+      "confidence": 0.68,
       "bidirectional": true,
-      "source": "AgentKnowledgeBase.lumbridge trees",
-      "summary": "Short woodcutting route from Lumbridge courtyard to nearby trees.",
+      "source": "context-map correction, 2026-05-25",
+      "summary": "Short woodcutting route from Lumbridge courtyard to the west-of-castle tree patch, avoiding east/inside-wall tree targets.",
       "tags": [
         "lumbridge",
         "woodcutting",
@@ -296,28 +296,39 @@
           "instruction": "Start from Lumbridge courtyard."
         },
         {
-          "order": 2,
-          "type": "walk",
-          "to": {
-            "x": 3233,
-            "y": 3229,
-            "height": 0
+            "order": 2,
+            "type": "walk",
+            "to": {
+              "x": 3218,
+              "y": 3230,
+              "height": 0
+            },
+            "instruction": "Move north-west around the castle."
           },
-          "instruction": "Move north-east toward the trees."
-        },
-        {
-          "order": 3,
-          "type": "walk",
-          "to": {
-            "x": 3233,
-            "y": 3233,
-            "height": 0
+          {
+            "order": 3,
+            "type": "walk",
+            "to": {
+              "x": 3209,
+              "y": 3243,
+              "height": 0
+            },
+            "instruction": "Pass the west resource patch near the oak stand."
           },
-          "instruction": "Arrive at the tree stand and observe tree/object availability."
-        }
+          {
+            "order": 4,
+            "type": "walk",
+            "to": {
+              "x": 3205,
+              "y": 3248,
+              "height": 0
+            },
+            "instruction": "Arrive at the west tree stand and observe tree/object availability before chopping."
+          }
       ],
       "evidence": [
-        "obs_2026_05_24_mrflame_lumbridge_tree_area"
+        "obs_2026_05_24_mrflame_lumbridge_tree_area",
+        "context_map_2026_05_25_lumbridge_west_tree_anchor"
       ]
     },
     {
@@ -620,11 +631,11 @@
       "name": "Lumbridge Courtyard to Al Kharid Furnace",
       "from": "lumbridge_castle_courtyard",
       "to": "al_kharid_furnace",
-      "status": "needs-verification",
-      "confidence": 0.58,
+      "status": "learned-partial",
+      "confidence": 0.76,
       "bidirectional": false,
       "source": "AgentKnowledgeBase.alKharidFurnaceRoute and AgentToolService gate handling",
-      "summary": "Route to the Al Kharid furnace through the toll gate. Needs live confirmation of the gate interaction and dialogue state.",
+      "summary": "Route to the Al Kharid furnace through the toll gate. The gate payment/dialogue transition is live-proven; the furnace waypoint settled at 3275,3186 instead of exact 3274,3186 during the bank trip.",
       "tags": [
         "al-kharid",
         "furnace",
@@ -638,7 +649,7 @@
       },
       "requirements": {
         "minCombatLevel": 3,
-        "minFood": 1,
+        "minFood": 0,
         "items": [],
         "coins": 10
       },
@@ -647,7 +658,7 @@
         "avoidHazards": [
           "al_kharid_gate_toll"
         ],
-        "notes": "Primary blocker is the toll gate. Do not continue if coins are missing."
+        "notes": "Toll gate requires 10 carried coins. Click Gate 2882 from 3267,3227, continue dialogue, select option 1 to pay, continue dialogue, then prove arrival east of the gate."
       },
       "steps": [
         {
@@ -688,7 +699,46 @@
             "y": 3227,
             "height": 0
           },
-          "instruction": "Pay the 10 coin toll or use the gate object through normal gate handling."
+          "objectId": 2882,
+          "objectName": "Gate",
+          "instruction": "Click the gate, continue the toll dialogue, select option 1 to pay 10 coins, then continue the final dialogue.",
+          "transitionProof": {
+            "preTile": {
+              "x": 3267,
+              "y": 3227,
+              "height": 0
+            },
+            "objectTile": {
+              "x": 3268,
+              "y": 3227,
+              "height": 0
+            },
+            "postTile": {
+              "x": 3269,
+              "y": 3227,
+              "height": 0
+            },
+            "dialogue": [
+              {
+                "action": "continue_dialogue",
+                "fromNextChat": 1019,
+                "toNextChat": 1020
+              },
+              {
+                "action": "select_dialogue_option",
+                "option": 1,
+                "fromDialogueAction": 502,
+                "toNextChat": 1027
+              },
+              {
+                "action": "continue_dialogue",
+                "fromNextChat": 1027,
+                "toNextChat": 0
+              }
+            ],
+            "coinCost": 10,
+            "evidence": "Live normal-gameplay proof on 2026-05-25: coins 2150->2140 and post-tile 3269,3227,0."
+          }
         },
         {
           "order": 5,
@@ -704,14 +754,20 @@
           "order": 6,
           "type": "walk",
           "to": {
-            "x": 3274,
+            "x": 3275,
             "y": 3186,
             "height": 0
           },
-          "instruction": "Arrive at the furnace and observe before smelting."
+          "instruction": "Arrive at the furnace road tile; exact 3274,3186 may settle at 3275,3186."
         }
       ],
-      "evidence": [],
+      "evidence": [
+        {
+          "date": "2026-05-25",
+          "status": "learned-partial",
+          "summary": "Normal gameplay reached the east side of Gate 2882 by paying 10 coins through dialogue, then reached 3275,3186 while routing toward Al Kharid bank. The exact furnace target 3274,3186 oscillated and should be normalized to the reached tile for routing."
+        }
+      ],
       "knownBlockers": [
         {
           "tile": {
@@ -720,8 +776,8 @@
             "height": 0
           },
           "kind": "toll-gate",
-          "status": "needs-live-confirmation",
-          "notes": "Requires 10 carried coins in the current tool implementation."
+          "status": "resolved-live-tested",
+          "notes": "Requires 10 carried coins and the dialogue sequence recorded in step 4."
         }
       ]
     },
@@ -730,11 +786,11 @@
       "name": "Lumbridge Courtyard to Al Kharid Bank",
       "from": "lumbridge_castle_courtyard",
       "to": "al_kharid_bank",
-      "status": "needs-verification",
-      "confidence": 0.55,
+      "status": "verified",
+      "confidence": 0.86,
       "bidirectional": false,
       "source": "AgentKnowledgeBase.alKharidBankRoute and AgentToolService gate handling",
-      "summary": "Route to Al Kharid bank through the toll gate, extending the furnace route south to the bank.",
+      "summary": "Verified normal-gameplay route to Al Kharid bank through the toll gate. Gate 2882 requires a 10-coin dialogue payment before stepping east.",
       "tags": [
         "al-kharid",
         "bank",
@@ -747,7 +803,7 @@
       },
       "requirements": {
         "minCombatLevel": 3,
-        "minFood": 1,
+        "minFood": 0,
         "items": [],
         "coins": 10
       },
@@ -756,7 +812,7 @@
         "avoidHazards": [
           "al_kharid_gate_toll"
         ],
-        "notes": "Do not try this route without 10 coins until an alternate unlock is recorded."
+        "notes": "Toll gate requires 10 carried coins. Al-Kharid warriors were nearby at the bank but observed non-aggressive during this proof."
       },
       "steps": [
         {
@@ -787,17 +843,56 @@
             "y": 3227,
             "height": 0
           },
-          "instruction": "Pay the toll or handle the gate through normal object interaction."
+          "objectId": 2882,
+          "objectName": "Gate",
+          "instruction": "Click the gate, continue the toll dialogue, select option 1 to pay 10 coins, then continue the final dialogue.",
+          "transitionProof": {
+            "preTile": {
+              "x": 3267,
+              "y": 3227,
+              "height": 0
+            },
+            "objectTile": {
+              "x": 3268,
+              "y": 3227,
+              "height": 0
+            },
+            "postTile": {
+              "x": 3269,
+              "y": 3227,
+              "height": 0
+            },
+            "dialogue": [
+              {
+                "action": "continue_dialogue",
+                "fromNextChat": 1019,
+                "toNextChat": 1020
+              },
+              {
+                "action": "select_dialogue_option",
+                "option": 1,
+                "fromDialogueAction": 502,
+                "toNextChat": 1027
+              },
+              {
+                "action": "continue_dialogue",
+                "fromNextChat": 1027,
+                "toNextChat": 0
+              }
+            ],
+            "coinCost": 10,
+            "evidence": "Live normal-gameplay proof on 2026-05-25: coins 2150->2140 and post-tile 3269,3227,0."
+          }
         },
         {
           "order": 4,
           "type": "walk",
           "to": {
-            "x": 3274,
+            "x": 3275,
             "y": 3186,
             "height": 0
           },
-          "instruction": "Use the furnace as a safe intermediate landmark."
+          "instruction": "Use the furnace-road settlement tile as a safe intermediate landmark."
         },
         {
           "order": 5,
@@ -820,7 +915,13 @@
           "instruction": "Arrive at Al Kharid bank."
         }
       ],
-      "evidence": []
+      "evidence": [
+        {
+          "date": "2026-05-25",
+          "status": "verified",
+          "summary": "Live route from Lumbridge courtyard to Al Kharid bank used Gate 2882 at 3268,3227 from west tile 3267,3227, paid 10 coins through dialogue option 1, stepped to 3269,3227, reached 3275,3186, then reached Al Kharid bank 3269,3167 with HP 10 and no combat."
+        }
+      ]
     },
     {
       "id": "al_kharid_furnace_to_bank",

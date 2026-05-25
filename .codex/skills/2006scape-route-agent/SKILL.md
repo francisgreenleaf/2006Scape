@@ -13,6 +13,7 @@ Use this skill for local exploration and route-learning work in `/Users/kevin/Do
 - Use `2006scape-frontier-exploration` for live unknown-area expansion, short probes, frontier naming, and hazard/death evidence.
 - Use `2006scape-object-transitions` for doors, gates, ladders, trapdoors, stairs, ships, portals, member gates, or any object-chain blocker.
 - Use `2006scape-screenshot-capture` when API state is insufficient and compact visual proof is needed.
+- Use `2006scape-character-memory` when a route session reveals a durable character-specific preference, recurring blocker, or future goal. Do not put route graph facts there.
 
 ## Routine observe
 
@@ -94,6 +95,8 @@ After evidence-backed DB edits, run `validate` and `self-test`.
 Record useful observations with player tile, HP, run energy, combat state, food, relevant NPC/object details, route/place, and screenshot path/resolution when used.
 
 Passive server telemetry is the default source for route graph learning when the running build includes `AgentPassiveTraceLog`. It writes authoritative movement/activity events without an AI poll loop to `2006Scape Server/data/logs/player-movement-traces/`. `navdb.py`, `router.py`, and movement topology renderers now use that passive stream by default, drop stationary idle `state` heartbeats from route/map inputs, and exclude duplicate agent batch / legacy fallback polling traces unless explicitly opted in. Use `agent-navigation/tools/route_recorder.py` only as a fallback/dev supplement for older runtimes or extra NPC snapshots, and do not leave it running during normal passive telemetry sessions. The fallback recorder refuses to start when recent passive telemetry exists unless explicitly forced for debugging.
+
+Intentional character memories and goals live separately from route data under `agent-navigation/.local/character-memory/<profile>/`. Use `character_memory.py` for sparse strategic notes like "avoid this training loop without more food" or "upgrade the axe before long fletching," not for path tiles, object ids, or route verification evidence.
 
 Use `runtime_doctor.py` for fallback recorder control:
 

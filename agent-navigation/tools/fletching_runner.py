@@ -30,6 +30,21 @@ KNIFE_ID = 946
 LOG_IDS = {1511: "Tree", 1521: "Oak", 1519: "Willow", 1517: "Maple", 1515: "Yew", 1513: "Magic"}
 FLETCHING_PRODUCT_IDS = {52, 50, 48, 54, 56, 60, 58, 64, 62, 68, 66, 72, 70}
 BIRD_NEST_IDS = {5070, 5071, 5072, 5073, 5074, 5075, 7413}
+FLETCHING_CHOICES = [
+    {"logId": 1511, "productId": 52, "level": 1, "xp": 5.0, "makeAllButtonId": 34182},
+    {"logId": 1511, "productId": 50, "level": 5, "xp": 5.0, "makeAllButtonId": 34186},
+    {"logId": 1511, "productId": 48, "level": 10, "xp": 10.0, "makeAllButtonId": 34190},
+    {"logId": 1521, "productId": 54, "level": 20, "xp": 16.5, "makeAllButtonId": 34167},
+    {"logId": 1521, "productId": 56, "level": 25, "xp": 25.0, "makeAllButtonId": 34171},
+    {"logId": 1519, "productId": 60, "level": 35, "xp": 33.3, "makeAllButtonId": 34167},
+    {"logId": 1519, "productId": 58, "level": 40, "xp": 41.5, "makeAllButtonId": 34171},
+    {"logId": 1517, "productId": 64, "level": 50, "xp": 50.0, "makeAllButtonId": 34167},
+    {"logId": 1517, "productId": 62, "level": 55, "xp": 58.3, "makeAllButtonId": 34171},
+    {"logId": 1515, "productId": 68, "level": 65, "xp": 67.5, "makeAllButtonId": 34167},
+    {"logId": 1515, "productId": 66, "level": 70, "xp": 70.0, "makeAllButtonId": 34171},
+    {"logId": 1513, "productId": 72, "level": 80, "xp": 83.25, "makeAllButtonId": 34167},
+    {"logId": 1513, "productId": 70, "level": 85, "xp": 91.5, "makeAllButtonId": 34171},
+]
 
 
 def utc_now():
@@ -186,6 +201,216 @@ def choose_tree(player, requested):
     return "Tree"
 
 
+def best_fletching_choice(player):
+    level = compact_player(player)["fletchingLevel"]
+    available = []
+    for choice in FLETCHING_CHOICES:
+        if choice["level"] > level:
+            continue
+        if count_inventory_item(player, choice["logId"]) < 1:
+            continue
+        available.append(choice)
+    if not available:
+        return None
+    available.sort(key=lambda choice: (-choice["xp"], -choice["level"], choice["productId"]))
+    return available[0]
+
+
+def fletching_target_reached(player, args):
+    return args.target_fletching_level > 0 and compact_player(player)["fletchingLevel"] >= args.target_fletching_level
+
+
+def legacy_fletch_until_empty(args, target_level=True):
+    payload = {"maxTicks": args.fletch_ticks}
+    if target_level:
+        payload["targetFletchingLevel"] = args.target_fletching_level
+    result = call_tool("fletch_logs_until_inventory_empty", payload)
+    result["fletchingMode"] = "legacy_tool"
+    return result
+
+
+def primitive_fletch_until_empty(player, args, handle, reason):
+    total_ticks = 0
+    rounds = 0
+    last_result = {"success": True, "player": player, "batchStatus": "not_started", "batchTicks": 0}
+    while rounds < 8 and total_ticks < args.fletch_ticks:
+        rounds += 1
+        player = observe()
+        if fletching_target_reached(player, args):
+            last_result = {"success": True, "player": player, "batchStatus": "target_level_reached"}
+            break
+        if fletchable_log_count(player) < 1:
+            last_result = {"success": True, "player": player, "batchStatus": "inventory_empty"}
+            break
+        choice = best_fletching_choice(player)
+        if choice is None:
+            last_result = {
+                "success": False,
+                "message": "No fletchable logs are available for the current level.",
+                "player": player,
+                "batchStatus": "blocked",
+            }
+            break
+        use_result = call_tool("use_item_on_item", {
+            "itemId": KNIFE_ID,
+            "targetItemId": choice["logId"],
+        })
+        button_result = call_tool("click_interface_button", {
+            "buttonId": choice["makeAllButtonId"],
+        })
+        wait_ticks = max(1, min(250, args.fletch_ticks - total_ticks))
+        wait_result = call_tool("wait_until_idle", {
+            "maxTicks": wait_ticks,
+            "movement": True,
+            "skilling": True,
+            "combat": False,
+        })
+        player = wait_result.get("player") or button_result.get("player") or use_result.get("player") or player
+        total_ticks += int(wait_result.get("batchTicks", wait_ticks) or wait_ticks)
+        last_result = wait_result
+        last_result["player"] = player
+        last_result["fletchingMode"] = "primitive_script"
+        last_result["fletchingChoice"] = dict(choice)
+        write_event(handle, "primitive_fletch_round", {
+            "reason": reason,
+            "round": rounds,
+            "choice": choice,
+            "useSuccess": bool(use_result.get("success")),
+            "buttonSuccess": bool(button_result.get("success")),
+            "waitStatus": wait_result.get("batchStatus"),
+            "player": compact_player(player),
+            "logs": fletchable_log_count(player),
+            "products": product_count(player),
+        })
+        if not wait_result.get("success", False):
+            last_result["batchStatus"] = wait_result.get("batchStatus", "blocked")
+            break
+        if fletching_target_reached(player, args):
+            last_result["batchStatus"] = "target_level_reached"
+            break
+        if fletchable_log_count(player) < 1:
+            last_result["batchStatus"] = "inventory_empty"
+            break
+    last_result["batchTicks"] = total_ticks
+    if "batchStatus" not in last_result:
+        last_result["batchStatus"] = "max_ticks_reached" if total_ticks >= args.fletch_ticks else "complete"
+    return last_result
+
+
+def fletch_until_empty(player, args, handle, reason):
+    if args.legacy_fletch_tool:
+        return legacy_fletch_until_empty(args)
+    try:
+        return primitive_fletch_until_empty(player, args, handle, reason)
+    except RuntimeError as exc:
+        if not args.legacy_fletch_fallback:
+            raise
+        text = str(exc)
+        primitive_missing = (
+            "Unknown RuneScape agent tool" in text
+            or "use_item_on_item" in text
+            or "click_interface_button" in text
+        )
+        if not primitive_missing:
+            raise
+        write_event(handle, "primitive_fletch_fallback", {"reason": reason, "error": text})
+        return legacy_fletch_until_empty(args)
+
+
+def legacy_chop_until_inventory_full(tree, args):
+    result = call_tool("chop_tree_until_inventory_full", {
+        "tree": tree,
+        "maxDistance": args.tree_max_distance,
+        "maxTicks": args.chop_ticks,
+    })
+    result["woodcuttingMode"] = "legacy_tool"
+    return result
+
+
+def primitive_chop_until_inventory_full(tree, args, handle, reason):
+    total_ticks = 0
+    rounds = 0
+    player = observe()
+    last_result = {"success": True, "player": player, "batchStatus": "not_started", "batchTicks": 0}
+    while total_ticks < args.chop_ticks:
+        player = observe()
+        if int(player.get("freeInventorySlots", 0) or 0) < 1:
+            last_result = {"success": True, "player": player, "batchStatus": "inventory_full"}
+            break
+        find_result = call_tool("find_nearest_tree", {
+            "tree": tree,
+            "maxDistance": args.tree_max_distance,
+            "reachable": True,
+        })
+        if not find_result.get("success"):
+            last_result = find_result
+            last_result["player"] = player
+            last_result["batchStatus"] = "blocked"
+            break
+        obj = find_result.get("object") or {}
+        interact_result = call_tool("interact_object", {
+            "objectId": obj.get("objectId"),
+            "x": obj.get("x"),
+            "y": obj.get("y"),
+            "option": "first",
+        })
+        wait_ticks = min(40, max(1, args.chop_ticks - total_ticks))
+        wait_result = call_tool("wait_until_idle", {
+            "maxTicks": wait_ticks,
+            "movement": True,
+            "skilling": True,
+            "combat": False,
+        })
+        player = wait_result.get("player") or interact_result.get("player") or player
+        total_ticks += max(1, int(wait_result.get("batchTicks", wait_ticks) or wait_ticks))
+        rounds += 1
+        last_result = wait_result
+        last_result["player"] = player
+        last_result["batchStatus"] = wait_result.get("batchStatus", "round_complete")
+        write_event(handle, "primitive_chop_round", {
+            "reason": reason,
+            "round": rounds,
+            "tree": tree,
+            "object": obj,
+            "interactSuccess": bool(interact_result.get("success")),
+            "waitStatus": wait_result.get("batchStatus"),
+            "player": compact_player(player),
+            "logs": fletchable_log_count(player),
+        })
+        if not interact_result.get("success", False) or not wait_result.get("success", False):
+            last_result["batchStatus"] = "blocked"
+            break
+        if int(player.get("freeInventorySlots", 0) or 0) < 1:
+            last_result["batchStatus"] = "inventory_full"
+            break
+    else:
+        last_result["batchStatus"] = "max_ticks_reached"
+    last_result["batchTicks"] = total_ticks
+    last_result["woodcuttingMode"] = "primitive_script"
+    return last_result
+
+
+def chop_until_inventory_full(tree, args, handle, reason):
+    if args.legacy_chop_tool:
+        return legacy_chop_until_inventory_full(tree, args)
+    try:
+        return primitive_chop_until_inventory_full(tree, args, handle, reason)
+    except RuntimeError as exc:
+        if not args.legacy_chop_fallback:
+            raise
+        text = str(exc)
+        primitive_missing = (
+            "Unknown RuneScape agent tool" in text
+            or "find_nearest_tree" in text
+            or "interact_object" in text
+            or "wait_until_idle" in text
+        )
+        if not primitive_missing:
+            raise
+        write_event(handle, "primitive_chop_fallback", {"reason": reason, "tree": tree, "error": text})
+        return legacy_chop_until_inventory_full(tree, args)
+
+
 def ensure_run(player, min_energy, handle):
     before = compact_player(player)
     if before["runEnabled"] or before["runEnergy"] < min_energy:
@@ -201,9 +426,12 @@ def ensure_axe_equipped(player, handle):
     axe_id = inventory_axe_id(player)
     if axe_id is None:
         raise RuntimeError("No axe found in inventory or equipment.")
-    result = call_tool("equip_item", {"itemId": axe_id})
-    write_event(handle, "equip_axe", {"itemId": axe_id, "after": compact_player(result["player"])})
-    return result["player"]
+    write_event(handle, "axe_available", {
+        "itemId": axe_id,
+        "location": "inventory",
+        "player": compact_player(player),
+    })
+    return player
 
 
 def ensure_knife(player):
@@ -240,8 +468,6 @@ def pickup_nearby_bird_nests(args, handle, reason):
     for attempt in range(max(1, args.nest_pickup_attempts)):
         state = observe_state()
         player = state.get("player") or player
-        if bird_nest_count(player) > 0:
-            break
         nests = ground_bird_nests(state)
         if not nests:
             break
@@ -253,23 +479,28 @@ def pickup_nearby_bird_nests(args, handle, reason):
                 "player": compact_player(player),
             })
             break
+        before_count = bird_nest_count(player)
         result = call_tool("pickup_ground_item", {
             "itemIds": sorted(BIRD_NEST_IDS),
             "maxDistance": args.nest_pickup_distance,
         })
         player = result.get("player") or player
         moved = int(result.get("pickedUp", 0) or 0)
+        after_count = bird_nest_count(player)
         write_event(handle, "bird_nest_pickup_attempt", {
             "reason": reason,
             "attempt": attempt + 1,
             "message": result.get("message"),
             "pickedUp": moved,
+            "beforeCount": before_count,
+            "afterCount": after_count,
             "player": compact_player(player),
         })
         picked += moved
-        if moved > 0 or bird_nest_count(player) > 0:
+        if int(player.get("freeInventorySlots", 0) or 0) <= 0:
             break
-        call_tool("wait_until_idle", {"maxTicks": 20, "movement": True, "skilling": False})
+        if moved <= 0 and after_count <= before_count:
+            call_tool("wait_until_idle", {"maxTicks": 20, "movement": True, "skilling": False})
     if picked > 0:
         log("picked up bird nest x{}".format(picked), args, force=True)
     return player
@@ -349,9 +580,15 @@ def sell_products(args, handle, reason):
     })
     player = close_interfaces_if_needed(sold["player"], handle, "after_sell")
     if args.bank_coins and count_inventory_item(player, 995) > 0:
-        if args.bank:
-            route_to(args.bank, args, handle, "bank_sale_coins")
-            player = observe()
+        if not args.bank:
+            write_event(handle, "bank_coins_deferred", {
+                "reason": reason,
+                "coins": count_inventory_item(player, 995),
+                "player": compact_player(player),
+            })
+            return player
+        route_to(args.bank, args, handle, "bank_sale_coins")
+        player = observe()
         deposited = call_tool("deposit_inventory_items", {
             "itemIds": [995],
             "amount": count_inventory_item(player, 995),
@@ -368,9 +605,16 @@ def sell_products(args, handle, reason):
 def bank_bird_nests_if_needed(player, args, handle, reason):
     if bird_nest_count(player) < 1:
         return player
-    if args.bank:
-        route_to(args.bank, args, handle, "bank_bird_nests")
-        player = observe()
+    if not args.bank:
+        write_event(handle, "bank_bird_nests_deferred", {
+            "reason": reason,
+            "count": bird_nest_count(player),
+            "player": compact_player(player),
+        })
+        log("carrying bird nest until next bank trip", args, force=True)
+        return player
+    route_to(args.bank, args, handle, "bank_bird_nests")
+    player = observe()
     deposited = call_tool("deposit_inventory_items", {
         "itemIds": sorted(BIRD_NEST_IDS),
         "amount": bird_nest_count(player),
@@ -384,23 +628,48 @@ def bank_bird_nests_if_needed(player, args, handle, reason):
     return deposited["player"]
 
 
-def should_stop(player, args):
+def stop_reason(player, args):
     compact = compact_player(player)
-    return (
-        (args.target_woodcutting_level > 0 and compact["woodcuttingLevel"] >= args.target_woodcutting_level)
-        and (args.target_fletching_level > 0 and compact["fletchingLevel"] >= args.target_fletching_level)
-    )
+    if args.stop_at_bird_nests > 0 and bird_nest_count(player) >= args.stop_at_bird_nests:
+        return "bird_nests"
+    if args.stop_at_fletching_level > 0 and compact["fletchingLevel"] >= args.stop_at_fletching_level:
+        return "fletching_level"
+    if args.stop_at_woodcutting_level > 0 and compact["woodcuttingLevel"] >= args.stop_at_woodcutting_level:
+        return "woodcutting_level"
+    has_level_target = args.target_woodcutting_level > 0 or args.target_fletching_level > 0
+    woodcutting_reached = args.target_woodcutting_level <= 0 or compact["woodcuttingLevel"] >= args.target_woodcutting_level
+    fletching_reached = args.target_fletching_level <= 0 or compact["fletchingLevel"] >= args.target_fletching_level
+    if has_level_target and woodcutting_reached and fletching_reached:
+        return "target_levels"
+    return None
+
+
+def should_stop(player, args):
+    return stop_reason(player, args) is not None
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Run normal-gameplay woodcutting and fletching loops.")
     parser.add_argument("--target-woodcutting-level", type=int, default=50)
     parser.add_argument("--target-fletching-level", type=int, default=50)
+    parser.add_argument("--stop-at-woodcutting-level", type=int, default=0)
+    parser.add_argument("--stop-at-fletching-level", type=int, default=0)
+    parser.add_argument("--stop-at-bird-nests", type=int, default=0)
+    parser.add_argument("--stop-immediate", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--max-cycles", type=int, default=100)
     parser.add_argument("--tree", default="auto", help="Tree, Oak, Willow, or auto.")
+    parser.add_argument("--chop-anchor", default="", help="Route target to stand at before chopping, e.g. lumbridge_tree_stand.")
     parser.add_argument("--tree-max-distance", type=int, default=30)
     parser.add_argument("--chop-ticks", type=int, default=250)
     parser.add_argument("--fletch-ticks", type=int, default=250)
+    parser.add_argument("--legacy-fletch-tool", action="store_true",
+                        help="Use the legacy server-side fletch_logs_until_inventory_empty tool instead of primitives.")
+    parser.add_argument("--legacy-fletch-fallback", action=argparse.BooleanOptionalAction, default=True,
+                        help="Fall back to the legacy fletching tool if the live runtime has not been restarted with primitives.")
+    parser.add_argument("--legacy-chop-tool", action="store_true",
+                        help="Use the legacy server-side chop_tree_until_inventory_full tool instead of primitive object interaction.")
+    parser.add_argument("--legacy-chop-fallback", action=argparse.BooleanOptionalAction, default=True,
+                        help="Fall back to the legacy chop tool if the live runtime has not been restarted with primitives.")
     parser.add_argument("--min-run-energy", type=int, default=10)
     parser.add_argument("--run-reserve", default="auto")
     parser.add_argument("--route-max-batches", type=int, default=60)
@@ -441,6 +710,7 @@ def main(argv=None):
         write_event(handle, "observe", {"player": compact_player(player)})
         last_wc_level = compact_player(player)["woodcuttingLevel"]
         last_fletching_level = compact_player(player)["fletchingLevel"]
+        stopped_reason = None
 
         for cycle in range(1, args.max_cycles + 1):
             player = observe()
@@ -466,8 +736,9 @@ def main(argv=None):
             if compact["isDead"] or compact["isInCombat"]:
                 write_event(handle, "blocked", {"reason": "dead_or_combat", "player": compact})
                 return 2
-            if should_stop(player, args):
-                write_event(handle, "target_reached", {"player": compact})
+            stopped_reason = stop_reason(player, args)
+            if stopped_reason:
+                write_event(handle, "target_reached", {"reason": stopped_reason, "player": compact})
                 break
 
             ensure_knife(player)
@@ -476,17 +747,14 @@ def main(argv=None):
 
             if fletchable_log_count(player) > 0:
                 player = close_interfaces_if_needed(player, handle, "before_fletch")
-                fletch_args = {
-                    "maxTicks": args.fletch_ticks,
-                }
-                if compact_player(player)["fletchingLevel"] < args.target_fletching_level:
-                    fletch_args["targetFletchingLevel"] = args.target_fletching_level
-                result = call_tool("fletch_logs_until_inventory_empty", fletch_args)
+                result = fletch_until_empty(player, args, handle, "cycle")
                 player = result["player"]
                 player = pickup_nearby_bird_nests(args, handle, "after_fletch")
                 player = bank_bird_nests_if_needed(player, args, handle, "after_fletch")
                 write_event(handle, "fletch", {
                     "cycle": cycle,
+                    "mode": result.get("fletchingMode"),
+                    "choice": result.get("fletchingChoice"),
                     "batchStatus": result.get("batchStatus"),
                     "batchTicks": result.get("batchTicks"),
                     "player": compact_player(player),
@@ -504,17 +772,18 @@ def main(argv=None):
 
             tree = choose_tree(player, args.tree)
             player = close_interfaces_if_needed(player, handle, "before_chop")
-            result = call_tool("chop_tree_until_inventory_full", {
-                "tree": tree,
-                "maxDistance": args.tree_max_distance,
-                "maxTicks": args.chop_ticks,
-            })
+            if args.chop_anchor:
+                route_to(args.chop_anchor, args, handle, "chop_anchor")
+                player = observe()
+            result = chop_until_inventory_full(tree, args, handle, "cycle")
             player = result["player"]
             player = pickup_nearby_bird_nests(args, handle, "after_chop")
             player = bank_bird_nests_if_needed(player, args, handle, "after_chop")
             write_event(handle, "chop", {
                 "cycle": cycle,
                 "tree": tree,
+                "mode": result.get("woodcuttingMode"),
+                "chopAnchor": args.chop_anchor or None,
                 "batchStatus": result.get("batchStatus"),
                 "batchTicks": result.get("batchTicks"),
                 "player": compact_player(player),
@@ -526,18 +795,25 @@ def main(argv=None):
                 last_wc_level = current_wc
 
         player = observe()
+        if stopped_reason and args.stop_immediate:
+            write_event(handle, "done", {
+                "reason": stopped_reason,
+                "player": compact_player(player),
+                "runLog": str(run_path),
+            })
+            log("run log: {}".format(run_path), args, force=True)
+            return 0
         player = pickup_nearby_bird_nests(args, handle, "final_start")
         player = bank_bird_nests_if_needed(player, args, handle, "final_start")
         if fletchable_log_count(player) > 0:
             player = close_interfaces_if_needed(player, handle, "final_before_fletch")
-            result = call_tool("fletch_logs_until_inventory_empty", {
-                "maxTicks": args.fletch_ticks,
-                "targetFletchingLevel": args.target_fletching_level,
-            })
+            result = fletch_until_empty(player, args, handle, "final")
             player = result["player"]
             player = pickup_nearby_bird_nests(args, handle, "final_after_fletch")
             player = bank_bird_nests_if_needed(player, args, handle, "final_after_fletch")
             write_event(handle, "final_fletch", {
+                "mode": result.get("fletchingMode"),
+                "choice": result.get("fletchingChoice"),
                 "batchStatus": result.get("batchStatus"),
                 "batchTicks": result.get("batchTicks"),
                 "player": compact_player(player),

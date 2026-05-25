@@ -127,8 +127,10 @@ Navigation project:
 
 - Repo-local route memory lives in `agent-navigation/`.
 - For repo-side gameplay control, prefer `agent-navigation/tools/rs-tool.sh <tool> '<json-args>'`; it reads the active profile session file and posts to the local bridge.
+- For new gameplay automation, read `agent-navigation/scripting-primitives.md` and compose stable bridge primitives in Python instead of adding new bespoke Java `rs.*` tools. Keep Java changes for missing general primitives only.
 - Use `agent-navigation/tools/navdb.py validate`, `self-test`, `next-step`, `route-risk`, and `record-observation` while learning routes.
 - Use `agent-navigation/tools/script_registry.py search <query>` to find helper scripts by fuzzy name, wildcard, tag, or description before guessing filenames.
+- Use `agent-navigation/tools/character_memory.py show --profile <name> --json` at the start of long gameplay/progression turns when durable profile context could matter. Write sparse memories/goals only for noteworthy, future-useful lessons such as equipment upgrades, strategic preferences, or recurring blockers. The files are profile-scoped under ignored `agent-navigation/.local/character-memory/<profile>/`; route facts belong in `agent-navigation/data/`, and routine progress belongs in session logs.
 - Use `agent-navigation/tools/capture-client-screenshot.sh --prefix <short-reason>` when route state is visually ambiguous, especially doors, walls, gates, stairs, blocked movement, wrong side of an object, or unexpected HP/combat changes. Record useful screenshots through `record-observation --screenshot`.
 - Current focus: safe routing with hazards, food/combat checks, run-energy checks, and verified south Varrock movement around the dark-wizard approach.
 
@@ -164,6 +166,10 @@ Dynamic tools currently supported:
 - `rs.continue_dialogue`
 - `rs.select_dialogue_option`
 - `rs.close_interfaces`
+- `rs.use_item_on_item`
+- `rs.use_item_on_object`
+- `rs.click_interface_button`
+- `rs.select_interface_item`
 - `rs.walk_to_tile`
 - `rs.walk_to_tile_until_arrived`
 - `rs.travel_to_landmark`
@@ -172,6 +178,7 @@ Dynamic tools currently supported:
 - `rs.wait_until_idle`
 - `rs.find_nearest_npc`
 - `rs.find_training_npc`
+- `rs.interact_npc`
 - `rs.attack_npc`
 - `rs.train_combat`
 - `rs.train_smithing_profit`
@@ -194,6 +201,9 @@ Dynamic tools currently supported:
 - `rs.sell_inventory_items`
 - `rs.interact_object`
 - `rs.chop_tree`
+- `rs.chop_tree_until_inventory_full`
+- `rs.fletch_logs`
+- `rs.fletch_logs_until_inventory_empty`
 - `rs.drop_inventory_items`
 - `rs.deposit_inventory_items`
 - `rs.withdraw_bank_items`
@@ -204,12 +214,12 @@ Dynamic tools currently supported:
 - `rs.smith_item`
 - `rs.smith_best_item`
 - `rs.plan_smithing`
-- `rs.chop_tree_until_inventory_full`
 - `rs.cancel_current_action`
 
 Gameplay guardrails:
 
 - Keep actions server-authoritative and routed through existing mechanics such as `PlayerAssistant.playerWalk`, `CombatAssistant.attackNpc`, `ClickObject`, and `Mining.startMining`.
+- Prefer primitive-backed external scripts for new skill loops. Use `use_item_on_item`, `use_item_on_object`, `click_interface_button`, `select_interface_item`, `interact_object`, `interact_npc`, bank/shop tools, combat tools, and `wait_until_idle` before adding Java skill-specific tools. Existing legacy tools stay for compatibility.
 - Prefer server-side batch tools for long-running actions. Use `travel_to_landmark_until_arrived` or `walk_to_tile_until_arrived` instead of travel/walk plus repeated one-tick waits, `mine_ore_until_inventory_full` or `chop_tree_until_inventory_full` instead of polling per resource, and `wait_until_idle` after production actions such as smelting, smithing, cooking, fishing, or combat waits.
 - Treat a batch tool response as the next observation; do not immediately call `observe_state` unless the returned state is missing needed context. When waiting on a long-running batch command, estimate the likely completion interval from `maxTicks` or the action loop and poll near that time instead of every few seconds, unless combat, death, a blocker, or near-term completion is likely.
 - Do not add screen automation, admin teleports, item spawning, or direct player state edits for agent behavior.

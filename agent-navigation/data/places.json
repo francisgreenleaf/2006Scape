@@ -172,16 +172,18 @@
     },
     {
       "id": "lumbridge_tree_stand",
-      "name": "Lumbridge Tree Stand",
+      "name": "Lumbridge West Tree Stand",
       "aliases": [
+        "lumbridge west trees",
+        "west lumbridge trees",
         "lumbridge trees",
         "trees"
       ],
       "kind": "resource",
       "region": "lumbridge",
       "tile": {
-        "x": 3233,
-        "y": 3233,
+        "x": 3205,
+        "y": 3248,
         "height": 0
       },
       "arrivalRadius": 3,
@@ -194,7 +196,7 @@
         "risk": "low",
         "minCombatLevel": 3,
         "minFood": 0,
-        "notes": "Low-risk nearby trees. Check inventory space before long chopping loops."
+        "notes": "Low-risk west-of-castle trees. Prefer this over east/inside-wall tree targets to avoid long castle-wall detours."
       }
     },
     {

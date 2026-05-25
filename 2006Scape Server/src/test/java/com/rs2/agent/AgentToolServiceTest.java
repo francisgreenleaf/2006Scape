@@ -72,6 +72,15 @@ public class AgentToolServiceTest {
         assertFalse(AgentToolService.isRawCookableFood(315));
         assertTrue(AgentToolService.isFiremakingLog(1511));
         assertFalse(AgentToolService.isFiremakingLog(2132));
+        assertEquals(28, AgentToolService.cookingAmountForButton(53149));
+        assertEquals(0, AgentToolService.cookingAmountForButton(12345));
+    }
+
+    @Test
+    public void interfaceItemPrimitiveAllowsNormalSmithingSelectionWidgets() {
+        assertTrue(AgentToolService.isSmithingSelectionInterface(1119));
+        assertTrue(AgentToolService.isSmithingSelectionInterface(1123));
+        assertFalse(AgentToolService.isSmithingSelectionInterface(3900));
     }
 
     @Test
@@ -161,6 +170,15 @@ public class AgentToolServiceTest {
 
         assertFalse(AgentToolService.hasQueuedMovementAwayFromCurrent(42, 17, 0, 2, 4, queueX, queueY));
         assertTrue(AgentToolService.hasQueuedMovementAwayFromCurrent(42, 17, 0, 3, 4, queueX, queueY));
+    }
+
+    @Test
+    public void explicitWalkStepsMustBeCardinalAndAdjacent() {
+        assertTrue(AgentToolService.isAdjacentCardinalStep(3253, 3266, 3252, 3266));
+        assertTrue(AgentToolService.isAdjacentCardinalStep(3253, 3266, 3253, 3267));
+        assertFalse(AgentToolService.isAdjacentCardinalStep(3253, 3266, 3252, 3267));
+        assertFalse(AgentToolService.isAdjacentCardinalStep(3253, 3266, 3251, 3266));
+        assertFalse(AgentToolService.isAdjacentCardinalStep(3253, 3266, 3253, 3266));
     }
 
     @Test
