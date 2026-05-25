@@ -7,7 +7,7 @@ from types import SimpleNamespace
 from typing import Any, Dict, List
 
 from .common import utcnow, write_json
-from .paths import ARTIFACT_ROOT, ensure_artifact_dirs, timestamp_id
+from .paths import ARTIFACT_ROOT, ensure_artifact_dirs, portable_artifact_path, timestamp_id
 from .planner import rank_routes
 
 
@@ -102,7 +102,7 @@ def run_benchmark(args: SimpleNamespace) -> Dict[str, Any]:
     }
     output_dir = Path(args.output_dir).resolve() if args.output_dir else ARTIFACT_ROOT / "benchmarks" / run_id
     output_dir.mkdir(parents=True, exist_ok=True)
-    report["outputDir"] = str(output_dir)
+    report["outputDir"] = portable_artifact_path(output_dir)
     write_json(output_dir / "benchmark.json", report)
     write_json(ARTIFACT_ROOT / "benchmarks" / "latest.json", report)
     return report

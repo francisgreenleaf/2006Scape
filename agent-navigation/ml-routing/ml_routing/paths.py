@@ -33,3 +33,26 @@ def latest_json(root, pattern="*.json"):
         return None
     files = sorted(root.glob(pattern))
     return files[-1] if files else None
+
+
+def portable_artifact_path(path):
+    """Return a clone-safe path for committed artifact manifests."""
+    resolved = Path(path).resolve()
+    try:
+        return str(resolved.relative_to(ML_ROOT))
+    except ValueError:
+        try:
+            return str(resolved.relative_to(REPO_ROOT))
+        except ValueError:
+            return str(resolved)
+
+
+def resolve_artifact_path(value):
+    """Resolve manifest paths written relative to the ML folder."""
+    path = Path(value)
+    if path.is_absolute():
+        return path
+    text = str(path)
+    if text.startswith("agent-navigation/"):
+        return (REPO_ROOT / path).resolve()
+    return (ML_ROOT / path).resolve()

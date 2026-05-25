@@ -168,7 +168,7 @@ The loop exports fresh evidence, trains a new model, and writes a benchmark repo
 
 ## Artifacts
 
-Generated files live under ignored `agent-navigation/ml-routing/artifacts/`:
+Generated files live under `agent-navigation/ml-routing/artifacts/`. Most historical runs and comparison images stay ignored, but the current seed route pack is committed so a fresh clone has a trained model and the training/evaluation data needed to run ML1 immediately:
 
 - `datasets/<runId>/edge_examples.jsonl`
 - `datasets/<runId>/route_hint_edges.jsonl`
@@ -178,6 +178,8 @@ Generated files live under ignored `agent-navigation/ml-routing/artifacts/`:
 - `benchmarks/<runId>/benchmark.json`
 - `comparisons/<runId>/*.png`
 - `comparisons/<runId>/*.json`
+
+The committed seed pack is `route-pack-20260525T174700Z` under `datasets/`, `models/`, and `benchmarks/`, with portable `latest.json` manifests. Generated comparison PNGs/JSON and older model/dataset runs remain local unless intentionally promoted.
 
 Ignored local feedback from live route execution and manual outcome records lives under
 `agent-navigation/.local/run-evidence/*.jsonl` and is pulled into `route_attempts.jsonl`
