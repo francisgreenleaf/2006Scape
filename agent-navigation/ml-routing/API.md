@@ -23,6 +23,8 @@ The response is a single JSON object with:
 
 The fast planner reads curated route hints from the current navigation DB on each call. Models supply learned costs and risk priors, but current `places.json` / `routes.json` anchors remain authoritative.
 
+ML1 currently routes only on the level-0 surface map. Surface coordinates are `x=1728..3839`, `y=2560..4031`; underground-style areas use high Y offsets such as `+6400`. Non-surface requests return `actionable:false`, no execution command, and either `status:"requires-object-transition"` for surface/non-surface crossings or `status:"unsupported-coordinate-layer"` for same-layer non-surface routing. Use local path previews, object-transition proof, or a dedicated area runner until entrance-aware underground routing exists.
+
 `quality` is a geometry/detour signal, not the same as proof. A route can be geometrically indirect but still proven if `evidence.proven` is `true`; in that case follow `safety.requiresReview` rather than rejecting the route just because `quality` is `bad`.
 
 Example shape:

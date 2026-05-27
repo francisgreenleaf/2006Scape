@@ -583,6 +583,9 @@ def route_definition(data):
         "exec": exec_summary,
         "feedback": compact_feedback(data.get("feedback")),
         "error": data.get("error"),
+        "message": data.get("message"),
+        "layers": data.get("coordinateLayers"),
+        "transition": data.get("transition"),
     }
     return {k: v for k, v in out.items() if v not in (None, "", [], {})}
 
@@ -674,7 +677,7 @@ def compact_preview(data):
 def compact_bridge(data, tool=None):
     if not isinstance(data, dict):
         return data
-    if data.get("compact") is True:
+    if data.get("compact") is True or data.get("xxs") is True:
         return data
     if tool in ("food_bank", "food_bank_XS"):
         return compact_food_bank(data)

@@ -1,27 +1,28 @@
 {
   "actionableCount": 30,
   "caseCount": 30,
-  "generatedAt": "2026-05-25T18:00:23Z",
+  "generatedAt": "2026-05-25T23:42:11Z",
   "okCount": 30,
-  "outputDir": "artifacts/benchmarks/route-pack-20260525T174700Z",
+  "outputDir": "artifacts/benchmarks/20260525T234211Z",
   "results": [
     {
       "actionable": true,
-      "detourRatio": 1.369,
+      "detourRatio": 1.32,
       "directCandidate": null,
       "edgeSources": {
-        "cache_direct": 282
+        "cache_direct": 272
       },
-      "estimatedTicks": 282.0,
+      "estimatedTicks": 272.0,
       "from": "lumbridge_castle_courtyard",
       "mlScore": {
-        "confidence": 0.632203,
-        "predictedTicks": 284.82,
+        "confidence": 0.677918,
+        "predictedTicks": 262.48,
         "riskScore": 0.05,
-        "score": 1024.992,
+        "score": 535.471,
         "sourceMix": {
-          "edge": 28,
-          "region": 11
+          "edge": 23,
+          "global": 2,
+          "region": 13
         }
       },
       "mode": "cache_direct",
@@ -32,7 +33,7 @@
         "y": 3233
       },
       "quality": "watch",
-      "routeDistance": 282,
+      "routeDistance": 272,
       "routeRunnerCommand": [
         "python3",
         "agent-navigation/tools/route_runner.py",
@@ -50,7 +51,7 @@
         "--direct-if-preview",
         "--probe-toward-target"
       ],
-      "routeStepCount": 40,
+      "routeStepCount": 39,
       "routeSteps": [
         {
           "height": 0,
@@ -174,23 +175,18 @@
         },
         {
           "height": 0,
-          "x": 3188,
-          "y": 3351
+          "x": 3199,
+          "y": 3360
         },
         {
           "height": 0,
-          "x": 3184,
-          "y": 3358
-        },
-        {
-          "height": 0,
-          "x": 3184,
+          "x": 3194,
           "y": 3364
         },
         {
           "height": 0,
           "x": 3187,
-          "y": 3370
+          "y": 3369
         },
         {
           "height": 0,
@@ -255,15 +251,15 @@
       ],
       "runPlan": {
         "policy": "conserve_run_until_hazard_segments",
-        "routeDistance": 282,
-        "runTileDistance": 24,
+        "routeDistance": 272,
+        "runTileDistance": 35,
         "segmentCount": 1,
-        "walkTileDistance": 258
+        "walkTileDistance": 237
       },
       "runSegments": [
         {
-          "distance": 24,
-          "endIndex": 168,
+          "distance": 35,
+          "endIndex": 179,
           "from": {
             "height": 0,
             "x": 3210,
@@ -277,17 +273,17 @@
           "to": {
             "height": 0,
             "x": 3188,
-            "y": 3351
+            "y": 3368
           }
         }
       ],
-      "score": 1024.992,
+      "score": 535.471,
       "selectedOverLearned": {
         "previousQuality": "suspicious",
         "previousRouteDistance": 311,
         "previousStatus": "ok",
         "reason": "cache-direct path reached the requested target with a shorter hazard-costed clipped route",
-        "savedTiles": 29
+        "savedTiles": 39
       },
       "status": "ok",
       "targetDistanceIncreases": 2,
@@ -590,10 +586,10 @@
       "estimatedTicks": 264.0,
       "from": "falador_shield_shop",
       "mlScore": {
-        "confidence": 0.921024,
-        "predictedTicks": 216.5,
+        "confidence": 0.921787,
+        "predictedTicks": 213.69,
         "riskScore": 0.314394,
-        "score": 764.451,
+        "score": 761.534,
         "sourceMix": {
           "global": 1,
           "region": 10
@@ -793,7 +789,7 @@
           }
         }
       ],
-      "score": 764.451,
+      "score": 761.534,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 1,
@@ -1198,10 +1194,10 @@
       "estimatedTicks": 168.0,
       "from": "varrock_east_bank",
       "mlScore": {
-        "confidence": 0.976851,
-        "predictedTicks": 115.33,
+        "confidence": 0.976862,
+        "predictedTicks": 115.29,
         "riskScore": 0.006579,
-        "score": 344.121,
+        "score": 344.079,
         "sourceMix": {
           "region": 6
         }
@@ -1375,7 +1371,7 @@
           }
         }
       ],
-      "score": 344.121,
+      "score": 344.079,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 1,
@@ -1608,13 +1604,13 @@
       "estimatedTicks": 290.0,
       "from": "varrock_square",
       "mlScore": {
-        "confidence": 0.971459,
-        "predictedTicks": 163.58,
-        "riskScore": 0.0125,
-        "score": 328.271,
+        "confidence": 0.929643,
+        "predictedTicks": 151.55,
+        "riskScore": 0.025,
+        "score": 333.97,
         "sourceMix": {
-          "global": 4,
-          "region": 7
+          "global": 1,
+          "region": 10
         }
       },
       "mode": null,
@@ -1841,7 +1837,7 @@
           }
         }
       ],
-      "score": 328.271,
+      "score": 333.97,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 0,
@@ -1887,9 +1883,9 @@
       "from": "lumbridge_castle_courtyard",
       "mlScore": {
         "confidence": 0.973508,
-        "predictedTicks": 86.4,
+        "predictedTicks": 85.03,
         "riskScore": 0.011905,
-        "score": 387.299,
+        "score": 385.929,
         "sourceMix": {
           "global": 3,
           "region": 4
@@ -2066,7 +2062,7 @@
           }
         }
       ],
-      "score": 387.299,
+      "score": 385.929,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 2,
@@ -2111,14 +2107,14 @@
       "estimatedTicks": 418.0,
       "from": "port_sarim_dock",
       "mlScore": {
-        "confidence": 0.959453,
-        "predictedTicks": 213.42,
+        "confidence": 0.949774,
+        "predictedTicks": 208.57,
         "riskScore": 0.041667,
-        "score": 1083.76,
+        "score": 1080.265,
         "sourceMix": {
           "edge": 1,
-          "global": 7,
-          "region": 8
+          "global": 6,
+          "region": 9
         }
       },
       "mode": null,
@@ -2433,7 +2429,7 @@
           }
         }
       ],
-      "score": 1083.76,
+      "score": 1080.265,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 6,
@@ -2449,14 +2445,14 @@
       "estimatedTicks": 362.0,
       "from": "rimmington_center",
       "mlScore": {
-        "confidence": 0.951918,
-        "predictedTicks": 230.48,
+        "confidence": 0.937777,
+        "predictedTicks": 226.95,
         "riskScore": 0.041667,
-        "score": 1041.615,
+        "score": 1040.065,
         "sourceMix": {
           "edge": 1,
-          "global": 22,
-          "region": 27
+          "global": 18,
+          "region": 31
         }
       },
       "mode": "cache_direct",
@@ -2790,7 +2786,7 @@
           }
         }
       ],
-      "score": 1041.615,
+      "score": 1040.065,
       "selectedOverLearned": {
         "previousQuality": "suspicious",
         "previousRouteDistance": 441,
@@ -3132,14 +3128,14 @@
       "estimatedTicks": 289.0,
       "from": "draynor_bank",
       "mlScore": {
-        "confidence": 0.948962,
-        "predictedTicks": 154.88,
+        "confidence": 0.91855,
+        "predictedTicks": 159.33,
         "riskScore": 0.041667,
-        "score": 1051.909,
+        "score": 1060.617,
         "sourceMix": {
           "edge": 1,
-          "global": 7,
-          "region": 5
+          "global": 5,
+          "region": 7
         }
       },
       "mode": null,
@@ -3420,7 +3416,7 @@
           }
         }
       ],
-      "score": 1051.909,
+      "score": 1060.617,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 7,
@@ -3436,14 +3432,14 @@
       "estimatedTicks": 248.0,
       "from": "barbarian_village",
       "mlScore": {
-        "confidence": 0.919978,
-        "predictedTicks": 165.97,
+        "confidence": 0.895916,
+        "predictedTicks": 167.93,
         "riskScore": 0.05,
-        "score": 361.513,
+        "score": 366.842,
         "sourceMix": {
           "edge": 2,
-          "global": 10,
-          "region": 20
+          "global": 7,
+          "region": 23
         }
       },
       "mode": "cache_direct",
@@ -3688,7 +3684,7 @@
           }
         }
       ],
-      "score": 361.513,
+      "score": 366.842,
       "selectedOverLearned": {
         "previousQuality": "suspicious",
         "previousRouteDistance": 336,
@@ -3710,13 +3706,13 @@
       "estimatedTicks": 257.0,
       "from": "lumbridge_castle_courtyard",
       "mlScore": {
-        "confidence": 0.966234,
-        "predictedTicks": 135.64,
-        "riskScore": 0.019231,
-        "score": 346.877,
+        "confidence": 0.954246,
+        "predictedTicks": 137.02,
+        "riskScore": 0.027778,
+        "score": 358.055,
         "sourceMix": {
-          "global": 21,
-          "region": 19
+          "global": 19,
+          "region": 21
         }
       },
       "mode": "cache_direct",
@@ -3981,7 +3977,7 @@
           }
         }
       ],
-      "score": 346.877,
+      "score": 358.055,
       "selectedOverLearned": {
         "previousQuality": "bad",
         "previousRouteDistance": 436,
@@ -4092,9 +4088,9 @@
       "from": "al_kharid_bank",
       "mlScore": {
         "confidence": 0.976238,
-        "predictedTicks": 138.39,
+        "predictedTicks": 135.02,
         "riskScore": 0.013158,
-        "score": 4022.497,
+        "score": 4019.127,
         "sourceMix": {
           "global": 5,
           "region": 7
@@ -4329,7 +4325,7 @@
         "walkTileDistance": 297
       },
       "runSegments": null,
-      "score": 4022.497,
+      "score": 4019.127,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 2,
@@ -4340,21 +4336,21 @@
       "detourRatio": 1.216,
       "directCandidate": null,
       "edgeSources": {
-        "cache_direct": 45
+        "route_hint": 5
       },
-      "estimatedTicks": 45.0,
+      "estimatedTicks": 42.0,
       "from": "varrock_west_bank",
       "mlScore": {
-        "confidence": 0.946475,
-        "predictedTicks": 22.47,
-        "riskScore": 0.020833,
-        "score": 632.275,
+        "confidence": 0.923571,
+        "predictedTicks": 20.53,
+        "riskScore": 0.016667,
+        "score": 299.584,
         "sourceMix": {
-          "global": 2,
-          "region": 5
+          "global": 1,
+          "region": 1
         }
       },
-      "mode": "cache_direct",
+      "mode": null,
       "name": "varrock_west_bank_to_sword_shop",
       "next": {
         "height": 0,
@@ -4375,10 +4371,7 @@
         "--max-batch-distance",
         "24",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
-        "--allow-frontier",
-        "--direct-if-preview",
-        "--probe-toward-target"
+        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl"
       ],
       "routeStepCount": 8,
       "routeSteps": [
@@ -4399,8 +4392,8 @@
         },
         {
           "height": 0,
-          "x": 3192,
-          "y": 3428
+          "x": 3191,
+          "y": 3429
         },
         {
           "height": 0,
@@ -4451,14 +4444,8 @@
           }
         }
       ],
-      "score": 632.275,
-      "selectedOverLearned": {
-        "completionAddedTiles": 14,
-        "previousQuality": "watch",
-        "previousRouteDistance": 31,
-        "previousStatus": "no-learned-route",
-        "reason": "learned graph only reached a frontier; cache-direct path is selected because it reaches the requested target"
-      },
+      "score": 299.584,
+      "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 1,
       "to": "varrock_sword_shop"
@@ -4473,13 +4460,13 @@
       "estimatedTicks": 248.0,
       "from": "varrock_west_bank",
       "mlScore": {
-        "confidence": 0.968031,
-        "predictedTicks": 160.65,
-        "riskScore": 0.0125,
-        "score": 316.361,
+        "confidence": 0.922866,
+        "predictedTicks": 146.89,
+        "riskScore": 0.025,
+        "score": 320.799,
         "sourceMix": {
-          "global": 4,
-          "region": 6
+          "global": 1,
+          "region": 9
         }
       },
       "mode": null,
@@ -4696,7 +4683,7 @@
           }
         }
       ],
-      "score": 316.361,
+      "score": 320.799,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 0,
@@ -4712,10 +4699,10 @@
       "estimatedTicks": 28.0,
       "from": "falador_west_bank",
       "mlScore": {
-        "confidence": 0.946671,
-        "predictedTicks": 22.33,
-        "riskScore": 0.01087,
-        "score": 277.683,
+        "confidence": 0.95046,
+        "predictedTicks": 21.84,
+        "riskScore": 0.01,
+        "score": 275.836,
         "sourceMix": {
           "region": 2
         }
@@ -4784,7 +4771,7 @@
         "walkTileDistance": 31
       },
       "runSegments": null,
-      "score": 277.683,
+      "score": 275.836,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 1,
@@ -5021,9 +5008,9 @@
       "from": "falador_west_bank",
       "mlScore": {
         "confidence": 0.944134,
-        "predictedTicks": 135.59,
+        "predictedTicks": 134.12,
         "riskScore": 0.017857,
-        "score": 510.775,
+        "score": 509.305,
         "sourceMix": {
           "global": 3,
           "region": 6
@@ -5206,7 +5193,7 @@
         "walkTileDistance": 198
       },
       "runSegments": null,
-      "score": 510.775,
+      "score": 509.305,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 4,
@@ -5449,9 +5436,9 @@
       "from": "draynor_bank",
       "mlScore": {
         "confidence": 0.979321,
-        "predictedTicks": 61.23,
+        "predictedTicks": 59.69,
         "riskScore": 0.008929,
-        "score": 225.608,
+        "score": 224.068,
         "sourceMix": {
           "global": 3,
           "region": 3
@@ -5623,7 +5610,7 @@
           }
         }
       ],
-      "score": 225.608,
+      "score": 224.068,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 0,
@@ -5668,14 +5655,14 @@
       "estimatedTicks": 159.0,
       "from": "edgeville_bank",
       "mlScore": {
-        "confidence": 0.883251,
-        "predictedTicks": 103.94,
+        "confidence": 0.861004,
+        "predictedTicks": 103.15,
         "riskScore": 0.05,
-        "score": 2248.905,
+        "score": 2251.229,
         "sourceMix": {
           "edge": 1,
-          "global": 2,
-          "region": 4
+          "global": 1,
+          "region": 5
         }
       },
       "mode": null,
@@ -5850,7 +5837,7 @@
           }
         }
       ],
-      "score": 2248.905,
+      "score": 2251.229,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 7,
@@ -5867,9 +5854,9 @@
       "from": "edgeville_bank",
       "mlScore": {
         "confidence": 0.904575,
-        "predictedTicks": 34.55,
+        "predictedTicks": 33.89,
         "riskScore": 0.025,
-        "score": 198.039,
+        "score": 197.379,
         "sourceMix": {
           "global": 1,
           "region": 2
@@ -5984,7 +5971,7 @@
           }
         }
       ],
-      "score": 198.039,
+      "score": 197.379,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 0,
@@ -6005,10 +5992,10 @@
       "estimatedTicks": 355.0,
       "from": "catherby_bank",
       "mlScore": {
-        "confidence": 0.947741,
-        "predictedTicks": 214.89,
-        "riskScore": 0.167094,
-        "score": 3344.526,
+        "confidence": 0.959889,
+        "predictedTicks": 208.43,
+        "riskScore": 0.137879,
+        "score": 3308.611,
         "sourceMix": {
           "region": 16
         }
@@ -6325,7 +6312,7 @@
         "walkTileDistance": 371
       },
       "runSegments": null,
-      "score": 3344.526,
+      "score": 3308.611,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 34,
@@ -6790,7 +6777,7 @@
       "to": "gnome_agility_course"
     }
   ],
-  "runId": "route-pack-20260525T174700Z",
+  "runId": "20260525T234211Z",
   "schemaVersion": 1,
   "suspiciousOrBadCount": 10
 }

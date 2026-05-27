@@ -11,6 +11,9 @@ from typing import Any, Dict, Iterable, Iterator, List, Optional
 
 Tile = Dict[str, int]
 
+LEVEL0_SURFACE_BOUNDS = {"minX": 1728, "minY": 2560, "maxX": 3839, "maxY": 4031}
+UNDERGROUND_MIN_Y = 6400
+
 
 def utcnow() -> dt.datetime:
     return dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
@@ -82,6 +85,60 @@ def tile_key(tile: Optional[Tile]) -> str:
     if tile is None:
         return ""
     return "{},{},{}".format(tile["x"], tile["y"], tile.get("height", 0))
+
+
+def coordinate_layer(tile: Optional[Tile]) -> str:
+    if not tile:
+        return "unknown"
+    x = int(tile["x"])
+    y = int(tile["y"])
+    if (
+        LEVEL0_SURFACE_BOUNDS["minX"] <= x <= LEVEL0_SURFACE_BOUNDS["maxX"]
+        and LEVEL0_SURFACE_BOUNDS["minY"] <= y <= LEVEL0_SURFACE_BOUNDS["maxY"]
+    ):
+        return "surface"
+    if y >= UNDERGROUND_MIN_Y:
+        return "underground"
+    return "off_surface"
+
+
+def coordinate_layer_transition_block(start: Optional[Tile], target: Optional[Tile]) -> Optional[Dict[str, Any]]:
+    from_layer = coordinate_layer(start)
+    to_layer = coordinate_layer(target)
+    if from_layer == "surface" and to_layer == "surface":
+        return None
+    if from_layer == "unknown" or to_layer == "unknown":
+        return None
+    if from_layer != to_layer:
+        status = "requires-object-transition"
+        mode = "requires_object_transition"
+        reason = "{}_to_{}_requires_object_transition".format(from_layer, to_layer)
+        message = (
+            "ML routing cannot route underground yet or cross coordinate layers. "
+            "Route to the surface-side object transition first, use the transition, "
+            "then continue with local previews or a dedicated area runner."
+        )
+    else:
+        status = "unsupported-coordinate-layer"
+        mode = "surface_only"
+        reason = "{}_routing_not_supported".format(from_layer)
+        message = (
+            "ML routing cannot route underground yet. It is surface-only for now. "
+            "Use local path previews, object transitions, or a dedicated area runner "
+            "inside non-surface areas until entrance-aware underground routing exists."
+        )
+    return {
+        "status": status,
+        "mode": mode,
+        "fromLayer": from_layer,
+        "toLayer": to_layer,
+        "fromTile": dict(start) if start else None,
+        "targetTile": dict(target) if target else None,
+        "reason": reason,
+        "message": message,
+        "surfaceBounds": dict(LEVEL0_SURFACE_BOUNDS),
+        "undergroundMinY": UNDERGROUND_MIN_Y,
+    }
 
 
 def distance(a: Optional[Tile], b: Optional[Tile]) -> float:

@@ -41,6 +41,8 @@ definition under `recommended.routeDefinition`.
 The old route method is deprecated for agents. Do not call bare `agent-navigation/tools/route_runner.py --to ...`
 as the normal routing API. Follow the ML1 `routeSteps` with normal bridge movement primitives, or use a purpose-built ML executor when one exists. Any generated `route_runner.py --route-definition` command is a compatibility executor, not the planner interface.
 
+ML1 is surface-only for now. Requests with underground/high-Y coordinates return non-actionable statuses such as `requires-object-transition` or `unsupported-coordinate-layer`; use local path previews, object-transition proof, or a dedicated area runner instead.
+
 The route/debug response is compact by default. Use:
 
 - `recommended.next` for the next low-token waypoint;
