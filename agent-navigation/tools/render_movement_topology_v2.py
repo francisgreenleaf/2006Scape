@@ -6,6 +6,7 @@ directly is only useful for engine debugging or legacy comparison output.
 """
 
 import argparse
+from datetime import datetime
 import hashlib
 import json
 import math
@@ -45,9 +46,12 @@ from render_navigation_png import Canvas
 
 
 ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = ROOT.parent
 OUT = ROOT / "topology"
 RUNESCAPE_FONT = ROOT / "assets" / "fonts" / "runescape_uf.ttf"
 RUNESCAPE_FONT_SOURCE = "https://www.dafont.com/runescape-uf.font"
+CHARACTER_DIR = REPO_ROOT / "2006Scape Server" / "data" / "characters"
+PLAYER_TRACE_DIR = REPO_ROOT / "2006Scape Server" / "data" / "logs" / "player-movement-traces"
 DEFAULT_COVERAGE_CACHE_DIR = ROOT / ".local" / "topology-render-cache"
 FOG_REVEAL_CACHE_VERSION = 1
 HEAT_MASK_CACHE_VERSION = 3
@@ -58,6 +62,41 @@ PLAYER_TRACE_PART = "player-movement-traces"
 AGENT_TRACE_PART = "agent-movement-traces"
 _RADIAL_HEAT_KERNELS = {}
 _FOG_REVEAL_KERNELS = {}
+
+SKILL_NAMES = [
+    "attack", "defence", "strength", "hitpoints", "ranged", "prayer", "magic",
+    "cooking", "woodcutting", "fletching", "fishing", "firemaking", "crafting",
+    "smithing", "mining", "herblore", "agility", "thieving", "slayer", "farming",
+    "runecraft",
+]
+SKILL_ICON_REFS = [
+    ("staticons", 0), ("staticons", 2), ("staticons", 1), ("staticons", 6),
+    ("staticons", 3), ("staticons", 4), ("staticons", 5), ("staticons", 15),
+    ("staticons", 17), ("staticons", 11), ("staticons", 14), ("staticons", 16),
+    ("staticons", 10), ("staticons", 13), ("staticons", 12), ("staticons", 8),
+    ("staticons", 7), ("staticons", 9), ("staticons2", 1), ("staticons2", 2),
+    ("staticons2", 0),
+]
+SKILL_MENU_ORDER = [
+    0, 2, 1, 3, 4, 6, 5, 20,
+    14, 13, 10, 7, 11, 8, 9, 12,
+    15, 16, 17, 18, 19,
+]
+SKILL_UI_BACKING_LEFT_X = -1
+SKILL_UI_BACKING_RIGHT_X = 29
+SKILL_UI_TILE_SPAN_X = 65
+SKILL_UI_TILE_SPAN_Y = 36
+SKILL_PANEL_ROWS = 2
+SKILL_PANEL_COLS = int(math.ceil(len(SKILL_MENU_ORDER) / float(SKILL_PANEL_ROWS)))
+SKILL_UI_ROW_STEP = 31
+SKILL_UI_CELL_STEP = 64
+XP_PER_LEVEL = [0] * 100
+_points = 0
+_output = 0
+for _level in range(1, 100):
+    XP_PER_LEVEL[_level] = _output
+    _points += math.floor(_level + 300 * math.pow(2, _level / 7.0))
+    _output = int(math.floor(_points / 4))
 
 FOOTER_HEIGHT = 280
 FOOTER_RULE_Y = 12
@@ -1008,6 +1047,293 @@ def draw_indexed_sprite(canvas, sprite, cx, cy, scale, alpha=1.0):
             y1 = int(math.ceil(top + (sy + 1) * scale)) - 1
             canvas.blend_rect(x0, y0, x1, y1, color, alpha)
     return True
+
+
+def draw_indexed_sprite_at(canvas, sprite, x, y, scale, alpha=1.0):
+    palette = sprite.get("palette") or []
+    pixels = sprite.get("pixels") or []
+    width = int(sprite.get("width", 0))
+    height = int(sprite.get("height", 0))
+    if width <= 0 or height <= 0 or not palette:
+        return False
+    left = float(x) + float(sprite.get("xOffset", 0)) * scale
+    top = float(y) + float(sprite.get("yOffset", 0)) * scale
+    for sy in range(height):
+        for sx in range(width):
+            palette_index = pixels[sx + sy * width]
+            if palette_index <= 0 or palette_index >= len(palette):
+                continue
+            color = palette[palette_index]
+            x0 = int(math.floor(left + sx * scale))
+            x1 = int(math.ceil(left + (sx + 1) * scale)) - 1
+            y0 = int(math.floor(top + sy * scale))
+            y1 = int(math.ceil(top + (sy + 1) * scale)) - 1
+            canvas.blend_rect(x0, y0, x1, y1, color, alpha)
+    return True
+
+
+def level_for_xp(exp):
+    for level in range(1, 99):
+        if int(exp) < XP_PER_LEVEL[level + 1]:
+            return level
+    return 99
+
+
+def normalized_profile_name(profile):
+    value = profile or "mrflame"
+    normalized = "".join(ch for ch in str(value).lower() if ch.isalnum())
+    return normalized or "mrflame"
+
+
+def parse_iso_timestamp(value):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def format_hours(seconds):
+    hours = max(0.0, float(seconds) / 3600.0)
+    if hours >= 100:
+        return "%dH" % int(round(hours))
+    if hours >= 10:
+        return "%.1fH" % hours
+    return "%.2fH" % hours
+
+
+def movement_trace_play_seconds(profile):
+    profile_name = normalized_profile_name(profile)
+    if not PLAYER_TRACE_DIR.exists():
+        return 0.0, 0
+    previous = None
+    seconds = 0.0
+    records = 0
+    for path in sorted(PLAYER_TRACE_DIR.glob("*/%s.jsonl" % profile_name)):
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            if not line.strip():
+                continue
+            try:
+                record = json.loads(line)
+            except ValueError:
+                continue
+            timestamp = parse_iso_timestamp(record.get("timestamp"))
+            if timestamp is None:
+                continue
+            records += 1
+            if previous is not None:
+                gap = (timestamp - previous).total_seconds()
+                if 0.0 <= gap <= 300.0:
+                    seconds += gap
+            previous = timestamp
+    return seconds, records
+
+
+def load_profile_stats(profile):
+    profile_name = normalized_profile_name(profile)
+    path = CHARACTER_DIR / ("%s.txt" % profile_name)
+    skills = []
+    for index, name in enumerate(SKILL_NAMES):
+        skills.append({
+            "index": index,
+            "name": name,
+            "currentLevel": 1,
+            "baseLevel": 1,
+            "xp": 0,
+        })
+    if path.exists():
+        section = ""
+        for raw_line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            line = raw_line.strip()
+            if not line:
+                continue
+            if line.startswith("[") and line.endswith("]"):
+                section = line.strip("[]").upper()
+                continue
+            if section != "SKILLS" or not line.startswith("character-skill"):
+                continue
+            _key, value = line.split("=", 1)
+            parts = value.strip().split()
+            if len(parts) < 3:
+                continue
+            try:
+                index = int(parts[0])
+                current = int(parts[1])
+                xp = int(parts[2])
+            except ValueError:
+                continue
+            if 0 <= index < len(skills):
+                skills[index]["currentLevel"] = current
+                skills[index]["baseLevel"] = level_for_xp(xp)
+                skills[index]["xp"] = xp
+    play_seconds, play_records = movement_trace_play_seconds(profile_name)
+    total_level = sum(skill["baseLevel"] for skill in skills)
+    return {
+        "profile": profile_name,
+        "characterPath": str(path),
+        "skills": skills,
+        "totalLevel": total_level,
+        "hoursPlayed": format_hours(play_seconds),
+        "playSeconds": int(round(play_seconds)),
+        "playTraceRecords": play_records,
+    }
+
+
+def title_stats_layout(width, args):
+    ui_scale = 2.12
+    cols = SKILL_PANEL_COLS
+    rows = SKILL_PANEL_ROWS
+    skill_grid_w = int(math.ceil(((cols - 1) * SKILL_UI_CELL_STEP + SKILL_UI_TILE_SPAN_X) * ui_scale))
+    skill_grid_h = int(math.ceil(((rows - 1) * SKILL_UI_ROW_STEP + SKILL_UI_TILE_SPAN_Y) * ui_scale))
+    stats_gap = 54
+    stats_w = 650
+    panel_w = skill_grid_w + stats_gap + stats_w
+    panel_h = max(skill_grid_h, 148)
+    x = int(getattr(args, "title_stats_x", -1))
+    if x < 0:
+        x = max(430, int(width) - panel_w - 34)
+    y = int(getattr(args, "title_stats_y", 30))
+    return {
+        "x": x,
+        "y": y,
+        "uiScale": ui_scale,
+        "cols": cols,
+        "rows": rows,
+        "skillCount": len(SKILL_MENU_ORDER),
+        "cellW": int(round(SKILL_UI_CELL_STEP * ui_scale)),
+        "rowH": int(round(SKILL_UI_ROW_STEP * ui_scale)),
+        "skillGridW": skill_grid_w,
+        "skillGridH": skill_grid_h,
+        "panelW": panel_w,
+        "panelH": panel_h,
+        "iconScale": ui_scale,
+        "iconX": 5,
+        "iconY": 5,
+        "levelCenterX": 39.5,
+        "levelBaselineY": 17.8,
+        "levelPointsize": 28,
+        "maxLevelCenterX": 53.0,
+        "maxLevelBaselineY": 30.6,
+        "maxLevelPointsize": 28,
+        "statsX": x + skill_grid_w + stats_gap,
+        "statsColumnGap": 330,
+        "statLabelPointsize": 31,
+        "statValuePointsize": 76,
+        "statLabelBaselineY": y + 50,
+        "statValueBaselineY": y + 124,
+        "secondStatLabelBaselineY": y + 50,
+        "secondStatValueBaselineY": y + 124,
+    }
+
+
+def load_skill_icon_sprites():
+    sprites = {}
+    by_name = {}
+    for name, _sprite_id in SKILL_ICON_REFS:
+        if name not in by_name:
+            by_name[name] = load_background_sprites(name=name, limit=60)
+    for index, ref in enumerate(SKILL_ICON_REFS):
+        name, sprite_id = ref
+        sprite = by_name.get(name, {}).get(sprite_id)
+        if sprite is not None:
+            sprites[index] = sprite
+    return sprites
+
+
+def ordered_profile_skills(profile_stats):
+    by_index = {}
+    for skill in profile_stats.get("skills", []):
+        try:
+            index = int(skill.get("index", 0))
+        except (TypeError, ValueError):
+            continue
+        by_index[index] = skill
+    ordered = []
+    seen = set()
+    for index in SKILL_MENU_ORDER:
+        skill = by_index.get(index)
+        if skill is not None:
+            ordered.append(skill)
+            seen.add(index)
+    for skill in profile_stats.get("skills", []):
+        try:
+            index = int(skill.get("index", 0))
+        except (TypeError, ValueError):
+            continue
+        if index not in seen:
+            ordered.append(skill)
+            seen.add(index)
+    return ordered
+
+
+def draw_client_skill_backing(canvas, layout):
+    sprites = load_background_sprites(name="miscgraphics", limit=10)
+    left_sprite = sprites.get(4)
+    right_sprite = sprites.get(5)
+    x = layout["x"]
+    y = layout["y"]
+    scale = layout["uiScale"]
+    if left_sprite is None or right_sprite is None:
+        canvas.blend_rect(
+            x, y, x + layout["skillGridW"], y + layout["skillGridH"],
+            (42, 37, 30), 0.96,
+        )
+        return
+    for position in range(layout["skillCount"]):
+        col = position % layout["cols"]
+        row = position // layout["cols"]
+        row_y = y + row * SKILL_UI_ROW_STEP * scale
+        cell_x = x + col * SKILL_UI_CELL_STEP * scale
+        draw_indexed_sprite_at(
+            canvas, left_sprite,
+            cell_x + SKILL_UI_BACKING_LEFT_X * scale,
+            row_y,
+            scale,
+            1.0,
+        )
+        draw_indexed_sprite_at(
+            canvas, right_sprite,
+            cell_x + SKILL_UI_BACKING_RIGHT_X * scale,
+            row_y,
+            scale,
+            1.0,
+        )
+
+
+def draw_title_stats_panel(canvas, profile_stats, args):
+    if not getattr(args, "title_stats_panel", False) or not profile_stats:
+        return
+    layout = title_stats_layout(canvas.width, args)
+    x = layout["x"]
+    y = layout["y"]
+    icons = load_skill_icon_sprites()
+    draw_client_skill_backing(canvas, layout)
+    scale = layout["uiScale"]
+    for position, skill in enumerate(ordered_profile_skills(profile_stats)):
+        index = int(skill.get("index", 0))
+        col = position % layout["cols"]
+        row = position // layout["cols"]
+        if row >= layout["rows"]:
+            continue
+        sprite = icons.get(index)
+        if sprite is not None:
+            draw_indexed_sprite_at(
+                canvas,
+                sprite,
+                x + (col * SKILL_UI_CELL_STEP + layout["iconX"]) * scale,
+                y + (row * SKILL_UI_ROW_STEP + layout["iconY"]) * scale,
+                layout["iconScale"],
+                0.98,
+            )
+        else:
+            cx = int(x + (col * SKILL_UI_CELL_STEP + 17) * scale)
+            cy = int(y + (row * SKILL_UI_ROW_STEP + 18) * scale)
+            canvas.circle(cx, cy, 13, PALETTE["frame"], 0.72)
 
 
 def downsample_canvas(canvas, factor):
@@ -2081,6 +2407,25 @@ def add_shadow_text(command, x, y, pointsize, text, color=None):
     add_annotation(command, x, y, pointsize, color, text)
 
 
+def approximate_text_width(text, pointsize):
+    width = 0.0
+    for char in str(text):
+        if char == " ":
+            width += pointsize * 0.22
+        elif char in "11Iil.":
+            width += pointsize * 0.30
+        elif char in "MW":
+            width += pointsize * 0.62
+        else:
+            width += pointsize * 0.46
+    return width
+
+
+def add_center_shadow_text(command, center_x, y, pointsize, text, color=None):
+    text_x = int(round(float(center_x) - approximate_text_width(str(text), pointsize) / 2.0))
+    add_shadow_text(command, text_x, y, pointsize, text, color)
+
+
 def add_right_annotation(command, right_margin, y, pointsize, color, text):
     command.extend([
         "-gravity", "NorthEast",
@@ -2170,6 +2515,54 @@ def add_current_marker_overlay(command, marker):
     add_vector_circle(command, cx, cy, max(5 * ss, r // 3), PALETTE["current"], 0.98)
 
 
+def add_title_stats_text(command, width, stats, args):
+    profile_stats = stats.get("profileStats") or {}
+    if not profile_stats:
+        return
+    layout = title_stats_layout(width, args)
+    x = layout["x"]
+    y = layout["y"]
+    scale = layout["uiScale"]
+    for position, skill in enumerate(ordered_profile_skills(profile_stats)):
+        index = int(skill.get("index", 0))
+        col = position % layout["cols"]
+        row = position // layout["cols"]
+        if row >= layout["rows"]:
+            continue
+        base_level = int(skill.get("baseLevel", skill.get("currentLevel", 1)))
+        cell_x = x + col * SKILL_UI_CELL_STEP * scale
+        cell_y = y + row * SKILL_UI_ROW_STEP * scale
+        level_center = cell_x + layout["levelCenterX"] * scale
+        level_y = cell_y + layout["levelBaselineY"] * scale
+        max_level_center = cell_x + layout["maxLevelCenterX"] * scale
+        max_level_y = cell_y + layout["maxLevelBaselineY"] * scale
+        add_center_shadow_text(
+            command, level_center, level_y, layout["levelPointsize"],
+            str(base_level), PALETTE["osrs_yellow"],
+        )
+        add_center_shadow_text(
+            command, max_level_center, max_level_y, layout["maxLevelPointsize"],
+            "99", PALETTE["osrs_yellow"],
+        )
+
+    stats_x = layout["statsX"]
+    stats_gap = layout["statsColumnGap"]
+    label_size = layout["statLabelPointsize"]
+    value_size = layout["statValuePointsize"]
+    label_y = layout["statLabelBaselineY"]
+    value_y = layout["statValueBaselineY"]
+    add_shadow_text(command, stats_x, label_y, label_size, "TOTAL LEVEL", PALETTE["muted"])
+    add_shadow_text(command, stats_x, value_y, value_size, format_int(profile_stats.get("totalLevel", 0)))
+    add_shadow_text(
+        command, stats_x + stats_gap, layout["secondStatLabelBaselineY"],
+        label_size, "HOURS PLAYED", PALETTE["muted"],
+    )
+    add_shadow_text(
+        command, stats_x + stats_gap, layout["secondStatValueBaselineY"],
+        value_size, profile_stats.get("hoursPlayed", "0H"),
+    )
+
+
 def apply_runescape_text(path, width, footer_top, stats, args):
     magick = shutil.which("magick")
     if not magick or not RUNESCAPE_FONT.exists():
@@ -2209,7 +2602,9 @@ def apply_runescape_text(path, width, footer_top, stats, args):
 
     title = args.title_text or "MRFLAME MOVEMENT TOPOLOGY %s" % args.map_version
     add_shadow_text(command, 30, 90, args.title_pointsize, title)
-    if args.title_paragraph:
+    if getattr(args, "title_stats_panel", False):
+        add_title_stats_text(command, width, stats, args)
+    elif args.title_paragraph:
         note_x, right_margin, paragraph_lines = title_paragraph_layout(args, width, title)
         for line_index, line in enumerate(paragraph_lines):
             y = args.title_paragraph_y + line_index * (args.meta_pointsize + 8)
@@ -2346,6 +2741,7 @@ def write_summary(path, topology, render_info, png_path, args):
         "titleHeight": render_info.get("titleHeight", 0),
         "png": str(png_path),
         "fontApplied": render_info.get("fontApplied", False),
+        "profileStats": render_info.get("profileStats", {}),
         "font": {
             "name": "RuneScape UF",
             "path": str(RUNESCAPE_FONT),
@@ -2387,6 +2783,7 @@ def write_summary(path, topology, render_info, png_path, args):
             "titleParagraphAlign": args.title_paragraph_align,
             "titleParagraphRightMargin": args.title_paragraph_right_margin,
             "titleParagraphCharFactor": args.title_paragraph_char_factor,
+            "titleStatsPanel": bool(getattr(args, "title_stats_panel", False)),
             "titlePointsize": args.title_pointsize,
             "legendPointsize": args.legend_pointsize,
             "statsPointsize": args.stats_pointsize,
@@ -2464,6 +2861,7 @@ def render(topology, args):
     edges = topology["edges"]
     if not nodes:
         raise SystemExit("no movement trace tiles to render")
+    profile_stats = load_profile_stats(args.trace_profile)
 
     tiles = [node["tile"] for node in nodes.values()]
     pad = args.padding_tiles
@@ -2498,7 +2896,10 @@ def render(topology, args):
     margin = 28
     width = max(map_w + margin * 2, 980)
     title_h = 150
-    if args.title_paragraph:
+    if getattr(args, "title_stats_panel", False):
+        stats_layout = title_stats_layout(width, args)
+        title_h = max(150, int(stats_layout["y"] + stats_layout["panelH"] + 28))
+    elif args.title_paragraph:
         title = args.title_text or "MRFLAME MOVEMENT TOPOLOGY %s" % args.map_version
         paragraph_lines = title_paragraph_layout(args, width, title)[2]
         title_h = max(150, int(args.title_paragraph_y + len(paragraph_lines) * (args.meta_pointsize + 8) + 24))
@@ -2718,6 +3119,7 @@ def render(topology, args):
         "poiLabels": rendered_poi_labels,
         "referenceGridLabels": reference_grid_info.get("referenceGridLabels", []),
         "currentMarker": current_marker,
+        "profileStats": profile_stats,
     }
     if getattr(args, "running_overlay", False):
         legend_stats.update(running_summary(edges))
@@ -2726,6 +3128,7 @@ def render(topology, args):
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     final_canvas = downsample_canvas(canvas, ss)
+    draw_title_stats_panel(final_canvas, profile_stats, args)
     final_canvas.save_png(output)
     font_applied = apply_runescape_text(output, width, map_y0 + map_h, legend_stats, args)
     return {
@@ -2759,6 +3162,17 @@ def render(topology, args):
         "coverageFogPoiSeenRadiusTiles": poi_seen_radius,
         "poiLabelCount": len(rendered_poi_labels),
         "pois": pois,
+        "profileStats": {
+            "profile": profile_stats.get("profile"),
+            "totalLevel": profile_stats.get("totalLevel"),
+            "hoursPlayed": profile_stats.get("hoursPlayed"),
+            "playSeconds": profile_stats.get("playSeconds"),
+            "playTraceRecords": profile_stats.get("playTraceRecords"),
+            "skillLevels": {
+                skill["name"]: skill["baseLevel"]
+                for skill in profile_stats.get("skills", [])
+            },
+        },
         "fontApplied": font_applied,
         **reference_grid_info,
         **fog_info,
@@ -2786,6 +3200,7 @@ def main(default_output=None, default_summary=None, default_map_version="V2",
          default_title_paragraph_x=-1, default_title_paragraph_y=35,
          default_title_paragraph_lines=5, default_title_paragraph_align="left",
          default_title_paragraph_right_margin=34, default_title_paragraph_char_factor=0.56,
+         default_title_stats_panel=False, default_title_stats_x=-1, default_title_stats_y=30,
          default_meta_pointsize=18, default_include_historical_agent_batch_traces=False):
     parser = argparse.ArgumentParser(
         description="Render movement topology with the shared engine used by the active profile, heat, and fog maps."
@@ -2853,6 +3268,11 @@ def main(default_output=None, default_summary=None, default_map_version="V2",
                         default=default_title_paragraph_right_margin)
     parser.add_argument("--title-paragraph-char-factor", type=float,
                         default=default_title_paragraph_char_factor)
+    parser.add_argument("--title-stats-panel", action="store_true", default=default_title_stats_panel,
+                        help="Replace the title paragraph area with profile level and playtime stats.")
+    parser.add_argument("--no-title-stats-panel", dest="title_stats_panel", action="store_false")
+    parser.add_argument("--title-stats-x", type=int, default=default_title_stats_x)
+    parser.add_argument("--title-stats-y", type=int, default=default_title_stats_y)
     parser.add_argument("--show-pois", action="store_true", default=default_show_pois,
                         help="Draw cache-backed minimap icons.")
     parser.add_argument("--no-show-pois", dest="show_pois", action="store_false")
@@ -2931,6 +3351,7 @@ def main(default_output=None, default_summary=None, default_map_version="V2",
     args.title_paragraph_lines = max(1, min(8, int(args.title_paragraph_lines)))
     args.title_paragraph_right_margin = max(0, int(args.title_paragraph_right_margin))
     args.title_paragraph_char_factor = clamp(args.title_paragraph_char_factor, 0.25, 0.80)
+    args.title_stats_y = max(0, min(180, int(args.title_stats_y)))
     args.bounds_quantum_tiles = max(0, int(args.bounds_quantum_tiles))
 
     topology = load_topology_with_cache(args.trace_file, args.surface_only, args)
