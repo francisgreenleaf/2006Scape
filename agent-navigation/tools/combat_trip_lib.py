@@ -2533,7 +2533,7 @@ def pickup_loot_item(item, tile, player, plan, args, handle, reason):
     return player, amount
 
 
-def collect_visible_loot(player, plan, args, handle, reason):
+def collect_visible_loot(player, plan, args, handle, reason, include_non_bone=True):
     if free_slots(player) <= 0 and not has_cleanup_inventory_items(player, plan):
         return player
     bones = set(unique(plan.get("boneItemIds", (BONES, BIG_BONES))))
@@ -2559,14 +2559,15 @@ def collect_visible_loot(player, plan, args, handle, reason):
                 player = bury_inventory_bones(player, plan, args, handle, reason + "_after_bone_sweep")
                 picked_any += picked_bones
 
-        state = bridge.call_tool("combat_state_XS", {}, profile=args.profile)
-        player = player_from_combat_state(state)
-        for _priority, _distance, item, tile in visible_loot_items(state, plan, args, include_bones=False):
-            iid = item_id(item)
-            if not can_pick_item(player, iid):
-                break
-            player, amount = pickup_loot_item(item, tile, player, plan, args, handle, reason)
-            picked_any += amount
+        if include_non_bone:
+            state = bridge.call_tool("combat_state_XS", {}, profile=args.profile)
+            player = player_from_combat_state(state)
+            for _priority, _distance, item, tile in visible_loot_items(state, plan, args, include_bones=False):
+                iid = item_id(item)
+                if not can_pick_item(player, iid):
+                    break
+                player, amount = pickup_loot_item(item, tile, player, plan, args, handle, reason)
+                picked_any += amount
 
         if picked_any <= 0:
             break
@@ -2608,45 +2609,12 @@ def cleanup_after_combat(player, plan, args, handle, reason, state=None):
         return player
     bone_ids = sorted(unique(plan.get("boneItemIds", (BONES, BIG_BONES))))
     if bool(plan.get("buryBoneLoot", True)) and bone_ids:
-        bone_args = {
-            "maxTicks": int(args.cleanup_max_ticks),
-            "buryBones": True,
-            "pickupDrops": True,
-            "equipUpgrades": False,
-            "maxDistance": int(args.loot_distance),
-            "itemIds": bone_ids,
-        }
-        try:
-            started = time.monotonic()
-            bone_state = bridge.call_tool("combat_cleanup_XS", bone_args, profile=args.profile)
-        except RuntimeError as exc:
-            write_event(handle, "combat_cleanup_bones_fallback", {
-                "reason": reason,
-                "error": str(exc),
-                "player": compact_player(player),
-            })
-            player = collect_visible_loot(player, plan, args, handle, reason + "_bones_fallback")
-        else:
-            player = player_from_combat_state(bone_state)
-            write_event(handle, "combat_cleanup_bones", {
-                "reason": reason,
-                "success": bool(bone_state.get("success")),
-                "batchStatus": bone_state.get("batchStatus"),
-                "phase": bone_state.get("phase"),
-                "actions": bone_state.get("actions"),
-                "buried": bone_state.get("buried"),
-                "pickedUp": bone_state.get("pickedUp"),
-                "batchTicks": bone_state.get("batchTicks"),
-                "inventoryPressure": bone_state.get("inventoryPressure"),
-                "elapsedSeconds": elapsed_seconds(started),
-                "player": compact_player(player),
-            })
-            if not bone_state.get("success"):
-                return collect_visible_loot(player, plan, args, handle, reason + "_bones_blocked")
+        player = bury_inventory_bones(player, plan, args, handle, reason + "_inventory_bones")
     if free_slots(player) <= 0 and not has_cleanup_inventory_items(player, plan):
         return player
     visible_non_bone = visible_pickable_non_bone_loot(state, player, plan, args)
-    if should_defer_non_bone_cleanup(player, plan, args, reason, visible_non_bone=visible_non_bone):
+    include_non_bone = not should_defer_non_bone_cleanup(player, plan, args, reason, visible_non_bone=visible_non_bone)
+    if not include_non_bone:
         write_event(handle, "combat_cleanup_defer_non_bone", {
             "reason": reason,
             "freeSlots": free_slots(player),
@@ -2654,41 +2622,16 @@ def cleanup_after_combat(player, plan, args, handle, reason, state=None):
             "visibleLoot": compact_visible_loot(visible_non_bone),
             "player": compact_player(player),
         })
-        return player
-    cleanup_args = {
-        "maxTicks": int(plan.get("nonBoneCleanupMaxTicks", int(args.cleanup_max_ticks))),
-        "buryBones": bool(plan.get("buryBoneLoot", True)),
-        "pickupDrops": True,
-        "equipUpgrades": False,
-        "maxDistance": int(args.loot_distance),
-        "itemIds": [iid for iid in cleanup_item_ids(plan) if iid not in set(bone_ids)],
-    }
-    try:
-        started = time.monotonic()
-        state = bridge.call_tool("combat_cleanup_XS", cleanup_args, profile=args.profile)
-    except RuntimeError as exc:
-        write_event(handle, "combat_cleanup_fallback", {
-            "reason": reason,
-            "error": str(exc),
-            "player": compact_player(player),
-        })
-        return collect_visible_loot(player, plan, args, handle, reason + "_fallback")
-    player = player_from_combat_state(state)
-    write_event(handle, "combat_cleanup", {
+    started = time.monotonic()
+    player = collect_visible_loot(player, plan, args, handle, reason + "_primitive_cleanup", include_non_bone=include_non_bone)
+    write_event(handle, "combat_cleanup_primitives", {
         "reason": reason,
-        "success": bool(state.get("success")),
-        "batchStatus": state.get("batchStatus"),
-        "phase": state.get("phase"),
-        "actions": state.get("actions"),
-        "buried": state.get("buried"),
-        "pickedUp": state.get("pickedUp"),
-        "batchTicks": state.get("batchTicks"),
-        "inventoryPressure": state.get("inventoryPressure"),
+        "includeNonBone": include_non_bone,
+        "boneItemIds": bone_ids,
+        "lootItemIds": cleanup_item_ids(plan),
         "elapsedSeconds": elapsed_seconds(started),
         "player": compact_player(player),
     })
-    if not state.get("success"):
-        return collect_visible_loot(player, plan, args, handle, reason + "_blocked")
     return player
 
 
