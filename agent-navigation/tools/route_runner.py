@@ -47,6 +47,15 @@ def log(*args, **kwargs):
     print(*args, **kwargs)
 
 
+def warn_legacy_bare_runner():
+    print(
+        "warning: bare route_runner.py --to is deprecated for normal travel; "
+        "use route_ml_XS.py define and execute_route_definition.py --route-definition instead",
+        file=sys.stderr,
+        flush=True,
+    )
+
+
 def utc_now():
     return dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z")
 
@@ -1108,6 +1117,8 @@ def main(argv=None):
     RUN_PROFILE = args.profile
     if args.orient:
         return orient(args)
+    if not args.route_definition:
+        warn_legacy_bare_runner()
     return run(args)
 
 

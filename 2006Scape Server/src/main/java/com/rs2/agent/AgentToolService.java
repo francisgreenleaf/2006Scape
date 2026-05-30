@@ -186,6 +186,9 @@ public class AgentToolService {
         if ("combat_state".equals(tool)) {
             return combatStateXs(player);
         }
+        if (isLegacyStrategyTool(tool) && !isLegacyCompatibilityAcknowledged(arguments)) {
+            return legacyCompatibilityFailure(tool);
+        }
         if ("plan_combat_training".equals(tool)) {
             return planCombatTraining(player, arguments);
         }
@@ -361,6 +364,39 @@ public class AgentToolService {
 
     static boolean isCompactTool(String tool) {
         return isXsTool(tool) || isXxsTool(tool);
+    }
+
+    static boolean isLegacyCompatibilityAcknowledged(JsonObject arguments) {
+        return getBoolean(arguments, "legacyCompatibility", false)
+                || getBoolean(arguments, "compatibility", false);
+    }
+
+    static JsonObject legacyCompatibilityFailure(String tool) {
+        return failure(tool + " is a quarantined legacy strategy tool. Compose reusable primitives from Python, or pass legacyCompatibility=true only for intentional stale-runtime compatibility testing.");
+    }
+
+    static boolean isLegacyStrategyTool(String tool) {
+        return "plan_combat_training".equals(tool)
+                || "train_combat".equals(tool)
+                || "train_smithing_profit".equals(tool)
+                || "equip_best_items".equals(tool)
+                || "fish_food".equals(tool)
+                || "cook_food".equals(tool)
+                || "light_fire".equals(tool)
+                || "mine_ore".equals(tool)
+                || "chop_tree".equals(tool)
+                || "fletch_logs".equals(tool)
+                || "smelt_bar".equals(tool)
+                || "smith_item".equals(tool)
+                || "smith_best_item".equals(tool)
+                || "plan_smithing".equals(tool)
+                || "mine_ore_until_inventory_full".equals(tool)
+                || "chop_tree_until_inventory_full".equals(tool)
+                || "fletch_logs_until_inventory_empty".equals(tool)
+                || "combat_cleanup".equals(tool)
+                || "combat_restock_trip".equals(tool)
+                || "start_combat_goal".equals(tool)
+                || "observe_goal".equals(tool);
     }
 
     static String baseToolName(String tool) {

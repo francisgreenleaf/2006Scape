@@ -3,7 +3,7 @@
 
 This runner keeps mining out of the AI token loop. It discovers nearby mine
 clusters from the cache map, scores them against verified banks, routes to the
-best site through route_runner.py, mines the highest-value ready ore through the
+best site through ML1 route definitions, mines the highest-value ready ore through the
 bridge, and banks ores when the inventory fills.
 """
 
@@ -23,7 +23,6 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT = SCRIPT_DIR.parents[0]
 REPO_ROOT = SCRIPT_DIR.parents[1]
 RS_TOOL = SCRIPT_DIR / "rs-tool.sh"
-ROUTE_RUNNER = SCRIPT_DIR / "route_runner.py"
 PLACES_PATH = ROOT / "data" / "places.json"
 MINING_DIR = ROOT / "data" / "mining"
 RUNS_DIR = MINING_DIR / "runs"
@@ -834,6 +833,7 @@ def legacy_mine_batch(ore, site, args, handle, start_player=None):
         "maxDistance": int(site["rockScanDistance"]),
         "waitForLocalRespawn": bool(args.wait_for_local_respawn),
         "maxTicks": int(args.mine_max_ticks),
+        "legacyCompatibility": True,
     }
     started = time.monotonic()
     result = call_tool("mine_ore_until_inventory_full", payload)
@@ -1194,8 +1194,8 @@ def main(argv=None):
     parser.add_argument("--mine-max-ticks", type=int, default=250)
     parser.add_argument("--legacy-mining-tool", action="store_true",
                         help="Use the legacy server-side mine_ore_until_inventory_full tool instead of primitive object interaction.")
-    parser.add_argument("--legacy-mining-fallback", action=argparse.BooleanOptionalAction, default=True,
-                        help="Fallback to the legacy mining tool when primitive bridge tools are missing on a stale runtime.")
+    parser.add_argument("--legacy-mining-fallback", action=argparse.BooleanOptionalAction, default=False,
+                        help="Opt-in compatibility fallback to the legacy mining tool when deliberately testing a stale runtime.")
     parser.add_argument("--max-batches-per-leg", type=int, default=8)
     parser.add_argument("--max-walk-distance", type=int, default=48)
     parser.add_argument("--route-max-ticks", type=int, default=180)
@@ -1203,9 +1203,9 @@ def main(argv=None):
     parser.add_argument("--min-run-energy", type=int, default=10)
     parser.add_argument("--no-enable-run", action="store_true")
     parser.add_argument("--force-run-before-long-leg", action="store_true", default=True,
-                        help="Ask route_runner to refresh set_run true before long run-approved legs.")
+                        help="Ask the route executor to refresh set_run true before long run-approved legs.")
     parser.add_argument("--no-force-run-before-long-leg", dest="force_run_before_long_leg", action="store_false",
-                        help="Do not ask route_runner to refresh run state before long legs.")
+                        help="Do not ask the route executor to refresh run state before long legs.")
     parser.add_argument("--force-run-min-preview-steps", type=int, default=8,
                         help="Minimum route preview path length that counts as a long leg for run refresh.")
     parser.add_argument("--run-diagnostics-min-steps", type=int, default=8,

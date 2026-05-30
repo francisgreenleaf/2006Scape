@@ -99,13 +99,13 @@ The game does not walk straight lines between waypoints. `PlayerAssistant.player
 
 For large detours, the same collision grid can be searched directly from start to target. That `cache_direct` path adds soft costs around hazard radii and buffers, so the planner can discover unrecorded shortcuts while still preferring a wide path around death/high-risk NPC zones. This is not a replacement for learned route evidence; it is a target-aware candidate generator that gives the agent a better route to prove and record.
 
-`cache_direct` also produces a compact execution shape: `routeSteps` are the every-N-tile/turn waypoints, and `runPlan`/`runSegments` identify hazard-adjacent stretches where the agent should spend run energy instead of walking. `route_ml.py define` wraps those fields in the stable `2006scape.route-definition` API, including compatibility execution metadata and feedback instructions. Benchmark maps draw those run segments in yellow over the old/new route colors.
+`cache_direct` also produces a compact execution shape: `routeSteps` are the every-N-tile/turn waypoints, and `runPlan`/`runSegments` identify hazard-adjacent stretches where the agent should spend run energy instead of walking. `route_ml.py define` wraps those fields in the stable `2006scape.route-definition` API, including compatibility execution metadata and feedback instructions. Benchmark maps draw those run segments in yellow over the fast-route line.
 
 Route execution feedback is intentionally low-friction. Legacy compatibility executor commands append `route_batch` records under ignored `.local/run-evidence/`, and agents can add `route_outcome` records with `record-outcome` for higher-level problems such as enemy contact, death, stalls, blockers, wrong destinations, or bad detours. Dataset export folds both into `route_attempts.jsonl`.
 
 ## Benchmark Map Rendering
 
-`route_ml.py compare-maps` is the standard way to produce before/after visual route evidence. It should not hand-roll a new base map for each experiment. It loads bounded cache terrain through `cache_world_map.py`, then draws the reusable static context layers from `render_context_map.py` so banks, stores, docks, mapfunction icons, and known places are consistent with live agent context maps.
+`route_ml.py compare-maps` is the standard way to produce visual route evidence. It should not hand-roll a new base map for each experiment. It loads bounded cache terrain through `cache_world_map.py`, then draws the reusable static context layers from `render_context_map.py` so banks, stores, docks, mapfunction icons, and known places are consistent with live agent context maps. It renders the fast ML route by default; use `--include-old-planner` only for explicit regression checks against the deprecated full planner.
 
 The aggregate comparison report is intentionally compact. Use it for metrics and image paths. Open a per-case JSON sidecar only when marker coordinates or labels are needed, and open the PNG only when route geometry needs visual inspection.
 

@@ -23,7 +23,6 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT = SCRIPT_DIR.parents[0]
 RS_TOOL = SCRIPT_DIR / "rs-tool.sh"
-ROUTE_RUNNER = SCRIPT_DIR / "route_runner.py"
 COURSES_PATH = ROOT / "data" / "agility_courses.json"
 AGILITY_DIR = ROOT / "data" / "agility"
 RUNS_DIR = AGILITY_DIR / "runs"
@@ -34,6 +33,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 import navdb  # noqa: E402
+import bridge_script as bridge  # noqa: E402
 
 
 def utc_now():
@@ -376,36 +376,31 @@ def recover_to_course(course, args, handle, run_id, lap, reason):
         return bool(result.get("success")) and not player_from(result).get("isDead")
     if not args.preposition:
         return False
-    command = [
-        sys.executable,
-        str(ROUTE_RUNNER),
-        "--to",
-        course.get("placeId") or course["id"],
-        "--allow-frontier",
-        "--direct-if-preview",
-        "--probe-toward-target",
-        "--run-reserve",
-        "auto",
-    ]
-    if RUN_PROFILE:
-        command.extend(["--profile", RUN_PROFILE])
-    proc = subprocess.run(
-        command,
-        cwd=str(ROOT),
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    write_event(handle, "recovery_route_runner", {
+    target = course.get("placeId") or course["id"]
+    error = ""
+    try:
+        bridge.route_to(target, profile=RUN_PROFILE, handle=handle, reason="agility_recovery", extra_args={
+            "runner_max_batches": int(args.route_max_batches),
+            "max_batch_distance": int(args.max_walk_distance),
+            "max_walk_distance": int(args.max_walk_distance),
+            "max_ticks": int(args.walk_max_ticks),
+            "run_mode": "auto",
+            "eat_at": 10,
+            "stop_on_combat": True,
+        })
+        success = True
+    except Exception as exc:
+        success = False
+        error = str(exc)
+    write_event(handle, "recovery_ml1_route", {
         "runId": run_id,
         "lap": lap,
         "reason": reason,
-        "command": command[1:],
-        "returncode": proc.returncode,
-        "stdoutTail": proc.stdout.strip().splitlines()[-8:],
-        "stderr": proc.stderr.strip()[:800],
+        "target": target,
+        "success": success,
+        "error": error[:800],
     })
-    return proc.returncode == 0
+    return success
 
 
 def run_step(course, step, policy, args, handle, run_id, lap, step_number, current_player=None, current_tick=0):
@@ -581,35 +576,27 @@ def target_reached(args, player_state):
 def run_route_after_target(args, handle, run_id):
     if not args.route_after_target:
         return None
-    command = [
-        sys.executable,
-        str(ROUTE_RUNNER),
-        "--to",
-        args.route_after_target,
-        "--allow-frontier",
-        "--direct-if-preview",
-        "--probe-toward-target",
-        "--max-batches",
-        str(args.route_max_batches),
-        "--run-reserve",
-        args.route_run_reserve,
-    ]
-    if RUN_PROFILE:
-        command.extend(["--profile", RUN_PROFILE])
-    proc = subprocess.run(
-        command,
-        cwd=str(ROOT),
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
+    error = ""
+    try:
+        bridge.route_to(args.route_after_target, profile=RUN_PROFILE, handle=handle, reason="agility_route_after_target", extra_args={
+            "runner_max_batches": int(args.route_max_batches),
+            "max_batch_distance": int(args.max_walk_distance),
+            "max_walk_distance": int(args.max_walk_distance),
+            "max_ticks": int(args.walk_max_ticks),
+            "run_mode": "auto",
+            "eat_at": 10,
+            "stop_on_combat": True,
+        })
+        success = True
+    except Exception as exc:
+        success = False
+        error = str(exc)
     result = {
         "runId": run_id,
         "target": args.route_after_target,
-        "command": command[1:],
-        "returncode": proc.returncode,
-        "stdoutTail": proc.stdout.strip().splitlines()[-20:],
-        "stderr": proc.stderr.strip()[:1200],
+        "method": "ml1_route_definition",
+        "success": success,
+        "error": error[:1200],
     }
     write_event(handle, "route_after_target", result)
     return result

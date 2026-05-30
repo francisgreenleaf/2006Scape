@@ -76,7 +76,8 @@ RAW_FISH_COOKING_LEVELS = {
     383: 76,  # Raw shark
 }
 # Current live evidence shows primitive use_item_on_object opens the lobster
-# cooking flow reliably, but tuna/swordfish fall through to cook_food fallback.
+# cooking flow reliably. Tuna/swordfish can still opt into the quarantined
+# cook_food compatibility path with --compat-cook when testing stale runtimes.
 COMPAT_FIRST_COOK_IDS = {359, 371}
 FISHING_METHOD_ORDER = [
     {"name": "small_net_shrimp", "fishing": 1, "cooking": 1},
@@ -1493,6 +1494,7 @@ def compatibility_cook_batch(args, handle, player):
         "itemId": int(food["id"]),
         "amount": raw,
         "maxDistance": args.object_max_distance,
+        "legacyCompatibility": True,
     }, profile=args.profile)
     wait = bridge.call_tool("wait_until_idle", {
         "maxTicks": args.max_cook_ticks,
@@ -1787,7 +1789,8 @@ def main(argv=None):
     parser.add_argument("--max-cook-ticks", type=int, default=120)
     parser.add_argument("--cook-interface-ticks", type=int, default=1)
     parser.add_argument("--max-no-progress-rounds", type=int, default=2)
-    parser.add_argument("--compat-cook", choices=["auto", "always", "never"], default="auto")
+    parser.add_argument("--compat-cook", choices=["auto", "always", "never"], default="never",
+                        help="Opt in to the legacy Java cook_food compatibility path only when deliberately testing a stale runtime.")
     parser.add_argument("--status", action="store_true",
                         help="Print this runner's cooperative status file and exit without touching the game.")
     parser.add_argument("--efficiency-report", action="store_true",

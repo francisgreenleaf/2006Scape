@@ -3,7 +3,7 @@
 
 This keeps early cow combat, hide pickup, kebab restocking, and bank trips out
 of the AI token loop. It uses normal bridge gameplay only: all game actions go
-through rs-tool.sh, and all travel goes through route_runner.py.
+through rs-tool.sh, and travel goes through ML1 route definitions.
 """
 
 import argparse
@@ -23,7 +23,6 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT = SCRIPT_DIR.parents[0]
 REPO_ROOT = SCRIPT_DIR.parents[1]
 RS_TOOL = SCRIPT_DIR / "rs-tool.sh"
-ROUTE_RUNNER = SCRIPT_DIR / "route_runner.py"
 RUNS_DIR = ROOT / "data" / "combat" / "runs"
 RUNNER_CONTROL_DIR = ROOT / ".local" / "runners"
 RUNNER_CONTROL_NAME = "cowhide-combat"
@@ -32,11 +31,14 @@ RUN_PROFILE = ""
 COWHIDE = 1739
 COINS = 995
 KEBAB = 1971
+BRONZE_SCIMITAR = 1321
+IRON_SCIMITAR = 1323
+STEEL_SCIMITAR = 1325
 MITHRIL_SCIMITAR = 1329
 STEEL_WEAPON_ATTACK_LEVEL = 5
 MITHRIL_SCIMITAR_ATTACK_LEVEL = 20
 EARLY_STYLE_LEVEL = 5
-EXTRA_COW_TRIP_BANK_ITEM_IDS = (1323,)  # Iron scimitar; steel scimitar is equipped once attack is 5.
+EXTRA_COW_TRIP_BANK_ITEM_IDS = (IRON_SCIMITAR,)  # Iron scimitar; steel scimitar is equipped once attack is 5.
 LUMBRIDGE_COW_PEN_GATE_IDS = {1551, 1553}
 LUMBRIDGE_COW_PEN_GATE_X_RANGE = (3251, 3253)
 LUMBRIDGE_COW_PEN_GATE_Y_RANGE = (3266, 3267)
@@ -47,7 +49,7 @@ LUMBRIDGE_COW_PEN_ENTRY_TILES = (
 LUMBRIDGE_COW_PEN_EXIT_TILES = (
     (3252, 3266, 0),  # immediate west step through the opened gate
     (3251, 3266, 0),
-    (3250, 3266, 0),  # clear outside anchor for route_runner
+    (3250, 3266, 0),  # clear outside anchor for ML1 routing
 )
 AL_KHARID_GATE_WEST_TILE = (3267, 3227, 0)
 AL_KHARID_GATE_EAST_TILE = (3268, 3227, 0)
@@ -669,59 +671,37 @@ def route_evidence_path(args, run_path):
 def route_to(target, args, handle, reason, run_path):
     evidence_path = route_evidence_path(args, run_path)
     Path(evidence_path).parent.mkdir(parents=True, exist_ok=True)
-    command = [
-        sys.executable,
-        str(ROUTE_RUNNER),
-        "--to",
-        target,
-        "--allow-frontier",
-        "--direct-if-preview",
-        "--probe-toward-target",
-        "--run-reserve",
-        "auto",
-        "--max-batches",
-        str(args.route_max_batches),
-        "--max-walk-distance",
-        str(args.route_max_walk_distance),
-        "--max-batch-distance",
-        str(args.route_max_batch_distance),
-        "--max-ticks",
-        str(args.route_max_ticks),
-        "--evidence-jsonl",
-        evidence_path,
-    ]
-    if RUN_PROFILE:
-        command.extend(["--profile", RUN_PROFILE])
-    env = os.environ.copy()
-    if RUN_PROFILE:
-        env["RS_PROFILE"] = RUN_PROFILE
     write_event(handle, "route_start", {
         "reason": reason,
         "target": target,
-        "command": command[1:],
+        "method": "ml1_route_definition",
         "routeEvidencePath": evidence_path,
     })
-    proc = subprocess.run(
-        command,
-        cwd=str(REPO_ROOT),
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        env=env,
-    )
-    stdout_lines = proc.stdout.strip().splitlines()
-    stderr_lines = proc.stderr.strip().splitlines()
-    run_warnings = [line for line in stdout_lines if "runWarn=" in line and "runWarn=none" not in line]
+    extra_args = {
+        "runner_max_batches": int(args.route_max_batches),
+        "max_batch_distance": int(args.route_max_batch_distance),
+        "max_walk_distance": int(args.route_max_walk_distance),
+        "max_ticks": int(args.route_max_ticks),
+        "run_mode": "auto",
+        "eat_at": int(args.eat_threshold),
+        "stop_on_combat": True,
+        "evidence_jsonl": evidence_path,
+    }
+    error = ""
+    try:
+        bridge.route_to(target, profile=RUN_PROFILE, handle=handle, reason=reason, extra_args=extra_args)
+        success = True
+    except Exception as exc:
+        success = False
+        error = str(exc)
     write_event(handle, "route_done", {
         "reason": reason,
         "target": target,
-        "returncode": proc.returncode,
-        "stdoutTail": stdout_lines[-10:],
-        "stderrTail": stderr_lines[-10:],
-        "runWarningLines": run_warnings[-5:],
+        "success": success,
+        "error": error[:1200],
         "routeEvidencePath": evidence_path,
     })
-    if proc.returncode != 0:
+    if not success:
         fallback = bridge_landmark_fallback(target) if bool(getattr(args, "allow_java_landmark_fallback", False)) else None
         if fallback:
             log("route failed target={} reason={}; trying bridge landmark {}".format(target, reason, fallback), args, force=True)
@@ -730,13 +710,10 @@ def route_to(target, args, handle, reason, run_path):
             write_event(handle, "bridge_landmark_fallback_skipped", {
                 "reason": reason,
                 "target": target,
-                "message": "Java landmark fallback disabled; route_runner/script primitives must handle this leg.",
+                "message": "Java landmark fallback disabled; ML1/script primitives must handle this leg.",
             })
         log("route failed target={} reason={}".format(target, reason), args, force=True)
         return False
-    if not args.quiet:
-        for line in stdout_lines[-4:]:
-            log(line, args)
     return True
 
 
@@ -777,7 +754,7 @@ def travel_to_bridge_landmark(landmark, args, handle, reason, original_target):
 
 def route_or_stop(target, args, handle, reason, run_path, player=None):
     if not route_to(target, args, handle, reason, run_path):
-        raise RunnerStop("no_route", "route_runner failed while routing to {} for {}.".format(target, reason), player)
+        raise RunnerStop("no_route", "ML1 routing failed while routing to {} for {}.".format(target, reason), player)
     state, updated = observe_state()
     stop_if_unsafe(state, updated, args, handle, "after_route_" + reason)
     return state, updated
@@ -1338,19 +1315,34 @@ def ensure_combat_style(player, style, handle, reason):
 
 
 def maybe_equip_best(player, handle, reason):
-    if skill_level(player, "attack") < STEEL_WEAPON_ATTACK_LEVEL:
-        return player
-    result = call_tool("equip_best_items", {})
-    updated = player_from(result)
-    write_event(handle, "equip_best_items", {
+    attack = skill_level(player, "attack")
+    candidates = (
+        (MITHRIL_SCIMITAR, MITHRIL_SCIMITAR_ATTACK_LEVEL, "mithril_scimitar"),
+        (STEEL_SCIMITAR, STEEL_WEAPON_ATTACK_LEVEL, "steel_scimitar"),
+        (IRON_SCIMITAR, 1, "iron_scimitar"),
+        (BRONZE_SCIMITAR, 1, "bronze_scimitar"),
+    )
+    for item_id, required_attack, label in candidates:
+        if attack < required_attack or equipment_has_item(player, item_id) or count_inventory_item(player, item_id) <= 0:
+            continue
+        result = call_tool("equip_item", {"itemId": int(item_id)})
+        updated = player_from_or(result, player)
+        write_event(handle, "equip_known_upgrade", {
+            "reason": reason,
+            "itemId": int(item_id),
+            "label": label,
+            "requiredAttack": int(required_attack),
+            "success": bool(result.get("success")),
+            "message": result.get("message"),
+            "player": compact_player(updated),
+        })
+        return updated
+    write_event(handle, "equip_known_upgrade_skipped", {
         "reason": reason,
-        "success": bool(result.get("success")),
-        "message": result.get("message"),
-        "equipped": result.get("equipped"),
-        "equippedItems": result.get("equippedItems", []),
-        "player": compact_player(updated),
+        "attack": attack,
+        "player": compact_player(player),
     })
-    return updated
+    return player
 
 
 def eat_if_needed(state, player, args, handle, reason, safety_checked=False):
@@ -2058,8 +2050,8 @@ def main(argv=None):
                         help="After the Attack/Strength checkpoint, force Attack to this level before lowest-level all-melee balancing.")
     parser.add_argument("--balance-all-after-attack-checkpoint", action=argparse.BooleanOptionalAction, default=True,
                         help="After the Attack checkpoint, train the lowest of Attack/Strength/Defence with direct styles instead of controlled XP.")
-    parser.add_argument("--bank-target", default="al_kharid_bank", help="route_runner target for hide banking.")
-    parser.add_argument("--cow-area-target", default="lumbridge_cow_pen", help="route_runner target for cow combat.")
+    parser.add_argument("--bank-target", default="al_kharid_bank", help="ML1 route target for hide banking.")
+    parser.add_argument("--cow-area-target", default="lumbridge_cow_pen", help="ML1 route target for cow combat.")
     parser.add_argument("--cow-gate-approach-target", default="3252,3266,0",
                         help="West-side approach tile for the Lumbridge cow pen gate.")
     parser.add_argument("--cow-gate-entry-attempts", type=int, default=2)
@@ -2112,9 +2104,9 @@ def main(argv=None):
     parser.add_argument("--route-max-walk-distance", type=int, default=80)
     parser.add_argument("--route-max-batch-distance", type=int, default=48)
     parser.add_argument("--route-max-ticks", type=int, default=180)
-    parser.add_argument("--evidence-jsonl", help="Optional route_runner evidence JSONL path.")
+    parser.add_argument("--evidence-jsonl", help="Optional route evidence JSONL path.")
     parser.add_argument("--allow-java-landmark-fallback", action=argparse.BooleanOptionalAction, default=False,
-                        help="Emergency compatibility fallback to travel_to_landmark when route_runner fails. Disabled by default so the script uses route_runner plus primitives.")
+                        help="Emergency compatibility fallback to travel_to_landmark when ML1 routing fails. Disabled by default so the script uses ML1 plus primitives.")
     parser.add_argument("--al-kharid-gate-attempts", type=int, default=3)
     parser.add_argument("--al-kharid-gate-dialogue-steps", type=int, default=6)
     parser.add_argument("--quiet", action=argparse.BooleanOptionalAction, default=False)

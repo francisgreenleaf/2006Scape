@@ -213,7 +213,7 @@ def cmd_go(args: argparse.Namespace) -> int:
         }, indent=2, sort_keys=True))
         return 0 if result.get("recommended", {}).get("actionable") is True else 2
     if not command:
-        print(json.dumps({"success": False, "error": "no routeRunnerCommand", "route": result}, indent=2, sort_keys=True))
+        print(json.dumps({"success": False, "error": "no route execution command", "route": result}, indent=2, sort_keys=True))
         return 2
     proc = subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     payload = {
@@ -315,13 +315,15 @@ def build_parser() -> argparse.ArgumentParser:
     bench.add_argument("--limit", type=int, default=0)
     bench.set_defaults(func=cmd_benchmark)
 
-    compare = sub.add_parser("compare-maps", help="Render before/after maps for benchmark routes.")
+    compare = sub.add_parser("compare-maps", help="Render fast ML route maps for benchmark routes.")
     add_shared_route_args(compare)
     compare.add_argument("--run-id", default="")
     compare.add_argument("--output-dir", default="")
     compare.add_argument("--limit", type=int, default=0)
     compare.add_argument("--case", action="append",
                          help="Benchmark case name, from place, or target place to render. Repeatable.")
+    compare.add_argument("--include-old-planner", action="store_true",
+                         help="Also run and draw the deprecated full planner in red for explicit regression comparisons.")
     compare.add_argument("--pixels-per-tile", type=int, default=4)
     compare.add_argument("--padding-tiles", type=int, default=12)
     compare.add_argument("--header-pixels", type=int, default=64)
