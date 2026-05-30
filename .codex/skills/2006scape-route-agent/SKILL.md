@@ -15,16 +15,17 @@ Use this skill for local exploration and route-learning work in `/Users/kevin/Do
 - Use `2006scape-screenshot-capture` when API state is insufficient and compact visual proof is needed.
 - Use `2006scape-character-memory` when a route session reveals a durable character-specific preference, recurring blocker, or future goal. Do not put route graph facts there.
 
-## Routine observe
+## Routine Observe
 
-Prefer the XS wrapper for normal decisions:
+Use the smallest observe that answers the next routing question. XXS is the default for heartbeat/status checks and post-move confirmation; XS is the default for route planning because it keeps compact inventory, nearby entities, and route context.
 
 ```sh
+agent-navigation/tools/observe_XXS.sh
 agent-navigation/tools/observe_XS.sh
 RS_PROFILE=MrGem agent-navigation/tools/observe_XS.sh
 ```
 
-Use full or legacy state only for deep debugging, missing XS fields, session/personality context, or when recording complete evidence:
+Use full or legacy state only for a named missing field, deep debugging, session/personality context, or complete evidence capture. Do not call full observe in normal movement loops or after every compact route batch:
 
 ```sh
 agent-navigation/tools/observe-slim.sh
@@ -46,12 +47,12 @@ python3 agent-navigation/tools/runtime_doctor.py claim --verify
 Use repo-side bridge tools only:
 
 ```sh
-agent-navigation/tools/rs-tool_XS.sh walk_to_tile_until_arrived '{"x":3222,"y":3218,"height":0}'
-agent-navigation/tools/rs-tool_XS.sh interact_object '{"objectId":14879,"x":3209,"y":3216,"height":0}'
+agent-navigation/tools/rs-tool_XXS.sh walk_to_tile_until_arrived '{"x":3222,"y":3218,"height":0}'
+agent-navigation/tools/rs-tool_XS.sh interact_object_XS '{"objectId":14879,"x":3209,"y":3216,"height":0}'
 agent-navigation/tools/rs-tool_XS.sh cancel_current_action '{}'
 ```
 
-Fall back to `rs-tool.sh` only when XS removed a field needed for a specific decision or evidence record.
+Fall back to `rs-tool.sh` only when compact output removed a field needed for a specific decision or evidence record.
 
 Do not use admin teleports, spawned items, direct player-state edits, raw bridge tokens, or unrelated repo work.
 
@@ -91,7 +92,7 @@ python3 agent-navigation/tools/execute_route_definition.py --route-definition ag
 python3 agent-navigation/tools/route_failure_XS.py
 ```
 
-Read the returned `status`, `quality`, `safety`, `steps`, `run`, and `runSegments`. The old route method is deprecated: do not call bare `route_runner.py --to ...` for normal travel. If live movement is intended, run the returned `cmd`/persisted route-definition path; it uses `execute_route_definition.py` to follow route steps, eat before the next step at `--eat-at 10`, capture nearby NPC context on combat/HP loss, and write route feedback. If movement fails or recovery context is needed, read `route_failure_XS.py` before opening full route evidence JSONL. Use full `route_ml.py define` only when XS omits a field needed for planner debugging.
+Read the returned `status`, `quality`, `safety`, `steps`, `run`, and `runSegments`. ML1 supports surface routes and same-cache-area underground routes. If `status=requires-object-transition`, use the object-transition workflow to get through the entrance/exit/ladder/stairs/trapdoor/gate first, then request the next route on the destination layer or underground area. If `status=unsupported-coordinate-layer`, do not execute a route; the tile is outside a supported cache route area. The old route method is deprecated: do not call bare `route_runner.py --to ...` for normal travel. If live movement is intended, run the returned `cmd`/persisted route-definition path; it uses `execute_route_definition.py` to follow route steps, eat before the next step at `--eat-at 10`, capture nearby NPC context on combat/HP loss, and write route feedback. If movement fails or recovery context is needed, read `route_failure_XS.py` before opening full route evidence JSONL. Use full `route_ml.py define` only when XS omits a field needed for planner debugging.
 
 Use navdb for route DB validation, route-data edits, and fallback next-step checks:
 
@@ -142,7 +143,7 @@ These coordinate-target Route Runner examples are legacy diagnostics. For normal
 
 Use this navigation context ladder:
 
-1. `observe_XS.sh` or the latest batch result for live state.
+1. `observe_XXS.sh` for status confirmation, `observe_XS.sh` for route decisions, or the latest compact batch result for live state.
 2. `route_ml_XS.py define --from X,Y,H --to PLACE_OR_TILE ...` for ML1 plan, safety, route steps, and run-plan context.
 3. `render_agent_context_map_XS.py` JSON first, then PNG only when static geometry or detours need visual inspection.
 4. Compact screenshots only when live client visuals matter: open/closed gate or door state, wrong side of an object, hidden stairs/ladders/trapdoors, wall pockets, object interaction failures, or API/cache-map disagreement.
@@ -199,7 +200,7 @@ XS and full agent-facing CLIs append local audit events to `agent-navigation/.lo
 
 ## Current learned lessons
 
-- Use `observe_XS.sh` for routine state checks to avoid verbose context.
+- Use `observe_XXS.sh` for routine confirmation/status checks and `observe_XS.sh` for route decisions; avoid full observe unless a specific field is missing.
 - Use `runtime_doctor.py` for stale bridge/runtime repair instead of retyping the session-claim flow.
 - Use `capture-cardinal-screenshots.sh` for compact visual proof when route geometry is ambiguous.
 - Use ML1 `route_ml_XS.py define` for normal A-to-B travel; fall back to full `route_ml.py` only for missing debug fields.

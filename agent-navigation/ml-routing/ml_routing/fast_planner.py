@@ -6,10 +6,16 @@ import heapq
 import math
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from .collision import build_cache_collision, bounds_for_tiles, expand_route_path
-from .common import distance, iter_jsonl, parse_tile, tile_key
+from .collision import (
+    build_cache_collision,
+    bounds_for_tiles,
+    cache_area_for_tile,
+    cache_area_transition_block,
+    expand_route_path,
+)
+from .common import coordinate_layer, coordinate_layer_transition_block, distance, iter_jsonl, parse_tile, tile_key
 from .model import segment_prediction
 from .paths import ensure_tool_imports
 
@@ -356,7 +362,23 @@ def _edge_cost_from_stats(model: Dict[str, Any], stats: Dict[str, Any], left: Di
     return cost, prediction
 
 
-def _build_graph(model: Dict[str, Any], db: Dict[str, Any], navdb: Any, args: SimpleNamespace) -> Dict[str, Any]:
+def _route_area_filter(start_tile: Dict[str, int], target_tile: Dict[str, int]) -> Optional[Callable[[Dict[str, int]], bool]]:
+    start_layer = coordinate_layer(start_tile)
+    target_layer = coordinate_layer(target_tile)
+    if start_layer != target_layer:
+        return None
+    if start_layer == "surface":
+        return lambda tile: coordinate_layer(tile) == "surface"
+    if start_layer == "underground":
+        start_component = cache_area_for_tile(start_tile).get("componentId")
+        if not start_component:
+            return lambda _tile: False
+        return lambda tile: cache_area_for_tile(tile).get("componentId") == start_component
+    return None
+
+
+def _build_graph(model: Dict[str, Any], db: Dict[str, Any], navdb: Any, args: SimpleNamespace,
+                 area_filter: Optional[Callable[[Dict[str, int]], bool]] = None) -> Dict[str, Any]:
     nodes: Dict[str, Dict[str, int]] = {}
     adjacency: Dict[str, List[Dict[str, Any]]] = {}
     hazard_warnings: Dict[str, List[Dict[str, Any]]] = {}
@@ -367,6 +389,8 @@ def _build_graph(model: Dict[str, Any], db: Dict[str, Any], navdb: Any, args: Si
         left = parse_tile(left_key)
         right = parse_tile(right_key)
         if not left or not right:
+            continue
+        if area_filter is not None and (not area_filter(left) or not area_filter(right)):
             continue
         nodes[left_key] = left
         nodes[right_key] = right
@@ -392,6 +416,8 @@ def _build_graph(model: Dict[str, Any], db: Dict[str, Any], navdb: Any, args: Si
         left = parse_tile(record.get("fromTile") or record.get("from"))
         right = parse_tile(record.get("toTile") or record.get("to"))
         if not left or not right:
+            continue
+        if area_filter is not None and (not area_filter(left) or not area_filter(right)):
             continue
         left_key = tile_key(left)
         right_key = tile_key(right)
@@ -687,6 +713,11 @@ def _apply_cache_collision(base: Dict[str, Any], route_eval: Any, tiles: List[Di
     base["routeSteps"] = route_steps
     base["routeStepCount"] = len(route_steps)
     if not expanded.get("success"):
+        if coordinate_layer(tiles[0]) == "underground":
+            message = "Underground route was rejected because cache collision could not expand every segment safely."
+            base["status"] = "error"
+            base["error"] = message
+            base["message"] = message
         if base.get("quality") not in ("bad",):
             base["quality"] = "suspicious"
         return
@@ -925,20 +956,41 @@ def fast_route(args: SimpleNamespace, model: Dict[str, Any]) -> Dict[str, Any]:
     db = navdb.load_db()
     start_tile, start_label = _parse_tile_or_place(db, navdb, args.from_tile)
     target = _target_place(db, navdb, args.to)
-    graph = _build_graph(model, db, navdb, args)
-    start_key = _connect_start(graph, start_tile, args.graph_snap_distance)
-    targets = _target_keys(graph, target)
-    end_key, best, previous, settled = _dijkstra(graph, start_key, targets)
     base = {
         "planner": "fast",
         "from": start_label,
         "to": target["id"],
         "targetTile": target["tile"],
         "arrivalRadius": int(target.get("arrivalRadius", 1)),
-        "connectedNodes": len(settled),
+        "connectedNodes": 0,
         "modelId": model.get("modelId"),
         "modelTrainedAt": model.get("trainedAt"),
     }
+    transition_block = (
+        coordinate_layer_transition_block(start_tile, target["tile"])
+        or cache_area_transition_block(start_tile, target["tile"])
+    )
+    if transition_block:
+        message = transition_block["message"]
+        base.update({
+            "mode": transition_block["mode"],
+            "status": transition_block["status"],
+            "quality": "bad",
+            "error": message,
+            "message": message,
+            "transition": transition_block,
+            "coordinateLayers": {
+                "from": transition_block["fromLayer"],
+                "to": transition_block["toLayer"],
+            },
+        })
+        return base
+
+    graph = _build_graph(model, db, navdb, args, area_filter=_route_area_filter(start_tile, target["tile"]))
+    start_key = _connect_start(graph, start_tile, args.graph_snap_distance)
+    targets = _target_keys(graph, target)
+    end_key, best, previous, settled = _dijkstra(graph, start_key, targets)
+    base["connectedNodes"] = len(settled)
     if end_key is None:
         frontier = _frontier(graph, target["tile"], best, previous, start_tile, args.max_batch_distance)
         base["status"] = "no-learned-route"

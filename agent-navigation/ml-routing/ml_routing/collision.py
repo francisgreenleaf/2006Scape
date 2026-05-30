@@ -11,9 +11,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 import heapq
 import math
-from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
-from .common import Tile, distance, parse_tile, tile_key
+from .common import Tile, UNDERGROUND_MIN_Y, coordinate_layer, distance, parse_tile, tile_key
 from .paths import ensure_tool_imports
 
 
@@ -41,6 +41,9 @@ DIRECTIONS = (
     (1, 1),
 )
 
+CACHE_REGION_SIZE = 64
+_CACHE_AREA_CACHE: Optional[Dict[str, Any]] = None
+
 
 @dataclass
 class CollisionGrid:
@@ -48,12 +51,18 @@ class CollisionGrid:
     plane: int
     clips: Dict[Tuple[int, int], int]
     stats: Dict[str, Any]
+    valid_tiles: Optional[Set[Tuple[int, int]]] = None
 
     def in_bounds(self, x: int, y: int) -> bool:
-        return (
+        in_rect = (
             self.bounds["minX"] <= x <= self.bounds["maxX"]
             and self.bounds["minY"] <= y <= self.bounds["maxY"]
         )
+        if not in_rect:
+            return False
+        if self.valid_tiles is not None and (x, y) not in self.valid_tiles:
+            return False
+        return True
 
     def clip(self, x: int, y: int) -> int:
         return self.clips.get((x, y), 0)
@@ -198,6 +207,133 @@ def _region_intersects(record: Dict[str, int], bounds: Dict[str, int]) -> bool:
         or record["regionY"] + 63 < bounds["minY"]
         or record["regionY"] > bounds["maxY"]
     )
+
+
+def _region_origin(x: int, y: int) -> Tuple[int, int]:
+    return (
+        (int(x) // CACHE_REGION_SIZE) * CACHE_REGION_SIZE,
+        (int(y) // CACHE_REGION_SIZE) * CACHE_REGION_SIZE,
+    )
+
+
+def _cache_areas() -> Dict[str, Any]:
+    global _CACHE_AREA_CACHE
+    if _CACHE_AREA_CACHE is not None:
+        return _CACHE_AREA_CACHE
+    cache_world_map = _load_cache_world_map_module()
+    cache = cache_world_map.CacheReader()
+    records = {
+        (int(record["regionX"]), int(record["regionY"])): record
+        for record in cache_world_map.load_map_index(cache)
+    }
+    underground_regions = {key for key in records if key[1] >= UNDERGROUND_MIN_Y}
+    remaining = set(underground_regions)
+    component_by_region: Dict[Tuple[int, int], str] = {}
+    components: Dict[str, Dict[str, Any]] = {}
+    while remaining:
+        start = remaining.pop()
+        stack = [start]
+        component = {start}
+        while stack:
+            x, y = stack.pop()
+            for neighbor in (
+                (x + CACHE_REGION_SIZE, y),
+                (x - CACHE_REGION_SIZE, y),
+                (x, y + CACHE_REGION_SIZE),
+                (x, y - CACHE_REGION_SIZE),
+            ):
+                if neighbor in remaining:
+                    remaining.remove(neighbor)
+                    component.add(neighbor)
+                    stack.append(neighbor)
+        xs = [item[0] for item in component]
+        ys = [item[1] for item in component]
+        component_id = "underground-{}-{}".format(min(xs), min(ys))
+        bounds = {
+            "minX": min(xs),
+            "minY": min(ys),
+            "maxX": max(xs) + CACHE_REGION_SIZE - 1,
+            "maxY": max(ys) + CACHE_REGION_SIZE - 1,
+        }
+        components[component_id] = {
+            "id": component_id,
+            "bounds": bounds,
+            "regionCount": len(component),
+        }
+        for region in component:
+            component_by_region[region] = component_id
+    _CACHE_AREA_CACHE = {
+        "records": records,
+        "undergroundComponentByRegion": component_by_region,
+        "components": components,
+    }
+    return _CACHE_AREA_CACHE
+
+
+def cache_area_for_tile(tile: Optional[Tile]) -> Dict[str, Any]:
+    layer = coordinate_layer(tile)
+    if not tile:
+        return {"layer": layer}
+    x = int(tile["x"])
+    y = int(tile["y"])
+    region = _region_origin(x, y)
+    areas = _cache_areas()
+    record = areas["records"].get(region)
+    result = {
+        "layer": layer,
+        "regionX": region[0],
+        "regionY": region[1],
+        "hasCacheRegion": bool(record),
+    }
+    if layer == "underground":
+        component_id = areas["undergroundComponentByRegion"].get(region)
+        result["componentId"] = component_id
+        if component_id:
+            result["component"] = areas["components"].get(component_id)
+    return result
+
+
+def cache_area_transition_block(start: Optional[Tile], target: Optional[Tile]) -> Optional[Dict[str, Any]]:
+    if coordinate_layer(start) != "underground" or coordinate_layer(target) != "underground":
+        return None
+    from_area = cache_area_for_tile(start)
+    to_area = cache_area_for_tile(target)
+    if not from_area.get("componentId") or not to_area.get("componentId"):
+        message = (
+            "ML routing supports underground routes only inside known cache-backed "
+            "underground areas. One of these tiles is outside loaded underground map data."
+        )
+        return {
+            "status": "unsupported-coordinate-layer",
+            "mode": "unknown_underground_area",
+            "fromLayer": "underground",
+            "toLayer": "underground",
+            "fromTile": dict(start) if start else None,
+            "targetTile": dict(target) if target else None,
+            "fromArea": from_area,
+            "toArea": to_area,
+            "reason": "unknown_underground_cache_area",
+            "message": message,
+        }
+    if from_area.get("componentId") != to_area.get("componentId"):
+        message = (
+            "ML routing cannot route between separate underground cache areas in one route. "
+            "Use the appropriate entrance, exit, ladder, stairs, trapdoor, gate, or other "
+            "object transition first, then request a new route in the destination area."
+        )
+        return {
+            "status": "requires-object-transition",
+            "mode": "requires_object_transition",
+            "fromLayer": "underground",
+            "toLayer": "underground",
+            "fromTile": dict(start) if start else None,
+            "targetTile": dict(target) if target else None,
+            "fromArea": from_area,
+            "toArea": to_area,
+            "reason": "separate_underground_areas_require_object_transition",
+            "message": message,
+        }
+    return None
 
 
 def _add_clip(clips: Dict[Tuple[int, int], int], bounds: Dict[str, int], x: int, y: int, shift: int) -> bool:
@@ -360,6 +496,8 @@ def build_cache_collision(bounds: Dict[str, int], plane: Optional[int] = None) -
     stats: Dict[str, Any] = {
         "regions": 0,
         "clips": 0,
+        "validTiles": 0,
+        "validTileBoundary": clean_bounds["maxY"] >= UNDERGROUND_MIN_Y,
         "terrainBlocks": 0,
         "wallObjects": 0,
         "solidObjects": 0,
@@ -367,6 +505,7 @@ def build_cache_collision(bounds: Dict[str, int], plane: Optional[int] = None) -
         "objectsSeen": 0,
         "lastPathLimitHit": False,
     }
+    valid_tiles: Optional[Set[Tuple[int, int]]] = set() if stats["validTileBoundary"] else None
 
     for record in records:
         if not _region_intersects(record, clean_bounds):
@@ -379,6 +518,15 @@ def build_cache_collision(bounds: Dict[str, int], plane: Optional[int] = None) -
         except Exception:
             continue
         stats["regions"] += 1
+        if valid_tiles is not None:
+            for local_x in range(64):
+                x = record["regionX"] + local_x
+                if x < clean_bounds["minX"] or x > clean_bounds["maxX"]:
+                    continue
+                for local_y in range(64):
+                    y = record["regionY"] + local_y
+                    if clean_bounds["minY"] <= y <= clean_bounds["maxY"]:
+                        valid_tiles.add((x, y))
         settings = terrain["settings"]
         for local_z in range(4):
             for local_x in range(64):
@@ -444,7 +592,9 @@ def build_cache_collision(bounds: Dict[str, int], plane: Optional[int] = None) -
                     stats["wallObjects"] += 1
 
     stats["clips"] = len(clips)
-    return CollisionGrid(clean_bounds, plane, clips, stats)
+    if valid_tiles is not None:
+        stats["validTiles"] = len(valid_tiles)
+    return CollisionGrid(clean_bounds, plane, clips, stats, valid_tiles=valid_tiles)
 
 
 def _edge_payload(edge: Any) -> Dict[str, Any]:

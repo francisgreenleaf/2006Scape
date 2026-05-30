@@ -6,9 +6,11 @@ directly is only useful for engine debugging or legacy comparison output.
 """
 
 import argparse
+from datetime import datetime
 import hashlib
 import json
 import math
+import os
 import shutil
 import subprocess
 import sys
@@ -17,6 +19,8 @@ from pathlib import Path
 
 from cache_world_map import (
     CACHE_DIR,
+    Buffer,
+    CacheReader,
     LEVEL0_SURFACE_BOUNDS,
     draw_world_map,
     load_background_sprites,
@@ -45,19 +49,60 @@ from render_navigation_png import Canvas
 
 
 ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = ROOT.parent
 OUT = ROOT / "topology"
 RUNESCAPE_FONT = ROOT / "assets" / "fonts" / "runescape_uf.ttf"
 RUNESCAPE_FONT_SOURCE = "https://www.dafont.com/runescape-uf.font"
+CHARACTER_DIR = REPO_ROOT / "2006Scape Server" / "data" / "characters"
+AGENT_SESSION_LOG_DIR = REPO_ROOT / "2006Scape Server" / "data" / "logs" / "agent-sessions"
+PLAYER_TRACE_DIR = REPO_ROOT / "2006Scape Server" / "data" / "logs" / "player-movement-traces"
 DEFAULT_COVERAGE_CACHE_DIR = ROOT / ".local" / "topology-render-cache"
 FOG_REVEAL_CACHE_VERSION = 1
 HEAT_MASK_CACHE_VERSION = 3
 CANVAS_LAYER_CACHE_VERSION = 4
 POI_CACHE_VERSION = 4
 TOPOLOGY_CACHE_VERSION = 1
+ADVENTURE_STATS_CACHE_VERSION = 1
 PLAYER_TRACE_PART = "player-movement-traces"
 AGENT_TRACE_PART = "agent-movement-traces"
 _RADIAL_HEAT_KERNELS = {}
 _FOG_REVEAL_KERNELS = {}
+_ITEM_DEFINITIONS = None
+
+SKILL_NAMES = [
+    "attack", "defence", "strength", "hitpoints", "ranged", "prayer", "magic",
+    "cooking", "woodcutting", "fletching", "fishing", "firemaking", "crafting",
+    "smithing", "mining", "herblore", "agility", "thieving", "slayer", "farming",
+    "runecraft",
+]
+SKILL_ICON_REFS = [
+    ("staticons", 0), ("staticons", 2), ("staticons", 1), ("staticons", 6),
+    ("staticons", 3), ("staticons", 4), ("staticons", 5), ("staticons", 15),
+    ("staticons", 17), ("staticons", 11), ("staticons", 14), ("staticons", 16),
+    ("staticons", 10), ("staticons", 13), ("staticons", 12), ("staticons", 8),
+    ("staticons", 7), ("staticons", 9), ("staticons2", 1), ("staticons2", 2),
+    ("staticons2", 0),
+]
+SKILL_MENU_ORDER = [
+    0, 2, 1, 3, 4, 6, 5, 20,
+    14, 13, 10, 7, 11, 8, 9, 12,
+    15, 16, 17, 18, 19,
+]
+SKILL_UI_BACKING_LEFT_X = -1
+SKILL_UI_BACKING_RIGHT_X = 29
+SKILL_UI_TILE_SPAN_X = 65
+SKILL_UI_TILE_SPAN_Y = 36
+SKILL_PANEL_ROWS = 2
+SKILL_PANEL_COLS = int(math.ceil(len(SKILL_MENU_ORDER) / float(SKILL_PANEL_ROWS)))
+SKILL_UI_ROW_STEP = 31
+SKILL_UI_CELL_STEP = 64
+XP_PER_LEVEL = [0] * 100
+_points = 0
+_output = 0
+for _level in range(1, 100):
+    XP_PER_LEVEL[_level] = _output
+    _points += math.floor(_level + 300 * math.pow(2, _level / 7.0))
+    _output = int(math.floor(_points / 4))
 
 FOOTER_HEIGHT = 280
 FOOTER_RULE_Y = 12
@@ -140,6 +185,49 @@ def color_rgba(color, alpha):
 
 def format_int(value):
     return "{:,}".format(int(value))
+
+
+def format_compact_int(value, suffix=""):
+    value = int(value)
+    sign = "-" if value < 0 else ""
+    amount = abs(value)
+    if amount >= 1000000:
+        text = "%.1fM" % (amount / 1000000.0)
+    elif amount >= 10000:
+        text = "%dK" % int(round(amount / 1000.0))
+    elif amount >= 1000:
+        text = "%.1fK" % (amount / 1000.0)
+    else:
+        text = str(amount)
+    text = text.replace(".0", "")
+    return sign + text + suffix
+
+
+FEET_PER_TILE = 2.0
+
+
+def movement_distance_feet(tile_count):
+    return float(tile_count) * FEET_PER_TILE
+
+
+def movement_distance_miles(tile_count):
+    return movement_distance_feet(tile_count) / 5280.0
+
+
+def format_distance_miles(tile_count):
+    miles = movement_distance_miles(tile_count)
+    if miles >= 1000.0:
+        return "%s MI" % format_compact_int(int(round(miles)))
+    if miles >= 10.0:
+        return "%.1f MI" % miles
+    return "%.2f MI" % miles
+
+
+def compact_label(value, max_chars=13):
+    text = str(value or "").upper()
+    if len(text) <= max_chars:
+        return text
+    return text[:max_chars - 1].rstrip() + "."
 
 
 def safe_int(value, default=0):
@@ -1008,6 +1096,616 @@ def draw_indexed_sprite(canvas, sprite, cx, cy, scale, alpha=1.0):
             y1 = int(math.ceil(top + (sy + 1) * scale)) - 1
             canvas.blend_rect(x0, y0, x1, y1, color, alpha)
     return True
+
+
+def draw_indexed_sprite_at(canvas, sprite, x, y, scale, alpha=1.0):
+    palette = sprite.get("palette") or []
+    pixels = sprite.get("pixels") or []
+    width = int(sprite.get("width", 0))
+    height = int(sprite.get("height", 0))
+    if width <= 0 or height <= 0 or not palette:
+        return False
+    left = float(x) + float(sprite.get("xOffset", 0)) * scale
+    top = float(y) + float(sprite.get("yOffset", 0)) * scale
+    for sy in range(height):
+        for sx in range(width):
+            palette_index = pixels[sx + sy * width]
+            if palette_index <= 0 or palette_index >= len(palette):
+                continue
+            color = palette[palette_index]
+            x0 = int(math.floor(left + sx * scale))
+            x1 = int(math.ceil(left + (sx + 1) * scale)) - 1
+            y0 = int(math.floor(top + sy * scale))
+            y1 = int(math.ceil(top + (sy + 1) * scale)) - 1
+            canvas.blend_rect(x0, y0, x1, y1, color, alpha)
+    return True
+
+
+def level_for_xp(exp):
+    for level in range(1, 99):
+        if int(exp) < XP_PER_LEVEL[level + 1]:
+            return level
+    return 99
+
+
+def normalized_profile_name(profile):
+    value = profile or "mrflame"
+    normalized = "".join(ch for ch in str(value).lower() if ch.isalnum())
+    return normalized or "mrflame"
+
+
+def parse_iso_timestamp(value):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def format_hours(seconds):
+    hours = max(0.0, float(seconds) / 3600.0)
+    if hours >= 100:
+        return "%dH" % int(round(hours))
+    if hours >= 10:
+        return "%.1fH" % hours
+    return "%.2fH" % hours
+
+
+def read_i32(buffer):
+    value = int.from_bytes(buffer.data[buffer.offset:buffer.offset + 4], "big", signed=True)
+    buffer.offset += 4
+    return value
+
+
+def load_item_definitions():
+    global _ITEM_DEFINITIONS
+    if _ITEM_DEFINITIONS is not None:
+        return _ITEM_DEFINITIONS
+    definitions = {}
+    try:
+        cache = CacheReader(CACHE_DIR)
+        data = cache.get_archive_entry(0, 2, "obj.dat")
+        index = cache.get_archive_entry(0, 2, "obj.idx")
+    except Exception:
+        _ITEM_DEFINITIONS = definitions
+        return definitions
+    count = int.from_bytes(index[0:2], "big")
+    offset = 2
+    data_offset = 2
+    offsets = []
+    for _item_id in range(count):
+        offsets.append(data_offset)
+        data_offset += int.from_bytes(index[offset:offset + 2], "big")
+        offset += 2
+    buffer = None
+    for item_id, item_offset in enumerate(offsets):
+        buffer = buffer or Buffer(data)
+        buffer.offset = item_offset
+        item = {
+            "id": item_id,
+            "name": "item-%d" % item_id,
+            "value": 1,
+            "stackable": False,
+            "noteInfoId": -1,
+            "noteGraphicId": -1,
+        }
+        while buffer.offset < len(data):
+            opcode = buffer.u8()
+            if opcode == 0:
+                break
+            if opcode == 1:
+                buffer.u16()
+            elif opcode == 2:
+                item["name"] = buffer.string()
+            elif opcode == 3:
+                buffer.string()
+            elif (4 <= opcode <= 8) or opcode == 10:
+                buffer.u16()
+            elif opcode == 11:
+                item["stackable"] = True
+            elif opcode == 12:
+                item["value"] = max(1, read_i32(buffer))
+            elif opcode == 16:
+                pass
+            elif opcode == 23:
+                buffer.u16()
+                buffer.u8()
+            elif opcode == 24:
+                buffer.u16()
+            elif opcode == 25:
+                buffer.u16()
+                buffer.u8()
+            elif opcode == 26:
+                buffer.u16()
+            elif 30 <= opcode < 40:
+                buffer.string()
+            elif opcode == 40:
+                for _index in range(buffer.u8()):
+                    buffer.u16()
+                    buffer.u16()
+            elif opcode in (78, 79, 90, 91, 92, 93, 95):
+                buffer.u16()
+            elif opcode == 97:
+                item["noteInfoId"] = buffer.u16()
+            elif opcode == 98:
+                item["noteGraphicId"] = buffer.u16()
+            elif 100 <= opcode < 110:
+                buffer.u16()
+                buffer.u16()
+            elif 110 <= opcode <= 112:
+                buffer.u16()
+            elif opcode in (113, 114):
+                buffer.u8()
+            elif opcode == 115:
+                buffer.u8()
+            else:
+                break
+        definitions[item_id] = item
+    for item in definitions.values():
+        note_info_id = item.get("noteInfoId", -1)
+        note_graphic_id = item.get("noteGraphicId", -1)
+        if note_info_id >= 0 and note_graphic_id >= 0 and note_info_id in definitions:
+            source = definitions[note_info_id]
+            item["name"] = source.get("name", item["name"])
+            item["value"] = source.get("value", item["value"])
+            item["stackable"] = True
+    _ITEM_DEFINITIONS = definitions
+    return definitions
+
+
+def stored_item_id(raw_id, stored=True):
+    item_id = safe_int(raw_id, 0)
+    if stored:
+        item_id -= 1
+    return item_id if item_id >= 0 else -1
+
+
+def item_value(item_id, definitions=None):
+    definitions = definitions or load_item_definitions()
+    return max(1, int((definitions.get(int(item_id)) or {}).get("value", 1)))
+
+
+def item_name(item_id, definitions=None):
+    definitions = definitions or load_item_definitions()
+    return str((definitions.get(int(item_id)) or {}).get("name") or ("item-%d" % int(item_id)))
+
+
+def empty_adventure_stats():
+    return {
+        "killsEstimated": 0,
+        "killEvents": 0,
+        "itemsPickedUp": 0,
+        "bonesBuried": 0,
+        "lootStacks": 0,
+        "topLoot": "",
+        "topLootCount": 0,
+        "logFiles": 0,
+        "logCache": "disabled",
+    }
+
+
+def merge_adventure_stats(total, part):
+    for key in ("killEvents", "itemsPickedUp", "bonesBuried", "lootStacks", "logFiles"):
+        total[key] = int(total.get(key, 0)) + int(part.get(key, 0))
+    loot = total.setdefault("_loot", {})
+    for name, count in (part.get("_loot") or {}).items():
+        loot[name] = int(loot.get(name, 0)) + int(count)
+
+
+def finalize_adventure_stats(stats):
+    stats["killsEstimated"] = max(int(stats.get("killEvents", 0)), int(stats.get("bonesBuried", 0)))
+    loot = stats.pop("_loot", {})
+    if loot:
+        name, count = max(loot.items(), key=lambda entry: (entry[1], entry[0]))
+        stats["topLoot"] = compact_label(name)
+        stats["topLootCount"] = int(count)
+    else:
+        stats["topLoot"] = ""
+        stats["topLootCount"] = 0
+    return stats
+
+
+def scan_adventure_log_file(path, profile_name):
+    stats = empty_adventure_stats()
+    stats["_loot"] = {}
+    try:
+        handle = path.open("r", encoding="utf-8", errors="replace")
+    except OSError:
+        return stats
+    with handle:
+        for line in handle:
+            if profile_name not in line.lower():
+                continue
+            try:
+                event = json.loads(line)
+            except ValueError:
+                continue
+            player_name = normalized_profile_name(event.get("playerName") or (event.get("player") or {}).get("name"))
+            if player_name and player_name != profile_name:
+                continue
+            data = event.get("data") or {}
+            result = data.get("result") or {}
+            if not isinstance(result, dict):
+                continue
+            picked = max(0, safe_int(result.get("pickedUp"), 0))
+            buried = max(0, safe_int(result.get("buried"), 0))
+            stats["itemsPickedUp"] += picked
+            stats["bonesBuried"] += buried
+            status = str(result.get("event") or result.get("batchStatus") or "").lower()
+            if status in ("loot_appeared", "target_dead", "target_death"):
+                stats["killEvents"] += 1
+            ground_item = result.get("groundItem") or {}
+            if picked > 0 and isinstance(ground_item, dict):
+                amount = max(picked, safe_int(ground_item.get("amount"), picked))
+                name = str(ground_item.get("name") or "")
+                if name:
+                    stats["lootStacks"] += 1
+                    stats["_loot"][name] = int(stats["_loot"].get(name, 0)) + amount
+    return stats
+
+
+def adventure_stats_cache_path(profile):
+    return DEFAULT_COVERAGE_CACHE_DIR / ("adventure-stats-%s.json" % normalized_profile_name(profile))
+
+
+def load_cached_adventure_stats(path):
+    try:
+        cache = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    if int(cache.get("version", 0)) != ADVENTURE_STATS_CACHE_VERSION:
+        return {}
+    return cache
+
+
+def load_adventure_log_stats(profile):
+    profile_name = normalized_profile_name(profile)
+    stats = empty_adventure_stats()
+    stats["_loot"] = {}
+    if not AGENT_SESSION_LOG_DIR.exists():
+        return finalize_adventure_stats(stats)
+    cache_path = adventure_stats_cache_path(profile_name)
+    cache = load_cached_adventure_stats(cache_path)
+    cached_files = cache.get("files") or {}
+    files = {}
+    hits = 0
+    misses = 0
+    for path in sorted(AGENT_SESSION_LOG_DIR.glob("*/*.jsonl")):
+        try:
+            stat = path.stat()
+        except OSError:
+            continue
+        key = str(path.relative_to(REPO_ROOT))
+        cached = cached_files.get(key) or {}
+        if (
+            int(cached.get("size", -1)) == int(stat.st_size)
+            and int(cached.get("mtimeNs", -1)) == int(stat.st_mtime_ns)
+        ):
+            file_stats = cached.get("stats") or empty_adventure_stats()
+            hits += 1
+        else:
+            file_stats = scan_adventure_log_file(path, profile_name)
+            misses += 1
+        files[key] = {
+            "size": int(stat.st_size),
+            "mtimeNs": int(stat.st_mtime_ns),
+            "stats": file_stats,
+        }
+        stats["logFiles"] += 1
+        merge_adventure_stats(stats, file_stats)
+    if hits and misses:
+        stats["logCache"] = "delta"
+    elif hits:
+        stats["logCache"] = "hit"
+    else:
+        stats["logCache"] = "miss"
+    try:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        temp_path = cache_path.with_name("%s.%d.tmp" % (cache_path.name, os.getpid()))
+        temp_path.write_text(json.dumps({
+            "version": ADVENTURE_STATS_CACHE_VERSION,
+            "profile": profile_name,
+            "files": files,
+        }, sort_keys=True) + "\n", encoding="utf-8")
+        temp_path.replace(cache_path)
+    except OSError:
+        pass
+    return finalize_adventure_stats(stats)
+
+
+def parse_saved_items(line, stored=True):
+    try:
+        _key, value = line.split("=", 1)
+    except ValueError:
+        return None
+    parts = value.strip().split()
+    if len(parts) < 3:
+        return None
+    item_id = stored_item_id(parts[1], stored=stored)
+    amount = max(0, safe_int(parts[2], 0))
+    if item_id < 0 or amount <= 0:
+        return None
+    return {"slot": safe_int(parts[0], 0), "id": item_id, "amount": amount}
+
+
+def inventory_value(items, definitions=None):
+    definitions = definitions or load_item_definitions()
+    return sum(int(item.get("amount", 0)) * item_value(item.get("id", -1), definitions) for item in items)
+
+
+def movement_trace_play_seconds(profile):
+    profile_name = normalized_profile_name(profile)
+    if not PLAYER_TRACE_DIR.exists():
+        return 0.0, 0
+    previous = None
+    seconds = 0.0
+    records = 0
+    for path in sorted(PLAYER_TRACE_DIR.glob("*/%s.jsonl" % profile_name)):
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            if not line.strip():
+                continue
+            try:
+                record = json.loads(line)
+            except ValueError:
+                continue
+            timestamp = parse_iso_timestamp(record.get("timestamp"))
+            if timestamp is None:
+                continue
+            records += 1
+            if previous is not None:
+                gap = (timestamp - previous).total_seconds()
+                if 0.0 <= gap <= 300.0:
+                    seconds += gap
+            previous = timestamp
+    return seconds, records
+
+
+def load_profile_stats(profile):
+    profile_name = normalized_profile_name(profile)
+    path = CHARACTER_DIR / ("%s.txt" % profile_name)
+    definitions = load_item_definitions()
+    skills = []
+    for index, name in enumerate(SKILL_NAMES):
+        skills.append({
+            "index": index,
+            "name": name,
+            "currentLevel": 1,
+            "baseLevel": 1,
+            "xp": 0,
+        })
+    bank_items = []
+    inventory_items = []
+    equipment_items = []
+    global_damage = 0
+    if path.exists():
+        section = ""
+        for raw_line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            line = raw_line.strip()
+            if not line:
+                continue
+            if line.startswith("[") and line.endswith("]"):
+                section = line.strip("[]").upper()
+                continue
+            if section == "CHARACTER" and line.startswith("global-damage"):
+                global_damage = safe_int(line.split("=", 1)[1].strip(), global_damage)
+            elif section == "SKILLS" and line.startswith("character-skill"):
+                _key, value = line.split("=", 1)
+                parts = value.strip().split()
+                if len(parts) < 3:
+                    continue
+                try:
+                    index = int(parts[0])
+                    current = int(parts[1])
+                    xp = int(parts[2])
+                except ValueError:
+                    continue
+                if 0 <= index < len(skills):
+                    skills[index]["currentLevel"] = current
+                    skills[index]["baseLevel"] = level_for_xp(xp)
+                    skills[index]["xp"] = xp
+            elif section == "ITEMS" and line.startswith("character-item"):
+                item = parse_saved_items(line, stored=True)
+                if item is not None:
+                    inventory_items.append(item)
+            elif section == "BANK" and line.startswith("character-bank"):
+                item = parse_saved_items(line, stored=True)
+                if item is not None:
+                    bank_items.append(item)
+            elif section == "EQUIPMENT" and line.startswith("character-equip"):
+                item = parse_saved_items(line, stored=False)
+                if item is not None:
+                    equipment_items.append(item)
+    play_seconds, play_records = movement_trace_play_seconds(profile_name)
+    adventure_stats = load_adventure_log_stats(profile_name)
+    bank_coins = sum(item["amount"] for item in bank_items if item["id"] == 995)
+    inventory_coins = sum(item["amount"] for item in inventory_items if item["id"] == 995)
+    bank_value = inventory_value(bank_items, definitions)
+    inventory_wealth = inventory_value(inventory_items, definitions)
+    equipment_wealth = inventory_value(equipment_items, definitions)
+    adventure_stats.update({
+        "bankCoins": bank_coins,
+        "inventoryCoins": inventory_coins,
+        "bankValue": bank_value,
+        "inventoryValue": inventory_wealth,
+        "equipmentValue": equipment_wealth,
+        "totalWealth": bank_value + inventory_wealth + equipment_wealth,
+        "bankSlots": len(bank_items),
+        "bankItems": sum(item["amount"] for item in bank_items),
+        "inventoryItems": sum(item["amount"] for item in inventory_items),
+        "damageDealt": global_damage,
+        "topBankItem": compact_label(item_name(
+            max(bank_items, key=lambda item: item["amount"] * item_value(item["id"], definitions))["id"],
+            definitions,
+        )) if bank_items else "",
+    })
+    total_level = sum(skill["baseLevel"] for skill in skills)
+    return {
+        "profile": profile_name,
+        "characterPath": str(path),
+        "skills": skills,
+        "totalLevel": total_level,
+        "hoursPlayed": format_hours(play_seconds),
+        "playSeconds": int(round(play_seconds)),
+        "playTraceRecords": play_records,
+        "adventureStats": adventure_stats,
+    }
+
+
+def title_stats_layout(width, args):
+    ui_scale = 2.12
+    cols = SKILL_PANEL_COLS
+    rows = SKILL_PANEL_ROWS
+    skill_grid_w = int(math.ceil(((cols - 1) * SKILL_UI_CELL_STEP + SKILL_UI_TILE_SPAN_X) * ui_scale))
+    skill_grid_h = int(math.ceil(((rows - 1) * SKILL_UI_ROW_STEP + SKILL_UI_TILE_SPAN_Y) * ui_scale))
+    stats_gap = 54
+    stats_w = 650
+    panel_w = skill_grid_w + stats_gap + stats_w
+    panel_h = max(skill_grid_h, 148)
+    x = int(getattr(args, "title_stats_x", -1))
+    if x < 0:
+        x = max(430, int(width) - panel_w - 34)
+    y = int(getattr(args, "title_stats_y", 30))
+    return {
+        "x": x,
+        "y": y,
+        "uiScale": ui_scale,
+        "cols": cols,
+        "rows": rows,
+        "skillCount": len(SKILL_MENU_ORDER),
+        "cellW": int(round(SKILL_UI_CELL_STEP * ui_scale)),
+        "rowH": int(round(SKILL_UI_ROW_STEP * ui_scale)),
+        "skillGridW": skill_grid_w,
+        "skillGridH": skill_grid_h,
+        "panelW": panel_w,
+        "panelH": panel_h,
+        "iconScale": ui_scale,
+        "iconX": 5,
+        "iconY": 5,
+        "levelCenterX": 39.5,
+        "levelBaselineY": 17.8,
+        "levelPointsize": 28,
+        "maxLevelCenterX": 53.0,
+        "maxLevelBaselineY": 30.6,
+        "maxLevelPointsize": 28,
+        "statsX": x + skill_grid_w + stats_gap,
+        "statsColumnGap": 330,
+        "statLabelPointsize": 31,
+        "statValuePointsize": 76,
+        "statLabelBaselineY": y + 50,
+        "statValueBaselineY": y + 124,
+        "secondStatLabelBaselineY": y + 50,
+        "secondStatValueBaselineY": y + 124,
+    }
+
+
+def load_skill_icon_sprites():
+    sprites = {}
+    by_name = {}
+    for name, _sprite_id in SKILL_ICON_REFS:
+        if name not in by_name:
+            by_name[name] = load_background_sprites(name=name, limit=60)
+    for index, ref in enumerate(SKILL_ICON_REFS):
+        name, sprite_id = ref
+        sprite = by_name.get(name, {}).get(sprite_id)
+        if sprite is not None:
+            sprites[index] = sprite
+    return sprites
+
+
+def ordered_profile_skills(profile_stats):
+    by_index = {}
+    for skill in profile_stats.get("skills", []):
+        try:
+            index = int(skill.get("index", 0))
+        except (TypeError, ValueError):
+            continue
+        by_index[index] = skill
+    ordered = []
+    seen = set()
+    for index in SKILL_MENU_ORDER:
+        skill = by_index.get(index)
+        if skill is not None:
+            ordered.append(skill)
+            seen.add(index)
+    for skill in profile_stats.get("skills", []):
+        try:
+            index = int(skill.get("index", 0))
+        except (TypeError, ValueError):
+            continue
+        if index not in seen:
+            ordered.append(skill)
+            seen.add(index)
+    return ordered
+
+
+def draw_client_skill_backing(canvas, layout):
+    sprites = load_background_sprites(name="miscgraphics", limit=10)
+    left_sprite = sprites.get(4)
+    right_sprite = sprites.get(5)
+    x = layout["x"]
+    y = layout["y"]
+    scale = layout["uiScale"]
+    if left_sprite is None or right_sprite is None:
+        canvas.blend_rect(
+            x, y, x + layout["skillGridW"], y + layout["skillGridH"],
+            (42, 37, 30), 0.96,
+        )
+        return
+    for position in range(layout["skillCount"]):
+        col = position % layout["cols"]
+        row = position // layout["cols"]
+        row_y = y + row * SKILL_UI_ROW_STEP * scale
+        cell_x = x + col * SKILL_UI_CELL_STEP * scale
+        draw_indexed_sprite_at(
+            canvas, left_sprite,
+            cell_x + SKILL_UI_BACKING_LEFT_X * scale,
+            row_y,
+            scale,
+            1.0,
+        )
+        draw_indexed_sprite_at(
+            canvas, right_sprite,
+            cell_x + SKILL_UI_BACKING_RIGHT_X * scale,
+            row_y,
+            scale,
+            1.0,
+        )
+
+
+def draw_title_stats_panel(canvas, profile_stats, args):
+    if not getattr(args, "title_stats_panel", False) or not profile_stats:
+        return
+    layout = title_stats_layout(canvas.width, args)
+    x = layout["x"]
+    y = layout["y"]
+    icons = load_skill_icon_sprites()
+    draw_client_skill_backing(canvas, layout)
+    scale = layout["uiScale"]
+    for position, skill in enumerate(ordered_profile_skills(profile_stats)):
+        index = int(skill.get("index", 0))
+        col = position % layout["cols"]
+        row = position // layout["cols"]
+        if row >= layout["rows"]:
+            continue
+        sprite = icons.get(index)
+        if sprite is not None:
+            draw_indexed_sprite_at(
+                canvas,
+                sprite,
+                x + (col * SKILL_UI_CELL_STEP + layout["iconX"]) * scale,
+                y + (row * SKILL_UI_ROW_STEP + layout["iconY"]) * scale,
+                layout["iconScale"],
+                0.98,
+            )
+        else:
+            cx = int(x + (col * SKILL_UI_CELL_STEP + 17) * scale)
+            cy = int(y + (row * SKILL_UI_ROW_STEP + 18) * scale)
+            canvas.circle(cx, cy, 13, PALETTE["frame"], 0.72)
 
 
 def downsample_canvas(canvas, factor):
@@ -2021,6 +2719,16 @@ def running_summary(edges):
     }
 
 
+def movement_distance_tiles(edges):
+    total = 0
+    for edge in edges.values():
+        distance = tile_distance(edge.get("from"), edge.get("to"))
+        if distance >= 999999:
+            continue
+        total += distance * int(edge.get("ticks", 0))
+    return total
+
+
 def short_timestamp(value):
     text = str(value or "")
     if not text:
@@ -2079,6 +2787,35 @@ def add_shadow_text(command, x, y, pointsize, text, color=None):
         color = PALETTE["osrs_yellow"]
     add_annotation(command, x + 2, y + 2, pointsize, PALETTE["text_shadow"], text)
     add_annotation(command, x, y, pointsize, color, text)
+
+
+def approximate_text_width(text, pointsize):
+    width = 0.0
+    for char in str(text):
+        if char == " ":
+            width += pointsize * 0.22
+        elif char in "11Iil.":
+            width += pointsize * 0.30
+        elif char in "MW":
+            width += pointsize * 0.62
+        else:
+            width += pointsize * 0.46
+    return width
+
+
+def add_center_shadow_text(command, center_x, y, pointsize, text, color=None):
+    text_x = int(round(float(center_x) - approximate_text_width(str(text), pointsize) / 2.0))
+    add_shadow_text(command, text_x, y, pointsize, text, color)
+
+
+def title_label_position(width, stats, args, title):
+    title_h = int(stats.get("titleHeight", 150) or 150)
+    center_x = 30 + approximate_text_width(title, args.title_pointsize) / 2.0
+    if getattr(args, "title_stats_panel", False):
+        layout = title_stats_layout(width, args)
+        center_x = max(110.0, float(layout["x"]) / 2.0)
+    baseline_y = int(round(title_h / 2.0 + args.title_pointsize * 0.40))
+    return center_x, baseline_y
 
 
 def add_right_annotation(command, right_margin, y, pointsize, color, text):
@@ -2170,12 +2907,61 @@ def add_current_marker_overlay(command, marker):
     add_vector_circle(command, cx, cy, max(5 * ss, r // 3), PALETTE["current"], 0.98)
 
 
+def add_title_stats_text(command, width, stats, args):
+    profile_stats = stats.get("profileStats") or {}
+    if not profile_stats:
+        return
+    layout = title_stats_layout(width, args)
+    x = layout["x"]
+    y = layout["y"]
+    scale = layout["uiScale"]
+    for position, skill in enumerate(ordered_profile_skills(profile_stats)):
+        index = int(skill.get("index", 0))
+        col = position % layout["cols"]
+        row = position // layout["cols"]
+        if row >= layout["rows"]:
+            continue
+        base_level = int(skill.get("baseLevel", skill.get("currentLevel", 1)))
+        cell_x = x + col * SKILL_UI_CELL_STEP * scale
+        cell_y = y + row * SKILL_UI_ROW_STEP * scale
+        level_center = cell_x + layout["levelCenterX"] * scale
+        level_y = cell_y + layout["levelBaselineY"] * scale
+        max_level_center = cell_x + layout["maxLevelCenterX"] * scale
+        max_level_y = cell_y + layout["maxLevelBaselineY"] * scale
+        add_center_shadow_text(
+            command, level_center, level_y, layout["levelPointsize"],
+            str(base_level), PALETTE["osrs_yellow"],
+        )
+        add_center_shadow_text(
+            command, max_level_center, max_level_y, layout["maxLevelPointsize"],
+            "99", PALETTE["osrs_yellow"],
+        )
+
+    stats_x = layout["statsX"]
+    stats_gap = layout["statsColumnGap"]
+    label_size = layout["statLabelPointsize"]
+    value_size = layout["statValuePointsize"]
+    label_y = layout["statLabelBaselineY"]
+    value_y = layout["statValueBaselineY"]
+    add_shadow_text(command, stats_x, label_y, label_size, "TOTAL LEVEL", PALETTE["muted"])
+    add_shadow_text(command, stats_x, value_y, value_size, format_int(profile_stats.get("totalLevel", 0)))
+    add_shadow_text(
+        command, stats_x + stats_gap, layout["secondStatLabelBaselineY"],
+        label_size, "HOURS PLAYED", PALETTE["muted"],
+    )
+    add_shadow_text(
+        command, stats_x + stats_gap, layout["secondStatValueBaselineY"],
+        value_size, profile_stats.get("hoursPlayed", "0H"),
+    )
+
+
 def apply_runescape_text(path, width, footer_top, stats, args):
     magick = shutil.which("magick")
     if not magick or not RUNESCAPE_FONT.exists():
         return False
 
     temp_path = path.with_name(path.stem + ".text.png")
+    adventure = (stats.get("profileStats") or {}).get("adventureStats") or {}
     stat_columns = [
         [
         ("DATA POINTS", format_int(stats["records"])),
@@ -2189,7 +2975,14 @@ def apply_runescape_text(path, width, footer_top, stats, args):
             ("COMBAT LINKS", format_int(stats["combatEdges"])),
             ("ENTROPY SITES", format_int(stats["uniqueFailureSites"])),
             ("PEAK VISITS", format_int(stats["peakVisits"])),
-            ("MAP SPAN", "%d X %d" % (stats["movementSpanX"], stats["movementSpanY"])),
+            ("DISTANCE", format_distance_miles(stats.get("movementDistanceTiles", 0))),
+        ],
+        [
+            ("KILLS EST.", format_int(adventure.get("killsEstimated", 0))),
+            ("ITEMS LOOTED", format_int(adventure.get("itemsPickedUp", 0))),
+            ("BONES BURIED", format_int(adventure.get("bonesBuried", 0))),
+            ("BANK VALUE", format_compact_int(adventure.get("bankValue", 0), " GP")),
+            ("DAMAGE", format_compact_int(adventure.get("damageDealt", 0))),
         ],
     ]
     if getattr(args, "running_overlay", False):
@@ -2198,7 +2991,7 @@ def apply_runescape_text(path, width, footer_top, stats, args):
             ("RUN LINKS", format_int(stats["runningTrailEdges"])),
             ("RUN SAMPLES", format_int(stats["runningEvidenceTicks"])),
             ("COMBAT LINKS", format_int(stats["combatEdges"])),
-            ("MAP SPAN", "%d X %d" % (stats["movementSpanX"], stats["movementSpanY"])),
+            ("DISTANCE", format_distance_miles(stats.get("movementDistanceTiles", 0))),
         ]
     command = [
         magick,
@@ -2208,8 +3001,11 @@ def apply_runescape_text(path, width, footer_top, stats, args):
     ]
 
     title = args.title_text or "MRFLAME MOVEMENT TOPOLOGY %s" % args.map_version
-    add_shadow_text(command, 30, 90, args.title_pointsize, title)
-    if args.title_paragraph:
+    title_center_x, title_baseline_y = title_label_position(width, stats, args, title)
+    add_center_shadow_text(command, title_center_x, title_baseline_y, args.title_pointsize, title)
+    if getattr(args, "title_stats_panel", False):
+        add_title_stats_text(command, width, stats, args)
+    elif args.title_paragraph:
         note_x, right_margin, paragraph_lines = title_paragraph_layout(args, width, title)
         for line_index, line in enumerate(paragraph_lines):
             y = args.title_paragraph_y + line_index * (args.meta_pointsize + 8)
@@ -2269,11 +3065,13 @@ def apply_runescape_text(path, width, footer_top, stats, args):
         add_shadow_text(command, FOOTER_COVERAGE_X + 190, footer_top + FOOTER_COVERAGE_LABEL_Y,
                         args.meta_pointsize, "HIGH", PALETTE["muted"])
 
-    stats_x = max(900, width - 760)
+    stats_x = max(860, width - 1130)
     add_shadow_text(command, stats_x, legend_y, args.section_pointsize, "STATS")
+    stat_col_gap = 350
+    stat_value_gap = 222
     for col, stat_lines in enumerate(stat_columns):
-        left_x = stats_x + col * 360
-        value_x = left_x + 236
+        left_x = stats_x + col * stat_col_gap
+        value_x = left_x + stat_value_gap
         stat_y = footer_top + FOOTER_STATS_ROW_Y
         for label, value in stat_lines:
             add_shadow_text(command, left_x, stat_y, args.stats_pointsize, label)
@@ -2293,6 +3091,7 @@ def write_summary(path, topology, render_info, png_path, args):
     edges = topology["edges"]
     bounds = render_info["bounds"]
     movement_span = render_info.get("movementSpanTiles", {"x": 0, "y": 0})
+    movement_distance = movement_distance_tiles(edges)
     death_sites = dedup_death_sites(topology["deathTiles"])
     summary = {
         "schemaVersion": 2,
@@ -2319,6 +3118,10 @@ def write_summary(path, topology, render_info, png_path, args):
         "failureEdges": sum(1 for edge in edges.values() if edge["failures"] > 0),
         "peakVisits": max((node["visits"] for node in nodes.values()), default=0),
         "movementSpanTiles": movement_span,
+        "movementDistanceTiles": movement_distance,
+        "movementDistanceFeet": int(round(movement_distance_feet(movement_distance))),
+        "movementDistanceMeters": round(movement_distance_feet(movement_distance) * 0.3048, 3),
+        "movementDistanceMiles": round(movement_distance_miles(movement_distance), 3),
         "renderSpanTiles": {
             "x": bounds["maxX"] - bounds["minX"] + 1,
             "y": bounds["maxY"] - bounds["minY"] + 1,
@@ -2346,6 +3149,7 @@ def write_summary(path, topology, render_info, png_path, args):
         "titleHeight": render_info.get("titleHeight", 0),
         "png": str(png_path),
         "fontApplied": render_info.get("fontApplied", False),
+        "profileStats": render_info.get("profileStats", {}),
         "font": {
             "name": "RuneScape UF",
             "path": str(RUNESCAPE_FONT),
@@ -2378,6 +3182,7 @@ def write_summary(path, topology, render_info, png_path, args):
             "nodeAlpha": args.node_alpha,
             "maxEdgeDistance": args.max_edge_distance,
             "boundsQuantumTiles": args.bounds_quantum_tiles,
+            "tightenEastSouthBounds": bool(getattr(args, "tighten_east_south_bounds", False)),
             "showPOIs": args.show_pois,
             "poiMode": args.poi_mode,
             "poiIconScale": args.poi_icon_scale,
@@ -2387,6 +3192,7 @@ def write_summary(path, topology, render_info, png_path, args):
             "titleParagraphAlign": args.title_paragraph_align,
             "titleParagraphRightMargin": args.title_paragraph_right_margin,
             "titleParagraphCharFactor": args.title_paragraph_char_factor,
+            "titleStatsPanel": bool(getattr(args, "title_stats_panel", False)),
             "titlePointsize": args.title_pointsize,
             "legendPointsize": args.legend_pointsize,
             "statsPointsize": args.stats_pointsize,
@@ -2464,6 +3270,7 @@ def render(topology, args):
     edges = topology["edges"]
     if not nodes:
         raise SystemExit("no movement trace tiles to render")
+    profile_stats = load_profile_stats(args.trace_profile)
 
     tiles = [node["tile"] for node in nodes.values()]
     pad = args.padding_tiles
@@ -2480,6 +3287,9 @@ def render(topology, args):
     min_x, max_x, min_y, max_y = quantize_render_bounds(
         raw_min_x, raw_max_x, raw_min_y, raw_max_y, args.bounds_quantum_tiles
     )
+    if getattr(args, "tighten_east_south_bounds", False):
+        max_x = min(max_x, raw_max_x)
+        min_y = max(min_y, raw_min_y)
     span_x = max(1, max_x - min_x + 1)
     span_y = max(1, max_y - min_y + 1)
     ss = max(1, int(args.supersample))
@@ -2498,7 +3308,10 @@ def render(topology, args):
     margin = 28
     width = max(map_w + margin * 2, 980)
     title_h = 150
-    if args.title_paragraph:
+    if getattr(args, "title_stats_panel", False):
+        stats_layout = title_stats_layout(width, args)
+        title_h = max(150, int(stats_layout["y"] + stats_layout["panelH"] + 28))
+    elif args.title_paragraph:
         title = args.title_text or "MRFLAME MOVEMENT TOPOLOGY %s" % args.map_version
         paragraph_lines = title_paragraph_layout(args, width, title)[2]
         title_h = max(150, int(args.title_paragraph_y + len(paragraph_lines) * (args.meta_pointsize + 8) + 24))
@@ -2699,6 +3512,7 @@ def render(topology, args):
     blend_line(canvas, margin * ss, footer_top + FOOTER_RULE_Y * ss,
                (width - margin) * ss, footer_top + FOOTER_RULE_Y * ss,
                PALETTE["frame"], 0.30, max(1, ss))
+    movement_distance = movement_distance_tiles(edges)
     legend_stats = {
         "records": topology["includedRecords"],
         "nodes": len(nodes),
@@ -2712,12 +3526,16 @@ def render(topology, args):
         "peakVisits": max((node["visits"] for node in nodes.values()), default=0),
         "movementSpanX": movement_span_x,
         "movementSpanY": movement_span_y,
+        "movementDistanceTiles": movement_distance,
+        "movementDistanceMiles": float(movement_distance) / 1609.344,
+        "titleHeight": title_h,
         "pixelsPerTile": scale,
         "bounds": bounds,
         "latestSeen": current.get("lastSeen") if current is not None else "",
         "poiLabels": rendered_poi_labels,
         "referenceGridLabels": reference_grid_info.get("referenceGridLabels", []),
         "currentMarker": current_marker,
+        "profileStats": profile_stats,
     }
     if getattr(args, "running_overlay", False):
         legend_stats.update(running_summary(edges))
@@ -2726,6 +3544,7 @@ def render(topology, args):
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     final_canvas = downsample_canvas(canvas, ss)
+    draw_title_stats_panel(final_canvas, profile_stats, args)
     final_canvas.save_png(output)
     font_applied = apply_runescape_text(output, width, map_y0 + map_h, legend_stats, args)
     return {
@@ -2759,6 +3578,18 @@ def render(topology, args):
         "coverageFogPoiSeenRadiusTiles": poi_seen_radius,
         "poiLabelCount": len(rendered_poi_labels),
         "pois": pois,
+        "profileStats": {
+            "profile": profile_stats.get("profile"),
+            "totalLevel": profile_stats.get("totalLevel"),
+            "hoursPlayed": profile_stats.get("hoursPlayed"),
+            "playSeconds": profile_stats.get("playSeconds"),
+            "playTraceRecords": profile_stats.get("playTraceRecords"),
+            "adventureStats": profile_stats.get("adventureStats", {}),
+            "skillLevels": {
+                skill["name"]: skill["baseLevel"]
+                for skill in profile_stats.get("skills", [])
+            },
+        },
         "fontApplied": font_applied,
         **reference_grid_info,
         **fog_info,
@@ -2786,6 +3617,8 @@ def main(default_output=None, default_summary=None, default_map_version="V2",
          default_title_paragraph_x=-1, default_title_paragraph_y=35,
          default_title_paragraph_lines=5, default_title_paragraph_align="left",
          default_title_paragraph_right_margin=34, default_title_paragraph_char_factor=0.56,
+         default_title_stats_panel=False, default_title_stats_x=-1, default_title_stats_y=30,
+         default_tighten_east_south_bounds=False,
          default_meta_pointsize=18, default_include_historical_agent_batch_traces=False):
     parser = argparse.ArgumentParser(
         description="Render movement topology with the shared engine used by the active profile, heat, and fog maps."
@@ -2809,6 +3642,11 @@ def main(default_output=None, default_summary=None, default_map_version="V2",
     parser.add_argument("--padding-tiles", type=int, default=20)
     parser.add_argument("--bounds-quantum-tiles", type=int, default=64,
                         help="Quantize render bounds to this tile grid so small trace growth does not invalidate base caches.")
+    parser.add_argument("--tighten-east-south-bounds", action="store_true",
+                        default=default_tighten_east_south_bounds,
+                        help="Keep quantized north/west anchors but clamp east/south to raw padded movement bounds.")
+    parser.add_argument("--no-tighten-east-south-bounds", dest="tighten_east_south_bounds",
+                        action="store_false")
     parser.add_argument("--surface-only", action="store_true", default=True)
     parser.add_argument("--include-underground", action="store_true")
     parser.add_argument("--plane", type=int, default=0)
@@ -2853,6 +3691,11 @@ def main(default_output=None, default_summary=None, default_map_version="V2",
                         default=default_title_paragraph_right_margin)
     parser.add_argument("--title-paragraph-char-factor", type=float,
                         default=default_title_paragraph_char_factor)
+    parser.add_argument("--title-stats-panel", action="store_true", default=default_title_stats_panel,
+                        help="Replace the title paragraph area with profile level and playtime stats.")
+    parser.add_argument("--no-title-stats-panel", dest="title_stats_panel", action="store_false")
+    parser.add_argument("--title-stats-x", type=int, default=default_title_stats_x)
+    parser.add_argument("--title-stats-y", type=int, default=default_title_stats_y)
     parser.add_argument("--show-pois", action="store_true", default=default_show_pois,
                         help="Draw cache-backed minimap icons.")
     parser.add_argument("--no-show-pois", dest="show_pois", action="store_false")
@@ -2931,6 +3774,7 @@ def main(default_output=None, default_summary=None, default_map_version="V2",
     args.title_paragraph_lines = max(1, min(8, int(args.title_paragraph_lines)))
     args.title_paragraph_right_margin = max(0, int(args.title_paragraph_right_margin))
     args.title_paragraph_char_factor = clamp(args.title_paragraph_char_factor, 0.25, 0.80)
+    args.title_stats_y = max(0, min(180, int(args.title_stats_y)))
     args.bounds_quantum_tiles = max(0, int(args.bounds_quantum_tiles))
 
     topology = load_topology_with_cache(args.trace_file, args.surface_only, args)

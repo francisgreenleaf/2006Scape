@@ -7,30 +7,62 @@ general gameplay primitive.
 
 ## Stable Java Primitives
 
-Use these from external scripts through `agent-navigation/tools/rs-tool.sh`, and prefer `rs-tool_XS.sh` or the dynamic `*_XS` aliases when the compact result is enough for the next decision:
+Use these from external scripts through `agent-navigation/tools/rs-tool.sh`, prefer `rs-tool_XS.sh` or the dynamic `*_XS` aliases when compact decision context is enough, and use `rs-tool_XXS.sh` / dynamic `*_XXS` aliases when confirmation plus critical survival state is enough:
 
-- Observation and waiting: `observe_state`, `wait_ticks`, `wait_until_idle`
-- Movement and routing support: `set_run`, `preview_local_path`, `walk_to_tile`,
-  `walk_path_steps`, `walk_to_tile_until_arrived`, `travel_to_landmark`,
-  `travel_to_landmark_until_arrived`
-- Game interactions: `interact_object`, `interact_npc`, `attack_npc`,
+- Observation and waiting: `observe_state`, `observe_state_XS`,
+  `observe_state_XXS`, `observe_state_if_changed_XS`,
+  `observe_state_if_changed_XXS`, `combat_state_XS`, `combat_state_XXS`,
+  `wait_ticks`, `wait_ticks_XXS`, `wait_until_idle`,
+  `wait_until_idle_XS`, `wait_until_idle_XXS`,
+  `wait_until_combat_event_smart_XS`, `wait_until_combat_event_smart_XXS`,
+  `wait_until_combat_event_XS`, `wait_until_combat_event_XXS`
+- Movement and routing support: `set_run`, `set_run_XXS`, `preview_local_path`, `walk_to_tile`,
+  `walk_path_steps`, `walk_path_steps_XS`, `walk_path_steps_XXS`,
+  `walk_to_tile_until_arrived`, `travel_to_landmark`,
+  `travel_to_landmark_until_arrived`, `object_transition_step_XS`,
+  `object_transition_step_XXS`
+- Game interactions: `interact_object`, `interact_object_XS`,
+  `interact_object_XXS`, `interact_npc`, `attack_npc`,
+  `attack_npc_XXS`,
   `continue_dialogue`, `select_dialogue_option`, `close_interfaces`
 - Item and UI primitives: `use_item_on_item`, `use_item_on_object`,
-  `click_interface_button`, `select_interface_item`
+  `click_interface_button`, `click_interface_button_XXS`, `select_interface_item`
 - Inventory/equipment/economy primitives: `equip_item`, `unequip_item`,
-  `unequip_items_XS`,
-  `equip_best_items`, `eat_item`, `eat_best_food`, `pickup_ground_item`,
-  `drop_inventory_items`, `deposit_inventory_items`, `deposit_inventory_items_XS`,
-  `withdraw_bank_items`,
+  `unequip_items_XS`, `unequip_items_XXS`,
+  `equip_best_items`, `equip_best_items_XS`, `equip_best_items_XXS`,
+  `eat_item`, `eat_best_food`, `eat_best_food_XXS`, `pickup_ground_item`,
+  `pickup_ground_item_XXS`, `combat_cleanup_XS`, `combat_cleanup_XXS`,
+  `bury_bones`, `bury_bones_XS`, `bury_bones_XXS`, `drop_inventory_items`, `deposit_inventory_items`, `deposit_inventory_items_XS`, `deposit_inventory_items_XXS`,
+  `withdraw_bank_items`, `withdraw_bank_items_XS`, `withdraw_bank_items_XXS`,
+  `combat_restock_trip_XS`, `combat_restock_trip_XXS`,
   `open_nearest_shop`, `buy_shop_item`, `sell_inventory_item`,
   `sell_inventory_items`, `deposit_excess_coins`
 
-The main compact dynamic surfaces are `observe_state_XS`, `walk_to_tile_until_arrived_XS`,
-`travel_to_landmark_until_arrived_XS`, `wait_ticks_XS`, `wait_until_idle_XS`,
-`find_nearest_object_XS`, `deposit_inventory_items_XS`,
-`unequip_items_XS`, and `food_bank_XS`. They use the same mechanics as their
+The main compact dynamic surfaces are `observe_state_XS`,
+`observe_state_if_changed_XS`, `combat_state_XS`, `walk_path_steps_XS`,
+`walk_to_tile_until_arrived_XS`, `travel_to_landmark_until_arrived_XS`,
+`wait_ticks_XS`, `wait_until_idle_XS`, `wait_until_combat_event_smart_XS`,
+`wait_until_combat_event_XS`, `object_transition_step_XS`,
+`interact_object_XS`, `find_nearest_object_XS`, `combat_cleanup_XS`,
+`bury_bones_XS`, `deposit_inventory_items_XS`, `withdraw_bank_items_XS`,
+`unequip_items_XS`, `combat_restock_trip_XS`, and `food_bank_XS`.
+They use the same mechanics as their
 full counterparts and return smaller status/player/inventory summaries. Use
 full tools only for missing debug fields or complete evidence capture.
+
+The XXS aliases use the same mechanics again but reduce the result to
+confirmation/status, critical player state (`tile`, `hp`, `maxHp`,
+`runEnergy`, `runEnabled`, `isInCombat`, `isPoisoned`, `isDead`,
+`freeInventorySlots`, `food`), and tiny XP deltas. Prefer them for tight confirmation loops after an action when
+inventory, bank, nearby objects/NPCs, route evidence, or loot detail is not
+needed. `rs-tool_XXS.sh bury_bones '{}'` automatically calls
+`bury_bones_XXS`; passing a name that already ends in `_XXS` is also accepted.
+
+XP-producing tool calls add `skillChanges` when a skill changed during the
+call, and compact results carry `xpRecent` for recent gains in the last few
+minutes. For Prayer, read `points`/`current` as the current prayer points and
+`base` as the actual Prayer level from XP; burying bones raises XP/base but
+does not refill current points.
 
 The item/UI primitives are the key abstraction for new skilling scripts. For
 example, fletching should use a knife on logs with `use_item_on_item`, click the
@@ -49,6 +81,21 @@ Use `walk_path_steps` only for short adjacent client-style step queues. It
 enforces clipping by default; pass `allowObjectTransition=true` only directly
 after an object proof such as an opened gate where the server-side pathfinder
 cannot see the temporary opening yet.
+
+For dynamic agents and restarted runtimes, prefer `object_transition_step_XS`
+or `_XXS` for single object transitions where the only required follow-up is
+waiting until movement/skilling clears. It performs the same `interact_object`
+click, records transition evidence, waits for idle, and returns compact phase
+status. Use full `interact_object` plus explicit route proof only when the
+compact result omits needed side, object, or evidence detail.
+
+For combat loops, prefer `wait_until_combat_event_smart_XXS` when HP/XP/event
+status is enough and `wait_until_combat_event_smart_XS` when target or loot
+detail matters. After a kill, prefer `combat_cleanup_XXS` or `_XS` to bury
+bones, pick up whitelisted useful drops, optionally equip upgrades, and return
+counts without a full observe. For bank-food refreshes, `combat_restock_trip_XS`
+or `_XXS` can route to a supplied bank target, deposit non-food loot, trim
+coins, withdraw food, and optionally route back.
 
 For repeat object/dialogue transitions, put the learned sequence in
 `bridge_script.py` instead of copying it into each runner. The current reusable
@@ -117,6 +164,20 @@ Use these for compatibility and recovery, but prefer primitive-backed scripts
 for new behavior. When a script needs behavior the primitive layer cannot
 express, add the smallest missing primitive instead of a full strategy tool.
 
+## Bridge Script State Shapes
+
+`bridge_script.call_tool("observe_state", {}, profile=PROFILE)` returns the
+raw bridge response. Unwrap it with `bridge_script.player_from(result)` when
+you need the player object.
+
+`bridge_script.observe(profile=PROFILE)` already returns the unwrapped player
+dict from full `observe_state`; do not pass that value back through
+`player_from`.
+
+Use full `observe_state` or `bridge_script.observe` when a script needs complete
+bank contents. XS and XXS observe variants are preferred for normal control
+loops, but they may omit or compact bank details.
+
 ## External Script Pattern
 
 1. Read state with `observe_state`.
@@ -155,6 +216,10 @@ Current gameplay runners include:
   primitives, interface buttons, and interface item selection.
 - `combat_runner.py`: generic combat through style, target-finding, attack,
   food, loot, and wait primitives.
+- `al_kharid_warrior_runner.py`, `chaos_druid_runner.py`,
+  `white_knight_runner.py`, and `moss_giant_runner.py`: bespoke enemy trip
+  runners sharing the primitive combat trip loop for loadout, ML1 route
+  execution, food, direct style cycling, useful loot banking, and bone burying.
 - `bank_loadout.py`: compact state-derived bank loadouts for scripts and manual
   recovery, including the cowhide-trip preset.
 - `cowhide_combat_runner.py`: cow combat, hide pickup, food restock, and banking

@@ -436,6 +436,8 @@ def run_step(course, step, policy, args, handle, run_id, lap, step_number, curre
             reason = "walk_interrupted"
         elif tile_distance(tile_from_player(player), approach) > args.approach_radius:
             reason = "approach_not_reached"
+        else:
+            variant = nearby_object_override(player, variant)
 
     interact_result = None
     if reason is None:
@@ -449,7 +451,21 @@ def run_step(course, step, policy, args, handle, run_id, lap, step_number, curre
         })
         last_tool_result = interact_result
         if not interact_result.get("success"):
-            reason = "interact_failed"
+            refreshed = observe()
+            refreshed_variant = nearby_object_override(refreshed, variant)
+            if refreshed_variant.get("objectTile") != obj_tile:
+                variant = refreshed_variant
+                obj_tile = variant["objectTile"]
+                interact_result = call_tool("interact_object", {
+                    "objectId": int(variant["objectId"]),
+                    "x": int(obj_tile["x"]),
+                    "y": int(obj_tile["y"]),
+                    "height": int(obj_tile.get("height", 0)),
+                    "option": "first",
+                })
+                last_tool_result = interact_result
+            if not interact_result.get("success"):
+                reason = "interact_failed"
 
     idle_result = None
     if reason is None:

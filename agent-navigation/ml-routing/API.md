@@ -23,6 +23,8 @@ The response is a single JSON object with:
 
 The fast planner reads curated route hints from the current navigation DB on each call. Models supply learned costs and risk priors, but current `places.json` / `routes.json` anchors remain authoritative.
 
+ML1 supports the level-0 surface map and same-cache-area underground routes. Surface coordinates are `x=1728..3839`, `y=2560..4031`; underground-style areas use high Y offsets such as `+6400`. Surface/underground crossings and routes between separate underground cache areas return `actionable:false`, no execution command, and `status:"requires-object-transition"`; route to the relevant entrance/exit/ladder/stairs/trapdoor/gate first, use it, then request the next route. `status:"unsupported-coordinate-layer"` means the tile is outside a supported cache route area. Underground cache-direct routes use cache-derived clipping plus hard valid-region boundaries so missing underground cache regions are not treated as walkable floor.
+
 `quality` is a geometry/detour signal, not the same as proof. A route can be geometrically indirect but still proven if `evidence.proven` is `true`; in that case follow `safety.requiresReview` rather than rejecting the route just because `quality` is `bad`.
 
 Example shape:

@@ -1,17 +1,17 @@
 {
   "counts": {
-    "edgeExamples": 21643,
-    "objectTransitions": 867,
-    "routeAttempts": 1177,
+    "edgeExamples": 30089,
+    "objectTransitions": 1281,
+    "routeAttempts": 3164,
     "routeHintEdges": 777
   },
-  "generatedAt": "2026-05-25T17:59:06Z",
+  "generatedAt": "2026-05-27T07:27:07Z",
   "graph": {
     "blockers": 0,
-    "edges": 21643,
-    "nodes": 8474,
-    "traceRecords": 36512,
-    "traceSessions": 866
+    "edges": 30089,
+    "nodes": 11595,
+    "traceRecords": 68083,
+    "traceSessions": 1247
   },
   "inputs": {
     "includeAgentBatchTraces": false,
@@ -19,22 +19,22 @@
     "includeUnscopedTraces": false,
     "traceFile": []
   },
-  "outputDir": "artifacts/datasets/route-pack-20260525T174700Z",
+  "outputDir": "artifacts/datasets/20260527T072707Z",
   "pipelineVersion": "0.1.0",
-  "profile": "mrflame",
+  "profile": "",
   "routeAttemptRunWarnings": {
-    "": 1177
+    "": 3164
   },
   "routeAttemptStatuses": {
-    "arrived": 1043,
+    "arrived": 2820,
     "bad_route": 4,
     "blocked": 4,
     "ok": 27,
-    "oscillation": 12,
-    "partial": 6,
-    "success": 52,
+    "oscillation": 18,
+    "partial": 17,
+    "success": 245,
     "unknown": 29
   },
-  "runId": "route-pack-20260525T174700Z",
+  "runId": "20260527T072707Z",
   "schemaVersion": 1
 }

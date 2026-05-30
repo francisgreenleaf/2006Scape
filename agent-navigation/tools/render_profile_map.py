@@ -16,7 +16,7 @@ def profile_title():
     value = os.environ.get("RS_TRACE_PROFILE") or os.environ.get("RS_PROFILE") or ""
     normalized = "".join(ch for ch in value.lower() if ch.isalnum())
     if not value or normalized == "mrflame":
-        return "Mr. Flame"
+        return "Mrflame"
     return value
 
 
@@ -27,6 +27,7 @@ if __name__ == "__main__":
         default_summary=SUMMARY_OUT / "movement-topology-v4.json",
         default_map_version=title,
         default_title_text=title,
+        default_title_stats_panel=True,
         default_show_pois=True,
         default_poi_mode="all",
         default_poi_icon_scale=1.0,
@@ -43,5 +44,6 @@ if __name__ == "__main__":
         default_reference_grid_cell_labels="all",
         default_reference_grid_cell_label_alpha=0.55,
         default_reference_grid_cell_label_pointsize=13,
+        default_tighten_east_south_bounds=True,
         default_include_historical_agent_batch_traces=True,
     )

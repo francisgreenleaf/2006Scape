@@ -33,6 +33,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 import cache_world_map  # noqa: E402
+import bridge_script as bridge  # noqa: E402
 
 
 ORE_DEFS = {
@@ -95,6 +96,16 @@ PICKAXES = [
     {"itemId": 1267, "level": 1, "tier": 2, "name": "Iron pickaxe"},
     {"itemId": 1265, "level": 1, "tier": 1, "name": "Bronze pickaxe"},
 ]
+
+PICKAXE_BY_ID = {pickaxe["itemId"]: pickaxe for pickaxe in PICKAXES}
+PICKAXE_COIN_FLOAT = {
+    1265: 1,
+    1267: 64,
+    1269: 256,
+    1273: 1300,
+    1271: 3200,
+    1275: 12800,
+}
 
 
 def utc_now():
@@ -310,6 +321,40 @@ def best_usable_pickaxe(player, in_bank=False, equipped=False):
     return None
 
 
+def strongest_usable_pickaxe_for_level(player):
+    skills = player.get("skills") or {}
+    mining = int((skills.get("mining") or {}).get("level", 1) or 1)
+    for pickaxe in PICKAXES:
+        if mining >= pickaxe["level"]:
+            return pickaxe
+    return PICKAXES[-1]
+
+
+def strongest_usable_pickaxe_owned(player):
+    for pickaxe in PICKAXES:
+        if best_usable_pickaxe(player, equipped=True) == pickaxe:
+            return pickaxe
+        if best_usable_pickaxe(player, in_bank=False) == pickaxe:
+            return pickaxe
+        if best_usable_pickaxe(player, in_bank=True) == pickaxe:
+            return pickaxe
+    return None
+
+
+def current_pickaxe_tier(player):
+    owned = strongest_usable_pickaxe_owned(player)
+    return int((owned or {}).get("tier", 0) or 0)
+
+
+def usable_upgrade_candidates(player):
+    desired = strongest_usable_pickaxe_for_level(player)
+    current_tier = current_pickaxe_tier(player)
+    return [
+        pickaxe for pickaxe in PICKAXES
+        if pickaxe["level"] <= desired["level"] and pickaxe["tier"] > current_tier
+    ]
+
+
 def mining_level(player):
     return int(((player.get("skills") or {}).get("mining") or {}).get("level", 0) or 0)
 
@@ -484,76 +529,87 @@ def discover_sites(ores, args, player_tile=None, max_level=99):
 
 
 def route_to_target(target, args, handle, reason):
-    command = [
-        sys.executable,
-        str(ROUTE_RUNNER),
-        "--to",
-        target,
-        "--allow-frontier",
-        "--direct-if-preview",
-        "--probe-toward-target",
-        "--run-reserve",
-        str(args.run_reserve),
-        "--max-batches",
-        str(args.max_batches_per_leg),
-        "--max-walk-distance",
-        str(args.max_walk_distance),
-        "--max-ticks",
-        str(args.route_max_ticks),
-        "--force-run-min-preview-steps",
-        str(args.force_run_min_preview_steps),
-        "--run-diagnostics-min-steps",
-        str(args.run_diagnostics_min_steps),
-        "--run-walk-warning-ticks-per-step",
-        str(args.run_walk_warning_ticks_per_step),
-        "--run-warning-max-energy-spent",
-        str(args.run_warning_max_energy_spent),
-    ]
-    if args.profile:
-        command.extend(["--profile", args.profile])
-    if args.no_enable_run:
-        command.append("--no-enable-run")
-    if args.force_run_before_long_leg:
-        command.append("--force-run-before-long-leg")
-    else:
-        command.append("--no-force-run-before-long-leg")
     route_evidence = route_evidence_path(handle)
+    target_tile = None
+    try:
+        target_tile = parse_tile(target)
+    except Exception:
+        target_tile = None
+    extra_args = {
+        "runner_max_batches": int(args.max_batches_per_leg),
+        "max_batch_distance": int(args.max_walk_distance),
+        "run_mode": "auto",
+        "eat_at": 10,
+    }
     if route_evidence:
-        command.extend(["--evidence-jsonl", route_evidence])
-    write_event(handle, "route_start", {
-        "reason": reason,
-        "target": target,
-        "command": command[1:],
-        "routeEvidencePath": route_evidence,
-    })
-    proc = subprocess.Popen(
-        command,
-        cwd=str(REPO_ROOT),
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    stdout_lines = []
-    if proc.stdout is not None:
-        for line in proc.stdout:
-            line = line.rstrip()
-            if line:
-                stdout_lines.append(line)
-                log(line)
-                write_event(handle, "route_output", {"reason": reason, "line": line})
-    stderr = proc.stderr.read().strip() if proc.stderr is not None else ""
-    code = proc.wait()
-    run_warning_lines = [line for line in stdout_lines if "runWarn=" in line and "runWarn=none" not in line]
-    write_event(handle, "route_finish", {
-        "reason": reason,
-        "target": target,
-        "returncode": code,
-        "stdoutTail": stdout_lines[-8:],
-        "runWarningLines": run_warning_lines[-5:],
-        "routeEvidencePath": route_evidence,
-        "stderr": stderr[:1000],
-    })
-    return code == 0
+        extra_args["evidence_jsonl"] = route_evidence
+    if target_tile is not None:
+        max_attempts = 64
+    else:
+        max_attempts = max(1, min(8, int(args.max_batches_per_leg)))
+    for attempt in range(1, max_attempts + 1):
+        player_before = bridge.observe(profile=args.profile)
+        before_tile = tile_from_player(player_before)
+        before_distance = chebyshev(before_tile, target_tile) if target_tile else None
+        if target_tile and before_distance <= int(args.arrival_radius):
+            return True
+        try:
+            bridge.route_to(target, profile=args.profile, handle=handle, reason=reason, extra_args=extra_args)
+        except Exception as exc:
+            player_after = bridge.observe(profile=args.profile)
+            after_tile = tile_from_player(player_after)
+            after_distance = chebyshev(after_tile, target_tile) if target_tile else None
+            progressed = (
+                target_tile is not None
+                and before_distance is not None
+                and after_distance is not None
+                and after_distance < before_distance
+            )
+            write_event(handle, "route_bridge_failure", {
+                "reason": reason,
+                "target": target,
+                "attempt": attempt,
+                "routeEvidencePath": route_evidence,
+                "beforeTile": before_tile,
+                "afterTile": after_tile,
+                "beforeDistance": before_distance,
+                "afterDistance": after_distance,
+                "progressed": progressed,
+                "error": str(exc)[:1000],
+            })
+            if progressed:
+                continue
+            return False
+
+        player_after = bridge.observe(profile=args.profile)
+        after_tile = tile_from_player(player_after)
+        if target_tile is None:
+            return True
+        after_distance = chebyshev(after_tile, target_tile)
+        if after_distance <= int(args.arrival_radius):
+            return True
+        if before_distance is not None and after_distance < before_distance:
+            write_event(handle, "route_partial_progress", {
+                "reason": reason,
+                "target": target,
+                "attempt": attempt,
+                "beforeTile": before_tile,
+                "afterTile": after_tile,
+                "beforeDistance": before_distance,
+                "afterDistance": after_distance,
+            })
+            continue
+        write_event(handle, "route_stalled", {
+            "reason": reason,
+            "target": target,
+            "attempt": attempt,
+            "beforeTile": before_tile,
+            "afterTile": after_tile,
+            "beforeDistance": before_distance,
+            "afterDistance": after_distance,
+        })
+        return False
+    return False
 
 
 def route_to_tile(target_tile, args, handle, reason):
@@ -566,6 +622,10 @@ def route_to_bank(site, args, handle):
 
 
 def ensure_pickaxe(player, site, args, handle):
+    if args.auto_upgrade_pickaxe:
+        upgraded = maybe_upgrade_pickaxe(player, site, args, handle)
+        if upgraded is not None:
+            player = upgraded
     equipped = best_usable_pickaxe(player, equipped=True)
     if equipped:
         write_event(handle, "equipped_pickaxe", {
@@ -591,6 +651,103 @@ def ensure_pickaxe(player, site, args, handle):
     if args.auto_buy_bronze_pickaxe:
         return buy_bronze_pickaxe(player, args, handle)
     raise RuntimeError("no usable pickaxe is carried or banked; rerun with --auto-buy-bronze-pickaxe if a seller is reachable")
+
+
+def ensure_pickaxe_coins(player, site, args, handle, amount):
+    if count_inventory_item(player, 995) >= amount:
+        return player
+    banked_coins = count_bank_item(player, 995)
+    if banked_coins <= 0:
+        return player
+    if not player.get("inBankArea"):
+        if not route_to_bank(site, args, handle):
+            return player
+        player = observe()
+    withdraw_amount = min(int(amount), int(banked_coins))
+    result = call_tool("withdraw_bank_items", {"itemId": 995, "amount": withdraw_amount})
+    updated = player_from(result)
+    write_event(handle, "withdraw_pickaxe_coins", {
+        "requested": int(amount),
+        "withdrew": int(withdraw_amount),
+        "player": compact_player(updated),
+    })
+    return updated
+
+
+def maybe_upgrade_pickaxe(player, site, args, handle):
+    candidates = usable_upgrade_candidates(player)
+    if not candidates:
+        return None
+    if not args.pickaxe_shop_name:
+        return None
+    if str(args.pickaxe_shop_name).strip().lower() == "aemad":
+        write_event(handle, "pickaxe_upgrade_skip", {
+            "reason": "default_bronze_shop_only",
+            "shop": args.pickaxe_shop_name,
+            "candidates": candidates,
+            "player": compact_player(player),
+        })
+        return None
+    highest_candidate = candidates[0]
+    needed_coins = int(PICKAXE_COIN_FLOAT.get(highest_candidate["itemId"], 5000))
+    player = ensure_pickaxe_coins(player, site, args, handle, needed_coins)
+    if count_inventory_item(player, 995) < 1:
+        write_event(handle, "pickaxe_upgrade_skip", {
+            "reason": "no_coins",
+            "candidates": candidates,
+            "player": compact_player(player),
+        })
+        return None
+    shop_tile = parse_tile(args.pickaxe_shop_tile)
+    if chebyshev(tile_from_player(player), shop_tile) > 4:
+        if not route_to_tile(shop_tile, args, handle, "pickaxe_upgrade_shop"):
+            write_event(handle, "pickaxe_upgrade_skip", {
+                "reason": "route_failed",
+                "shopTile": tile_string(shop_tile),
+                "candidates": candidates,
+                "player": compact_player(player),
+            })
+            return None
+        player = observe()
+    opened = call_tool("open_nearest_shop", {"name": args.pickaxe_shop_name, "maxDistance": 8})
+    opened_shop = ((opened.get("player") or {}).get("shop") or {}).get("name")
+    player = player_from(opened)
+    attempts = []
+    for pickaxe in candidates:
+        before_count = (
+            count_inventory_item(player, pickaxe["itemId"])
+            + count_equipment_item(player, pickaxe["itemId"])
+            + count_bank_item(player, pickaxe["itemId"])
+        )
+        result = call_tool("buy_shop_item", {"itemId": pickaxe["itemId"], "amount": 1})
+        updated = player_from(result)
+        after_count = (
+            count_inventory_item(updated, pickaxe["itemId"])
+            + count_equipment_item(updated, pickaxe["itemId"])
+            + count_bank_item(updated, pickaxe["itemId"])
+        )
+        success = bool(result.get("success")) and after_count > before_count
+        attempts.append({
+            "pickaxe": pickaxe,
+            "success": success,
+            "message": result.get("message"),
+        })
+        player = updated
+        if success:
+            write_event(handle, "pickaxe_upgrade", {
+                "shop": opened_shop,
+                "pickaxe": pickaxe,
+                "attempts": attempts,
+                "player": compact_player(player),
+            })
+            return player
+    write_event(handle, "pickaxe_upgrade_skip", {
+        "reason": "shop_unavailable",
+        "shop": opened_shop,
+        "attempts": attempts,
+        "player": compact_player(player),
+    })
+    return None
 
 
 def buy_bronze_pickaxe(player, args, handle):
@@ -628,13 +785,13 @@ def choose_live_ore(player, site, ores, args, handle):
         ore for ore in ores
         if ORE_DEFS[ore]["level"] <= level and site["oreCounts"].get(ore, 0) > 0
     ]
+    preferred = None
     if not candidates:
         raise RuntimeError("no requested ore is available at mining level {} in site {}".format(level, site["id"]))
     if args.strategy == "bronze-balanced" and "copper" in candidates and "tin" in candidates:
         copper = count_inventory_item(player, ORE_DEFS["copper"]["itemId"])
         tin = count_inventory_item(player, ORE_DEFS["tin"]["itemId"])
         preferred = "copper" if copper <= tin else "tin"
-        candidates = [preferred] + [ore for ore in candidates if ore != preferred]
     live = []
     for ore in candidates:
         result = call_tool("find_nearest_rock", {
@@ -650,6 +807,8 @@ def choose_live_ore(player, site, ores, args, handle):
         score -= distance * args.rock_distance_weight
         score -= definition["respawnTicks"] * args.respawn_weight
         score += site["oreCounts"].get(ore, 0) * args.same_ore_density_weight
+        if preferred and ore == preferred:
+            score += 1000.0
         live.append((score, ore, obj))
     if live:
         live.sort(key=lambda item: (-item[0], item[2].get("distance", 999), item[1]))
@@ -710,6 +869,7 @@ def primitive_mine_batch(ore, site, args, handle, start_player=None):
     started = time.monotonic()
     total_ticks = 0
     rounds = 0
+    single_round_only = args.strategy == "bronze-balanced" and ore in ("copper", "tin")
     last_result = {"success": True, "player": player, "batchStatus": "not_started", "batchTicks": 0}
     while total_ticks < int(args.mine_max_ticks):
         player = observe()
@@ -773,6 +933,9 @@ def primitive_mine_batch(ore, site, args, handle, start_player=None):
         })
         if not interact_result.get("success", False) or not wait_result.get("success", False):
             last_result["batchStatus"] = "blocked"
+            break
+        if single_round_only:
+            last_result["batchStatus"] = "round_complete"
             break
         if int(player.get("freeInventorySlots", 0) or 0) < 1:
             last_result["batchStatus"] = "inventory_full"
@@ -1054,6 +1217,7 @@ def main(argv=None):
     parser.add_argument("--bank-all-ores", action="store_true", default=True)
     parser.add_argument("--no-bank-all-ores", dest="bank_all_ores", action="store_false")
     parser.add_argument("--auto-buy-bronze-pickaxe", action="store_true")
+    parser.add_argument("--auto-upgrade-pickaxe", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--pickaxe-shop-tile", default="2614,3293,0",
                         help="Bronze-pickaxe seller tile used by --auto-buy-bronze-pickaxe.")
     parser.add_argument("--pickaxe-shop-name", default="aemad")

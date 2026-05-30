@@ -331,6 +331,7 @@ def route_definition(args: SimpleNamespace, candidate: Dict[str, Any]) -> Dict[s
     """Stable compact contract for agents that just need a route to execute."""
     route_id = candidate.get("routeId") or _route_id(args, candidate)
     legacy_command = candidate.get("routeRunnerCommand") or _route_runner_command(args, candidate)
+    actionable = _is_actionable(candidate)
     evidence_jsonl = ""
     if "--evidence-jsonl" in legacy_command:
         index = legacy_command.index("--evidence-jsonl")
@@ -338,7 +339,7 @@ def route_definition(args: SimpleNamespace, candidate: Dict[str, Any]) -> Dict[s
             evidence_jsonl = legacy_command[index + 1]
     if not evidence_jsonl:
         evidence_jsonl = DEFAULT_ROUTE_EXECUTOR_EVIDENCE_JSONL
-    command = _route_executor_command(args, evidence_jsonl)
+    command = _route_executor_command(args, evidence_jsonl) if actionable else []
     route_steps = candidate.get("routeSteps") or candidate.get("waypoints") or []
     run_plan = candidate.get("runPlan") or {
         "policy": "default",
@@ -353,6 +354,10 @@ def route_definition(args: SimpleNamespace, candidate: Dict[str, Any]) -> Dict[s
     review_reasons = []
     if quality in ("suspicious", "bad") and not evidence.get("proven"):
         review_reasons.append("route quality is {}".format(quality))
+    if candidate.get("status") == "requires-object-transition":
+        review_reasons.append("route crosses coordinate layers or separate underground cache areas")
+    if candidate.get("status") == "unsupported-coordinate-layer":
+        review_reasons.append("route is outside a supported cache route area")
     if hazard_warnings:
         review_reasons.append("hazard warnings present")
     return {
@@ -363,13 +368,17 @@ def route_definition(args: SimpleNamespace, candidate: Dict[str, Any]) -> Dict[s
         "mode": candidate.get("mode") or "learned",
         "status": candidate.get("status"),
         "quality": quality,
-        "actionable": _is_actionable(candidate),
+        "actionable": actionable,
         "from": args.from_tile,
         "to": args.to,
         "targetTile": candidate.get("targetTile"),
         "arrivalRadius": candidate.get("arrivalRadius"),
         "distanceTiles": candidate.get("routeDistance"),
         "estimatedTicks": candidate.get("estimatedTicks"),
+        "error": candidate.get("error"),
+        "message": candidate.get("message"),
+        "coordinateLayers": candidate.get("coordinateLayers"),
+        "transition": candidate.get("transition"),
         "next": candidate.get("next"),
         "routeSteps": route_steps,
         "routeStepCount": len(route_steps),
@@ -385,16 +394,20 @@ def route_definition(args: SimpleNamespace, candidate: Dict[str, Any]) -> Dict[s
             "detourSegments": (candidate.get("detourSegments") or [])[:5],
         },
         "execution": {
-            "strategy": "ml_route_steps",
+            "strategy": "ml_route_steps" if actionable else "not_actionable",
             "command": command,
-            "legacyRouteRunnerCommand": legacy_command,
+            "legacyRouteRunnerCommand": legacy_command if actionable else [],
             "maxBatchDistance": getattr(args, "max_batch_distance", None),
             "runnerMaxBatches": getattr(args, "runner_max_batches", None),
-            "notes": "Run this only when live movement is intended; it follows routeSteps through bridge primitives and appends route-batch evidence automatically.",
+            "notes": (
+                "Run this only when live movement is intended; it follows routeSteps through bridge primitives and appends route-batch evidence automatically."
+                if actionable else
+                "No execution command is provided because this route definition is not actionable."
+            ),
         },
         "feedback": {
-            "automaticEvidenceJsonl": evidence_jsonl,
-            "automaticEvents": ["route_batch"],
+            "automaticEvidenceJsonl": evidence_jsonl if actionable else "",
+            "automaticEvents": ["route_batch"] if actionable else [],
             "manualOutcomeCommand": [
                 "python3",
                 "agent-navigation/ml-routing/route_ml.py",
@@ -589,7 +602,7 @@ def _compact_candidate(candidate: Dict[str, Any]) -> Dict[str, Any]:
         "detourRatio", "targetDistanceIncreases",
         "edgeSources", "routesUsed", "hazardWarnings", "objectSteps", "wrongWayFlags",
         "detourSegments", "frontierScore", "routeExecutionCommand", "routeRunnerCommand", "includes", "error",
-        "planEnrichmentError", "improvement", "directCandidate", "selectedOverLearned",
+        "message", "coordinateLayers", "transition", "planEnrichmentError", "improvement", "directCandidate", "selectedOverLearned",
         "learnedCandidate", "runPlan", "runSegments", "routeId", "routeDefinition",
     ]
     compact = {key: candidate[key] for key in keep if key in candidate and candidate[key] not in (None, [], {})}

@@ -4,6 +4,7 @@
 import argparse
 import datetime as dt
 import json
+import math
 import os
 import subprocess
 import sys
@@ -74,6 +75,18 @@ RAW_FISH_COOKING_LEVELS = {
     371: 50,  # Raw swordfish
     383: 76,  # Raw shark
 }
+# Current live evidence shows primitive use_item_on_object opens the lobster
+# cooking flow reliably, but tuna/swordfish fall through to cook_food fallback.
+COMPAT_FIRST_COOK_IDS = {359, 371}
+FISHING_METHOD_ORDER = [
+    {"name": "small_net_shrimp", "fishing": 1, "cooking": 1},
+    {"name": "rod_bait_sardine_herring", "fishing": 5, "cooking": 5},
+    {"name": "small_net_shrimp_anchovies", "fishing": 15, "cooking": 1},
+    {"name": "harpoon_tuna", "fishing": 35, "cooking": 30},
+    {"name": "lobster", "fishing": 40, "cooking": 40},
+    {"name": "harpoon_tuna_swordfish", "fishing": 50, "cooking": 50},
+]
+BANK_WITHDRAW_ITEM_BUTTON = 21011
 
 
 def utc_now():
@@ -158,6 +171,205 @@ def runner_args_summary(args):
     return {key: getattr(args, key, None) for key in keys}
 
 
+def xp_for_level(level):
+    level = max(1, int(level or 1))
+    if level <= 1:
+        return 0
+    points = 0
+    for current in range(1, level):
+        points += int(current + 300 * (2 ** (current / 7.0)))
+    return points // 4
+
+
+def skill_level_any(player, name):
+    try:
+        value = bridge.skill_level(player, name)
+        if value:
+            return value
+    except Exception:
+        pass
+    return int(player.get("{}Level".format(name), 0) or 0)
+
+
+def skill_xp_any(player, name):
+    try:
+        value = bridge.skill_xp(player, name)
+        if value:
+            return value
+    except Exception:
+        pass
+    return int(float(player.get("{}Xp".format(name), 0) or 0))
+
+
+def skill_progress(player, name, target_level=None):
+    level = skill_level_any(player, name)
+    xp = skill_xp_any(player, name)
+    if level <= 0 and xp <= 0:
+        return None
+    next_level = max(level + 1, 2)
+    next_xp = xp_for_level(next_level)
+    payload = {
+        "level": level,
+        "xp": xp,
+        "nextLevel": next_level,
+        "nextLevelXp": next_xp,
+        "xpToNextLevel": max(0, next_xp - xp),
+    }
+    if target_level:
+        target = max(level, int(target_level))
+        target_xp = xp_for_level(target)
+        payload.update({
+            "targetLevel": target,
+            "targetLevelXp": target_xp,
+            "xpToTargetLevel": max(0, target_xp - xp),
+        })
+    return payload
+
+
+def method_name_for_levels(fishing, cooking):
+    fake_player = {
+        "skills": {
+            "fishing": {"level": int(fishing or 0), "xp": 0},
+            "cooking": {"level": int(cooking or 0), "xp": 0},
+        }
+    }
+    return fishing_method(fake_player)["name"]
+
+
+def next_method_requirement(fishing, cooking):
+    current = method_name_for_levels(fishing, cooking)
+    current_index = next(
+        (idx for idx, item in enumerate(FISHING_METHOD_ORDER) if item["name"] == current),
+        0,
+    )
+    for item in FISHING_METHOD_ORDER[current_index + 1:]:
+        if fishing < item["fishing"] or cooking < item["cooking"]:
+            return {
+                "name": item["name"],
+                "fishingLevelRequired": item["fishing"],
+                "cookingLevelRequired": item["cooking"],
+                "fishingLevelsRemaining": max(0, item["fishing"] - int(fishing or 0)),
+                "cookingLevelsRemaining": max(0, item["cooking"] - int(cooking or 0)),
+            }
+    return None
+
+
+def parse_utc_timestamp(value):
+    if not isinstance(value, str):
+        return None
+    try:
+        return dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def recent_cycle_rates(run_log_path):
+    if not run_log_path:
+        return None
+    path = Path(run_log_path)
+    if not path.exists():
+        return None
+    bank_events = []
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()[-2000:]
+    except OSError:
+        return None
+    for line in lines:
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if event.get("event") == "bank_cooked" and isinstance(event.get("player"), dict):
+            bank_events.append(event)
+    if not bank_events:
+        return None
+
+    recent = bank_events[-6:]
+    cooked_counts = [
+        int(event.get("cookedBefore", 0) or 0)
+        for event in bank_events[-5:]
+        if int(event.get("cookedBefore", 0) or 0) > 0
+    ]
+    fishing_deltas = []
+    cooking_deltas = []
+    cycle_seconds = []
+    for previous, current in zip(recent, recent[1:]):
+        previous_player = previous.get("player") or {}
+        current_player = current.get("player") or {}
+        fishing_delta = skill_xp_any(current_player, "fishing") - skill_xp_any(previous_player, "fishing")
+        cooking_delta = skill_xp_any(current_player, "cooking") - skill_xp_any(previous_player, "cooking")
+        if fishing_delta > 0:
+            fishing_deltas.append(fishing_delta)
+        if cooking_delta > 0:
+            cooking_deltas.append(cooking_delta)
+        previous_time = parse_utc_timestamp(previous.get("timestamp"))
+        current_time = parse_utc_timestamp(current.get("timestamp"))
+        if previous_time and current_time and current_time > previous_time:
+            cycle_seconds.append((current_time - previous_time).total_seconds())
+
+    def average(values, ndigits=1):
+        if not values:
+            return None
+        return round(sum(values) / float(len(values)), ndigits)
+
+    return {
+        "recentCompletedCycles": len(bank_events),
+        "lastBankedCooked": int(bank_events[-1].get("cookedBefore", 0) or 0),
+        "recentAvgCookedBanked": average(cooked_counts),
+        "recentAvgFishingXpPerCycle": average(fishing_deltas),
+        "recentAvgCookingXpPerCycle": average(cooking_deltas),
+        "recentAvgSecondsPerCycle": average(cycle_seconds),
+    }
+
+
+def enrich_progress_estimates(progress, rates):
+    if not isinstance(progress, dict) or not isinstance(rates, dict):
+        return progress
+    seconds = rates.get("recentAvgSecondsPerCycle")
+    skill_rates = {
+        "fishing": rates.get("recentAvgFishingXpPerCycle"),
+        "cooking": rates.get("recentAvgCookingXpPerCycle"),
+    }
+    for skill, rate in skill_rates.items():
+        skill_payload = (progress.get("skills") or {}).get(skill)
+        if not isinstance(skill_payload, dict) or not rate or rate <= 0:
+            continue
+        for key, output_key in (
+            ("xpToNextLevel", "estimatedCyclesToNextLevel"),
+            ("xpToTargetLevel", "estimatedCyclesToTargetLevel"),
+        ):
+            remaining = skill_payload.get(key)
+            if remaining is None:
+                continue
+            cycles = int(math.ceil(max(0, remaining) / float(rate))) if remaining else 0
+            skill_payload[output_key] = cycles
+            if seconds:
+                skill_payload[output_key.replace("Cycles", "Seconds")] = round(cycles * float(seconds), 1)
+    return progress
+
+
+def runner_progress(player, args_summary=None, run_log_path=None):
+    args_summary = args_summary or {}
+    fishing = skill_level_any(player, "fishing")
+    cooking = skill_level_any(player, "cooking")
+    progress = {
+        "currentMethodByLevel": method_name_for_levels(fishing, cooking),
+        "nextMethodRequirement": next_method_requirement(fishing, cooking),
+        "skills": {},
+    }
+    fishing_progress = skill_progress(player, "fishing", args_summary.get("target_fishing_level"))
+    cooking_progress = skill_progress(player, "cooking", args_summary.get("target_cooking_level"))
+    if fishing_progress:
+        progress["skills"]["fishing"] = fishing_progress
+    if cooking_progress:
+        progress["skills"]["cooking"] = cooking_progress
+    rates = recent_cycle_rates(run_log_path)
+    if rates:
+        progress["recentCycleRates"] = rates
+        enrich_progress_estimates(progress, rates)
+    return progress
+
+
 def write_runner_status(args, status, run_path=None, reason=None, cycle=None, player=None, extra=None):
     RUNNER_CONTROL_DIR.mkdir(parents=True, exist_ok=True)
     payload = {
@@ -178,6 +390,7 @@ def write_runner_status(args, status, run_path=None, reason=None, cycle=None, pl
         payload["cycle"] = cycle
     if player is not None:
         payload["player"] = bridge.compact_player(player, ("fishing", "cooking"))
+        payload["progress"] = runner_progress(player, runner_args_summary(args), run_path)
     if extra:
         payload.update(extra)
     path = runner_status_path(args)
@@ -219,6 +432,13 @@ def print_runner_status(args):
     if path.exists():
         try:
             payload["status"] = json.loads(path.read_text(encoding="utf-8"))
+            status_player = payload["status"].get("player")
+            if isinstance(status_player, dict):
+                payload["status"]["progress"] = runner_progress(
+                    status_player,
+                    payload["status"].get("args") or runner_args_summary(args),
+                    payload["status"].get("runLog"),
+                )
             updated = payload["status"].get("updatedAt")
             if isinstance(updated, str):
                 try:
@@ -626,11 +846,31 @@ def ensure_tool(args, handle, item_id):
     player = ensure_bank(args, handle)
     if bridge.count_bank_item(player, item_id) <= 0:
         raise RuntimeError("missing required fishing tool item {}".format(item_id))
+    player = ensure_bank_item_withdraw_mode(args, handle, player, "withdraw_tool")
     result = bridge.call_tool("withdraw_bank_items", {"itemId": item_id, "amount": 1}, profile=args.profile)
     player = bridge._player_from_or(result, player)
     write_event(handle, "withdraw_tool", {
         "itemId": item_id,
         "success": bool(result.get("success")),
+        "player": bridge.compact_player(player, ("fishing", "cooking")),
+    })
+    return player
+
+
+def ensure_bank_item_withdraw_mode(args, handle, player, reason):
+    """Force unnoted bank withdrawals before taking fishing tools/supplies."""
+    if not bool(player.get("inBankArea", False)):
+        player = ensure_bank(args, handle)
+    opened = bridge.call_tool("deposit_inventory_items", {"name": "__codex_open_bank_only__"}, profile=args.profile)
+    player = bridge._player_from_or(opened, player)
+    mode = bridge.call_tool("click_interface_button", {"buttonId": BANK_WITHDRAW_ITEM_BUTTON}, profile=args.profile)
+    player = bridge._player_from_or(mode, player)
+    write_event(handle, "set_withdraw_item_mode", {
+        "reason": reason,
+        "buttonId": BANK_WITHDRAW_ITEM_BUTTON,
+        "openSuccess": bool(opened.get("success")),
+        "modeSuccess": bool(mode.get("success")),
+        "message": mode.get("message"),
         "player": bridge.compact_player(player, ("fishing", "cooking")),
     })
     return player
@@ -776,6 +1016,7 @@ def ensure_inventory_quantity(args, handle, item_id, desired_amount):
         missing = max(0, int(desired_amount) - carried)
         banked = bridge.count_bank_item(player, item_id)
         if missing > 0 and banked > 0:
+            player = ensure_bank_item_withdraw_mode(args, handle, player, "withdraw_supply_item")
             result = bridge.call_tool("withdraw_bank_items", {
                 "itemId": int(item_id),
                 "amount": min(missing, banked),
@@ -813,6 +1054,7 @@ def ensure_method_supplies(args, handle, method):
     if any(bridge.count_inventory_item(player, item_id) < amount and bridge.count_bank_item(player, item_id) > 0
            for item_id, amount in desired):
         player = ensure_bank(args, handle)
+        player = ensure_bank_item_withdraw_mode(args, handle, player, "withdraw_method_supplies")
         for item_id, amount in desired:
             missing = max(0, amount - bridge.count_inventory_item(player, item_id))
             banked = bridge.count_bank_item(player, item_id)
@@ -1273,12 +1515,26 @@ def compatibility_cook_batch(args, handle, player):
     return player, made_progress
 
 
+def should_use_compat_cook_first(args, player):
+    if args.compat_cook == "always":
+        return True
+    if args.compat_cook != "auto":
+        return False
+    food = first_cookable_raw_item(player)
+    if food is None:
+        return False
+    try:
+        return int(food.get("id")) in COMPAT_FIRST_COOK_IDS
+    except (TypeError, ValueError):
+        return False
+
+
 def cook_inventory(args, handle, run_path=None, cycle=None):
     player = ensure_range(args, handle)
     no_progress = 0
     rounds = 0
     while count_cookable_raw(player) > 0:
-        if args.compat_cook == "always":
+        if should_use_compat_cook_first(args, player):
             player, made_progress = compatibility_cook_batch(args, handle, player)
             rounds += 1
             write_runner_status(args, "running", run_path=run_path, reason="cook_round",

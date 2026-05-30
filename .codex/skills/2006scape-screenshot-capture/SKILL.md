@@ -21,7 +21,7 @@ The default output size is `765x503` via `capture-client-screenshot.sh --native-
 
 ## When To Use
 
-- Use after `observe-slim`, route orient JSON, preview, or a context map leaves ambiguous live geometry, such as a wall pocket, wrong side of a gate, hidden door, staircase, ladder, trapdoor, or unreachable object.
+- Use after `observe_XXS.sh`/`observe_XS.sh`, route orient JSON, preview, or a context map leaves ambiguous live geometry, such as a wall pocket, wrong side of a gate, hidden door, staircase, ladder, trapdoor, or unreachable object.
 - Use when the current visible client state matters: open/closed gates and doors, player side of a fence, object click failure, unexpected stuck/oscillation near scenery, or API/cache-map disagreement.
 - Do not use screenshots for ordinary A-to-B planning, static terrain/mapfunction lookup, or route quality checks that `route_runner --orient`, `route_eval.py`, or `render_agent_context_map.py` can answer.
 - Use before changing route data based on visual assumptions.

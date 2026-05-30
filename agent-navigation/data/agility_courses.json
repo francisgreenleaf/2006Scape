@@ -276,6 +276,232 @@
           ]
         }
       ]
+    },
+    {
+      "id": "barbarian_outpost_agility_course",
+      "name": "Barbarian Outpost Agility Course",
+      "placeId": "2551,3554,0",
+      "startTile": {
+        "x": 2551,
+        "y": 3554,
+        "height": 0
+      },
+      "startRadius": 4,
+      "lapCompleteRadius": 3,
+      "notes": "Object ids, hotspot approach tiles, and post-state targets are mirrored from BarbarianAgility.java and verified against cache object placements via cache_world_map.py.",
+      "steps": [
+        {
+          "id": "rope_swing",
+          "name": "Rope swing",
+          "expectedHeight": 0,
+          "maxTicks": 18,
+          "postRadius": 1,
+          "postTiles": [
+            {
+              "x": 2551,
+              "y": 3549,
+              "height": 0
+            }
+          ],
+          "variants": [
+            {
+              "id": "main",
+              "objectId": 2282,
+              "objectName": "Ropeswing",
+              "objectTile": {
+                "x": 2551,
+                "y": 3550,
+                "height": 0
+              },
+              "approachTile": {
+                "x": 2551,
+                "y": 3554,
+                "height": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "log_balance",
+          "name": "Log balance",
+          "expectedHeight": 0,
+          "maxTicks": 24,
+          "postRadius": 1,
+          "postTiles": [
+            {
+              "x": 2541,
+              "y": 3546,
+              "height": 0
+            }
+          ],
+          "variants": [
+            {
+              "id": "main",
+              "objectId": 2294,
+              "objectName": "Log balance",
+              "objectTile": {
+                "x": 2550,
+                "y": 3546,
+                "height": 0
+              },
+              "approachTile": {
+                "x": 2551,
+                "y": 3546,
+                "height": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "obstacle_net",
+          "name": "Obstacle net",
+          "expectedHeight": 0,
+          "maxTicks": 18,
+          "postRadius": 2,
+          "postTiles": [
+            {
+              "x": 2538,
+              "y": 3545,
+              "height": 1
+            },
+            {
+              "x": 2538,
+              "y": 3546,
+              "height": 1
+            }
+          ],
+          "variants": [
+            {
+              "id": "south",
+              "objectId": 2284,
+              "objectName": "Obstacle net",
+              "objectTile": {
+                "x": 2538,
+                "y": 3545,
+                "height": 0
+              },
+              "approachTile": {
+                "x": 2539,
+                "y": 3545,
+                "height": 0
+              }
+            },
+            {
+              "id": "north",
+              "objectId": 2284,
+              "objectName": "Obstacle net",
+              "objectTile": {
+                "x": 2538,
+                "y": 3545,
+                "height": 0
+              },
+              "approachTile": {
+                "x": 2539,
+                "y": 3546,
+                "height": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "balancing_ledge",
+          "name": "Balancing ledge",
+          "expectedHeight": 1,
+          "maxTicks": 18,
+          "postRadius": 1,
+          "postTiles": [
+            {
+              "x": 2532,
+              "y": 3547,
+              "height": 1
+            }
+          ],
+          "variants": [
+            {
+              "id": "main",
+              "objectId": 2302,
+              "objectName": "Balancing ledge",
+              "objectTile": {
+                "x": 2535,
+                "y": 3547,
+                "height": 1
+              },
+              "approachTile": {
+                "x": 2536,
+                "y": 3547,
+                "height": 1
+              }
+            }
+          ]
+        },
+        {
+          "id": "ladder_down",
+          "name": "Ladder",
+          "expectedHeight": 1,
+          "maxTicks": 18,
+          "postRadius": 1,
+          "postTiles": [
+            {
+              "x": 2532,
+              "y": 3545,
+              "height": 0
+            },
+            {
+              "x": 2532,
+              "y": 3546,
+              "height": 0
+            }
+          ],
+          "variants": [
+            {
+              "id": "main",
+              "objectId": 3205,
+              "objectName": "Ladder",
+              "objectTile": {
+                "x": 2532,
+                "y": 3545,
+                "height": 1
+              },
+              "approachTile": {
+                "x": 2532,
+                "y": 3545,
+                "height": 1
+              }
+            }
+          ]
+        },
+        {
+          "id": "crumbling_wall",
+          "name": "Crumbling wall",
+          "expectedHeight": 0,
+          "maxTicks": 18,
+          "postRadius": 2,
+          "postTiles": [
+            {
+              "x": 2543,
+              "y": 3553,
+              "height": 0
+            }
+          ],
+          "variants": [
+            {
+              "id": "east_wall",
+              "objectId": 1948,
+              "objectName": "Crumbling wall",
+              "objectTile": {
+                "x": 2542,
+                "y": 3553,
+                "height": 0
+              },
+              "approachTile": {
+                "x": 2541,
+                "y": 3553,
+                "height": 0
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

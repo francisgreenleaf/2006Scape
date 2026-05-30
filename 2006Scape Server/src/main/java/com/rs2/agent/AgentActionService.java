@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.UUID;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.rs2.Constants;
 import com.rs2.agent.AgentSmithingPlanner.SmithingChoice;
@@ -89,6 +90,14 @@ public class AgentActionService {
     private static final int RUNE_BAR = 2363;
     private static final int[] COMBAT_SUPPLY_ITEM_IDS = {
             BONES, 532, COINS, COWHIDE, RAW_BEEF, 2138, 314
+    };
+    private static final int[] COMBAT_CLEANUP_DEFAULT_ITEM_IDS = {
+            BONES, 532, COINS, COWHIDE, RAW_BEEF, RAW_CHICKEN, 314,
+            554, 555, 556, 557, 558, 559, 560, 561, 562, 563, 564, 565, 566,
+            199, 201, 203, 205, 207, 209, 211, 213, 215, 217, 219, 2485,
+            5096, 5097, 5098, 5099, 5100, 5101, 5102, 5103, 5104, 5105, 5106,
+            5291, 5292, 5293, 5294, 5295, 5296, 5297, 5298, 5299, 5300, 5301, 5302, 5303, 5304,
+            5318, 5319, 5320, 5321, 5322, 5323
     };
     private static final int[] BANK_TRIGGER_COMBAT_SUPPLY_ITEM_IDS = {
             BONES, 532, COWHIDE, RAW_BEEF, 2138, 314
@@ -245,30 +254,52 @@ public class AgentActionService {
 
     public JsonObject submitTool(String token, String tool, JsonObject arguments) {
         final boolean xs = AgentToolService.isXsTool(tool);
+        final boolean xxs = AgentToolService.isXxsTool(tool);
         final String effectiveTool = AgentToolService.baseToolName(tool);
+        final AgentToolService.SkillSnapshot skillBefore = captureSkillSnapshot(token);
         if ("walk_to_tile_until_arrived".equals(effectiveTool)) {
             JsonObject result = walkToTileUntilArrived(token, arguments == null ? new JsonObject() : arguments);
-            return xs ? AgentToolService.compactXsResult(effectiveTool, result) : result;
+            return finishSubmittedTool(token, effectiveTool, xs, xxs, result, skillBefore);
         }
         if ("travel_to_landmark_until_arrived".equals(effectiveTool)) {
             JsonObject result = travelToLandmarkUntilArrived(token, arguments == null ? new JsonObject() : arguments);
-            return xs ? AgentToolService.compactXsResult(effectiveTool, result) : result;
+            return finishSubmittedTool(token, effectiveTool, xs, xxs, result, skillBefore);
         }
         if ("mine_ore_until_inventory_full".equals(effectiveTool)) {
             JsonObject result = mineOreUntilInventoryFull(token, arguments == null ? new JsonObject() : arguments);
-            return xs ? AgentToolService.compactXsResult(effectiveTool, result) : result;
+            return finishSubmittedTool(token, effectiveTool, xs, xxs, result, skillBefore);
         }
         if ("chop_tree_until_inventory_full".equals(effectiveTool)) {
             JsonObject result = chopTreeUntilInventoryFull(token, arguments == null ? new JsonObject() : arguments);
-            return xs ? AgentToolService.compactXsResult(effectiveTool, result) : result;
+            return finishSubmittedTool(token, effectiveTool, xs, xxs, result, skillBefore);
         }
         if ("fletch_logs_until_inventory_empty".equals(effectiveTool)) {
             JsonObject result = fletchLogsUntilInventoryEmpty(token, arguments == null ? new JsonObject() : arguments);
-            return xs ? AgentToolService.compactXsResult(effectiveTool, result) : result;
+            return finishSubmittedTool(token, effectiveTool, xs, xxs, result, skillBefore);
         }
         if ("wait_until_idle".equals(effectiveTool)) {
             JsonObject result = waitUntilIdle(token, arguments == null ? new JsonObject() : arguments);
-            return xs ? AgentToolService.compactXsResult(effectiveTool, result) : result;
+            return finishSubmittedTool(token, effectiveTool, xs, xxs, result, skillBefore);
+        }
+        if ("wait_until_combat_event".equals(effectiveTool)) {
+            JsonObject result = waitUntilCombatEvent(token, arguments == null ? new JsonObject() : arguments);
+            return finishSubmittedTool(token, effectiveTool, xs, xxs, result, skillBefore);
+        }
+        if ("wait_until_combat_event_smart".equals(effectiveTool)) {
+            JsonObject result = waitUntilCombatEventSmart(token, arguments == null ? new JsonObject() : arguments);
+            return finishSubmittedTool(token, effectiveTool, xs, xxs, result, skillBefore);
+        }
+        if ("object_transition_step".equals(effectiveTool)) {
+            JsonObject result = objectTransitionStep(token, arguments == null ? new JsonObject() : arguments);
+            return finishSubmittedTool(token, effectiveTool, xs, xxs, result, skillBefore);
+        }
+        if ("combat_cleanup".equals(effectiveTool)) {
+            JsonObject result = combatCleanup(token, arguments == null ? new JsonObject() : arguments);
+            return finishSubmittedTool(token, effectiveTool, xs, xxs, result, skillBefore);
+        }
+        if ("combat_restock_trip".equals(effectiveTool)) {
+            JsonObject result = combatRestockTrip(token, arguments == null ? new JsonObject() : arguments);
+            return finishSubmittedTool(token, effectiveTool, xs, xxs, result, skillBefore);
         }
         if ("wait_ticks".equals(effectiveTool)) {
             int ticks = Math.max(1, Math.min(25, getInt(arguments, "ticks", 1)));
@@ -289,7 +320,7 @@ public class AgentActionService {
                     return result;
                 }
             }, timeoutMs);
-            return xs ? AgentToolService.compactXsResult(effectiveTool, result) : result;
+            return finishSubmittedTool(token, effectiveTool, xs, xxs, result, skillBefore);
         }
         if ("start_combat_goal".equals(effectiveTool) || "observe_goal".equals(effectiveTool)
                 || "stop_goal".equals(effectiveTool)) {
@@ -314,9 +345,9 @@ public class AgentActionService {
                     return observeGoal(player);
                 }
             });
-            return xs ? AgentToolService.compactXsResult(effectiveTool, result) : result;
+            return finishSubmittedTool(token, effectiveTool, xs, xxs, result, skillBefore);
         }
-        return submitOnGameTick(token, new Callable<JsonObject>() {
+        JsonObject result = submitOnGameTick(token, new Callable<JsonObject>() {
             @Override
             public JsonObject call() {
                 AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
@@ -330,9 +361,11 @@ public class AgentActionService {
                 JsonObject safeArguments = arguments == null ? new JsonObject() : arguments;
                 JsonObject result = AgentToolService.handle(player, effectiveTool, safeArguments);
                 recordObjectTransition(session, effectiveTool, safeArguments, result);
-                return xs ? AgentToolService.compactXsResult(effectiveTool, result, player, safeArguments) : result;
+                return result;
             }
         });
+        return finishSubmittedTool(token, effectiveTool, xs, xxs, result, skillBefore,
+                arguments == null ? new JsonObject() : arguments);
     }
 
     private JsonObject walkToTileUntilArrived(final String token, final JsonObject arguments) {
@@ -652,8 +685,647 @@ public class AgentActionService {
                 "max_ticks_reached", maxTicks);
     }
 
+    private JsonObject waitUntilCombatEvent(final String token, final JsonObject arguments) {
+        int maxTicks = Math.max(1, Math.min(250, getInt(arguments, "maxTicks", 60)));
+        final int hpAtOrBelow = Math.max(0, getInt(arguments, "hpAtOrBelow",
+                getInt(arguments, "hitpointsAtOrBelow", 0)));
+        final int lootDistance = Math.max(1, Math.min(20, getInt(arguments, "lootDistance", 8)));
+        final boolean stopOnXpGain = getBoolean(arguments, "stopOnXpGain", getBoolean(arguments, "xpGain", true));
+        final boolean stopOnLoot = getBoolean(arguments, "stopOnLoot", getBoolean(arguments, "loot", true));
+        final boolean stopOnTargetDead = getBoolean(arguments, "stopOnTargetDead",
+                getBoolean(arguments, "targetDead", true));
+        final boolean stopOnCombatEnd = getBoolean(arguments, "stopOnCombatEnd",
+                getBoolean(arguments, "combatEnd", true));
+        final boolean stopOnFoodReady = getBoolean(arguments, "stopOnFoodReady",
+                getBoolean(arguments, "foodReady", false));
+
+        AgentSession initialSession = AgentSessionManager.INSTANCE.getSession(token);
+        Player initialPlayer = initialSession == null ? null : initialSession.getPlayer();
+        final int initialXp = AgentToolService.totalSkillXp(initialPlayer);
+        final boolean initiallyInCombat = AgentToolService.playerIsInCombat(initialPlayer);
+        Npc initialTarget = AgentToolService.currentCombatTarget(initialPlayer);
+        final int initialTargetIndex = initialTarget == null ? -1 : initialTarget.npcId;
+        final int initialGroundItems = AgentToolService.nearbyGroundItemCount(initialPlayer, lootDistance);
+        final boolean initiallyFoodBlocked = initialPlayer != null && AgentToolService.foodDelayRemainingMs(initialPlayer) > 0L;
+
+        JsonObject lastResult = null;
+        for (int tick = 0; tick < maxTicks; tick++) {
+            lastResult = submitOnGameTick(token, new Callable<JsonObject>() {
+                @Override
+                public JsonObject call() {
+                    AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
+                    if (session == null) {
+                        return AgentToolService.failure("Agent session is no longer valid.");
+                    }
+                    Player player = session.getPlayer();
+                    if (player == null) {
+                        return AgentToolService.failure("The claimed player is no longer online.");
+                    }
+                    JsonObject result = AgentToolService.combatStateXs(player);
+                    result.addProperty("tool", "wait_until_combat_event_XS");
+                    String event = combatEventStatus(player, initialXp, initiallyInCombat, initialTargetIndex,
+                            initialGroundItems, initiallyFoodBlocked, hpAtOrBelow, lootDistance, stopOnXpGain,
+                            stopOnLoot, stopOnTargetDead, stopOnCombatEnd, stopOnFoodReady);
+                    result.addProperty("complete", event.length() > 0);
+                    if (event.length() > 0) {
+                        result.addProperty("event", event);
+                    }
+                    return result;
+                }
+            });
+            if (!isSuccess(lastResult)) {
+                return addBatchStatus(lastResult, "blocked", tick + 1);
+            }
+            if (getBoolean(lastResult, "complete", false)) {
+                return addBatchStatus(lastResult, getString(lastResult, "event", "combat_event"), tick + 1);
+            }
+        }
+        return addBatchStatus(lastResult == null
+                ? AgentToolService.failure("No combat-event wait was attempted.")
+                : lastResult, "max_ticks_reached", maxTicks);
+    }
+
+    private JsonObject waitUntilCombatEventSmart(final String token, final JsonObject arguments) {
+        int requestedMaxTicks = Math.max(1, Math.min(250, getInt(arguments, "maxTicks", 60)));
+        final int hpAtOrBelow = Math.max(0, getInt(arguments, "hpAtOrBelow",
+                getInt(arguments, "hitpointsAtOrBelow", 0)));
+        final int lootDistance = Math.max(1, Math.min(20, getInt(arguments, "lootDistance", 8)));
+        final boolean stopOnXpGain = getBoolean(arguments, "stopOnXpGain", getBoolean(arguments, "xpGain", true));
+        final boolean stopOnLoot = getBoolean(arguments, "stopOnLoot", getBoolean(arguments, "loot", true));
+        final boolean stopOnTargetDead = getBoolean(arguments, "stopOnTargetDead",
+                getBoolean(arguments, "targetDead", true));
+        final boolean stopOnCombatEnd = getBoolean(arguments, "stopOnCombatEnd",
+                getBoolean(arguments, "combatEnd", true));
+        final boolean stopOnFoodReady = getBoolean(arguments, "stopOnFoodReady",
+                getBoolean(arguments, "foodReady", false));
+        final int freeSlotsAtOrBelow = Math.max(0, getInt(arguments, "freeSlotsAtOrBelow",
+                getBoolean(arguments, "stopOnInventoryFull", true) ? 0 : -1));
+        final int postTargetDeathWaitTicks = Math.max(0, Math.min(8,
+                getInt(arguments, "postTargetDeathWaitTicks", stopOnLoot ? 2 : 0)));
+
+        AgentSession initialSession = AgentSessionManager.INSTANCE.getSession(token);
+        Player initialPlayer = initialSession == null ? null : initialSession.getPlayer();
+        final int initialXp = AgentToolService.totalSkillXp(initialPlayer);
+        final boolean initiallyInCombat = AgentToolService.playerIsInCombat(initialPlayer);
+        Npc initialTarget = AgentToolService.currentCombatTarget(initialPlayer);
+        final int initialTargetIndex = initialTarget == null ? -1 : initialTarget.npcId;
+        final int initialGroundItems = AgentToolService.nearbyGroundItemCount(initialPlayer, lootDistance);
+        final boolean initiallyFoodBlocked = initialPlayer != null && AgentToolService.foodDelayRemainingMs(initialPlayer) > 0L;
+        final int recommendedMaxTicks = recommendedCombatWaitTicks(initialPlayer, initialTarget, requestedMaxTicks);
+        int maxTicks = getBoolean(arguments, "autoExtendWhileSafe", true)
+                ? Math.max(requestedMaxTicks, recommendedMaxTicks)
+                : requestedMaxTicks;
+        maxTicks = Math.max(1, Math.min(250, maxTicks));
+
+        JsonObject lastResult = null;
+        int targetDeadTick = -1;
+        for (int tick = 0; tick < maxTicks; tick++) {
+            lastResult = submitOnGameTick(token, new Callable<JsonObject>() {
+                @Override
+                public JsonObject call() {
+                    AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
+                    if (session == null) {
+                        return AgentToolService.failure("Agent session is no longer valid.");
+                    }
+                    Player player = session.getPlayer();
+                    if (player == null) {
+                        return AgentToolService.failure("The claimed player is no longer online.");
+                    }
+                    JsonObject result = AgentToolService.combatStateXs(player);
+                    result.addProperty("tool", "wait_until_combat_event_smart_XS");
+                    result.addProperty("recommendedMaxTicks", recommendedMaxTicks);
+                    int groundItemCount = AgentToolService.nearbyGroundItemCount(player, lootDistance);
+                    result.addProperty("groundItemCount", groundItemCount);
+                    String event = combatEventStatus(player, initialXp, initiallyInCombat, initialTargetIndex,
+                            initialGroundItems, initiallyFoodBlocked, hpAtOrBelow, lootDistance, stopOnXpGain,
+                            stopOnLoot, stopOnTargetDead, stopOnCombatEnd, stopOnFoodReady);
+                    if (event.length() == 0 && freeSlotsAtOrBelow >= 0
+                            && player.getItemAssistant().freeSlots() <= freeSlotsAtOrBelow) {
+                        event = "inventory_pressure";
+                        result.addProperty("inventoryPressure", true);
+                    }
+                    result.addProperty("complete", event.length() > 0);
+                    if (event.length() > 0) {
+                        result.addProperty("event", event);
+                    }
+                    return result;
+                }
+            });
+            if (!isSuccess(lastResult)) {
+                return addBatchStatus(lastResult, "blocked", tick + 1);
+            }
+            if (getBoolean(lastResult, "complete", false)) {
+                String event = getString(lastResult, "event", "combat_event");
+                if ("target_dead".equals(event) && stopOnLoot && postTargetDeathWaitTicks > 0) {
+                    if (targetDeadTick < 0) {
+                        targetDeadTick = tick;
+                    }
+                    if (tick - targetDeadTick < postTargetDeathWaitTicks) {
+                        lastResult.addProperty("complete", false);
+                        lastResult.addProperty("event", "loot_pending");
+                        lastResult.addProperty("lootPending", true);
+                        continue;
+                    }
+                }
+                return addBatchStatus(lastResult, event, tick + 1);
+            }
+        }
+        return addBatchStatus(lastResult == null
+                ? AgentToolService.failure("No smart combat-event wait was attempted.")
+                : lastResult, "max_ticks_reached", maxTicks);
+    }
+
+    private JsonObject objectTransitionStep(final String token, final JsonObject arguments) {
+        int maxTicks = Math.max(1, Math.min(80, getInt(arguments, "maxTicks", 20)));
+        final boolean includeCombat = getBoolean(arguments, "combat", getBoolean(arguments, "includeCombat", false));
+        final boolean[] interacted = {false};
+        JsonObject lastResult = null;
+        for (int tick = 0; tick < maxTicks; tick++) {
+            lastResult = submitOnGameTick(token, new Callable<JsonObject>() {
+                @Override
+                public JsonObject call() {
+                    AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
+                    if (session == null) {
+                        return AgentToolService.failure("Agent session is no longer valid.");
+                    }
+                    Player player = session.getPlayer();
+                    if (player == null) {
+                        return AgentToolService.failure("The claimed player is no longer online.");
+                    }
+                    if (!interacted[0]) {
+                        JsonObject result = AgentToolService.handle(player, "interact_object", arguments);
+                        recordObjectTransition(session, "interact_object", arguments, result);
+                        if (!isSuccess(result)) {
+                            result.addProperty("phase", "interact_object");
+                            return result;
+                        }
+                        interacted[0] = true;
+                        result.addProperty("phase", "interact_object");
+                        result.addProperty("complete", playerIsIdle(player, true, true, includeCombat));
+                        return result;
+                    }
+                    JsonObject result = AgentToolService.observeState(player);
+                    boolean idle = playerIsIdle(player, true, true, includeCombat);
+                    result.addProperty("phase", idle ? "idle_after_object" : "waiting_after_object");
+                    result.addProperty("complete", idle);
+                    return result;
+                }
+            });
+            if (!isSuccess(lastResult)) {
+                return addBatchStatus(lastResult, "blocked", tick + 1);
+            }
+            if (getBoolean(lastResult, "complete", false)) {
+                return addBatchStatus(lastResult, "idle_after_object", tick + 1);
+            }
+        }
+        return addBatchStatus(lastResult == null
+                ? AgentToolService.failure("No object transition was attempted.")
+                : lastResult, "max_ticks_reached", maxTicks);
+    }
+
+    private JsonObject combatCleanup(final String token, final JsonObject arguments) {
+        int maxTicks = Math.max(1, Math.min(100, getInt(arguments, "maxTicks", 30)));
+        final boolean buryBones = getBoolean(arguments, "buryBones", true);
+        final boolean pickupDrops = getBoolean(arguments, "pickupDrops", true);
+        final boolean equipUpgrades = getBoolean(arguments, "equipUpgrades", false);
+        final String style = getString(arguments, "style", "");
+        final int maxDistance = Math.max(1, Math.min(20, getInt(arguments, "maxDistance", 12)));
+        final JsonArray cleanupItemIds = combatCleanupItemIds(arguments);
+        final int[] buried = {0};
+        final int[] pickedUp = {0};
+        final int[] equipped = {0};
+        final int[] actions = {0};
+        final boolean[] equipTried = {false};
+        final boolean[] styleTried = {false};
+        JsonObject lastResult = null;
+        for (int tick = 0; tick < maxTicks; tick++) {
+            lastResult = submitOnGameTick(token, new Callable<JsonObject>() {
+                @Override
+                public JsonObject call() {
+                    AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
+                    if (session == null) {
+                        return AgentToolService.failure("Agent session is no longer valid.");
+                    }
+                    Player player = session.getPlayer();
+                    if (player == null) {
+                        return AgentToolService.failure("The claimed player is no longer online.");
+                    }
+                    if (player.isDead) {
+                        JsonObject result = AgentToolService.combatStateXs(player);
+                        result.addProperty("phase", "player_dead");
+                        result.addProperty("complete", true);
+                        return addCleanupCounters(result, buried[0], pickedUp[0], equipped[0], actions[0]);
+                    }
+                    if (player.isMoving) {
+                        JsonObject result = AgentToolService.combatStateXs(player);
+                        result.addProperty("phase", "waiting_movement");
+                        result.addProperty("complete", false);
+                        return addCleanupCounters(result, buried[0], pickedUp[0], equipped[0], actions[0]);
+                    }
+                    if (buryBones) {
+                        JsonObject result = AgentToolService.handle(player, "bury_bones", new JsonObject());
+                        if (isSuccess(result) && getInt(result, "buried", 0) > 0) {
+                            int moved = getInt(result, "buried", 0);
+                            buried[0] += moved;
+                            actions[0]++;
+                            result.addProperty("phase", "cleanup");
+                            result.addProperty("cleanupAction", "bury_bones");
+                            result.addProperty("complete", false);
+                            return addCleanupCounters(result, buried[0], pickedUp[0], equipped[0], actions[0]);
+                        }
+                        if (!isBenignCleanupMiss(result)) {
+                            result.addProperty("phase", "cleanup");
+                            result.addProperty("cleanupAction", "bury_bones");
+                            return addCleanupCounters(result, buried[0], pickedUp[0], equipped[0], actions[0]);
+                        }
+                    }
+                    if (pickupDrops) {
+                        if (player.getItemAssistant().freeSlots() <= 0) {
+                            JsonObject result = AgentToolService.combatStateXs(player);
+                            result.addProperty("phase", "inventory_full");
+                            result.addProperty("complete", true);
+                            result.addProperty("inventoryPressure", true);
+                            return addCleanupCounters(result, buried[0], pickedUp[0], equipped[0], actions[0]);
+                        }
+                        JsonObject pickupArgs = new JsonObject();
+                        pickupArgs.add("itemIds", cleanupItemIds);
+                        pickupArgs.addProperty("maxDistance", maxDistance);
+                        JsonObject result = AgentToolService.handle(player, "pickup_ground_item", pickupArgs);
+                        if (isSuccess(result)) {
+                            int moved = getInt(result, "pickedUp", 0);
+                            pickedUp[0] += moved;
+                            actions[0]++;
+                            result.addProperty("phase", "cleanup");
+                            result.addProperty("cleanupAction", "pickup_ground_item");
+                            result.addProperty("complete", false);
+                            return addCleanupCounters(result, buried[0], pickedUp[0], equipped[0], actions[0]);
+                        }
+                        if (!isBenignCleanupMiss(result)) {
+                            result.addProperty("phase", "cleanup");
+                            result.addProperty("cleanupAction", "pickup_ground_item");
+                            return addCleanupCounters(result, buried[0], pickedUp[0], equipped[0], actions[0]);
+                        }
+                    }
+                    if (equipUpgrades && !equipTried[0]) {
+                        equipTried[0] = true;
+                        JsonObject result = AgentToolService.handle(player, "equip_best_items", new JsonObject());
+                        int moved = getInt(result, "equipped", 0);
+                        if (isSuccess(result) && moved > 0) {
+                            equipped[0] += moved;
+                            actions[0]++;
+                            result.addProperty("phase", "cleanup");
+                            result.addProperty("cleanupAction", "equip_best_items");
+                            result.addProperty("complete", false);
+                            return addCleanupCounters(result, buried[0], pickedUp[0], equipped[0], actions[0]);
+                        }
+                    }
+                    if (!style.isEmpty() && !styleTried[0]) {
+                        styleTried[0] = true;
+                        JsonObject styleArgs = new JsonObject();
+                        styleArgs.addProperty("style", style);
+                        JsonObject result = AgentToolService.handle(player, "set_combat_style", styleArgs);
+                        result.addProperty("phase", "cleanup");
+                        result.addProperty("cleanupAction", "set_combat_style");
+                        result.addProperty("complete", true);
+                        if (isSuccess(result)) {
+                            actions[0]++;
+                        }
+                        return addCleanupCounters(result, buried[0], pickedUp[0], equipped[0], actions[0]);
+                    }
+                    JsonObject result = AgentToolService.combatStateXs(player);
+                    result.addProperty("phase", "complete");
+                    result.addProperty("complete", true);
+                    return addCleanupCounters(result, buried[0], pickedUp[0], equipped[0], actions[0]);
+                }
+            });
+            if (!isSuccess(lastResult)) {
+                return addBatchStatus(lastResult, "blocked", tick + 1);
+            }
+            if (getBoolean(lastResult, "complete", false)) {
+                return addBatchStatus(lastResult, "cleanup_complete", tick + 1);
+            }
+        }
+        return addBatchStatus(lastResult == null
+                ? AgentToolService.failure("No combat cleanup was attempted.")
+                : lastResult, "max_ticks_reached", maxTicks);
+    }
+
+    private JsonObject combatRestockTrip(final String token, final JsonObject arguments) {
+        AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
+        Player player = session == null ? null : session.getPlayer();
+        if (player == null) {
+            return AgentToolService.failure("The claimed player is no longer online.");
+        }
+        if (!Boundary.isIn(player, Boundary.BANK_AREA)) {
+            JsonObject routeResult = routeCombatRestockLeg(token, arguments, "bank");
+            if (!isSuccess(routeResult) || !getBoolean(routeResult, "complete", false)) {
+                routeResult.addProperty("phase", "to_bank");
+                return routeResult;
+            }
+        }
+
+        final JsonArray actions = new JsonArray();
+        JsonObject bankResult = submitOnGameTick(token, new Callable<JsonObject>() {
+            @Override
+            public JsonObject call() {
+                AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
+                if (session == null) {
+                    return AgentToolService.failure("Agent session is no longer valid.");
+                }
+                Player player = session.getPlayer();
+                if (player == null) {
+                    return AgentToolService.failure("The claimed player is no longer online.");
+                }
+                JsonObject result = combatRestockBankStep(player, arguments, actions);
+                result.addProperty("phase", "bank");
+                result.addProperty("complete", true);
+                return result;
+            }
+        });
+        if (!isSuccess(bankResult)) {
+            return bankResult;
+        }
+        if (hasRestockReturnTarget(arguments)) {
+            JsonObject returnResult = routeCombatRestockLeg(token, arguments, "return");
+            returnResult.addProperty("phase", "return");
+            returnResult.add("actions", actions);
+            return returnResult;
+        }
+        bankResult.add("actions", actions);
+        return bankResult;
+    }
+
+    private static int recommendedCombatWaitTicks(Player player, Npc target, int requestedMaxTicks) {
+        if (player == null || target == null) {
+            return requestedMaxTicks;
+        }
+        int targetHp = Math.max(1, target.HP > 0 ? target.HP : target.MaxHP);
+        int playerPressure = Math.max(8, (baseCombatLevel(player, Constants.ATTACK)
+                + baseCombatLevel(player, Constants.STRENGTH)
+                + baseCombatLevel(player, Constants.DEFENCE)) / 3);
+        int hpPerTickEstimate = Math.max(1, playerPressure / 18);
+        int estimatedTicks = Math.max(12, (targetHp / hpPerTickEstimate) + 8);
+        return Math.max(requestedMaxTicks, Math.min(250, estimatedTicks));
+    }
+
+    private static int baseCombatLevel(Player player, int skill) {
+        return player == null || player.playerXP == null ? 1
+                : Math.max(1, player.getPlayerAssistant().getLevelForXP(player.playerXP[skill]));
+    }
+
+    private static JsonArray combatCleanupItemIds(JsonObject arguments) {
+        JsonArray ids = new JsonArray();
+        if (arguments != null && arguments.has("itemIds") && arguments.get("itemIds").isJsonArray()) {
+            for (JsonElement element : arguments.get("itemIds").getAsJsonArray()) {
+                if (element != null && element.isJsonPrimitive()) {
+                    try {
+                        addUniqueItemId(ids, element.getAsInt());
+                    } catch (RuntimeException ignored) {
+                    }
+                }
+            }
+        }
+        int requestedId = getInt(arguments, "itemId", -1);
+        if (requestedId >= 0) {
+            addUniqueItemId(ids, requestedId);
+        }
+        if (ids.size() == 0) {
+            for (int itemId : COMBAT_CLEANUP_DEFAULT_ITEM_IDS) {
+                addUniqueItemId(ids, itemId);
+            }
+        }
+        return ids;
+    }
+
+    private static void addUniqueItemId(JsonArray ids, int itemId) {
+        if (itemId < 0 || containsItemId(ids, itemId)) {
+            return;
+        }
+        ids.add(itemId);
+    }
+
+    private static boolean containsItemId(JsonArray ids, int itemId) {
+        for (JsonElement element : ids) {
+            if (element != null && element.isJsonPrimitive()) {
+                try {
+                    if (element.getAsInt() == itemId) {
+                        return true;
+                    }
+                } catch (RuntimeException ignored) {
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean isBenignCleanupMiss(JsonObject result) {
+        if (result == null || isSuccess(result)) {
+            return true;
+        }
+        String message = getString(result, "message", "").toLowerCase();
+        return message.contains("no matching bones")
+                || message.contains("no matching ground item")
+                || message.contains("could not bury");
+    }
+
+    private static JsonObject addCleanupCounters(JsonObject result, int buried, int pickedUp, int equipped,
+            int actions) {
+        JsonObject output = result == null ? AgentToolService.failure("Combat cleanup did not return a result.") : result;
+        output.addProperty("buried", buried);
+        output.addProperty("pickedUp", pickedUp);
+        output.addProperty("equipped", equipped);
+        output.addProperty("actions", actions);
+        return output;
+    }
+
+    private JsonObject routeCombatRestockLeg(String token, JsonObject arguments, String leg) {
+        boolean bankLeg = "bank".equals(leg);
+        String landmark = bankLeg
+                ? getString(arguments, "bankLandmark", getString(arguments, "landmark", ""))
+                : getString(arguments, "returnLandmark", getString(arguments, "destinationLandmark", ""));
+        int x = bankLeg ? getInt(arguments, "bankX", -1) : getInt(arguments, "returnX", -1);
+        int y = bankLeg ? getInt(arguments, "bankY", -1) : getInt(arguments, "returnY", -1);
+        int height = bankLeg ? getInt(arguments, "bankHeight", 0) : getInt(arguments, "returnHeight", 0);
+        int maxTicks = Math.max(1, Math.min(250, getInt(arguments, bankLeg ? "bankMaxTicks" : "returnMaxTicks",
+                getInt(arguments, "maxTicks", 120))));
+        if (!landmark.isEmpty()) {
+            JsonObject routeArgs = new JsonObject();
+            routeArgs.addProperty("name", landmark);
+            routeArgs.addProperty("maxTicks", maxTicks);
+            routeArgs.addProperty("stopOnCombat", getBoolean(arguments, "stopOnCombat", true));
+            routeArgs.addProperty("stopOnStall", getBoolean(arguments, "stopOnStall", true));
+            JsonObject result = travelToLandmarkUntilArrived(token, routeArgs);
+            result.addProperty(bankLeg ? "bankLandmark" : "returnLandmark", landmark);
+            return result;
+        }
+        if (x >= 0 && y >= 0) {
+            JsonObject routeArgs = new JsonObject();
+            routeArgs.addProperty("x", x);
+            routeArgs.addProperty("y", y);
+            routeArgs.addProperty("height", height);
+            routeArgs.addProperty("stopDistance", getInt(arguments, bankLeg ? "bankStopDistance" : "returnStopDistance", 0));
+            routeArgs.addProperty("maxTicks", maxTicks);
+            routeArgs.addProperty("stopOnCombat", getBoolean(arguments, "stopOnCombat", true));
+            routeArgs.addProperty("stopOnStall", getBoolean(arguments, "stopOnStall", true));
+            return walkToTileUntilArrived(token, routeArgs);
+        }
+        return AgentToolService.failure(bankLeg
+                ? "combat_restock_trip needs bankLandmark or bankX/bankY when the player is not already in a bank area."
+                : "combat_restock_trip return leg needs returnLandmark or returnX/returnY.");
+    }
+
+    private static boolean hasRestockReturnTarget(JsonObject arguments) {
+        return arguments != null && (!getString(arguments, "returnLandmark", "").isEmpty()
+                || !getString(arguments, "destinationLandmark", "").isEmpty()
+                || (getInt(arguments, "returnX", -1) >= 0 && getInt(arguments, "returnY", -1) >= 0));
+    }
+
+    private static JsonObject combatRestockBankStep(Player player, JsonObject arguments, JsonArray actions) {
+        if (!Boundary.isIn(player, Boundary.BANK_AREA)) {
+            return AgentToolService.failure("The player must be in a bank area before restocking.");
+        }
+        int deposited = 0;
+        int depositedAmount = 0;
+        int withdrawn = 0;
+        int withdrawnAmount = 0;
+        boolean depositNonFood = getBoolean(arguments, "depositNonFood", getBoolean(arguments, "depositLoot", true));
+        if (depositNonFood) {
+            JsonArray depositIds = nonFoodInventoryItemIds(player, getBoolean(arguments, "depositCoins", false));
+            if (depositIds.size() > 0) {
+                JsonObject depositArgs = new JsonObject();
+                depositArgs.add("itemIds", depositIds);
+                JsonObject depositResult = AgentToolService.handle(player, "deposit_inventory_items", depositArgs);
+                addRestockAction(actions, "deposit_inventory_items", depositResult);
+                if (!isSuccess(depositResult)) {
+                    return depositResult;
+                }
+                deposited += getInt(depositResult, "deposited", 0);
+                depositedAmount += getInt(depositResult, "depositedAmount", 0);
+            }
+        }
+
+        int keepCoins = getInt(arguments, "keepCoins", getInt(arguments, "coinReserve", -1));
+        int depositedCoins = 0;
+        int keptCoins = AgentToolService.countInventoryItem(player, COINS);
+        if (keepCoins >= 0) {
+            JsonObject coinArgs = new JsonObject();
+            coinArgs.addProperty("keepAmount", keepCoins);
+            JsonObject coinResult = AgentToolService.handle(player, "deposit_excess_coins", coinArgs);
+            addRestockAction(actions, "deposit_excess_coins", coinResult);
+            if (!isSuccess(coinResult)) {
+                return coinResult;
+            }
+            depositedCoins = getInt(coinResult, "depositedCoins", 0);
+            keptCoins = getInt(coinResult, "keptCoins", keptCoins);
+        }
+
+        int desiredFood = Math.max(0, getInt(arguments, "foodAmount", getInt(arguments, "targetFood", 12)));
+        if (desiredFood > 0) {
+            int currentFood = AgentToolService.countInventoryFood(player);
+            int neededFood = Math.max(0, desiredFood - currentFood);
+            if (neededFood > 0 && player.getItemAssistant().freeSlots() > 0) {
+                int foodItemId = getInt(arguments, "foodItemId", getInt(arguments, "itemId", -1));
+                if (foodItemId < 0) {
+                    foodItemId = AgentToolService.bestBankFood(player);
+                }
+                if (foodItemId < 0) {
+                    return AgentToolService.failure("No banked food is available for combat restock.");
+                }
+                JsonObject withdrawArgs = new JsonObject();
+                withdrawArgs.addProperty("itemId", foodItemId);
+                withdrawArgs.addProperty("amount", Math.min(neededFood, player.getItemAssistant().freeSlots()));
+                JsonObject withdrawResult = AgentToolService.handle(player, "withdraw_bank_items", withdrawArgs);
+                addRestockAction(actions, "withdraw_bank_items", withdrawResult);
+                if (!isSuccess(withdrawResult)) {
+                    return withdrawResult;
+                }
+                withdrawn += getInt(withdrawResult, "withdrawn", 0);
+                withdrawnAmount += getInt(withdrawResult, "withdrawnAmount", 0);
+            }
+        }
+
+        JsonObject result = AgentToolService.observeState(player);
+        result.addProperty("message", "Combat restock bank step completed.");
+        result.addProperty("deposited", deposited);
+        result.addProperty("depositedAmount", depositedAmount);
+        result.addProperty("depositedCoins", depositedCoins);
+        result.addProperty("keptCoins", keptCoins);
+        result.addProperty("withdrawn", withdrawn);
+        result.addProperty("withdrawnAmount", withdrawnAmount);
+        return result;
+    }
+
+    private static JsonArray nonFoodInventoryItemIds(Player player, boolean depositCoins) {
+        JsonArray ids = new JsonArray();
+        if (player == null || player.playerItems == null) {
+            return ids;
+        }
+        for (int i = 0; i < player.playerItems.length; i++) {
+            int storedId = player.playerItems[i];
+            if (storedId <= 0 || player.playerItemsN[i] <= 0) {
+                continue;
+            }
+            int itemId = storedId - 1;
+            if (AgentToolService.isAgentFood(itemId)) {
+                continue;
+            }
+            if (itemId == COINS && !depositCoins) {
+                continue;
+            }
+            addUniqueItemId(ids, itemId);
+        }
+        return ids;
+    }
+
+    private static void addRestockAction(JsonArray actions, String tool, JsonObject result) {
+        if (actions == null) {
+            return;
+        }
+        JsonObject action = new JsonObject();
+        action.addProperty("tool", tool);
+        action.addProperty("success", isSuccess(result));
+        action.addProperty("message", getString(result, "message", ""));
+        copyActionField(result, action, "deposited");
+        copyActionField(result, action, "depositedAmount");
+        copyActionField(result, action, "depositedCoins");
+        copyActionField(result, action, "keptCoins");
+        copyActionField(result, action, "withdrawn");
+        copyActionField(result, action, "withdrawnAmount");
+        actions.add(action);
+    }
+
+    private static void copyActionField(JsonObject source, JsonObject target, String field) {
+        if (source != null && target != null && source.has(field)) {
+            target.add(field, source.get(field));
+        }
+    }
+
     public JsonObject submitOnGameTick(String token, Callable<JsonObject> action) {
         return submitForTick(serverTick.get() + 1L, action);
+    }
+
+    private AgentToolService.SkillSnapshot captureSkillSnapshot(String token) {
+        return AgentToolService.captureSkillSnapshot(playerForToken(token));
+    }
+
+    private Player playerForToken(String token) {
+        AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
+        return session == null ? null : session.getPlayer();
+    }
+
+    private JsonObject finishSubmittedTool(String token, String effectiveTool, boolean xs, boolean xxs, JsonObject result,
+            AgentToolService.SkillSnapshot skillBefore) {
+        return finishSubmittedTool(token, effectiveTool, xs, xxs, result, skillBefore, null);
+    }
+
+    private JsonObject finishSubmittedTool(String token, String effectiveTool, boolean xs, boolean xxs, JsonObject result,
+            AgentToolService.SkillSnapshot skillBefore, JsonObject arguments) {
+        Player player = playerForToken(token);
+        AgentToolService.addSkillProgress(result, skillBefore, player);
+        if (xxs) {
+            return AgentToolService.compactXxsResult(effectiveTool, result, player);
+        }
+        return xs ? AgentToolService.compactXsResult(effectiveTool, result, player, arguments) : result;
     }
 
     JsonObject submitAfterGameTicks(int ticks, Callable<JsonObject> action) {
@@ -6709,6 +7381,40 @@ public class AgentActionService {
             return false;
         }
         return true;
+    }
+
+    private static String combatEventStatus(Player player, int initialXp, boolean initiallyInCombat,
+            int initialTargetIndex, int initialGroundItems, boolean initiallyFoodBlocked, int hpAtOrBelow,
+            int lootDistance, boolean stopOnXpGain, boolean stopOnLoot, boolean stopOnTargetDead,
+            boolean stopOnCombatEnd, boolean stopOnFoodReady) {
+        if (player == null) {
+            return "";
+        }
+        if (player.isDead) {
+            return "player_dead";
+        }
+        if (hpAtOrBelow > 0 && player.playerLevel[Constants.HITPOINTS] <= hpAtOrBelow) {
+            return "low_hitpoints";
+        }
+        if (stopOnXpGain && AgentToolService.totalSkillXp(player) > initialXp) {
+            return "xp_gained";
+        }
+        if (stopOnLoot && AgentToolService.nearbyGroundItemCount(player, lootDistance) > initialGroundItems) {
+            return "loot_appeared";
+        }
+        if (stopOnTargetDead && initialTargetIndex > 0) {
+            Npc currentTarget = AgentToolService.currentCombatTarget(player);
+            if (currentTarget == null || currentTarget.npcId != initialTargetIndex) {
+                return "target_dead";
+            }
+        }
+        if (stopOnCombatEnd && initiallyInCombat && !AgentToolService.playerIsInCombat(player)) {
+            return "combat_ended";
+        }
+        if (stopOnFoodReady && initiallyFoodBlocked && AgentToolService.foodDelayRemainingMs(player) <= 0L) {
+            return "food_ready";
+        }
+        return "";
     }
 
     static int clampGoalTargetLevel(int targetLevel) {

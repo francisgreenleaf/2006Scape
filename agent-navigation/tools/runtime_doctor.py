@@ -209,8 +209,11 @@ def cmd_status(args):
 
 def stop_by_patterns(patterns):
     for pattern in patterns:
-        proc = subprocess.run(["pkill", "-f", pattern], text=True)
+        proc = subprocess.run(["pkill", "-f", pattern], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if proc.returncode not in (0, 1):
+            text = "{} {}".format(proc.stdout or "", proc.stderr or "").lower()
+            if "cannot get process list" in text or "sysmond service not found" in text:
+                continue
             raise SystemExit("pkill failed for pattern {!r} with exit {}".format(pattern, proc.returncode))
 
 
@@ -238,8 +241,9 @@ def stop_runtime(include_server, include_client, session_file=SESSION_FILE, clie
                     "client-1.0-jar-with-dependencies.jar",
                 ]
             )
-            CLIENT_PID_FILE.unlink(missing_ok=True)
-            client_pid_file.unlink(missing_ok=True)
+            stop_pid_file(CLIENT_PID_FILE, "default client")
+            if client_pid_file != CLIENT_PID_FILE:
+                stop_pid_file(client_pid_file, "profile client")
         else:
             stop_pid_file(client_pid_file, "profile client")
     if include_server:
@@ -249,7 +253,7 @@ def stop_runtime(include_server, include_client, session_file=SESSION_FILE, clie
                 "2006scape-run/server-",
             ]
         )
-        SERVER_PID_FILE.unlink(missing_ok=True)
+        stop_pid_file(SERVER_PID_FILE, "server")
     session_file.unlink(missing_ok=True)
     time.sleep(1.0)
 

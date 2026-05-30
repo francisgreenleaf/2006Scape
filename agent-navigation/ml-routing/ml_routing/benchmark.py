@@ -42,6 +42,7 @@ DEFAULT_CASES = [
     {"name": "catherby_bank_to_falador_west_bank", "from": "catherby_bank", "to": "falador_west_bank"},
     {"name": "ardougne_south_to_north_bank", "from": "ardougne_south_bank", "to": "ardougne_north_bank"},
     {"name": "ardougne_north_bank_to_gnome_agility", "from": "ardougne_north_bank", "to": "gnome_agility_course"},
+    {"name": "varrock_sewer_ladder_to_moss_giants", "from": "varrock_sewer_entry_ladder", "to": "varrock_sewer_moss_giants"},
 ]
 
 
