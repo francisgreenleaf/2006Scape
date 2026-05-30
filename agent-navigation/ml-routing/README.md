@@ -121,7 +121,7 @@ python3 agent-navigation/ml-routing/route_ml.py benchmark \
   --run-enabled
 ```
 
-Render before/after maps for benchmark routes:
+Render fast-route maps for benchmark routes:
 
 ```sh
 python3 agent-navigation/ml-routing/route_ml.py compare-maps \
@@ -133,11 +133,12 @@ python3 agent-navigation/ml-routing/route_ml.py compare-maps \
   --run-enabled
 ```
 
-Comparison maps use red for the older full planner, cyan for the fast ML planner, and yellow overlays for run-worthy hazard segments.
+Comparison maps render the fast ML planner in cyan by default, with yellow overlays for run-worthy hazard segments.
 They reuse the same cache-backed context base as the agent context-map tools: terrain, water,
 mapscene buildings, large object footprints, cache mapfunction icons, and place labels.
-Both overlays are expanded through the cache clipping grid when possible, so the lines should follow
+The rendered path is expanded through the cache clipping grid when possible, so the lines should follow
 walkable bridges, docks, walls, and object footprints instead of drawing straight shortcuts through blocked geometry.
+Add `--include-old-planner` only for explicit old-vs-new regression checks; that also runs the deprecated full planner and draws it in red.
 The aggregate `comparison-report.json` stays compact; each per-case JSON sidecar has the compact
 `routeSteps`, `runPlan`/`runSegments`, and full mapfunction/place marker metadata when a route needs
 execution or visual debugging without loading the PNG first.
@@ -147,6 +148,7 @@ Useful comparison-map options:
 - `--no-place-labels` when labels make a dense benchmark image too busy.
 - `--mapfunction-labels` only when inspecting icon identity visually; otherwise read labels from the sidecar JSON.
 - `--pixels-per-tile N` and `--padding-tiles N` to trade image size against local geometry context.
+- `--include-old-planner` when the task is specifically to compare against the deprecated full planner.
 
 Run one asynchronous improvement cycle:
 
@@ -238,8 +240,9 @@ python3 agent-navigation/ml-routing/route_ml.py benchmark --limit 4 --combat-lev
 - Added compact agent-facing route ranking.
 - Added `go --dry-run` / `go` execution surface around the existing route runner.
 - Added offline benchmark reports and an asynchronous export/train/benchmark loop.
-- Added `compare-maps` before/after route visualizations for benchmark routes.
+- Added `compare-maps` route visualizations for benchmark routes.
 - Updated `compare-maps` to use the shared cache/context-map base layers so benchmark images include mapfunction icons and place labels without custom map work.
+- Changed `compare-maps` so the deprecated full planner is opt-in via `--include-old-planner`; default maps show the fast ML route only.
 - Added cache-derived collision expansion so benchmark maps and fast-planner `next` targets follow clipped walkable geometry instead of straight macro edges.
 - First export produced about 17.9k edge examples, 793 object transitions, and 566 route attempts from current evidence.
 - Full initial benchmark reached all 8 fixed targets, but 6 routes were suspicious/bad. Fast planner calls now distinguish full routes from actionable frontier/probe recommendations so hazardous stale paths do not have to be treated as ideal.

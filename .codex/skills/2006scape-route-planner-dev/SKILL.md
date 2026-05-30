@@ -21,6 +21,13 @@ The old route method is deprecated for agent routing: do not call bare `route_ru
 
 Use `route_ml_XS.py route --json` for compact planner internals and full `route_ml.py route --json` when debugging needs complete candidate data. Avoid `route_ml.py go` for agent autonomy while it still delegates to the legacy Route Runner executor.
 
+Routing trust ladder, from normal to basement:
+
+1. `route_ml_XS.py define` and the persisted `2006scape.route-definition` are the normal agent route contract.
+2. `execute_route_definition.py --route-definition PATH` is the normal live executor for that contract.
+3. `route_ml_XS.py route --json`, context maps, and `route_failure_XS.py` are debugging surfaces around ML1.
+4. `navdb_XS.py`, `router.py`, `route_eval.py`, `route_runner_XS.py --orient`, and bare `route_runner.py --to ...` are legacy diagnostics only. Do not put them in agent prompts or gameplay scripts unless the task is specifically about old-planner regression.
+
 ## Main Files
 
 - `agent-navigation/tools/router.py`: legacy deterministic graph planner over places, routes, hazards, passive traces, and route traces. Use for development and fallback diagnostics, not normal agent travel.
@@ -34,9 +41,9 @@ Use `route_ml_XS.py route --json` for compact planner internals and full `route_
 - `agent-navigation/tools/render_agent_context_map.py`: full cache map wrapper for debugging or user-facing map detail. Default outputs are unique ignored artifacts under `agent-navigation/.local/context-maps/<date>/`.
 - `agent-navigation/tools/render_context_map.py`: lower-level bounded cache-backed context renderer used by the agent wrapper.
 - `agent-navigation/ml-routing/route_ml_XS.py`: default compact wrapper for agent-facing `define`, `route`, benchmark, and comparison-map results.
-- `agent-navigation/ml-routing/route_ml.py`: full one-command ML routing pipeline for export, train, route/go, benchmark, and before/after comparison maps.
+- `agent-navigation/ml-routing/route_ml.py`: full one-command ML routing pipeline for export, train, route/go, benchmark, and fast-route comparison maps.
 - `agent-navigation/ml-routing/API.md`: stable route-definition contract for agents: `define`, compact route steps, run segments, execution command, and feedback capture.
-- `agent-navigation/ml-routing/ml_routing/comparison_maps.py`: benchmark old-vs-new route image renderer. It should reuse the shared cache/context-map base layers rather than hand-rolling custom backgrounds.
+- `agent-navigation/ml-routing/ml_routing/comparison_maps.py`: benchmark route image renderer. It renders fast ML routes by default and only overlays the deprecated full planner when `--include-old-planner` is explicitly requested.
 - `agent-navigation/tools/navdb.py`: route/place/hazard schemas, validation, trace loading, and graph helpers.
 - `agent-navigation/data/places.json`, `routes.json`, `hazards.json`: curated navigation memory.
 - `2006Scape Server/data/logs/player-movement-traces/`: passive server telemetry, default training/evidence source.
@@ -62,7 +69,7 @@ Use `route_ml_XS.py route --json` for compact planner internals and full `route_
 - If a planned route makes a wide detour, render a bounded context or segment map with `render_agent_context_map_XS.py` and actively look for a locally previewable shortcut/frontier instead of blindly replaying the long historical path.
 - Agent context maps now expose the same level-0 grid as the profile map. Use `map_grid.py locate --tile X,Y,H` to get shorthand like `AU21`; use `render_agent_context_map_XS.py --grid-cell AU21` to inspect that cell. JSON summaries include `currentGridCell`, `centerGridCell`, and `referenceGridCells` so agents can refer to cells without loading images.
 - Treat context-map PNGs/JSON as disposable agent artifacts. Read the JSON summary and marker fields first; open the PNG only when visual layout is actually needed. Let the renderer auto-name outputs by default; pass `--output`/`--summary` only for deliberate smoke tests or user-facing comparison files.
-- For ML benchmark visuals, use `route_ml_XS.py compare-maps` instead of building one-off map renderers. The comparison maps use the same cache/context base as tactical context maps: terrain, water, mapscene buildings, large-object footprints, mapfunction icons, and place labels. Read compact XS output first; use full `route_ml.py compare-maps` only when marker labels/coordinates, complete `routeSteps`, or full `runPlan` details are needed.
+- For ML benchmark visuals, use `route_ml_XS.py compare-maps` instead of building one-off map renderers. The maps use the same cache/context base as tactical context maps: terrain, water, mapscene buildings, large-object footprints, mapfunction icons, and place labels. By default they render only the selected fast ML route; add `--include-old-planner` only when explicitly comparing against the deprecated full planner. Read compact XS output first; use full `route_ml.py compare-maps` only when marker labels/coordinates, complete `routeSteps`, or full `runPlan` details are needed.
 - The fast ML planner can replace a stale learned detour with a `cache_direct` candidate when the learned graph is incomplete or overly indirect. This candidate uses cache collision for walls/water/objects, a hazard-cost field for danger zones, and emits compact `routeSteps` plus `runPlan`/`runSegments` for agent execution/review. Treat `selectedOverLearned` as the reason, and remember that frontier-only learned routes are not complete benchmark wins.
 - Fast ML route hints come from the current navigation DB at request time. Retraining is still needed to update learned timing/risk priors, but route/place anchor fixes in `places.json` or `routes.json` should affect `define`/`route` immediately.
 - For agent-facing API calls, prefer ML1 `route_ml_XS.py define` over `route`, `router.py`, `route_eval.py`, `route_runner.py`, or `navdb.py next-step` unless debugging. `define` emits stable compact route-definition JSON: route id, compact steps, run policy, safety review fields, persisted route-definition path, preferred route-step executor command, and feedback instructions.
@@ -79,14 +86,6 @@ Use `route_ml_XS.py route --json` for compact planner internals and full `route_
 python3 agent-navigation/ml-routing/route_ml_XS.py define --from X,Y,H --to PLACE --combat-level N --food N --run-energy N --run-enabled
 python3 agent-navigation/tools/execute_route_definition.py --route-definition agent-navigation/.local/ml-route-definitions/ROUTE.json --run-mode auto --eat-at 10
 python3 agent-navigation/ml-routing/route_ml_XS.py route --from X,Y,H --to PLACE --combat-level N --food N --run-energy N --run-enabled --json
-# Deprecated normal-travel path; use only for legacy planner debugging.
-python3 agent-navigation/tools/router.py plan --from X,Y,H --to PLACE --combat-level N --food N --run-energy N --run-enabled --json
-python3 agent-navigation/tools/route_eval.py --from X,Y,H --to PLACE --combat-level N --food N --run-energy N --run-enabled
-python3 agent-navigation/tools/route_runner_XS.py --to PLACE --orient --json --run-reserve auto
-python3 agent-navigation/tools/route_runner.py --to PLACE --max-walk-distance 48 --max-batches 6 --dry-run
-python3 agent-navigation/tools/route_runner.py --to PLACE --max-walk-distance 48 --max-batches 6 --run-reserve auto
-python3 agent-navigation/tools/route_runner.py --to X,Y,H --allow-frontier --direct-if-preview --probe-toward-target --dry-run
-python3 agent-navigation/tools/marathon_runner.py --laps 10 --run-reserve auto
 python3 agent-navigation/tools/map_grid.py locate --tile X,Y,H
 python3 agent-navigation/tools/render_agent_context_map_XS.py --center X,Y,H --radius-tiles 72 --pixels-per-tile 5 --recent-seconds 60
 python3 agent-navigation/tools/render_agent_context_map_XS.py --grid-cell AU21 --grid-padding-tiles 4
@@ -99,6 +98,16 @@ python3 agent-navigation/tools/navdb_XS.py graph-summary
 python3 agent-navigation/tools/navdb_XS.py validate
 python3 agent-navigation/tools/navdb_XS.py self-test
 python3 agent-navigation/tools/navdb_XS.py trace-tests
+```
+
+Legacy basement commands, only for explicit old-planner regression tasks:
+
+```sh
+python3 agent-navigation/tools/router.py plan --from X,Y,H --to PLACE --combat-level N --food N --run-energy N --run-enabled --json
+python3 agent-navigation/tools/route_eval.py --from X,Y,H --to PLACE --combat-level N --food N --run-energy N --run-enabled
+python3 agent-navigation/tools/route_runner_XS.py --to PLACE --orient --json --run-reserve auto
+python3 agent-navigation/tools/route_runner.py --to PLACE --max-walk-distance 48 --max-batches 6 --dry-run
+python3 agent-navigation/tools/marathon_runner.py --laps 10 --run-reserve auto
 ```
 
 ## Validation

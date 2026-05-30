@@ -15,7 +15,6 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT = SCRIPT_DIR.parents[0]
 REPO_ROOT = SCRIPT_DIR.parents[1]
 RS_TOOL = SCRIPT_DIR / "rs-tool.sh"
-ROUTE_RUNNER = SCRIPT_DIR / "route_runner.py"
 ROUTE_ML = ROOT / "ml-routing" / "route_ml.py"
 ROUTE_EXECUTOR = SCRIPT_DIR / "execute_route_definition.py"
 COINS = 995
@@ -1868,6 +1867,11 @@ def route_to(target, profile="", handle=None, reason="route", extra_args=None):
         "--max-batch-distance",
         str((extra_args or {}).get("max_batch_distance", 24)),
     ]
+    if profile:
+        command.extend(["--trace-profile", profile])
+    evidence = (extra_args or {}).get("evidence_jsonl")
+    if evidence:
+        command.extend(["--route-evidence-jsonl", str(evidence)])
     if bool(player.get("runEnabled", False)):
         command.append("--run-enabled")
     env = os.environ.copy()
@@ -1907,9 +1911,16 @@ def route_to(target, profile="", handle=None, reason="route", extra_args=None):
         "--route-definition",
         str(route_path),
     ]
-    evidence = (extra_args or {}).get("evidence_jsonl")
     if evidence:
         executor.extend(["--evidence-jsonl", str(evidence)])
+    if (extra_args or {}).get("max_ticks") is not None:
+        executor.extend(["--max-ticks", str((extra_args or {}).get("max_ticks"))])
+    if (extra_args or {}).get("max_walk_distance") is not None:
+        executor.extend(["--max-walk-distance", str((extra_args or {}).get("max_walk_distance"))])
+    if (extra_args or {}).get("report_every") is not None:
+        executor.extend(["--report-every", str((extra_args or {}).get("report_every"))])
+    if bool((extra_args or {}).get("stop_on_combat", False)):
+        executor.append("--stop-on-combat")
     write_event(handle, "route_execute_start", {
         "reason": reason,
         "target": str(target),

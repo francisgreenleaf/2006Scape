@@ -120,24 +120,18 @@ python3 agent-navigation/tools/runtime_doctor.py recorder start
 python3 agent-navigation/tools/runtime_doctor.py recorder stop
 ```
 
-For low-token route orientation without movement, use ML1 first. Use `route_runner_XS.py --orient` only when debugging why the legacy planner disagrees with ML1:
-
-```sh
-python3 agent-navigation/tools/route_runner_XS.py --to PLACE --orient --json --run-reserve auto
-```
-
-It performs one observe, graph plan, route evaluation, clipped-path preview, optional suspicious-route context map, and compact run-policy summary. Treat this as a diagnostic, not a normal routing decision.
+For low-token route orientation without movement, use ML1 first. If the task is specifically to debug why the legacy planner disagrees with ML1, switch to `2006scape-route-planner-dev`; do not keep legacy orientation commands in normal route-agent prompts.
 
 Do not use bare Route Runner for low-token long-route execution. It wraps the older graph planner and can override ML1’s selected route. Use ML1 `routeSteps` instead; if a compatibility executor is deliberately needed, it must use the persisted route definition from ML1 rather than re-planning from `--to`.
 
 Coordinate targets are valid for frontier/routing work:
 
 ```sh
-python3 agent-navigation/tools/route_runner.py --to X,Y,H --max-walk-distance 48 --max-batches 6 --dry-run
-python3 agent-navigation/tools/route_runner.py --to X,Y,H --max-walk-distance 48 --max-batches 6 --run-reserve auto
+python3 agent-navigation/ml-routing/route_ml_XS.py define --from X,Y,H --to TARGET_X,TARGET_Y,TARGET_H --combat-level N --food N --run-energy N --run-enabled
+python3 agent-navigation/tools/execute_route_definition.py --route-definition agent-navigation/.local/ml-route-definitions/ROUTE.json --run-mode auto --eat-at 10
 ```
 
-These coordinate-target Route Runner examples are legacy diagnostics. For normal coordinate-target routing, use `route_ml_XS.py define --to X,Y,H ...`.
+Use Route Runner coordinate targets only as explicit legacy diagnostics after loading `2006scape-route-planner-dev`.
 
 ## Screenshots and Maps
 

@@ -257,6 +257,12 @@ public class AgentActionService {
         final boolean xxs = AgentToolService.isXxsTool(tool);
         final String effectiveTool = AgentToolService.baseToolName(tool);
         final AgentToolService.SkillSnapshot skillBefore = captureSkillSnapshot(token);
+        final JsonObject submittedArguments = arguments == null ? new JsonObject() : arguments;
+        if (AgentToolService.isLegacyStrategyTool(effectiveTool)
+                && !AgentToolService.isLegacyCompatibilityAcknowledged(submittedArguments)) {
+            JsonObject result = AgentToolService.legacyCompatibilityFailure(effectiveTool);
+            return finishSubmittedTool(token, effectiveTool, xs, xxs, result, skillBefore);
+        }
         if ("walk_to_tile_until_arrived".equals(effectiveTool)) {
             JsonObject result = walkToTileUntilArrived(token, arguments == null ? new JsonObject() : arguments);
             return finishSubmittedTool(token, effectiveTool, xs, xxs, result, skillBefore);

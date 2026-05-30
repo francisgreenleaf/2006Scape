@@ -25,6 +25,13 @@ The fast planner reads curated route hints from the current navigation DB on eac
 
 ML1 supports the level-0 surface map and same-cache-area underground routes. Surface coordinates are `x=1728..3839`, `y=2560..4031`; underground-style areas use high Y offsets such as `+6400`. Surface/underground crossings and routes between separate underground cache areas return `actionable:false`, no execution command, and `status:"requires-object-transition"`; route to the relevant entrance/exit/ladder/stairs/trapdoor/gate first, use it, then request the next route. `status:"unsupported-coordinate-layer"` means the tile is outside a supported cache route area. Underground cache-direct routes use cache-derived clipping plus hard valid-region boundaries so missing underground cache regions are not treated as walkable floor.
 
+Trust ladder:
+
+1. Call `define` for normal route selection.
+2. Execute the returned `execution.command` or `execute_route_definition.py --route-definition PATH`.
+3. Use `route`/context maps/route-failure readers only for debugging the ML1 answer.
+4. Use bare Route Runner only for explicit legacy diagnostics; it is not the route API.
+
 `quality` is a geometry/detour signal, not the same as proof. A route can be geometrically indirect but still proven if `evidence.proven` is `true`; in that case follow `safety.requiresReview` rather than rejecting the route just because `quality` is `bad`.
 
 Example shape:

@@ -18,11 +18,8 @@ Use passive server telemetry as the primary data source. Do not poll full state 
 ```sh
 agent-navigation/tools/observe_XS.sh
 python3 agent-navigation/ml-routing/route_ml_XS.py define --from X,Y,H --to TARGET --combat-level N --food N --run-energy N --run-enabled
-# Legacy diagnostics only; do not use as the normal frontier travel method.
-python3 agent-navigation/tools/router.py plan --from X,Y,H --to TARGET --combat-level N --food N --run-energy N --run-enabled
-python3 agent-navigation/tools/route_runner_XS.py --to X,Y,H --orient --json --run-reserve auto --allow-frontier --direct-if-preview --probe-toward-target
-python3 agent-navigation/tools/route_runner.py --to X,Y,H --allow-frontier --direct-if-preview --probe-toward-target --max-walk-distance 48 --max-batches 4 --dry-run
-python3 agent-navigation/tools/route_runner.py --to X,Y,H --allow-frontier --direct-if-preview --probe-toward-target --max-walk-distance 48 --max-batches 4 --run-reserve auto
+python3 agent-navigation/tools/execute_route_definition.py --route-definition agent-navigation/.local/ml-route-definitions/ROUTE.json --run-mode auto --eat-at 10
+agent-navigation/tools/rs-tool_XS.sh walk_to_tile_until_arrived_XS '{"x":X,"y":Y,"height":0,"maxTicks":60,"maxWalkDistance":32,"stopOnCombat":true,"stopOnStall":true}'
 agent-navigation/tools/rs-tool_XS.sh preview_local_path '{"x":X,"y":Y,"height":0,"moveNear":true,"applyBounds":true,"maxWalkDistance":48}'
 agent-navigation/tools/capture-cardinal-screenshots.sh --prefix frontier-reason
 python3 agent-navigation/tools/navdb_XS.py hazards --near X,Y,H --radius 30 --combat-level N --food N --run-energy N --run-enabled true

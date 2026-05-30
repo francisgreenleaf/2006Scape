@@ -248,7 +248,7 @@ def fletching_target_reached(player, args):
 
 
 def legacy_fletch_until_empty(args, target_level=True):
-    payload = {"maxTicks": args.fletch_ticks}
+    payload = {"maxTicks": args.fletch_ticks, "legacyCompatibility": True}
     if target_level:
         payload["targetFletchingLevel"] = args.target_fletching_level
     result = call_tool("fletch_logs_until_inventory_empty", payload)
@@ -349,6 +349,7 @@ def legacy_chop_until_inventory_full(tree, args):
         "tree": tree,
         "maxDistance": args.tree_max_distance,
         "maxTicks": args.chop_ticks,
+        "legacyCompatibility": True,
     })
     result["woodcuttingMode"] = "legacy_tool"
     return result
@@ -683,12 +684,12 @@ def main(argv=None):
     parser.add_argument("--fletch-ticks", type=int, default=250)
     parser.add_argument("--legacy-fletch-tool", action="store_true",
                         help="Use the legacy server-side fletch_logs_until_inventory_empty tool instead of primitives.")
-    parser.add_argument("--legacy-fletch-fallback", action=argparse.BooleanOptionalAction, default=True,
-                        help="Fall back to the legacy fletching tool if the live runtime has not been restarted with primitives.")
+    parser.add_argument("--legacy-fletch-fallback", action=argparse.BooleanOptionalAction, default=False,
+                        help="Opt-in compatibility fallback to the legacy fletching tool when deliberately testing a stale runtime.")
     parser.add_argument("--legacy-chop-tool", action="store_true",
                         help="Use the legacy server-side chop_tree_until_inventory_full tool instead of primitive object interaction.")
-    parser.add_argument("--legacy-chop-fallback", action=argparse.BooleanOptionalAction, default=True,
-                        help="Fall back to the legacy chop tool if the live runtime has not been restarted with primitives.")
+    parser.add_argument("--legacy-chop-fallback", action=argparse.BooleanOptionalAction, default=False,
+                        help="Opt-in compatibility fallback to the legacy chop tool when deliberately testing a stale runtime.")
     parser.add_argument("--min-run-energy", type=int, default=10)
     parser.add_argument("--run-reserve", default="auto")
     parser.add_argument("--route-run-mode", choices=["auto", "always", "never", "preserve"], default="auto")

@@ -228,6 +228,7 @@ def _metric_delta(old: Dict[str, Any], new: Dict[str, Any], old_seconds: float, 
     new_tiles = new.get("routeDistance")
     old_ticks = old.get("estimatedTicks")
     new_ticks = new.get("estimatedTicks")
+    old_skipped = old.get("status") == "skipped"
     return {
         "oldStatus": old.get("status"),
         "newStatus": new.get("status"),
@@ -241,9 +242,9 @@ def _metric_delta(old: Dict[str, Any], new: Dict[str, Any], old_seconds: float, 
         "newEstimatedTicks": new_ticks,
         "tickDelta": round(old_ticks - new_ticks, 1) if isinstance(old_ticks, (int, float)) and isinstance(new_ticks, (int, float)) else None,
         "tickImprovementPct": _pct(old_ticks, new_ticks) if isinstance(old_ticks, (int, float)) and isinstance(new_ticks, (int, float)) else None,
-        "oldPlannerSeconds": round(old_seconds, 4),
+        "oldPlannerSeconds": None if old_skipped else round(old_seconds, 4),
         "newPlannerSeconds": round(new_seconds, 4),
-        "plannerSpeedup": round(old_seconds / new_seconds, 1) if new_seconds > 0 else None,
+        "plannerSpeedup": None if old_skipped else (round(old_seconds / new_seconds, 1) if new_seconds > 0 else None),
         "frontierDistanceToTarget": new.get("frontierDistanceToTarget"),
     }
 
@@ -265,11 +266,28 @@ def _base_map_summary(world_map: Dict[str, Any], context_layers: Dict[str, Any],
     return summary
 
 
+def _skipped_old_route() -> Dict[str, Any]:
+    return {
+        "planner": "old_full",
+        "status": "skipped",
+        "quality": None,
+        "routeDistance": None,
+        "estimatedTicks": None,
+        "edgeSources": {},
+        "runSegments": [],
+        "runPlan": None,
+    }
+
+
 def render_case(case: Dict[str, Any], base_args: SimpleNamespace, model: Dict[str, Any], output_dir: Path) -> Dict[str, Any]:
     cache_world_map, navdb, _route_eval, render_context_map, Canvas = _load_render_modules()
-    old_args = _route_args(base_args, case, "full")
     new_args = _route_args(base_args, case, "fast")
-    old, old_seconds = _old_route(old_args)
+    include_old = bool(getattr(base_args, "include_old_planner", False))
+    if include_old:
+        old_args = _route_args(base_args, case, "full")
+        old, old_seconds = _old_route(old_args)
+    else:
+        old, old_seconds = _skipped_old_route(), 0.0
     new, new_seconds = _new_route(new_args, model)
     db = navdb.load_db()
     start_tile, _label = _resolve_start(db, navdb, case["from"])
@@ -278,9 +296,11 @@ def render_case(case: Dict[str, Any], base_args: SimpleNamespace, model: Dict[st
     if target:
         old["arrivalRadius"] = int(target.get("arrivalRadius", 1))
         new["arrivalRadius"] = int(target.get("arrivalRadius", 1))
-    _expand_result_for_map(old, base_args)
+    if include_old:
+        _expand_result_for_map(old, base_args)
     _expand_result_for_map(new, base_args)
-    attach_run_plan(old, db, navdb, base_args)
+    if include_old:
+        attach_run_plan(old, db, navdb, base_args)
     attach_run_plan(new, db, navdb, base_args)
     old_tiles = _tiles_from_result(old)
     new_tiles = _tiles_from_result(new)
@@ -313,23 +333,33 @@ def render_case(case: Dict[str, Any], base_args: SimpleNamespace, model: Dict[st
         place_labels=getattr(base_args, "place_labels", True),
         max_place_markers=int(getattr(base_args, "max_place_markers", 80)),
     )
-    old_edges = _draw_path(canvas, project, old_tiles, OLD_COLOR, scale, width_factor=1.0)
+    old_edges = _draw_path(canvas, project, old_tiles, OLD_COLOR, scale, width_factor=1.0) if include_old else 0
     new_edges = _draw_path(canvas, project, new_tiles, NEW_COLOR, scale, width_factor=0.55)
-    old_run_edges = _draw_run_segments(canvas, project, old_tiles, old.get("runSegments") or [], scale, width_factor=0.55)
+    old_run_edges = _draw_run_segments(canvas, project, old_tiles, old.get("runSegments") or [], scale, width_factor=0.55) if include_old else 0
     new_run_edges = _draw_run_segments(canvas, project, new_tiles, new.get("runSegments") or [], scale, width_factor=0.35)
     _draw_marker(canvas, project, start_tile, START_COLOR, scale)
     _draw_marker(canvas, project, target_tile, END_COLOR, scale)
     _draw_marker(canvas, project, frontier, FRONTIER_COLOR, scale)
     metrics = _metric_delta(old, new, old_seconds, new_seconds)
-    title = "{}  OLD RED  NEW CYAN  RUN YELLOW".format(case["name"].replace("_", " ").upper())
+    title_suffix = "OLD RED  NEW CYAN  RUN YELLOW" if include_old else "ML CYAN  RUN YELLOW"
+    title = "{}  {}".format(case["name"].replace("_", " ").upper(), title_suffix)
     _draw_text(canvas, 10, 10, title, INK, scale=2 if width > 780 else 1)
-    metric_line = "TILES {} -> {}  DELTA {}  PLAN {:.3F}s -> {:.3F}s".format(
-        metrics.get("oldRouteDistance"),
-        metrics.get("newRouteDistance"),
-        metrics.get("tileDelta"),
-        metrics["oldPlannerSeconds"],
-        metrics["newPlannerSeconds"],
-    )
+    if include_old:
+        metric_line = "TILES {} -> {}  DELTA {}  PLAN {:.3F}s -> {:.3F}s".format(
+            metrics.get("oldRouteDistance"),
+            metrics.get("newRouteDistance"),
+            metrics.get("tileDelta"),
+            metrics["oldPlannerSeconds"],
+            metrics["newPlannerSeconds"],
+        )
+    else:
+        metric_line = "STATUS {}  QUALITY {}  MODE {}  TILES {}  STEPS {}".format(
+            new.get("status"),
+            new.get("quality"),
+            new.get("mode") or "learned",
+            new.get("routeDistance"),
+            len(new.get("routeSteps") or []),
+        )
     _draw_text(canvas, 10, 34 if width > 780 else 24, metric_line, INK, scale=1)
     if new.get("status") == "no-learned-route":
         _draw_text(canvas, 10, 48 if width > 780 else 38, "NEW IS SAFE FRONTIER/PROBE, NOT COMPLETE DESTINATION", (101, 65, 184), scale=1)
