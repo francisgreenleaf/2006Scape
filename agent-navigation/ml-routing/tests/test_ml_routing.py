@@ -14,8 +14,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from ml_routing.common import parse_tile, tile_key  # noqa: E402
-from ml_routing.collision import CollisionGrid, FULL_TILE_BLOCK  # noqa: E402
+from ml_routing.common import coordinate_layer, coordinate_layer_transition_block, parse_tile, tile_key  # noqa: E402
+from ml_routing.collision import CollisionGrid, FULL_TILE_BLOCK, cache_area_transition_block  # noqa: E402
 from ml_routing.feedback import record_outcome  # noqa: E402
 from ml_routing.fast_planner import fast_route  # noqa: E402
 from ml_routing.fast_planner import _route_hint_records  # noqa: E402
@@ -28,6 +28,50 @@ class CommonTests(unittest.TestCase):
     def test_tile_roundtrip(self):
         tile = parse_tile("3200,3210,0")
         self.assertEqual(tile_key(tile), "3200,3210,0")
+
+    def test_coordinate_layers_match_cache_surface_bounds(self):
+        self.assertEqual(coordinate_layer(parse_tile("3093,3498,0")), "surface")
+        self.assertEqual(coordinate_layer(parse_tile("3111,9934,0")), "underground")
+        self.assertEqual(coordinate_layer(parse_tile("3093,4352,0")), "off_surface")
+        block = coordinate_layer_transition_block(
+            parse_tile("3093,3498,0"),
+            parse_tile("3111,9934,0"),
+        )
+        self.assertIsNotNone(block)
+        self.assertEqual(block["status"], "requires-object-transition")
+        self.assertEqual(block["fromLayer"], "surface")
+        self.assertEqual(block["toLayer"], "underground")
+        self.assertIn("cannot cross", block["message"])
+        self.assertIsNone(coordinate_layer_transition_block(
+            parse_tile("3096,9868,0"),
+            parse_tile("3111,9934,0"),
+        ))
+        block = coordinate_layer_transition_block(
+            parse_tile("3093,4352,0"),
+            parse_tile("3094,4353,0"),
+        )
+        self.assertIsNotNone(block)
+        self.assertEqual(block["status"], "unsupported-coordinate-layer")
+        self.assertEqual(block["fromLayer"], "off_surface")
+        self.assertEqual(block["toLayer"], "off_surface")
+
+    def test_underground_cache_area_blocks_separate_areas(self):
+        self.assertIsNone(cache_area_transition_block(
+            parse_tile("3096,9868,0"),
+            parse_tile("3103,9910,0"),
+        ))
+        block = cache_area_transition_block(
+            parse_tile("3096,9868,0"),
+            parse_tile("2690,9090,0"),
+        )
+        self.assertIsNotNone(block)
+        self.assertEqual(block["status"], "requires-object-transition")
+        self.assertEqual(block["fromLayer"], "underground")
+        self.assertEqual(block["toLayer"], "underground")
+        self.assertNotEqual(
+            block["fromArea"]["componentId"],
+            block["toArea"]["componentId"],
+        )
 
 
 class CollisionTests(unittest.TestCase):
@@ -158,7 +202,7 @@ class ModelTests(unittest.TestCase):
             },
             "regionStats": {},
             "edgeStats": {
-                "1,1,0>2,1,0": {
+                "3200,3210,0>3201,3210,0": {
                     "successes": 3,
                     "failures": 0,
                     "averageTicks": 1.0,
@@ -167,7 +211,7 @@ class ModelTests(unittest.TestCase):
                     "confidence": 0.8,
                     "objectInteractionRate": 0.0,
                 },
-                "2,1,0>3,1,0": {
+                "3201,3210,0>3202,3210,0": {
                     "successes": 3,
                     "failures": 0,
                     "averageTicks": 1.0,
@@ -179,8 +223,8 @@ class ModelTests(unittest.TestCase):
             },
         }
         result = fast_route(SimpleNamespace(
-            from_tile="1,1,0",
-            to="3,1,0",
+            from_tile="3200,3210,0",
+            to="3202,3210,0",
             combat_level=3,
             food=0,
             coins=0,
@@ -193,9 +237,163 @@ class ModelTests(unittest.TestCase):
             compress_gap=18,
             max_suspects=5,
             max_warnings=8,
+            no_cache_collision=True,
+            no_cache_direct=True,
         ), model)
         self.assertEqual(result["status"], "ok")
-        self.assertEqual(result["next"], {"x": 2, "y": 1, "height": 0})
+        self.assertEqual(result["next"], {"x": 3201, "y": 3210, "height": 0})
+
+    def test_fast_route_blocks_surface_to_underground(self):
+        model = {
+            "modelId": "tiny",
+            "trainedAt": "test",
+            "weights": {},
+            "global": {
+                "averageTicks": 1.0,
+                "averageDistance": 1.0,
+                "riskScore": 0.0,
+                "confidence": 0.8,
+            },
+            "regionStats": {},
+            "edgeStats": {},
+        }
+        result = fast_route(SimpleNamespace(
+            from_tile="3093,3498,0",
+            to="3111,9934,0",
+            combat_level=30,
+            food=10,
+            coins=0,
+            run_energy=89,
+            run_enabled=True,
+            allow_lethal=False,
+            hazard_buffer=10,
+            graph_snap_distance=16,
+            max_batch_distance=24,
+            compress_gap=18,
+            max_suspects=5,
+            max_warnings=8,
+        ), model)
+        self.assertEqual(result["status"], "requires-object-transition")
+        self.assertEqual(result["coordinateLayers"], {"from": "surface", "to": "underground"})
+        self.assertIsNone(result.get("next"))
+
+    def test_fast_route_supports_same_underground_area(self):
+        model = {
+            "modelId": "tiny",
+            "trainedAt": "test",
+            "weights": {},
+            "global": {
+                "averageTicks": 1.0,
+                "averageDistance": 1.0,
+                "riskScore": 0.0,
+                "confidence": 0.8,
+            },
+            "regionStats": {},
+            "edgeStats": {},
+        }
+        result = fast_route(SimpleNamespace(
+            from_tile="3096,9868,0",
+            to="3103,9910,0",
+            combat_level=30,
+            food=10,
+            coins=0,
+            run_energy=67,
+            run_enabled=True,
+            allow_lethal=False,
+            hazard_buffer=10,
+            graph_snap_distance=16,
+            max_batch_distance=24,
+            compress_gap=18,
+            max_suspects=5,
+            max_warnings=8,
+        ), model)
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["mode"], "cache_direct")
+        self.assertEqual(result["edgeSources"], {"cache_direct": result["routeDistance"]})
+        self.assertTrue(result["collision"]["success"])
+        self.assertTrue(result["collision"]["gridStats"]["validTileBoundary"])
+        self.assertGreater(result["routeStepCount"], 1)
+
+    def test_fast_route_rejects_underground_collision_failures(self):
+        model = {
+            "modelId": "tiny",
+            "trainedAt": "test",
+            "weights": {},
+            "global": {
+                "averageTicks": 1.0,
+                "averageDistance": 1.0,
+                "riskScore": 0.0,
+                "confidence": 0.8,
+            },
+            "regionStats": {},
+            "edgeStats": {
+                "3096,9868,0>3130,9919,0": {
+                    "successes": 3,
+                    "failures": 0,
+                    "averageTicks": 1.0,
+                    "averageDistance": 1.0,
+                    "riskScore": 0.0,
+                    "confidence": 0.8,
+                    "objectInteractionRate": 0.0,
+                },
+            },
+        }
+        result = fast_route(SimpleNamespace(
+            from_tile="3096,9868,0",
+            to="3130,9919,0",
+            combat_level=30,
+            food=10,
+            coins=0,
+            run_energy=67,
+            run_enabled=True,
+            allow_lethal=False,
+            hazard_buffer=10,
+            graph_snap_distance=0,
+            max_batch_distance=24,
+            compress_gap=18,
+            max_suspects=5,
+            max_warnings=8,
+            no_cache_direct=True,
+        ), model)
+        self.assertEqual(result["status"], "error")
+        self.assertFalse(result["collisionExpanded"])
+        self.assertIn("collision", result["message"])
+
+    def test_fast_route_blocks_separate_underground_areas(self):
+        model = {
+            "modelId": "tiny",
+            "trainedAt": "test",
+            "weights": {},
+            "global": {
+                "averageTicks": 1.0,
+                "averageDistance": 1.0,
+                "riskScore": 0.0,
+                "confidence": 0.8,
+            },
+            "regionStats": {},
+            "edgeStats": {},
+        }
+        result = fast_route(SimpleNamespace(
+            from_tile="3096,9868,0",
+            to="2690,9090,0",
+            combat_level=30,
+            food=10,
+            coins=0,
+            run_energy=67,
+            run_enabled=True,
+            allow_lethal=False,
+            hazard_buffer=10,
+            graph_snap_distance=16,
+            max_batch_distance=24,
+            compress_gap=18,
+            max_suspects=5,
+            max_warnings=8,
+        ), model)
+        self.assertEqual(result["status"], "requires-object-transition")
+        self.assertEqual(result["mode"], "requires_object_transition")
+        self.assertEqual(result["coordinateLayers"], {"from": "underground", "to": "underground"})
+        self.assertIn("separate underground cache areas", result["message"])
+        self.assertIsNone(result.get("next"))
 
     def test_current_route_hints_override_stale_model_dataset(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -249,6 +447,42 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(definition["evidence"]["level"], "trace_proven")
         self.assertTrue(definition["evidence"]["proven"])
         self.assertEqual(definition["feedback"]["automaticEvidenceJsonl"], "agent-navigation/.local/run-evidence/test.routes.jsonl")
+
+    def test_route_definition_explains_coordinate_layer_transition_block(self):
+        args = SimpleNamespace(
+            from_tile="3093,3498,0",
+            to="3111,9934,0",
+            allow_lethal=False,
+            max_batch_distance=24,
+            runner_max_batches=8,
+            trace_profile="",
+            route_evidence_jsonl="",
+            no_route_evidence=False,
+            planner="fast",
+        )
+        candidate = {
+            "planner": "fast",
+            "mode": "requires_object_transition",
+            "status": "requires-object-transition",
+            "quality": "bad",
+            "targetTile": {"x": 3111, "y": 9934, "height": 0},
+            "error": "ML routing cannot cross coordinate layers yet.",
+            "message": "ML routing cannot cross coordinate layers yet.",
+            "coordinateLayers": {"from": "surface", "to": "underground"},
+            "transition": {
+                "fromLayer": "surface",
+                "toLayer": "underground",
+                "fromTile": {"x": 3093, "y": 3498, "height": 0},
+                "targetTile": {"x": 3111, "y": 9934, "height": 0},
+            },
+        }
+        definition = route_definition(args, candidate)
+        self.assertFalse(definition["actionable"])
+        self.assertEqual(definition["status"], "requires-object-transition")
+        self.assertEqual(definition["coordinateLayers"], {"from": "surface", "to": "underground"})
+        self.assertIn("coordinate layers", definition["safety"]["reviewReasons"][1])
+        self.assertEqual(definition["execution"]["strategy"], "not_actionable")
+        self.assertEqual(definition["execution"]["command"], [])
 
     def test_persist_route_definition_adds_runner_file_argument(self):
         with tempfile.TemporaryDirectory() as tmp:

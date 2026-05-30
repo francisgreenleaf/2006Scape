@@ -79,6 +79,13 @@ public class AgentToolServiceTest {
     }
 
     @Test
+    public void bonePrimitiveRecognizesBuryableBones() {
+        assertTrue(AgentToolService.isBuryableBone(526));
+        assertTrue(AgentToolService.isBuryableBone(532));
+        assertFalse(AgentToolService.isBuryableBone(379));
+    }
+
+    @Test
     public void interfaceItemPrimitiveAllowsNormalSmithingSelectionWidgets() {
         assertTrue(AgentToolService.isSmithingSelectionInterface(1119));
         assertTrue(AgentToolService.isSmithingSelectionInterface(1123));
@@ -201,8 +208,13 @@ public class AgentToolServiceTest {
     @Test
     public void xsToolNamesMapToBaseToolNames() {
         assertTrue(AgentToolService.isXsTool("observe_state_XS"));
+        assertFalse(AgentToolService.isXsTool("observe_state_XXS"));
+        assertTrue(AgentToolService.isXxsTool("observe_state_XXS"));
+        assertTrue(AgentToolService.isCompactTool("observe_state_XXS"));
         assertFalse(AgentToolService.isXsTool("observe_state"));
         assertEquals("observe_state", AgentToolService.baseToolName("observe_state_XS"));
+        assertEquals("observe_state", AgentToolService.baseToolName("observe_state_XXS"));
+        assertEquals("bury_bones", AgentToolService.baseToolName("bury_bones_XXS"));
         assertEquals("deposit_inventory_items", AgentToolService.baseToolName("deposit_inventory_items"));
     }
 
@@ -226,6 +238,13 @@ public class AgentToolServiceTest {
         cooking.addProperty("xp", 52520);
         cooking.addProperty("baseLevel", 43);
         skills.add("cooking", cooking);
+        JsonObject prayer = new JsonObject();
+        prayer.addProperty("level", 1);
+        prayer.addProperty("currentLevel", 1);
+        prayer.addProperty("xp", 720);
+        prayer.addProperty("baseLevel", 7);
+        prayer.addProperty("points", 1);
+        skills.add("prayer", prayer);
         player.add("skills", skills);
         JsonArray inventory = new JsonArray();
         JsonObject lobster = new JsonObject();
@@ -246,6 +265,30 @@ public class AgentToolServiceTest {
         bank.add(coins);
         player.add("bank", bank);
         result.add("player", player);
+        JsonArray skillChanges = new JsonArray();
+        JsonObject prayerChange = new JsonObject();
+        prayerChange.addProperty("skill", "prayer");
+        prayerChange.addProperty("xpGained", 5);
+        prayerChange.addProperty("xpBefore", 715);
+        prayerChange.addProperty("xpAfter", 720);
+        prayerChange.addProperty("currentBefore", 1);
+        prayerChange.addProperty("currentAfter", 1);
+        prayerChange.addProperty("baseBefore", 7);
+        prayerChange.addProperty("baseAfter", 7);
+        prayerChange.addProperty("pointsBefore", 1);
+        prayerChange.addProperty("pointsAfter", 1);
+        skillChanges.add(prayerChange);
+        result.add("skillChanges", skillChanges);
+        JsonArray xpRecent = new JsonArray();
+        JsonObject recentPrayer = new JsonObject();
+        recentPrayer.addProperty("skill", "prayer");
+        recentPrayer.addProperty("xpGained", 5);
+        recentPrayer.addProperty("xp", 720);
+        recentPrayer.addProperty("base", 7);
+        recentPrayer.addProperty("points", 1);
+        xpRecent.add(recentPrayer);
+        result.add("xpRecent", xpRecent);
+        result.addProperty("buried", 1);
 
         JsonObject compact = AgentToolService.compactXsResult("observe_state", result);
 
@@ -257,5 +300,72 @@ public class AgentToolServiceTest {
         assertEquals(100, compact.getAsJsonObject("bank").get("coins").getAsInt());
         assertFalse(compact.getAsJsonObject("player").has("inventory"));
         assertTrue(compact.getAsJsonObject("player").getAsJsonObject("skills").has("cooking"));
+        JsonObject compactPrayer = compact.getAsJsonObject("player").getAsJsonObject("skills").getAsJsonObject("prayer");
+        assertEquals(1, compactPrayer.get("points").getAsInt());
+        assertEquals(7, compactPrayer.get("base").getAsInt());
+        assertEquals(1, compact.get("buried").getAsInt());
+        assertEquals("prayer", compact.getAsJsonArray("skillChanges").get(0).getAsJsonObject()
+                .get("skill").getAsString());
+        assertEquals(5, compact.getAsJsonArray("xpRecent").get(0).getAsJsonObject()
+                .get("xpGained").getAsInt());
+    }
+
+    @Test
+    public void xxsCompactorKeepsOnlyConfirmationCriticalPlayerAndXp() {
+        JsonObject result = AgentToolService.success("Buried Bones.");
+        result.addProperty("buried", 1);
+        result.addProperty("itemCountAfter", 0);
+
+        JsonObject player = new JsonObject();
+        player.addProperty("name", "mrflame");
+        player.addProperty("x", 3222);
+        player.addProperty("y", 3218);
+        player.addProperty("height", 0);
+        player.addProperty("hitpoints", 8);
+        player.addProperty("maxHitpoints", 10);
+        player.addProperty("isInCombat", true);
+        player.addProperty("isPoisoned", true);
+        player.addProperty("isDead", false);
+        player.addProperty("freeInventorySlots", 4);
+        JsonArray inventory = new JsonArray();
+        JsonObject food = new JsonObject();
+        food.addProperty("id", 379);
+        food.addProperty("name", "Lobster");
+        food.addProperty("amount", 2);
+        food.addProperty("foodHeal", 12);
+        inventory.add(food);
+        player.add("inventory", inventory);
+        result.add("player", player);
+        result.add("inventory", new JsonObject());
+        result.add("skills", new JsonObject());
+
+        JsonArray skillChanges = new JsonArray();
+        JsonObject prayerChange = new JsonObject();
+        prayerChange.addProperty("skill", "prayer");
+        prayerChange.addProperty("xpGained", 5);
+        prayerChange.addProperty("xpAfter", 720);
+        prayerChange.addProperty("currentAfter", 1);
+        prayerChange.addProperty("baseAfter", 7);
+        prayerChange.addProperty("pointsAfter", 1);
+        skillChanges.add(prayerChange);
+        result.add("skillChanges", skillChanges);
+
+        JsonObject compact = AgentToolService.compactXxsResult("bury_bones", result, null);
+
+        assertTrue(compact.get("success").getAsBoolean());
+        assertTrue(compact.get("xxs").getAsBoolean());
+        assertEquals("bury_bones_XXS", compact.get("tool").getAsString());
+        assertEquals(1, compact.get("buried").getAsInt());
+        assertEquals(0, compact.get("itemCountAfter").getAsInt());
+        assertEquals("3222,3218,0", compact.getAsJsonObject("player").get("tile").getAsString());
+        assertEquals(8, compact.getAsJsonObject("player").get("hp").getAsInt());
+        assertTrue(compact.getAsJsonObject("player").get("isInCombat").getAsBoolean());
+        assertTrue(compact.getAsJsonObject("player").get("isPoisoned").getAsBoolean());
+        assertEquals(2, compact.getAsJsonObject("player").get("food").getAsInt());
+        assertEquals("prayer", compact.getAsJsonArray("xp").get(0).getAsJsonObject().get("skill").getAsString());
+        assertEquals(5, compact.getAsJsonArray("xp").get(0).getAsJsonObject().get("gained").getAsInt());
+        assertFalse(compact.has("inventory"));
+        assertFalse(compact.has("skills"));
+        assertFalse(compact.getAsJsonObject("player").has("inventory"));
     }
 }

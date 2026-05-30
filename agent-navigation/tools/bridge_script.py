@@ -6,6 +6,8 @@ import json
 import os
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 
@@ -17,13 +19,67 @@ ROUTE_RUNNER = SCRIPT_DIR / "route_runner.py"
 ROUTE_ML = ROOT / "ml-routing" / "route_ml.py"
 ROUTE_EXECUTOR = SCRIPT_DIR / "execute_route_definition.py"
 COINS = 995
+DEFAULT_BRIDGE_TOOL_URL = "http://127.0.0.1:43610/agent/tool"
+DEFAULT_PROFILE = "MrFlame"
+
+
+def safe_profile(value):
+    text = "".join(ch for ch in str(value or "").strip().lower() if ch.isalnum() or ch in ("-", "_"))
+    return text or "default"
+
+
+def normalized_player_name(value):
+    return " ".join(str(value or "").strip().lower().replace("_", " ").split())
+
+
+def session_file_for_profile(profile=""):
+    override = os.environ.get("RSBRIDGE_SESSION_FILE")
+    if override:
+        return Path(override).expanduser()
+    selected = profile or os.environ.get("RS_PROFILE") or os.environ.get("RSBRIDGE_PROFILE") or ""
+    if not selected or safe_profile(selected) == safe_profile(DEFAULT_PROFILE):
+        return ROOT / ".local" / "rsbridge-session.json"
+    return ROOT / ".local" / "rsbridge-session-{}.json".format(safe_profile(selected))
+
+
+def expected_player_for_profile(profile=""):
+    return os.environ.get("RSBRIDGE_EXPECT_PLAYER", profile or os.environ.get("RS_PROFILE") or os.environ.get("RSBRIDGE_PROFILE") or "")
+
+
+def read_session(profile=""):
+    path = session_file_for_profile(profile)
+    if not path.exists():
+        raise RuntimeError("bridge session file not found: {}".format(path))
+    data = json.loads(path.read_text(encoding="utf-8"))
+    expected = normalized_player_name(expected_player_for_profile(profile))
+    actual = normalized_player_name(data.get("playerName"))
+    if expected and actual and expected != actual:
+        raise RuntimeError("session player mismatch: expected {} but session is {}".format(expected, actual))
+    session_key = data.get("token")
+    if not session_key:
+        raise RuntimeError("bridge session credential missing: {}".format(path))
+    return session_key
+
+
+def log_tool_usage(tool_name, arguments):
+    try:
+        import usage_log
+        usage_log.log_usage(
+            "rs-tool",
+            surface="direct",
+            argv=[tool_name, json.dumps(arguments or {}, separators=(",", ":"))],
+            cwd=REPO_ROOT,
+        )
+    except Exception:
+        pass
 
 
 def utc_now():
     return dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def call_tool(tool_name, arguments=None, profile=""):
+def call_tool_shell(tool_name, arguments=None, profile=""):
+    """Call an rs bridge tool through the shell wrapper and return raw JSON."""
     env = os.environ.copy()
     if profile:
         env["RS_PROFILE"] = profile
@@ -43,7 +99,45 @@ def call_tool(tool_name, arguments=None, profile=""):
         raise RuntimeError("{} returned invalid JSON: {}".format(tool_name, exc))
 
 
+def call_tool_direct(tool_name, arguments=None, profile=""):
+    """Call an rs bridge tool in-process and return the raw JSON response."""
+    args = arguments or {}
+    session_key = read_session(profile)
+    payload = json.dumps({"tool": tool_name, "arguments": args}, separators=(",", ":")).encode("utf-8")
+    request = urllib.request.Request(
+        os.environ.get("RSBRIDGE_TOOL_URL", DEFAULT_BRIDGE_TOOL_URL),
+        data=payload,
+        headers={
+            "X-Agent-Token": session_key,
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    timeout = float(os.environ.get("RSBRIDGE_TIMEOUT_SECONDS", "600"))
+    log_tool_usage(tool_name, args)
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            body = response.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace").strip()
+        raise RuntimeError("{} failed: HTTP {} {}".format(tool_name, exc.code, detail[:500]))
+    except urllib.error.URLError as exc:
+        raise RuntimeError("{} failed: {}".format(tool_name, exc.reason))
+    try:
+        return json.loads(body)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("{} returned invalid JSON: {}".format(tool_name, exc))
+
+
+def call_tool(tool_name, arguments=None, profile=""):
+    """Call an rs bridge tool and return the raw JSON response."""
+    if os.environ.get("RSBRIDGE_USE_SHELL", "").lower() in ("1", "true", "yes", "on"):
+        return call_tool_shell(tool_name, arguments, profile=profile)
+    return call_tool_direct(tool_name, arguments, profile=profile)
+
+
 def player_from(result):
+    """Extract the player dict from a raw bridge or compact tool response."""
     player = result.get("player")
     if isinstance(player, dict):
         return player
@@ -54,6 +148,7 @@ def player_from(result):
 
 
 def observe(profile=""):
+    """Return the already-unwrapped player state from full observe_state."""
     return player_from(call_tool("observe_state", {}, profile=profile))
 
 
@@ -277,6 +372,27 @@ def skill_xp(player, name):
 
 
 def tile_from_player(player):
+    tile = player.get("tile")
+    if isinstance(tile, str):
+        parts = tile.split(",")
+        if len(parts) >= 3:
+            try:
+                return {
+                    "x": int(parts[0]),
+                    "y": int(parts[1]),
+                    "height": int(parts[2]),
+                }
+            except (TypeError, ValueError):
+                pass
+    if isinstance(tile, dict):
+        try:
+            return {
+                "x": int(tile.get("x", 0) or 0),
+                "y": int(tile.get("y", 0) or 0),
+                "height": int(tile.get("height", tile.get("h", 0)) or 0),
+            }
+        except (TypeError, ValueError):
+            pass
     return {
         "x": int(player.get("x", 0) or 0),
         "y": int(player.get("y", 0) or 0),
@@ -334,6 +450,18 @@ def ensure_run(player, min_energy, profile="", handle=None, reason=""):
     return next_player
 
 
+def ensure_auto_retaliate_off(player, profile="", handle=None, reason="", compact_player_fn=None):
+    result = call_tool("click_interface_button", {"buttonId": 151}, profile=profile)
+    updated = _player_from_or(result, player)
+    write_event(handle, "auto_retaliate_off", {
+        "reason": reason,
+        "success": bool(result.get("success")),
+        "message": result.get("message"),
+        "player": _transition_compact(updated, compact_player_fn),
+    })
+    return updated
+
+
 class ObjectTransitionError(RuntimeError):
     def __init__(self, reason, message, player=None):
         super().__init__(message)
@@ -355,17 +483,37 @@ TAVERLEY_WHITE_WOLF_GATE_Y = 3451
 TAVERLEY_WHITE_WOLF_GATE_EAST_APPROACH = {"x": 2936, "y": 3451, "height": 0}
 TAVERLEY_WHITE_WOLF_GATE_WEST_APPROACH = {"x": 2934, "y": 3451, "height": 0}
 
+EDGEVILLE_DUNGEON_SURFACE_APPROACH = {"x": 3096, "y": 3468, "height": 0}
+EDGEVILLE_DUNGEON_CLOSED_OBJECT = {"objectId": 1568, "x": 3097, "y": 3468, "height": 0}
+EDGEVILLE_DUNGEON_OPEN_TRAPDOOR = {"objectId": 10698, "x": 3097, "y": 3468, "height": 0}
+EDGEVILLE_DUNGEON_UNDERGROUND_APPROACH = {"x": 3096, "y": 9868, "height": 0}
+EDGEVILLE_DUNGEON_LADDER = {"objectId": 1755, "x": 3097, "y": 9867, "height": 0}
+EDGEVILLE_DRUID_FIRST_GATE_APPROACH_WEST = {"x": 3103, "y": 9911, "height": 0}
+EDGEVILLE_DRUID_FIRST_GATE_APPROACH_EAST = {"x": 3105, "y": 9909, "height": 0}
+EDGEVILLE_DRUID_FIRST_GATE_NORTH = {"objectId": 1557, "x": 3103, "y": 9910, "height": 0}
+EDGEVILLE_DRUID_FIRST_GATE_SOUTH = {"objectId": 1558, "x": 3103, "y": 9909, "height": 0}
+EDGEVILLE_DRUID_SECOND_GATE_APPROACH_SOUTH = {"x": 3132, "y": 9916, "height": 0}
+EDGEVILLE_DRUID_SECOND_GATE_APPROACH_NORTH = {"x": 3132, "y": 9919, "height": 0}
+EDGEVILLE_DRUID_SECOND_GATE_WEST = {"objectId": 1596, "x": 3131, "y": 9917, "height": 0}
+EDGEVILLE_DRUID_SECOND_GATE_EAST = {"objectId": 1597, "x": 3132, "y": 9917, "height": 0}
+
+VARROCK_SEWER_SURFACE_APPROACH = {"x": 3238, "y": 3458, "height": 0}
+VARROCK_SEWER_MANHOLE_TILE = {"x": 3237, "y": 3458, "height": 0}
+VARROCK_SEWER_UNDERGROUND_APPROACH = {"x": 3237, "y": 9859, "height": 0}
+VARROCK_SEWER_LADDER = {"objectId": 1755, "x": 3237, "y": 9858, "height": 0}
+VARROCK_SEWER_MANHOLE_IDS = (882, 881, 883, 10321)
+
 
 def _player_x(player):
-    return int(player.get("x", 0) or 0)
+    return int(tile_from_player(player)["x"])
 
 
 def _player_y(player):
-    return int(player.get("y", 0) or 0)
+    return int(tile_from_player(player)["y"])
 
 
 def _player_h(player):
-    return int(player.get("height", player.get("h", 0)) or 0)
+    return int(tile_from_player(player)["height"])
 
 
 def _same_player_tile(player, x, y, h=0):
@@ -474,12 +622,145 @@ def find_taverley_white_wolf_gate_object(player, profile=""):
     }
 
 
+def edgeville_dungeon_surface_side(player):
+    return _player_h(player) == 0 and 3088 <= _player_x(player) <= 3104 and 3460 <= _player_y(player) <= 3476
+
+
+def edgeville_dungeon_underground_side(player):
+    return _player_h(player) == 0 and 3088 <= _player_x(player) <= 3104 and 9860 <= _player_y(player) <= 9878
+
+
+def edgeville_druid_first_gate_east_side(player):
+    return _player_h(player) == 0 and _player_x(player) >= 3104 and 9907 <= _player_y(player) <= 9912
+
+
+def edgeville_druid_first_gate_west_side(player):
+    return _player_h(player) == 0 and _player_x(player) <= 3103 and 9908 <= _player_y(player) <= 9915
+
+
+def edgeville_druid_second_gate_north_side(player):
+    return _player_h(player) == 0 and _player_y(player) >= 9919 and 3128 <= _player_x(player) <= 3135
+
+
+def edgeville_druid_second_gate_south_side(player):
+    return _player_h(player) == 0 and _player_y(player) <= 9916 and 3128 <= _player_x(player) <= 3135
+
+
+def edgeville_druid_second_gate_midline(player):
+    return _player_h(player) == 0 and _player_x(player) == 3132 and _player_y(player) in (9917, 9918)
+
+
+def varrock_sewer_surface_side(player):
+    return _player_h(player) == 0 and 3228 <= _player_x(player) <= 3248 and 3448 <= _player_y(player) <= 3468
+
+
+def varrock_sewer_underground_side(player):
+    return _player_h(player) == 0 and 3140 <= _player_x(player) <= 3248 and 9840 <= _player_y(player) <= 9920
+
+
+def varrock_sewer_entry_underground_side(player):
+    return _player_h(player) == 0 and 3228 <= _player_x(player) <= 3248 and 9848 <= _player_y(player) <= 9868
+
+
+def _resolve_object_ref(object_ref, player, profile=""):
+    if callable(object_ref):
+        try:
+            return object_ref(player, profile=profile)
+        except TypeError:
+            return object_ref(player)
+    return object_ref
+
+
+def find_varrock_sewer_manhole_object(player, profile=""):
+    found = call_tool("find_nearest_object", {"name": "manhole", "maxDistance": 6}, profile=profile)
+    obj = found.get("object") if isinstance(found, dict) else None
+    if isinstance(obj, dict):
+        try:
+            object_id = int(obj.get("objectId", obj.get("id", -1)))
+            x = int(obj.get("x"))
+            y = int(obj.get("y"))
+            h = int(obj.get("height", obj.get("h", 0)) or 0)
+        except (TypeError, ValueError):
+            object_id = -1
+            x = y = h = 0
+        if h == 0 and 3235 <= x <= 3239 and 3456 <= y <= 3460 and (
+            object_id in VARROCK_SEWER_MANHOLE_IDS or "manhole" in str(obj.get("name", "")).lower()
+        ):
+            return {
+                "objectId": object_id,
+                "x": x,
+                "y": y,
+                "height": h,
+                "source": "find_nearest_object",
+            }
+
+    return {
+        "objectId": 882,
+        "x": VARROCK_SEWER_MANHOLE_TILE["x"],
+        "y": VARROCK_SEWER_MANHOLE_TILE["y"],
+        "height": 0,
+        "source": "fallback",
+    }
+
+
+def _interact_transition_object(player, object_ref, profile="", handle=None, reason="", option="open",
+                                compact_player_fn=None):
+    object_ref = _resolve_object_ref(object_ref, player, profile=profile)
+    before = _transition_compact(player, compact_player_fn)
+    result = call_tool("interact_object", {
+        "objectId": int(object_ref["objectId"]),
+        "x": int(object_ref["x"]),
+        "y": int(object_ref["y"]),
+        "height": int(object_ref.get("height", 0) or 0),
+        "option": option,
+    }, profile=profile)
+    updated = _player_from_or(result, player)
+    write_event(handle, "object_transition_interact", {
+        "reason": reason,
+        "object": object_ref,
+        "option": option,
+        "success": bool(result.get("success")),
+        "message": result.get("message"),
+        "before": before,
+        "player": _transition_compact(updated, compact_player_fn),
+    })
+    return updated, result
+
+
 def _walk_gate_transition_steps(player, steps, profile="", handle=None, reason="", max_ticks=12,
                                 compact_player_fn=None):
     if not steps:
         return player
+    player = observe(profile=profile)
+    filtered_steps = []
+    previous = tile_from_player(player)
+    for step in steps:
+        current_step = {
+            "x": int(step["x"]),
+            "y": int(step["y"]),
+            "height": int(step.get("height", previous.get("height", 0)) or 0),
+        }
+        if tile_string(current_step) == tile_string(previous):
+            continue
+        dx = abs(int(current_step["x"]) - int(previous["x"]))
+        dy = abs(int(current_step["y"]) - int(previous["y"]))
+        if dx + dy == 1:
+            filtered_steps.append(current_step)
+            previous = current_step
+            continue
+        if filtered_steps:
+            break
+    if not filtered_steps:
+        write_event(handle, "object_transition_walk_steps", {
+            "reason": reason,
+            "success": True,
+            "message": "No remaining adjacent crossing steps after observing current tile.",
+            "steps": steps,
+            "player": _transition_compact(player, compact_player_fn),
+        })
+        return player
     result = call_tool("walk_path_steps", {
-        "steps": steps,
+        "steps": filtered_steps,
         "run": bool(player.get("runEnabled", True)),
         "allowObjectTransition": True,
     }, profile=profile)
@@ -489,7 +770,8 @@ def _walk_gate_transition_steps(player, steps, profile="", handle=None, reason="
         "success": bool(result.get("success")),
         "message": result.get("message"),
         "queuedSteps": result.get("queuedSteps"),
-        "steps": steps,
+        "steps": filtered_steps,
+        "requestedSteps": steps,
         "player": _transition_compact(queued, compact_player_fn),
     })
     if not result.get("success"):
@@ -510,6 +792,20 @@ def _walk_gate_transition_steps(player, steps, profile="", handle=None, reason="
         "player": _transition_compact(updated, compact_player_fn),
     })
     return updated
+
+
+def walk_object_transition_steps(player, steps, profile="", handle=None, reason="", cross_wait_ticks=12,
+                                 compact_player_fn=None):
+    """Queue already-proven adjacent crossing steps without requiring an object click."""
+    return _walk_gate_transition_steps(
+        player,
+        steps,
+        profile=profile,
+        handle=handle,
+        reason=reason,
+        max_ticks=cross_wait_ticks,
+        compact_player_fn=compact_player_fn,
+    )
 
 
 def open_object_then_walk_steps(player, object_ref, steps=(), profile="", handle=None, reason="",
@@ -581,6 +877,217 @@ def open_object_then_walk_steps(player, object_ref, steps=(), profile="", handle
     )
 
 
+def cross_directional_open_gate(player, transition, direction, approach, gate, steps, crossed_fn,
+                                midline_fn=None, profile="", handle=None, reason="", attempts=3,
+                                approach_max_ticks=40, approach_max_walk_distance=48,
+                                cross_wait_ticks=12, min_run_energy=1, compact_player_fn=None):
+    """Reusable primitive for simple timed gates: approach, open, step through, prove side.
+
+    This covers the common non-dialogue gate family where the reliable behavior
+    is not "click gate and trust pathfinding"; it is exact-side positioning plus
+    immediate adjacent steps through the opened footprint. Location wrappers
+    still own object ids, approach tiles, and proof predicates.
+    """
+    player = observe(profile=profile)
+    for attempt in range(1, int(attempts) + 1):
+        if crossed_fn(player):
+            return player
+        player = ensure_run(player, min_run_energy, profile=profile, handle=handle,
+                            reason=transition + "_" + direction)
+        player = ensure_auto_retaliate_off(
+            player,
+            profile=profile,
+            handle=handle,
+            reason=transition + "_" + direction,
+            compact_player_fn=compact_player_fn,
+        )
+        player = observe(profile=profile)
+        if crossed_fn(player):
+            return player
+
+        if midline_fn is not None and midline_fn(player):
+            write_event(handle, "object_transition_approach", {
+                "reason": transition + "_" + direction + "_midline_resume",
+                "attempt": attempt,
+                "destination": approach,
+                "success": True,
+                "message": "Resuming gate crossing from the gate line.",
+                "player": _transition_compact(player, compact_player_fn),
+            })
+        else:
+            player = _walk_exact_tile(
+                player,
+                approach,
+                profile=profile,
+                handle=handle,
+                reason=transition + "_" + direction + "_approach",
+                max_ticks=approach_max_ticks,
+                max_walk_distance=approach_max_walk_distance,
+                compact_player_fn=compact_player_fn,
+                stop_on_combat=False,
+            )
+            if crossed_fn(player):
+                return player
+            resolved_gate = _resolve_object_ref(gate, player, profile=profile)
+            player, _opened = _interact_transition_object(
+                player,
+                resolved_gate,
+                profile=profile,
+                handle=handle,
+                reason=reason or transition + "_" + direction + "_open",
+                option="open",
+                compact_player_fn=compact_player_fn,
+            )
+
+        player = _walk_gate_transition_steps(
+            player,
+            steps,
+            profile=profile,
+            handle=handle,
+            reason=transition + "_" + direction + "_cross",
+            max_ticks=cross_wait_ticks,
+            compact_player_fn=compact_player_fn,
+        )
+        player = observe(profile=profile)
+        crossed = bool(crossed_fn(player))
+        write_event(handle, "object_transition_proof", {
+            "reason": reason or transition + "_" + direction,
+            "transition": transition,
+            "direction": direction,
+            "attempt": attempt,
+            "success": crossed,
+            "player": _transition_compact(player, compact_player_fn),
+        })
+        if crossed:
+            return player
+
+    raise ObjectTransitionError(
+        transition + "_cross_failed",
+        "Could not prove crossing {} through {}.".format(direction, transition),
+        player,
+    )
+
+
+def gate_transition_catalog():
+    """Return known gate transition metadata grouped by primitive family.
+
+    Keep this catalog small and proven. The route/combat scripts can identify a
+    nearby gate by key, then execute the matching primitive instead of trying a
+    raw object click and hoping the server pathfinder walks through in time.
+    """
+    return {
+        "al_kharid_toll_gate": {
+            "primitive": "toll_dialogue_gate",
+            "directions": ("east", "west"),
+            "notes": "Exact approach, click Gate, advance toll dialogue, prove side change.",
+        },
+        "taverley_white_wolf_gate": {
+            "primitive": "simple_timed_open_gate",
+            "directions": ("west", "east"),
+            "notes": "Open the live Gate object and immediately queue adjacent steps through the opening.",
+        },
+        "edgeville_druid_first_gate": {
+            "primitive": "chained_timed_open_gate",
+            "directions": ("east", "west"),
+            "notes": "Two-panel gate row; open the correct panel sequence, queue adjacent steps, prove side.",
+        },
+        "edgeville_druid_second_gate": {
+            "primitive": "simple_timed_open_gate",
+            "directions": ("north", "south"),
+            "notes": "Combat-area gate; disable auto-retaliate, open, queue through-footprint steps, support midline resume.",
+        },
+    }
+
+
+def _simple_gate_transition_specs():
+    return {
+        "taverley_white_wolf_gate": {
+            "west": {
+                "approach": TAVERLEY_WHITE_WOLF_GATE_EAST_APPROACH,
+                "gate": find_taverley_white_wolf_gate_object,
+                "steps": [
+                    {"x": 2935, "y": 3451, "height": 0},
+                    {"x": 2934, "y": 3451, "height": 0},
+                ],
+                "crossedFn": lambda player: taverley_white_wolf_gate_crossed(player, True),
+                "approachMaxTicks": 18,
+                "approachMaxWalkDistance": 12,
+            },
+            "east": {
+                "approach": TAVERLEY_WHITE_WOLF_GATE_WEST_APPROACH,
+                "gate": find_taverley_white_wolf_gate_object,
+                "steps": [
+                    {"x": 2935, "y": 3451, "height": 0},
+                    {"x": 2936, "y": 3451, "height": 0},
+                ],
+                "crossedFn": lambda player: taverley_white_wolf_gate_crossed(player, False),
+                "approachMaxTicks": 18,
+                "approachMaxWalkDistance": 12,
+            },
+        },
+        "edgeville_druid_second_gate": {
+            "north": {
+                "approach": EDGEVILLE_DRUID_SECOND_GATE_APPROACH_SOUTH,
+                "gate": EDGEVILLE_DRUID_SECOND_GATE_WEST,
+                "steps": [
+                    {"x": 3132, "y": 9917, "height": 0},
+                    {"x": 3132, "y": 9918, "height": 0},
+                    {"x": 3132, "y": 9919, "height": 0},
+                ],
+                "crossedFn": edgeville_druid_second_gate_north_side,
+                "midlineFn": edgeville_druid_second_gate_midline,
+                "approachMaxTicks": 40,
+                "approachMaxWalkDistance": 48,
+            },
+            "south": {
+                "approach": EDGEVILLE_DRUID_SECOND_GATE_APPROACH_NORTH,
+                "gate": EDGEVILLE_DRUID_SECOND_GATE_EAST,
+                "steps": [
+                    {"x": 3132, "y": 9917, "height": 0},
+                    {"x": 3132, "y": 9916, "height": 0},
+                ],
+                "crossedFn": edgeville_druid_second_gate_south_side,
+                "midlineFn": edgeville_druid_second_gate_midline,
+                "approachMaxTicks": 40,
+                "approachMaxWalkDistance": 48,
+            },
+        },
+    }
+
+
+def cross_known_simple_gate(player, transition, direction, profile="", handle=None, reason="",
+                            attempts=3, cross_wait_ticks=12, min_run_energy=1,
+                            approach_max_ticks=None, approach_max_walk_distance=None,
+                            compact_player_fn=None):
+    specs = _simple_gate_transition_specs()
+    if transition not in specs or direction not in specs[transition]:
+        raise ObjectTransitionError(
+            "unknown_simple_gate_transition",
+            "No simple timed gate primitive is registered for {} {}.".format(transition, direction),
+            player,
+        )
+    spec = specs[transition][direction]
+    return cross_directional_open_gate(
+        player,
+        transition,
+        direction,
+        spec["approach"],
+        spec["gate"],
+        spec["steps"],
+        spec["crossedFn"],
+        midline_fn=spec.get("midlineFn"),
+        profile=profile,
+        handle=handle,
+        reason=reason,
+        attempts=attempts,
+        approach_max_ticks=approach_max_ticks or spec.get("approachMaxTicks", 40),
+        approach_max_walk_distance=approach_max_walk_distance or spec.get("approachMaxWalkDistance", 48),
+        cross_wait_ticks=cross_wait_ticks,
+        min_run_energy=min_run_energy,
+        compact_player_fn=compact_player_fn,
+    )
+
+
 CATHERBY_SOUTH_RANGE_DOOR = {"objectId": 1530, "x": 2816, "y": 3438, "height": 0}
 CATHERBY_SOUTH_RANGE_DOOR_APPROACH = {"x": 2817, "y": 3439, "height": 0}
 CATHERBY_SOUTH_RANGE_DOOR_APPROACH_ALTERNATE = {"x": 2817, "y": 3438, "height": 0}
@@ -645,8 +1152,499 @@ def open_catherby_south_range_door(player, profile="", handle=None, reason="",
     )
 
 
+def enter_edgeville_dungeon_trapdoor(player, profile="", handle=None, reason="", compact_player_fn=None):
+    """Use the proven Edgeville trapdoor transition south of the bank.
+
+    The cache walk target for the visible trapdoor can be wrong in this runtime;
+    stand at 3096,3468,0, open object 1568 at 3097,3468,0 if needed, then use
+    open trapdoor 10698 at 3097,3468,0. Proof is the underground entrance tile
+    band around 3096,9868,0.
+    """
+    player = observe(profile=profile)
+    if edgeville_dungeon_underground_side(player):
+        return player
+    player = ensure_run(player, 1, profile=profile, handle=handle, reason="edgeville_dungeon_trapdoor_enter")
+    player = _walk_exact_tile(
+        player,
+        EDGEVILLE_DUNGEON_SURFACE_APPROACH,
+        profile=profile,
+        handle=handle,
+        reason="edgeville_dungeon_trapdoor_surface_approach",
+        max_ticks=40,
+        max_walk_distance=48,
+        compact_player_fn=compact_player_fn,
+    )
+
+    # Try the already-open trapdoor first. If the closed cover is present, open
+    # it and immediately use the proven open-trapdoor object.
+    player, result = _interact_transition_object(
+        player,
+        EDGEVILLE_DUNGEON_OPEN_TRAPDOOR,
+        profile=profile,
+        handle=handle,
+        reason=reason or "edgeville_dungeon_trapdoor_enter_open",
+        option="first",
+        compact_player_fn=compact_player_fn,
+    )
+    waited = call_tool("wait_until_idle", {"maxTicks": 8, "movement": True, "skilling": False, "combat": False}, profile=profile)
+    player = _player_from_or(waited, player)
+    if not edgeville_dungeon_underground_side(player):
+        player = observe(profile=profile)
+    if edgeville_dungeon_underground_side(player):
+        write_event(handle, "object_transition_proof", {
+            "reason": reason or "edgeville_dungeon_trapdoor_enter",
+            "transition": "edgeville_dungeon_trapdoor",
+            "direction": "down",
+            "success": True,
+            "player": _transition_compact(player, compact_player_fn),
+        })
+        return player
+
+    player, _opened = _interact_transition_object(
+        player,
+        EDGEVILLE_DUNGEON_CLOSED_OBJECT,
+        profile=profile,
+        handle=handle,
+        reason=reason or "edgeville_dungeon_trapdoor_open_cover",
+        option="open",
+        compact_player_fn=compact_player_fn,
+    )
+    waited = call_tool("wait_until_idle", {"maxTicks": 4, "movement": True, "skilling": False, "combat": False}, profile=profile)
+    player = _player_from_or(waited, player)
+    if not _same_player_tile_ref(player, EDGEVILLE_DUNGEON_SURFACE_APPROACH):
+        player = _walk_exact_tile(
+            player,
+            EDGEVILLE_DUNGEON_SURFACE_APPROACH,
+            profile=profile,
+            handle=handle,
+            reason="edgeville_dungeon_trapdoor_surface_reapproach",
+            max_ticks=12,
+            max_walk_distance=12,
+            compact_player_fn=compact_player_fn,
+        )
+    player, _used = _interact_transition_object(
+        player,
+        EDGEVILLE_DUNGEON_OPEN_TRAPDOOR,
+        profile=profile,
+        handle=handle,
+        reason=reason or "edgeville_dungeon_trapdoor_enter_after_open",
+        option="first",
+        compact_player_fn=compact_player_fn,
+    )
+    waited = call_tool("wait_until_idle", {"maxTicks": 10, "movement": True, "skilling": False, "combat": False}, profile=profile)
+    player = _player_from_or(waited, player)
+    if not edgeville_dungeon_underground_side(player):
+        player = observe(profile=profile)
+    if edgeville_dungeon_underground_side(player):
+        write_event(handle, "object_transition_proof", {
+            "reason": reason or "edgeville_dungeon_trapdoor_enter",
+            "transition": "edgeville_dungeon_trapdoor",
+            "direction": "down",
+            "success": True,
+            "player": _transition_compact(player, compact_player_fn),
+        })
+        return player
+    raise ObjectTransitionError(
+        "edgeville_dungeon_trapdoor_enter_failed",
+        "Could not prove descent through the Edgeville dungeon trapdoor.",
+        player,
+    )
+
+
+def exit_edgeville_dungeon_trapdoor(player, profile="", handle=None, reason="", compact_player_fn=None):
+    """Use the proven Edgeville dungeon ladder back to the surface trapdoor tile."""
+    player = observe(profile=profile)
+    if edgeville_dungeon_surface_side(player):
+        return player
+    player = ensure_run(player, 1, profile=profile, handle=handle, reason="edgeville_dungeon_trapdoor_exit")
+    player = _walk_exact_tile(
+        player,
+        EDGEVILLE_DUNGEON_UNDERGROUND_APPROACH,
+        profile=profile,
+        handle=handle,
+        reason="edgeville_dungeon_ladder_approach",
+        max_ticks=40,
+        max_walk_distance=48,
+        compact_player_fn=compact_player_fn,
+        stop_on_combat=False,
+    )
+    player, _used = _interact_transition_object(
+        player,
+        EDGEVILLE_DUNGEON_LADDER,
+        profile=profile,
+        handle=handle,
+        reason=reason or "edgeville_dungeon_ladder_exit",
+        option="first",
+        compact_player_fn=compact_player_fn,
+    )
+    waited = call_tool("wait_until_idle", {"maxTicks": 10, "movement": True, "skilling": False, "combat": False}, profile=profile)
+    player = _player_from_or(waited, player)
+    if not edgeville_dungeon_surface_side(player):
+        player = observe(profile=profile)
+    if edgeville_dungeon_surface_side(player):
+        write_event(handle, "object_transition_proof", {
+            "reason": reason or "edgeville_dungeon_ladder_exit",
+            "transition": "edgeville_dungeon_trapdoor",
+            "direction": "up",
+            "success": True,
+            "player": _transition_compact(player, compact_player_fn),
+        })
+        return player
+    raise ObjectTransitionError(
+        "edgeville_dungeon_ladder_exit_failed",
+        "Could not prove exit through the Edgeville dungeon ladder.",
+        player,
+    )
+
+
+def enter_varrock_sewer_manhole(player, profile="", handle=None, reason="", compact_player_fn=None):
+    """Enter Varrock sewer through the manhole east of Varrock palace.
+
+    The matching exit proof is Ladder 1755 at 3237,9858,0, which climbs back
+    to 3238,3458,0. On the surface, stand east of the manhole and try the live
+    Manhole object first so object id variants can be discovered by the cache.
+    """
+    player = observe(profile=profile)
+    if varrock_sewer_underground_side(player):
+        return player
+    player = ensure_run(player, 1, profile=profile, handle=handle, reason="varrock_sewer_manhole_enter")
+    player = _walk_exact_tile(
+        player,
+        VARROCK_SEWER_SURFACE_APPROACH,
+        profile=profile,
+        handle=handle,
+        reason="varrock_sewer_manhole_surface_approach",
+        max_ticks=80,
+        max_walk_distance=80,
+        compact_player_fn=compact_player_fn,
+        stop_on_combat=False,
+    )
+
+    tried = []
+    for attempt in range(1, 7):
+        live = find_varrock_sewer_manhole_object(player, profile=profile)
+        candidates = [live]
+        for object_id in VARROCK_SEWER_MANHOLE_IDS:
+            candidates.append({
+                "objectId": object_id,
+                "x": VARROCK_SEWER_MANHOLE_TILE["x"],
+                "y": VARROCK_SEWER_MANHOLE_TILE["y"],
+                "height": 0,
+                "source": "fallback_variant",
+            })
+        for object_ref in candidates:
+            key = (int(object_ref["objectId"]), int(object_ref["x"]), int(object_ref["y"]), "open" if attempt == 1 else "first")
+            if key in tried:
+                continue
+            tried.append(key)
+            option = "open" if attempt == 1 else "first"
+            player, _used = _interact_transition_object(
+                player,
+                object_ref,
+                profile=profile,
+                handle=handle,
+                reason=reason or "varrock_sewer_manhole_enter",
+                option=option,
+                compact_player_fn=compact_player_fn,
+            )
+            waited = call_tool("wait_until_idle", {
+                "maxTicks": 10,
+                "movement": True,
+                "skilling": False,
+                "combat": False,
+            }, profile=profile)
+            player = _player_from_or(waited, player)
+            player = observe(profile=profile)
+            if varrock_sewer_underground_side(player):
+                write_event(handle, "object_transition_proof", {
+                    "reason": reason or "varrock_sewer_manhole_enter",
+                    "transition": "varrock_sewer_manhole",
+                    "direction": "down",
+                    "success": True,
+                    "object": object_ref,
+                    "player": _transition_compact(player, compact_player_fn),
+                })
+                return player
+            if not _same_player_tile_ref(player, VARROCK_SEWER_SURFACE_APPROACH):
+                player = _walk_exact_tile(
+                    player,
+                    VARROCK_SEWER_SURFACE_APPROACH,
+                    profile=profile,
+                    handle=handle,
+                    reason="varrock_sewer_manhole_surface_reapproach",
+                    max_ticks=20,
+                    max_walk_distance=20,
+                    compact_player_fn=compact_player_fn,
+                    stop_on_combat=False,
+                )
+
+    raise ObjectTransitionError(
+        "varrock_sewer_manhole_enter_failed",
+        "Could not prove descent through the Varrock sewer manhole.",
+        player,
+    )
+
+
+def exit_varrock_sewer_ladder(player, profile="", handle=None, reason="", compact_player_fn=None):
+    """Exit Varrock sewer through Ladder 1755 at 3237,9858,0."""
+    player = observe(profile=profile)
+    if varrock_sewer_surface_side(player):
+        return player
+    player = ensure_run(player, 1, profile=profile, handle=handle, reason="varrock_sewer_ladder_exit")
+    player = _walk_exact_tile(
+        player,
+        VARROCK_SEWER_UNDERGROUND_APPROACH,
+        profile=profile,
+        handle=handle,
+        reason="varrock_sewer_ladder_approach",
+        max_ticks=160,
+        max_walk_distance=160,
+        compact_player_fn=compact_player_fn,
+        stop_on_combat=False,
+    )
+    player, _used = _interact_transition_object(
+        player,
+        VARROCK_SEWER_LADDER,
+        profile=profile,
+        handle=handle,
+        reason=reason or "varrock_sewer_ladder_exit",
+        option="first",
+        compact_player_fn=compact_player_fn,
+    )
+    waited = call_tool("wait_until_idle", {
+        "maxTicks": 10,
+        "movement": True,
+        "skilling": False,
+        "combat": False,
+    }, profile=profile)
+    player = _player_from_or(waited, player)
+    player = observe(profile=profile)
+    if varrock_sewer_surface_side(player):
+        write_event(handle, "object_transition_proof", {
+            "reason": reason or "varrock_sewer_ladder_exit",
+            "transition": "varrock_sewer_manhole",
+            "direction": "up",
+            "success": True,
+            "player": _transition_compact(player, compact_player_fn),
+        })
+        return player
+    raise ObjectTransitionError(
+        "varrock_sewer_ladder_exit_failed",
+        "Could not prove exit through the Varrock sewer ladder.",
+        player,
+    )
+
+
+def cross_edgeville_druid_first_gate(player, to_east=True, profile="", handle=None, reason="",
+                                     compact_player_fn=None):
+    """Cross the first Edgeville dungeon druid gate near 3103,9910."""
+    player = observe(profile=profile)
+    direction = "east" if to_east else "west"
+    if to_east and edgeville_druid_first_gate_east_side(player):
+        return player
+    if not to_east and edgeville_druid_first_gate_west_side(player):
+        return player
+    player = ensure_run(player, 1, profile=profile, handle=handle,
+                        reason="edgeville_druid_first_gate_" + direction)
+    player = ensure_auto_retaliate_off(
+        player,
+        profile=profile,
+        handle=handle,
+        reason="edgeville_druid_first_gate_" + direction,
+        compact_player_fn=compact_player_fn,
+    )
+
+    if to_east:
+        player = _walk_exact_tile(
+            player,
+            EDGEVILLE_DRUID_FIRST_GATE_APPROACH_WEST,
+            profile=profile,
+            handle=handle,
+            reason="edgeville_druid_first_gate_east_approach",
+            max_ticks=40,
+            max_walk_distance=48,
+            compact_player_fn=compact_player_fn,
+            stop_on_combat=False,
+        )
+        player, _opened = _interact_transition_object(
+            player,
+            EDGEVILLE_DRUID_FIRST_GATE_NORTH,
+            profile=profile,
+            handle=handle,
+            reason=reason or "edgeville_druid_first_gate_east_open_north",
+            option="open",
+            compact_player_fn=compact_player_fn,
+        )
+        player = _walk_gate_transition_steps(
+            player,
+            [{"x": 3103, "y": 9910, "height": 0}, {"x": 3103, "y": 9909, "height": 0}],
+            profile=profile,
+            handle=handle,
+            reason="edgeville_druid_first_gate_east_old_row",
+            max_ticks=10,
+            compact_player_fn=compact_player_fn,
+        )
+        player, _opened = _interact_transition_object(
+            player,
+            EDGEVILLE_DRUID_FIRST_GATE_SOUTH,
+            profile=profile,
+            handle=handle,
+            reason=reason or "edgeville_druid_first_gate_east_open_south",
+            option="open",
+            compact_player_fn=compact_player_fn,
+        )
+        player = _walk_gate_transition_steps(
+            player,
+            [{"x": 3104, "y": 9909, "height": 0}, {"x": 3105, "y": 9909, "height": 0}],
+            profile=profile,
+            handle=handle,
+            reason="edgeville_druid_first_gate_east_cross",
+            max_ticks=10,
+            compact_player_fn=compact_player_fn,
+        )
+    else:
+        player = _walk_exact_tile(
+            player,
+            {"x": 3104, "y": 9909, "height": 0},
+            profile=profile,
+            handle=handle,
+            reason="edgeville_druid_first_gate_west_approach",
+            max_ticks=40,
+            max_walk_distance=48,
+            compact_player_fn=compact_player_fn,
+            stop_on_combat=False,
+        )
+        player, _opened = _interact_transition_object(
+            player,
+            EDGEVILLE_DRUID_FIRST_GATE_SOUTH,
+            profile=profile,
+            handle=handle,
+            reason=reason or "edgeville_druid_first_gate_west_open_south",
+            option="open",
+            compact_player_fn=compact_player_fn,
+        )
+        player = _walk_gate_transition_steps(
+            player,
+            [
+                {"x": 3103, "y": 9909, "height": 0},
+                {"x": 3103, "y": 9910, "height": 0},
+                {"x": 3103, "y": 9911, "height": 0},
+            ],
+            profile=profile,
+            handle=handle,
+            reason="edgeville_druid_first_gate_west_cross",
+            max_ticks=12,
+            compact_player_fn=compact_player_fn,
+        )
+
+    player = observe(profile=profile)
+    crossed = edgeville_druid_first_gate_east_side(player) if to_east else edgeville_druid_first_gate_west_side(player)
+    write_event(handle, "object_transition_proof", {
+        "reason": reason or "edgeville_druid_first_gate_" + direction,
+        "transition": "edgeville_druid_first_gate",
+        "direction": direction,
+        "success": bool(crossed),
+        "player": _transition_compact(player, compact_player_fn),
+    })
+    if crossed:
+        return player
+    raise ObjectTransitionError(
+        "edgeville_druid_first_gate_cross_failed",
+        "Could not prove crossing {} through the first Edgeville druid gate.".format(direction),
+        player,
+    )
+
+
+def cross_edgeville_druid_second_gate(player, to_north=True, profile="", handle=None, reason="",
+                                      compact_player_fn=None):
+    """Cross the second Edgeville dungeon druid gate near 3131,9917.
+
+    This gate is an east-west barrier. The proven inbound sequence is
+    south-to-north: stand 3132,9916, open 1596 at 3131,9917, then run through
+    3132,9917 -> 3132,9919.
+    """
+    player = observe(profile=profile)
+    direction = "north" if to_north else "south"
+    if to_north and edgeville_druid_second_gate_north_side(player):
+        return player
+    if not to_north and edgeville_druid_second_gate_south_side(player):
+        return player
+
+    return cross_known_simple_gate(
+        player,
+        "edgeville_druid_second_gate",
+        direction,
+        profile=profile,
+        handle=handle,
+        reason=reason,
+        attempts=3,
+        cross_wait_ticks=12,
+        compact_player_fn=compact_player_fn,
+    )
+
+
+def enter_edgeville_druid_room_gates(player, profile="", handle=None, reason="", compact_player_fn=None):
+    player = cross_edgeville_druid_first_gate(
+        player,
+        to_east=True,
+        profile=profile,
+        handle=handle,
+        reason=reason or "edgeville_druid_first_gate_enter",
+        compact_player_fn=compact_player_fn,
+    )
+    player = _walk_exact_tile(
+        player,
+        EDGEVILLE_DRUID_SECOND_GATE_APPROACH_SOUTH,
+        profile=profile,
+        handle=handle,
+        reason="edgeville_druid_second_gate_enter_approach",
+        max_ticks=80,
+        max_walk_distance=64,
+        compact_player_fn=compact_player_fn,
+        stop_on_combat=False,
+    )
+    return cross_edgeville_druid_second_gate(
+        player,
+        to_north=True,
+        profile=profile,
+        handle=handle,
+        reason=reason or "edgeville_druid_second_gate_enter",
+        compact_player_fn=compact_player_fn,
+    )
+
+
+def leave_edgeville_druid_room_gates(player, profile="", handle=None, reason="", compact_player_fn=None):
+    player = cross_edgeville_druid_second_gate(
+        player,
+        to_north=False,
+        profile=profile,
+        handle=handle,
+        reason=reason or "edgeville_druid_second_gate_exit",
+        compact_player_fn=compact_player_fn,
+    )
+    player = _walk_exact_tile(
+        player,
+        {"x": 3104, "y": 9909, "height": 0},
+        profile=profile,
+        handle=handle,
+        reason="edgeville_druid_first_gate_exit_approach",
+        max_ticks=90,
+        max_walk_distance=64,
+        compact_player_fn=compact_player_fn,
+        stop_on_combat=False,
+    )
+    return cross_edgeville_druid_first_gate(
+        player,
+        to_east=False,
+        profile=profile,
+        handle=handle,
+        reason=reason or "edgeville_druid_first_gate_exit",
+        compact_player_fn=compact_player_fn,
+    )
+
+
 def _walk_exact_tile(player, destination, profile="", handle=None, reason="", max_ticks=24,
-                     max_walk_distance=12, compact_player_fn=None):
+                     max_walk_distance=12, compact_player_fn=None, stop_on_combat=True):
     x = int(destination["x"])
     y = int(destination["y"])
     h = int(destination.get("height", 0))
@@ -659,7 +1657,7 @@ def _walk_exact_tile(player, destination, profile="", handle=None, reason="", ma
         "stopDistance": 0,
         "maxTicks": int(max_ticks),
         "maxWalkDistance": int(max_walk_distance),
-        "stopOnCombat": True,
+        "stopOnCombat": bool(stop_on_combat),
         "stopOnStall": True,
     }, profile=profile)
     updated = _player_from_or(result, player)
@@ -672,6 +1670,35 @@ def _walk_exact_tile(player, destination, profile="", handle=None, reason="", ma
         "batchTicks": result.get("batchTicks"),
         "player": _transition_compact(updated, compact_player_fn),
     })
+    if not _same_player_tile(updated, x, y, h):
+        waited = call_tool("wait_until_idle", {
+            "maxTicks": 6,
+            "movement": True,
+            "skilling": False,
+            "combat": False,
+        }, profile=profile)
+        updated = _player_from_or(waited, updated)
+    if not _same_player_tile(updated, x, y, h) and chebyshev(tile_from_player(updated), destination) <= 8:
+        retry = call_tool("walk_to_tile_until_arrived", {
+            "x": x,
+            "y": y,
+            "height": h,
+            "stopDistance": 0,
+            "maxTicks": max(12, min(int(max_ticks), 24)),
+            "maxWalkDistance": int(max_walk_distance),
+            "stopOnCombat": bool(stop_on_combat),
+            "stopOnStall": True,
+        }, profile=profile)
+        updated = _player_from_or(retry, updated)
+        write_event(handle, "object_transition_approach", {
+            "reason": reason + "_retry",
+            "destination": destination,
+            "success": bool(retry.get("success")),
+            "message": retry.get("message"),
+            "batchStatus": retry.get("batchStatus"),
+            "batchTicks": retry.get("batchTicks"),
+            "player": _transition_compact(updated, compact_player_fn),
+        })
     if not _same_player_tile(updated, x, y, h):
         raise ObjectTransitionError(
             "object_transition_approach_failed",
@@ -794,83 +1821,19 @@ def cross_taverley_white_wolf_gate(player, to_west=True, profile="", handle=None
     clipping enabled, and proves the side change before returning.
     """
     direction = "west" if to_west else "east"
-    player = ensure_run(player, min_run_energy, profile=profile, handle=handle, reason="taverley_white_wolf_gate_" + direction)
-    approach = taverley_white_wolf_gate_approach_tile(to_west)
-    player = _walk_exact_tile(
+    return cross_known_simple_gate(
         player,
-        approach,
+        "taverley_white_wolf_gate",
+        direction,
         profile=profile,
         handle=handle,
-        reason="taverley_white_wolf_gate_" + direction + "_approach",
-        max_ticks=approach_max_ticks,
-        max_walk_distance=approach_max_walk_distance,
+        reason=reason,
+        attempts=attempts,
+        cross_wait_ticks=cross_wait_ticks,
+        min_run_energy=min_run_energy,
+        approach_max_ticks=approach_max_ticks,
+        approach_max_walk_distance=approach_max_walk_distance,
         compact_player_fn=compact_player_fn,
-    )
-    if taverley_white_wolf_gate_crossed(player, to_west):
-        return player
-
-    for attempt in range(1, int(attempts) + 1):
-        gate = find_taverley_white_wolf_gate_object(player, profile=profile)
-        before = _transition_compact(player, compact_player_fn)
-        opened = call_tool("interact_object", {
-            "objectId": int(gate["objectId"]),
-            "x": int(gate["x"]),
-            "y": int(gate["y"]),
-            "height": int(gate["height"]),
-            "option": "open",
-        }, profile=profile)
-        player = _player_from_or(opened, player)
-        write_event(handle, "taverley_white_wolf_gate_interact", {
-            "reason": reason,
-            "direction": direction,
-            "attempt": attempt,
-            "object": gate,
-            "success": bool(opened.get("success")),
-            "message": opened.get("message"),
-            "before": before,
-            "player": _transition_compact(player, compact_player_fn),
-        })
-        if taverley_white_wolf_gate_crossed(player, to_west):
-            return player
-        if opened.get("success"):
-            if to_west:
-                steps = [
-                    {"x": 2935, "y": 3451, "height": 0},
-                    {"x": 2934, "y": 3451, "height": 0},
-                ]
-            else:
-                steps = [
-                    {"x": 2935, "y": 3451, "height": 0},
-                    {"x": 2936, "y": 3451, "height": 0},
-                ]
-            player = _walk_gate_transition_steps(
-                player,
-                steps,
-                profile=profile,
-                handle=handle,
-                reason="taverley_white_wolf_gate_" + direction + "_{}".format(attempt),
-                max_ticks=cross_wait_ticks,
-                compact_player_fn=compact_player_fn,
-            )
-            if taverley_white_wolf_gate_crossed(player, to_west):
-                return player
-
-        observed = observe(profile=profile)
-        player = observed
-        write_event(handle, "taverley_white_wolf_gate_proof", {
-            "reason": reason,
-            "direction": direction,
-            "attempt": attempt,
-            "crossed": bool(taverley_white_wolf_gate_crossed(player, to_west)),
-            "player": _transition_compact(player, compact_player_fn),
-        })
-        if taverley_white_wolf_gate_crossed(player, to_west):
-            return player
-
-    raise ObjectTransitionError(
-        "taverley_white_wolf_gate_cross_failed",
-        "Could not prove crossing {} through the Taverley White Wolf gate.".format(direction),
-        player,
     )
 
 

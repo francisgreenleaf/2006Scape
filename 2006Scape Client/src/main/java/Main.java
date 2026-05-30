@@ -147,6 +147,8 @@ public final class Main {
 				System.out.println("[AgentClient] startup autoLogin=" + ClientSettings.AGENT_AUTO_LOGIN
 						+ " usernameSet=" + (game.myUsername != null && !game.myUsername.trim().isEmpty())
 						+ " passwordLength=" + (game.myPassword == null ? 0 : game.myPassword.length())
+						+ " autoClaimSet=" + (ClientSettings.AGENT_AUTO_CLAIM_NONCE != null
+								&& !ClientSettings.AGENT_AUTO_CLAIM_NONCE.trim().isEmpty())
 						+ " autoCommandSet=" + (ClientSettings.AGENT_AUTO_COMMAND != null
 								&& !ClientSettings.AGENT_AUTO_COMMAND.trim().isEmpty())
 						+ " server=" + ClientSettings.SERVER_IP + ":" + ((ClientSettings.SERVER_WORLD == 1) ? 43594

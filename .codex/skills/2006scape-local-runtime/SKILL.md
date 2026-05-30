@@ -11,7 +11,7 @@ Use this skill for runtime lifecycle work only. Other agents may be playing or e
 
 Keep runtime work separate from code work. Prefer `agent-navigation/tools/runtime_doctor.py` and the documented launch path in `docs/local-agent-startup.md`; do not modify game source, route data, or map renderers while doing a runtime task unless the user asks.
 
-Never print, paste, inspect, log, or commit bridge tokens. The only allowed token destination is an ignored `agent-navigation/.local/rsbridge-session*.json` file read by `agent-navigation/tools/rs-tool_XS.sh` or the full fallback `agent-navigation/tools/rs-tool.sh`.
+Never print, paste, inspect, log, or commit bridge tokens. The only allowed token destination is an ignored `agent-navigation/.local/rsbridge-session*.json` file read by `agent-navigation/tools/rs-tool_XXS.sh`, `agent-navigation/tools/rs-tool_XS.sh`, or the full fallback `agent-navigation/tools/rs-tool.sh`.
 
 ## Current Runtime Pieces
 
@@ -20,7 +20,7 @@ Never print, paste, inspect, log, or commit bridge tokens. The only allowed toke
 - Default profile: `MrFlame`; pass `--profile <name>` or set `RS_PROFILE=<name>` for another character.
 - Server launcher: `./scripts/start-server.sh`, which runs from the repo root and copies the jar to `/tmp/2006scape-run/`.
 - Client launcher: `./scripts/start-client.sh`.
-- Bridge wrappers: use `agent-navigation/tools/observe_XS.sh` and `agent-navigation/tools/rs-tool_XS.sh` by default; `observe-slim.sh` and `rs-tool.sh` remain full/fallback surfaces.
+- Bridge wrappers: use `agent-navigation/tools/observe_XXS.sh` and `agent-navigation/tools/rs-tool_XXS.sh` for confirmation/status checks, and `agent-navigation/tools/observe_XS.sh` / `agent-navigation/tools/rs-tool_XS.sh` for compact decision context. `observe-slim.sh` and `rs-tool.sh` are full/fallback surfaces only.
 - Runtime helper: `agent-navigation/tools/runtime_doctor.py`.
 - Server tick log summarizer: `agent-navigation/tools/server_tick_report.py`.
 

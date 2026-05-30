@@ -1,6 +1,6 @@
 {
-  "datasetDir": "artifacts/datasets/route-pack-20260525T174700Z",
-  "modelId": "route-pack-20260525T174700Z",
-  "modelPath": "artifacts/models/route-pack-20260525T174700Z/model.json",
-  "trainedAt": "2026-05-25T17:59:13Z"
+  "datasetDir": "artifacts/datasets/20260527T072707Z",
+  "modelId": "20260527T072714Z",
+  "modelPath": "artifacts/models/20260527T072714Z/model.json",
+  "trainedAt": "2026-05-27T07:27:14Z"
 }

@@ -26,7 +26,7 @@ For the reliable server/client/login/bridge startup flow used before route explo
 - `tools/capture-client-screenshot.sh`: macOS helper that captures the running Java client window and prints the screenshot path as JSON.
 - `tools/capture-cardinal-screenshots.sh`: compact four-angle screenshot helper for north/east/south/west visual route debugging.
 - `tools/rs-tool.sh`: small bridge wrapper for calling `rs` tools through the active local session without hand-writing `curl` each time.
-- `tools/rs-tool_XS.sh`, `tools/observe_XS.sh`, `tools/food_bank_XS.py`, and `tools/object_search_XS.py`: compact bridge wrappers for routine state, food/bank decisions, and object-search recovery.
+- `tools/rs-tool_XS.sh`, `tools/observe_XS.sh`, `tools/food_bank_XS.py`, and `tools/object_search_XS.py`: compact bridge wrappers for routine state, combat-event waits, bone burial, food/bank decisions, and object-search recovery.
 - `tools/script_registry.py`: lightweight script catalog for listing, wildcard searching, inspecting, and running registered helper scripts by fuzzy name.
 - `tools/character_memory.py`: sparse, profile-scoped long-term memories and goals for future agents.
 - `tools/agility_runner.py`: bridge-backed agility course runner that keeps obstacle execution and timing evidence out of the AI token loop.
@@ -106,11 +106,15 @@ The default profile is `MrFlame`; pass `--profile` or set `RS_PROFILE` for anoth
 
 ## Learning Workflow
 
-1. Observe the game state with `rs.observe_state_XS` or `tools/observe_XS.sh` and note the player tile, nearby NPCs, objects, inventory, run energy, HP, and active interfaces. Use full `rs.observe_state` only when XS omits a field needed for evidence or debugging.
+1. Observe the game state with `rs.observe_state_XS` or `tools/observe_XS.sh` and note the player tile, nearby NPCs, objects, inventory, run energy, HP, and active interfaces. For repeated stable checks, use `rs.observe_state_if_changed_XS` / `_XXS`. Use `rs.combat_state_XS` for combat-only checks, `rs.wait_until_combat_event_smart_XS` / `_XXS` instead of repeated tick waits while fighting, and `rs.combat_cleanup_XS` / `_XXS` after kills. Use full `rs.observe_state` only when XS omits a field needed for evidence or debugging.
 
 ```sh
 agent-navigation/tools/observe_XS.sh
 agent-navigation/tools/rs-tool_XS.sh observe_state_XS '{}'
+agent-navigation/tools/rs-tool_XS.sh observe_state_if_changed_XS '{"key":"route-loop"}'
+agent-navigation/tools/rs-tool_XS.sh combat_state_XS '{}'
+agent-navigation/tools/rs-tool_XS.sh wait_until_combat_event_smart_XS '{"maxTicks":50,"hpAtOrBelow":10}'
+agent-navigation/tools/rs-tool_XXS.sh combat_cleanup '{"maxTicks":20}'
 RS_PROFILE=MrGem agent-navigation/tools/observe_XS.sh
 ```
 2. Capture or locate screenshots when API state is not enough. Prefer the four-angle helper for route geometry:

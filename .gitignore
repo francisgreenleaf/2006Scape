@@ -34,6 +34,7 @@ agent-navigation/screenshots/**
 !agent-navigation/screenshots/
 !agent-navigation/screenshots/.gitkeep
 agent-navigation/analysis/walk-distance-estimate/latest-result.json
+rsmod/
 
 # Ignore any json files in the server root (should only be config files, the sample file should still be updated)
 2006Scape Server/*.json

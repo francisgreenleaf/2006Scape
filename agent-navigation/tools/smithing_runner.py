@@ -26,16 +26,16 @@ BAR_IDS = {
     "rune": 2363,
 }
 SMELT_BUTTONS = {
-    "bronze": 9110,
-    "iron": 15148,
-    "steel": 15156,
-    "mithril": 16062,
-    "mith": 16062,
-    "adamant": 29018,
-    "addy": 29018,
-    "rune": 29023,
-    "silver": 15152,
-    "gold": 15160,
+    "bronze": {1: 15147, 5: 15146, 10: 10247},
+    "iron": {1: 15151, 5: 15150, 10: 15149},
+    "steel": {1: 15159, 5: 15158, 10: 15157},
+    "mithril": {1: 29017, 5: 29016, 10: 24253},
+    "mith": {1: 29017, 5: 29016, 10: 24253},
+    "adamant": {1: 29022, 5: 29020, 10: 29019},
+    "addy": {1: 29022, 5: 29020, 10: 29019},
+    "rune": {1: 29026, 5: 29025, 10: 29024},
+    "silver": {1: 15155, 5: 15154, 10: 15153},
+    "gold": {1: 15163, 5: 15162, 10: 15161},
 }
 SMELT_PRIMARY_ITEM = {
     "bronze": 436,
@@ -130,22 +130,77 @@ def find_object(object_ids, max_distance, profile):
     return result.get("object") or {}
 
 
+def object_interaction_tile(obj):
+    walk_target = obj.get("interactionWalkTarget") or obj.get("nearestInteractionTile") or {}
+    x = walk_target.get("x")
+    y = walk_target.get("y")
+    if x is None or y is None:
+        return None
+    return {
+        "x": int(x),
+        "y": int(y),
+        "height": int(walk_target.get("height", 0) or 0),
+    }
+
+
+def walk_to_tile(profile, tile, max_ticks):
+    if not tile:
+        return None
+    return bridge.call_tool("walk_to_tile_until_arrived", {
+        "x": int(tile["x"]),
+        "y": int(tile["y"]),
+        "height": int(tile.get("height", 0) or 0),
+        "stopDistance": 0,
+        "maxTicks": int(max_ticks),
+        "maxWalkDistance": 64,
+        "stopOnCombat": True,
+        "stopOnStall": True,
+    }, profile=profile)
+
+
+def smelt_progress(player, primary_item, bar_item, before_primary, before_bars, before_xp):
+    after_primary = bridge.count_inventory_item(player, primary_item)
+    after_bars = bridge.count_inventory_item(player, bar_item) if bar_item else 0
+    after_xp = bridge.skill_xp(player, "smithing")
+    return {
+        "afterPrimary": after_primary,
+        "afterBars": after_bars,
+        "afterXp": after_xp,
+        "madeProgress": after_primary < before_primary or after_bars > before_bars or after_xp > before_xp,
+    }
+
+
+def smelt_chunk_button(bar, remaining):
+    buttons = SMELT_BUTTONS[bar]
+    if int(remaining) >= 10:
+        return 10, int(buttons[10])
+    if int(remaining) >= 5:
+        return 5, int(buttons[5])
+    return 1, int(buttons[1])
+
+
 def smelt_round(profile, args, handle):
     bar = normalize(args.bar)
-    if bar not in SMELT_BUTTONS:
+    if bar not in SMELT_PRIMARY_ITEM:
         raise RuntimeError("unknown bar '{}'; use bronze, iron, steel, mithril, adamant, rune, silver, or gold".format(args.bar))
-    if bridge.count_inventory_item(bridge.observe(profile), SMELT_PRIMARY_ITEM[bar]) < 1:
+    player = bridge.observe(profile)
+    primary_item = SMELT_PRIMARY_ITEM[bar]
+    bar_item = BAR_IDS.get(bar)
+    before_primary = bridge.count_inventory_item(player, primary_item)
+    before_bars = bridge.count_inventory_item(player, bar_item) if bar_item else 0
+    before_xp = bridge.skill_xp(player, "smithing")
+    if before_primary < 1:
         raise RuntimeError("no primary ore carried for {} smelting".format(bar))
     if args.furnace:
         bridge.route_to(args.furnace, profile=profile, handle=handle, reason="furnace")
     furnace = find_object(FURNACE_IDS, args.object_max_distance, profile)
-    open_result = bridge.call_tool("interact_object", {
-        "objectId": furnace.get("objectId"),
-        "x": furnace.get("x"),
-        "y": furnace.get("y"),
-        "option": "first",
+    amount = max(1, min(int(args.amount), int(before_primary), 27))
+    start = bridge.call_tool("smelt_bar", {
+        "bar": bar,
+        "amount": int(amount),
+        "maxDistance": int(args.object_max_distance),
     }, profile=profile)
-    button = bridge.call_tool("click_interface_button", {"buttonId": SMELT_BUTTONS[bar]}, profile=profile)
+    player = bridge._player_from_or(start, player)
     wait = bridge.call_tool("wait_until_idle", {
         "maxTicks": args.max_ticks,
         "movement": True,
@@ -153,14 +208,25 @@ def smelt_round(profile, args, handle):
         "combat": False,
     }, profile=profile)
     player = bridge.player_from(wait)
+    progress = smelt_progress(player, primary_item, bar_item, before_primary, before_bars, before_xp)
     bridge.write_event(handle, "smelt_round", {
         "bar": bar,
+        "amount": int(amount),
         "furnace": furnace,
-        "openSuccess": bool(open_result.get("success")),
-        "buttonSuccess": bool(button.get("success")),
+        "startSuccess": bool(start.get("success")),
+        "startMessage": start.get("message"),
         "waitStatus": wait.get("batchStatus"),
+        "beforePrimary": before_primary,
+        "afterPrimary": progress["afterPrimary"],
+        "beforeBars": before_bars,
+        "afterBars": progress["afterBars"],
+        "beforeXp": before_xp,
+        "afterXp": progress["afterXp"],
+        "madeProgress": bool(progress["madeProgress"]),
         "player": bridge.compact_player(player, ("smithing",)),
     })
+    if not progress["madeProgress"]:
+        raise RuntimeError("smelting made no ore, bar, or XP progress")
     return player
 
 

@@ -3058,6 +3058,69 @@
         "minFood": 0,
         "notes": "North/inside arrival tile for the Tree Gnome Stronghold south gate. Use this as the connector toward the Gnome Agility Course after crossing Gate object 190."
       }
+    },
+    {
+      "id": "varrock_sewer_entry_ladder",
+      "name": "Varrock Sewer Entry Ladder",
+      "aliases": [
+        "varrock sewer entry",
+        "varrock sewer ladder",
+        "varrock sewer manhole ladder",
+        "sewer entry ladder"
+      ],
+      "kind": "underground_checkpoint",
+      "region": "varrock_sewers",
+      "tile": {
+        "x": 3238,
+        "y": 9858,
+        "height": 0
+      },
+      "arrivalRadius": 1,
+      "tags": [
+        "underground",
+        "varrock",
+        "sewer",
+        "ladder",
+        "object-transition",
+        "combat-route"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Arrival tile after using the Varrock sewer manhole from the surface. Route to this tile only after performing the surface-to-underground object transition."
+      }
+    },
+    {
+      "id": "varrock_sewer_moss_giants",
+      "name": "Varrock Sewer Moss Giants",
+      "aliases": [
+        "moss giants",
+        "varrock moss giants",
+        "varrock sewer moss giant area",
+        "moss giant area"
+      ],
+      "kind": "training_area",
+      "region": "varrock_sewers",
+      "tile": {
+        "x": 3159,
+        "y": 9900,
+        "height": 0
+      },
+      "arrivalRadius": 4,
+      "tags": [
+        "underground",
+        "varrock",
+        "sewer",
+        "combat",
+        "moss-giants"
+      ],
+      "safety": {
+        "risk": "medium combat",
+        "minCombatLevel": 55,
+        "minFood": 3,
+        "notes": "Reachable moss-giant combat anchor learned from MrFlame's Varrock sewer run on 2026-05-27. Older runner data used 3160,9903 as an area target, but the passive trace proves 3159,9900 as a pathable terminal tile inside the target area."
+      }
     }
   ]
 }

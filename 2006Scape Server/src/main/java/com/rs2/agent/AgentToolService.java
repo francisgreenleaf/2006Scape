@@ -35,9 +35,12 @@ import com.rs2.game.content.skills.cooking.CookingTutorialIsland;
 import com.rs2.game.content.skills.core.Fishing;
 import com.rs2.game.content.skills.core.Mining;
 import com.rs2.agent.AgentSmithingPlanner.ItemValueProvider;
+import com.rs2.game.content.skills.crafting.LeatherMaking;
+import com.rs2.game.content.skills.crafting.Tanning;
 import com.rs2.game.content.skills.fletching.LogCutting;
 import com.rs2.game.content.skills.firemaking.Firemaking;
 import com.rs2.game.content.skills.firemaking.LogData;
+import com.rs2.game.content.skills.prayer.Prayer;
 import com.rs2.agent.AgentSmithingPlanner.SmithingChoice;
 import com.rs2.agent.AgentSmithingPlanner.Strategy;
 import com.rs2.game.content.skills.smithing.Smelting;
@@ -60,6 +63,7 @@ import com.rs2.game.dialogues.DialogueOptions;
 import com.rs2.game.shops.ShopHandler;
 import com.rs2.game.shops.Shops;
 import com.rs2.net.packets.impl.ClickObject;
+import com.rs2.net.packets.impl.ClickItem;
 import com.rs2.util.Misc;
 import com.rs2.util.Stream;
 import com.rs2.world.Boundary;
@@ -134,6 +138,8 @@ public class AgentToolService {
     private static final int[] FLETCHING_PRODUCT_ITEM_IDS = {
             52, 50, 48, 54, 56, 60, 58, 64, 62, 68, 66, 72, 70
     };
+    private static final long RECENT_XP_WINDOW_MS = 5L * 60L * 1000L;
+    private static final int MAX_RECENT_XP_EVENTS = 48;
     private static final FletchingChoice[] FLETCHING_CHOICES = {
             new FletchingChoice(1511, 52, 1, 5.0D),
             new FletchingChoice(1511, 50, 5, 5.0D),
@@ -151,6 +157,10 @@ public class AgentToolService {
     };
     private static final ConcurrentMap<Integer, Long> MINING_CLICK_COOLDOWN_UNTIL =
             new ConcurrentHashMap<Integer, Long>();
+    private static final ConcurrentMap<String, List<RecentSkillGain>> RECENT_XP_GAINS =
+            new ConcurrentHashMap<String, List<RecentSkillGain>>();
+    private static final ConcurrentMap<String, String> OBSERVE_STATE_HASHES =
+            new ConcurrentHashMap<String, String>();
     private static final int[] COOKING_OBJECT_IDS = {
             114, 2728, 2729, 2730, 2731, StaticObjectList.FIRE, 2859, 3039, 4172,
             5275, 8750, 9682, 12102, 13539, 13540, 13541, 13542, 13543, 13544, 14919
@@ -167,8 +177,14 @@ public class AgentToolService {
         if ("observe_state".equals(tool)) {
             return observeState(player);
         }
+        if ("observe_state_if_changed".equals(tool)) {
+            return observeStateIfChanged(player, arguments);
+        }
         if ("food_bank".equals(tool)) {
             return foodBankXs(player);
+        }
+        if ("combat_state".equals(tool)) {
+            return combatStateXs(player);
         }
         if ("plan_combat_training".equals(tool)) {
             return planCombatTraining(player, arguments);
@@ -266,6 +282,9 @@ public class AgentToolService {
         if ("eat_best_food".equals(tool)) {
             return eatBestFood(player, arguments);
         }
+        if ("bury_bones".equals(tool)) {
+            return buryBones(player, arguments);
+        }
         if ("pickup_ground_item".equals(tool)) {
             return pickupGroundItem(player, arguments);
         }
@@ -292,6 +311,9 @@ public class AgentToolService {
         }
         if ("sell_inventory_items".equals(tool)) {
             return sellInventoryItems(player, arguments);
+        }
+        if ("use_inventory_item".equals(tool)) {
+            return useInventoryItem(player, arguments);
         }
         if ("interact_object".equals(tool)) {
             return interactObject(player, arguments);
@@ -333,11 +355,22 @@ public class AgentToolService {
         return tool != null && tool.endsWith("_XS");
     }
 
+    static boolean isXxsTool(String tool) {
+        return tool != null && tool.endsWith("_XXS");
+    }
+
+    static boolean isCompactTool(String tool) {
+        return isXsTool(tool) || isXxsTool(tool);
+    }
+
     static String baseToolName(String tool) {
-        if (!isXsTool(tool)) {
-            return tool;
+        if (isXxsTool(tool)) {
+            return tool.substring(0, tool.length() - 4);
         }
-        return tool.substring(0, tool.length() - 3);
+        if (isXsTool(tool)) {
+            return tool.substring(0, tool.length() - 3);
+        }
+        return tool;
     }
 
     public static JsonObject observeState(Player player) {
@@ -349,6 +382,75 @@ public class AgentToolService {
         result.add("nearbyObjects", nearbyObjects(player, 20, 16));
         result.add("nearbyGroundItems", nearbyGroundItems(player, 20, 16));
         return result;
+    }
+
+    private static JsonObject observeStateIfChanged(Player player, JsonObject arguments) {
+        String key = observeStateHashKey(player, arguments);
+        String stateHash = observationStateHash(player);
+        String previousHash = OBSERVE_STATE_HASHES.put(key, stateHash);
+        boolean force = getBoolean(arguments, "force", false);
+        boolean changed = force || previousHash == null || !previousHash.equals(stateHash);
+        if (changed) {
+            JsonObject result = observeState(player);
+            result.addProperty("changed", true);
+            result.addProperty("stateHash", stateHash);
+            return result;
+        }
+
+        JsonObject result = success("Observed state unchanged.");
+        result.addProperty("compact", true);
+        result.addProperty("tool", "observe_state_if_changed_XS");
+        result.addProperty("changed", false);
+        result.addProperty("stateHash", stateHash);
+        result.add("player", criticalPlayerState(player));
+        JsonArray recent = recentXp(player);
+        if (recent.size() > 0) {
+            result.add("xpRecent", recent);
+        }
+        return result;
+    }
+
+    private static String observeStateHashKey(Player player, JsonObject arguments) {
+        String explicitKey = getString(arguments, "key", "");
+        if (!explicitKey.isEmpty()) {
+            return explicitKey;
+        }
+        String playerName = player == null || player.playerName == null ? "unknown" : player.playerName;
+        return playerName.toLowerCase(Locale.ENGLISH) + ":" + (player == null ? -1 : player.playerId);
+    }
+
+    static String observationStateHash(Player player) {
+        if (player == null) {
+            return "null";
+        }
+        StringBuilder signature = new StringBuilder();
+        signature.append(player.absX).append(',').append(player.absY).append(',').append(player.heightLevel).append('|');
+        signature.append(player.playerLevel[Constants.HITPOINTS]).append('/').append(baseLevel(player, Constants.HITPOINTS)).append('|');
+        signature.append((int) Math.ceil(player.playerEnergy)).append('|').append(player.isRunning2).append('|');
+        signature.append(player.isDead).append('|').append(player.isMoving).append('|').append(isInCombat(player)).append('|');
+        signature.append(player.isShopping).append('|').append(player.isBanking).append('|').append(Boundary.isIn(player, Boundary.BANK_AREA)).append('|');
+        appendStoredItems(signature, player.playerItems, player.playerItemsN);
+        signature.append('|');
+        appendStoredItems(signature, player.playerEquipment, player.playerEquipmentN);
+        signature.append('|');
+        appendStoredItems(signature, player.bankItems, player.bankItemsN);
+        signature.append('|');
+        for (int i = 0; i < player.playerLevel.length && i < player.playerXP.length && i < SKILL_NAMES.length; i++) {
+            signature.append(i).append(':').append(player.playerLevel[i]).append(':').append(player.playerXP[i]).append(';');
+        }
+        signature.append('|').append(nearbyNpcs(player, DEFAULT_SCAN_DISTANCE, 12).toString());
+        signature.append('|').append(nearbyObjects(player, 20, 16).toString());
+        signature.append('|').append(nearbyGroundItems(player, 20, 16).toString());
+        return Integer.toHexString(signature.toString().hashCode());
+    }
+
+    private static void appendStoredItems(StringBuilder signature, int[] itemIds, int[] amounts) {
+        int length = Math.min(itemIds == null ? 0 : itemIds.length, amounts == null ? 0 : amounts.length);
+        for (int i = 0; i < length; i++) {
+            if (itemIds[i] > 0 && amounts[i] > 0) {
+                signature.append(i).append(':').append(itemIds[i]).append(':').append(amounts[i]).append(';');
+            }
+        }
     }
 
     private static JsonObject foodBankXs(Player player) {
@@ -363,8 +465,100 @@ public class AgentToolService {
         return result;
     }
 
+    static JsonObject combatStateXs(Player player) {
+        JsonObject result = success("Observed compact combat state.");
+        result.addProperty("compact", true);
+        result.addProperty("tool", "combat_state_XS");
+        result.add("player", compactPlayerState(player));
+        result.add("inventory", compactInventorySummary(inventory(player), 8));
+
+        JsonObject combat = new JsonObject();
+        combat.addProperty("inCombat", isInCombat(player));
+        combat.addProperty("style", combatStyleName(player.fightMode));
+        combat.addProperty("hp", player.playerLevel[Constants.HITPOINTS]);
+        combat.addProperty("maxHp", baseLevel(player, Constants.HITPOINTS));
+        combat.addProperty("canEat", foodDelayRemainingMs(player) <= 0L);
+        combat.addProperty("foodDelayMs", foodDelayRemainingMs(player));
+        combat.add("readiness", compactCombatReadiness(combatReadiness(player)));
+        combat.add("prayer", compactPrayerState(player));
+        Npc target = targetNpc(player);
+        if (target != null) {
+            combat.add("targetNpc", compactNpc(npcJson(target,
+                    AgentKnowledgeBase.distance(player.absX, player.absY, target.absX, target.absY))));
+        }
+        result.add("combat", combat);
+
+        result.add("nearbyNpcs", compactNpcArray(nearbyNpcs(player, DEFAULT_SCAN_DISTANCE, 8), 6));
+        result.add("nearbyGroundItems", compactGroundItemArray(nearbyGroundItems(player, 12, 8), 8));
+        JsonArray recent = recentXp(player);
+        if (recent.size() > 0) {
+            result.add("xpRecent", recent);
+        }
+        removeEmptyArrays(result, "nearbyNpcs", "nearbyGroundItems");
+        return result;
+    }
+
     static JsonObject compactXsResult(String baseTool, JsonObject result) {
         return compactXsResult(baseTool, result, null, null);
+    }
+
+    static JsonObject compactXxsResult(String baseTool, JsonObject result, Player player) {
+        if (result == null) {
+            return failure("No result was returned for " + baseTool + ".");
+        }
+        JsonObject compact = new JsonObject();
+        boolean success = result.has("success") && result.get("success").isJsonPrimitive()
+                && result.get("success").getAsBoolean();
+        compact.addProperty("success", success);
+        compact.addProperty("xxs", true);
+        compact.addProperty("tool", baseTool + "_XXS");
+        copyIfPresent(result, compact, "message");
+        copyIfPresent(result, compact, "complete");
+        copyIfPresent(result, compact, "batchStatus");
+        copyIfPresent(result, compact, "status");
+        copyIfPresent(result, compact, "event");
+        copyIfPresent(result, compact, "changed");
+        copyIfPresent(result, compact, "stateHash");
+        copyIfPresent(result, compact, "phase");
+        copyIfPresent(result, compact, "cleanupAction");
+        copyIfPresent(result, compact, "recommendedMaxTicks");
+        copyIfPresent(result, compact, "lootPending");
+        copyIfPresent(result, compact, "groundItemCount");
+        copyIfPresent(result, compact, "inventoryPressure");
+        copyIfPresent(result, compact, "batchTicks");
+        copyIfPresent(result, compact, "waitedTicks");
+        copyIfPresent(result, compact, "arrived");
+        copyIfPresent(result, compact, "reachable");
+        copyIfPresent(result, compact, "approaching");
+        copyIfPresent(result, compact, "deposited");
+        copyIfPresent(result, compact, "depositedAmount");
+        copyIfPresent(result, compact, "withdrawn");
+        copyIfPresent(result, compact, "withdrawnAmount");
+        copyIfPresent(result, compact, "unequipped");
+        copyIfPresent(result, compact, "equipped");
+        copyIfPresent(result, compact, "dropped");
+        copyIfPresent(result, compact, "buried");
+        copyIfPresent(result, compact, "pickedUp");
+        copyIfPresent(result, compact, "actions");
+        copyIfPresent(result, compact, "healed");
+        copyIfPresent(result, compact, "healAmount");
+        copyIfPresent(result, compact, "amount");
+        copyIfPresent(result, compact, "itemId");
+        copyIfPresent(result, compact, "itemName");
+        copyIfPresent(result, compact, "itemCountAfter");
+
+        JsonObject playerJson = result.has("player") && result.get("player").isJsonObject()
+                ? result.get("player").getAsJsonObject()
+                : null;
+        JsonObject criticalPlayer = player != null ? criticalPlayerState(player) : criticalPlayerState(playerJson, result);
+        if (criticalPlayer.entrySet().size() > 0) {
+            compact.add("player", criticalPlayer);
+        }
+        JsonArray xp = compactXxsXp(result);
+        if (xp.size() > 0) {
+            compact.add("xp", xp);
+        }
+        return compact;
     }
 
     static JsonObject compactXsResult(String baseTool, JsonObject result, Player player, JsonObject arguments) {
@@ -384,6 +578,15 @@ public class AgentToolService {
         copyIfPresent(result, compact, "complete");
         copyIfPresent(result, compact, "batchStatus");
         copyIfPresent(result, compact, "status");
+        copyIfPresent(result, compact, "event");
+        copyIfPresent(result, compact, "changed");
+        copyIfPresent(result, compact, "stateHash");
+        copyIfPresent(result, compact, "phase");
+        copyIfPresent(result, compact, "cleanupAction");
+        copyIfPresent(result, compact, "recommendedMaxTicks");
+        copyIfPresent(result, compact, "lootPending");
+        copyIfPresent(result, compact, "groundItemCount");
+        copyIfPresent(result, compact, "inventoryPressure");
         copyIfPresent(result, compact, "batchTicks");
         copyIfPresent(result, compact, "waitedTicks");
         copyIfPresent(result, compact, "submittedTick");
@@ -400,8 +603,23 @@ public class AgentToolService {
         copyIfPresent(result, compact, "unequipped");
         copyIfPresent(result, compact, "equipped");
         copyIfPresent(result, compact, "dropped");
+        copyIfPresent(result, compact, "buried");
+        copyIfPresent(result, compact, "pickedUp");
+        copyIfPresent(result, compact, "healed");
+        copyIfPresent(result, compact, "healAmount");
+        copyIfPresent(result, compact, "queuedSteps");
+        copyIfPresent(result, compact, "actions");
+        copyIfPresent(result, compact, "depositedCoins");
+        copyIfPresent(result, compact, "keptCoins");
+        copyIfPresent(result, compact, "bankLandmark");
+        copyIfPresent(result, compact, "returnLandmark");
+        copyIfPresent(result, compact, "itemCountBefore");
+        copyIfPresent(result, compact, "itemCountAfter");
         copyIfPresent(result, compact, "amount");
         copyIfPresent(result, compact, "itemId");
+        copyIfPresent(result, compact, "itemName");
+        copyIfPresent(result, compact, "skillChanges");
+        copyIfPresent(result, compact, "xpRecent");
         copyCompactTileIfPresent(result, compact, "target");
         copyCompactTileIfPresent(result, compact, "destination");
         copyCompactTileIfPresent(result, compact, "finalTile");
@@ -416,6 +634,9 @@ public class AgentToolService {
         }
         if (result.has("groundItem") && result.get("groundItem").isJsonObject()) {
             compact.add("groundItem", compactGroundItem(result.get("groundItem").getAsJsonObject()));
+        }
+        if (result.has("item") && result.get("item").isJsonObject()) {
+            compact.add("item", compactItem(result.get("item").getAsJsonObject()));
         }
         if (result.has("unequippedItems") && result.get("unequippedItems").isJsonArray()) {
             compact.add("unequippedItems", compactItemArray(result.get("unequippedItems").getAsJsonArray(), 12));
@@ -527,6 +748,104 @@ public class AgentToolService {
         return player != null && !player.disconnected && !player.isDead && !player.inTrade && player.duelStatus != 5;
     }
 
+    static SkillSnapshot captureSkillSnapshot(Player player) {
+        if (player == null || player.playerLevel == null || player.playerXP == null) {
+            return null;
+        }
+        int length = Math.min(Math.min(player.playerLevel.length, player.playerXP.length), SKILL_NAMES.length);
+        int[] current = new int[length];
+        int[] xp = new int[length];
+        int[] base = new int[length];
+        for (int i = 0; i < length; i++) {
+            current[i] = player.playerLevel[i];
+            xp[i] = player.playerXP[i];
+            base[i] = player.getPlayerAssistant().getLevelForXP(player.playerXP[i]);
+        }
+        return new SkillSnapshot(current, xp, base);
+    }
+
+    static void addSkillProgress(JsonObject result, SkillSnapshot before, Player player) {
+        if (result == null || player == null) {
+            return;
+        }
+        JsonArray changes = skillChanges(before, player);
+        if (changes.size() > 0) {
+            result.add("skillChanges", changes);
+            recordRecentXp(player, changes);
+        }
+        JsonArray recent = recentXp(player);
+        if (recent.size() > 0) {
+            result.add("xpRecent", recent);
+        }
+    }
+
+    static JsonArray skillChanges(SkillSnapshot before, Player player) {
+        JsonArray changes = new JsonArray();
+        if (before == null || player == null || player.playerLevel == null || player.playerXP == null) {
+            return changes;
+        }
+        int length = Math.min(Math.min(Math.min(player.playerLevel.length, player.playerXP.length), SKILL_NAMES.length),
+                before.length());
+        for (int i = 0; i < length; i++) {
+            int current = player.playerLevel[i];
+            int xp = player.playerXP[i];
+            int base = player.getPlayerAssistant().getLevelForXP(player.playerXP[i]);
+            if (current == before.current[i] && xp == before.xp[i] && base == before.base[i]) {
+                continue;
+            }
+            JsonObject change = new JsonObject();
+            change.addProperty("skill", SKILL_NAMES[i]);
+            change.addProperty("xpBefore", before.xp[i]);
+            change.addProperty("xpAfter", xp);
+            change.addProperty("xpGained", xp - before.xp[i]);
+            change.addProperty("currentBefore", before.current[i]);
+            change.addProperty("currentAfter", current);
+            change.addProperty("baseBefore", before.base[i]);
+            change.addProperty("baseAfter", base);
+            change.addProperty("baseGained", base - before.base[i]);
+            if (i == Constants.PRAYER) {
+                change.addProperty("pointsBefore", before.current[i]);
+                change.addProperty("pointsAfter", current);
+            }
+            changes.add(change);
+        }
+        return changes;
+    }
+
+    static int totalSkillXp(Player player) {
+        if (player == null || player.playerXP == null) {
+            return 0;
+        }
+        int total = 0;
+        for (int i = 0; i < player.playerXP.length && i < SKILL_NAMES.length; i++) {
+            total += Math.max(0, player.playerXP[i]);
+        }
+        return total;
+    }
+
+    static boolean playerIsInCombat(Player player) {
+        return player != null && isInCombat(player);
+    }
+
+    static boolean isPoisoned(Player player) {
+        return player != null && (player.poison || player.poisonDamage > 0);
+    }
+
+    static Npc currentCombatTarget(Player player) {
+        return player == null ? null : targetNpc(player);
+    }
+
+    static int nearbyGroundItemCount(Player player, int maxDistance) {
+        return player == null ? 0 : nearbyGroundItems(player, maxDistance, Integer.MAX_VALUE).size();
+    }
+
+    static long foodDelayRemainingMs(Player player) {
+        if (player == null || player.foodDelay <= 0L) {
+            return 0L;
+        }
+        return Math.max(0L, 1800L - (System.currentTimeMillis() - player.foodDelay));
+    }
+
     private static JsonObject sendPublicChat(Player player, JsonObject arguments) {
         String message = getString(arguments, "message", "").trim();
         if (message.length() == 0) {
@@ -627,14 +946,46 @@ public class AgentToolService {
         return result;
     }
 
+    private static JsonObject useInventoryItem(Player player, JsonObject arguments) {
+        ItemMatch item = findInventoryItem(player, arguments);
+        if (item == null) {
+            return failure("No matching inventory item found.");
+        }
+        int before = countInventoryItem(player, item.itemId);
+        ClickItem.handleItemFirstClick(player, item.itemId, item.slot);
+        int after = countInventoryItem(player, item.itemId);
+        JsonObject result = success("Invoked the normal first-click action on "
+                + DeprecatedItems.getItemName(item.itemId) + ".");
+        result.add("item", itemMatchJson(item));
+        result.addProperty("itemCountBefore", before);
+        result.addProperty("itemCountAfter", after);
+        addPlayerState(result, player);
+        return result;
+    }
+
     private static JsonObject clickInterfaceButton(Player player, JsonObject arguments) {
         int buttonId = getInt(arguments, "buttonId", getInt(arguments, "actionButtonId",
                 getInt(arguments, "id", -1)));
         if (buttonId < 0) {
             return failure("buttonId is required.");
         }
+        if (buttonId == 21010 || buttonId == 21011) {
+            if (!player.isBanking) {
+                return failure("The player must be banking to change bank withdraw mode.");
+            }
+            player.takeAsNote = buttonId == 21010;
+            JsonObject result = success(player.takeAsNote
+                    ? "Set bank withdraw mode to notes."
+                    : "Set bank withdraw mode to items.");
+            result.addProperty("buttonId", buttonId);
+            result.addProperty("takeAsNote", player.takeAsNote);
+            addPlayerState(result, player);
+            return result;
+        }
         LogCutting.handleClick(player, buttonId);
         Smelting.getBar(player, buttonId);
+        LeatherMaking.craftLeather(player, buttonId);
+        Tanning.tanHide(player, buttonId);
         handleCookingButton(player, buttonId);
         Climbing.handleLadderButtons(player, buttonId);
         DialogueOptions.handleDialogueOptions(player, buttonId);
@@ -1731,6 +2082,50 @@ public class AgentToolService {
                 : failure("Unable to equip " + DeprecatedItems.getItemName(item.itemId) + ".");
         addPlayerState(result, player);
         return result;
+    }
+
+    private static JsonObject buryBones(Player player, JsonObject arguments) {
+        ItemMatch item = findInventoryItem(player, arguments);
+        if (item == null && !hasExplicitItemMatcher(arguments)) {
+            item = findFirstInventoryBone(player);
+        }
+        if (item == null) {
+            return failure("No matching bones found to bury.");
+        }
+        if (!Prayer.playerBones(player, item.itemId)) {
+            return failure(DeprecatedItems.getItemName(item.itemId) + " cannot be buried.");
+        }
+        int before = countInventoryItem(player, item.itemId);
+        player.endCurrentTask();
+        SkillHandler.resetSkills(player);
+        Prayer.buryBones(player, item.itemId, item.slot);
+        int after = countInventoryItem(player, item.itemId);
+        JsonObject result = after < before
+                ? success("Buried " + DeprecatedItems.getItemName(item.itemId) + ".")
+                : failure("Could not bury " + DeprecatedItems.getItemName(item.itemId) + " yet.");
+        result.add("item", itemMatchJson(item));
+        result.addProperty("itemCountBefore", before);
+        result.addProperty("itemCountAfter", after);
+        result.addProperty("buried", Math.max(0, before - after));
+        addPlayerState(result, player);
+        return result;
+    }
+
+    static boolean isBuryableBone(int itemId) {
+        return Prayer.playerBones(null, itemId);
+    }
+
+    private static ItemMatch findFirstInventoryBone(Player player) {
+        if (player == null || player.playerItems == null) {
+            return null;
+        }
+        for (int slot = 0; slot < player.playerItems.length; slot++) {
+            int itemId = player.playerItems[slot] - 1;
+            if (itemId >= 0 && Prayer.playerBones(player, itemId)) {
+                return new ItemMatch(slot, itemId, player.playerItemsN[slot]);
+            }
+        }
+        return null;
     }
 
     private static JsonObject unequipItem(Player player, JsonObject arguments) {
@@ -4100,6 +4495,10 @@ public class AgentToolService {
             playerJson.add("shop", shop(player));
         }
         result.add("player", playerJson);
+        JsonArray recent = recentXp(player);
+        if (recent.size() > 0) {
+            result.add("xpRecent", recent);
+        }
     }
 
     private static JsonObject combatReadiness(Player player) {
@@ -4212,8 +4611,12 @@ public class AgentToolService {
         for (int i = 0; i < player.playerLevel.length && i < SKILL_NAMES.length; i++) {
             JsonObject skill = new JsonObject();
             skill.addProperty("level", player.playerLevel[i]);
+            skill.addProperty("currentLevel", player.playerLevel[i]);
             skill.addProperty("xp", player.playerXP[i]);
             skill.addProperty("baseLevel", player.getPlayerAssistant().getLevelForXP(player.playerXP[i]));
+            if (i == Constants.PRAYER) {
+                skill.addProperty("points", player.playerLevel[i]);
+            }
             skills.add(SKILL_NAMES[i], skill);
         }
         return skills;
@@ -4422,6 +4825,65 @@ public class AgentToolService {
                 + getInt(value, "height", getInt(value, "h", 0));
     }
 
+    private static JsonObject criticalPlayerState(Player player) {
+        JsonObject state = new JsonObject();
+        if (player == null) {
+            return state;
+        }
+        state.addProperty("tile", player.absX + "," + player.absY + "," + player.heightLevel);
+        state.addProperty("hp", player.playerLevel[Constants.HITPOINTS]);
+        state.addProperty("maxHp", baseLevel(player, Constants.HITPOINTS));
+        state.addProperty("runEnergy", (int) Math.ceil(player.playerEnergy));
+        state.addProperty("runEnabled", player.isRunning2);
+        state.addProperty("isInCombat", isInCombat(player));
+        state.addProperty("isPoisoned", isPoisoned(player));
+        state.addProperty("isDead", player.isDead);
+        state.addProperty("freeInventorySlots", player.getItemAssistant().freeSlots());
+        state.addProperty("food", countInventoryFood(player));
+        return state;
+    }
+
+    private static JsonObject criticalPlayerState(JsonObject player, JsonObject result) {
+        JsonObject state = new JsonObject();
+        if (player != null) {
+            String tile = tileText(player);
+            if (tile.length() > 0) {
+                state.addProperty("tile", tile);
+            } else {
+                copyIfPresent(player, state, "tile");
+            }
+            copyAs(player, state, "hitpoints", "hp");
+            if (!state.has("hp")) {
+                copyIfPresent(player, state, "hp");
+            }
+            copyAs(player, state, "maxHitpoints", "maxHp");
+            if (!state.has("maxHp")) {
+                copyIfPresent(player, state, "maxHp");
+            }
+            copyIfPresent(player, state, "runEnergy");
+            copyIfPresent(player, state, "runEnabled");
+            copyIfPresent(player, state, "isInCombat");
+            copyIfPresent(player, state, "isPoisoned");
+            copyIfPresent(player, state, "isDead");
+            copyIfPresent(player, state, "freeInventorySlots");
+            if (player.has("inventory") && player.get("inventory").isJsonArray()) {
+                JsonObject inventory = compactInventorySummary(player.get("inventory").getAsJsonArray(), 0);
+                copyIfPresent(inventory, state, "food");
+            }
+        }
+        JsonObject combat = result != null && result.has("combat") && result.get("combat").isJsonObject()
+                ? result.get("combat").getAsJsonObject()
+                : null;
+        if (combat != null && !state.has("isInCombat")) {
+            copyAs(combat, state, "inCombat", "isInCombat");
+        }
+        if (!state.has("food") && result != null && result.has("inventory") && result.get("inventory").isJsonObject()) {
+            JsonObject inventory = result.get("inventory").getAsJsonObject();
+            copyIfPresent(inventory, state, "food");
+        }
+        return state;
+    }
+
     private static JsonObject compactPlayerState(Player player) {
         JsonObject playerJson = new JsonObject();
         playerJson.addProperty("name", player.playerName);
@@ -4433,6 +4895,7 @@ public class AgentToolService {
         playerJson.addProperty("runEnabled", player.isRunning2);
         playerJson.addProperty("freeInventorySlots", player.getItemAssistant().freeSlots());
         playerJson.addProperty("inBankArea", Boundary.isIn(player, Boundary.BANK_AREA));
+        playerJson.addProperty("isPoisoned", isPoisoned(player));
         JsonArray flags = playerFlags(player);
         if (flags.size() > 0) {
             playerJson.add("flags", flags);
@@ -4452,6 +4915,7 @@ public class AgentToolService {
         copyIfPresent(player, playerJson, "runEnabled");
         copyIfPresent(player, playerJson, "freeInventorySlots");
         copyIfPresent(player, playerJson, "inBankArea");
+        copyIfPresent(player, playerJson, "isPoisoned");
         JsonArray flags = playerFlags(player);
         if (flags.size() > 0) {
             playerJson.add("flags", flags);
@@ -4515,7 +4979,7 @@ public class AgentToolService {
                 continue;
             }
             JsonObject skill = entry.getValue().getAsJsonObject();
-            int level = getInt(skill, "level", 1);
+            int level = getInt(skill, "currentLevel", getInt(skill, "level", 1));
             int xp = getInt(skill, "xp", 0);
             int base = getInt(skill, "baseLevel", level);
             if (level <= 1 && xp <= 0) {
@@ -4524,12 +4988,165 @@ public class AgentToolService {
             JsonObject compactSkill = new JsonObject();
             compactSkill.addProperty("level", level);
             compactSkill.addProperty("xp", xp);
-            if (base != level) {
+            if (base != level || "prayer".equals(name)) {
                 compactSkill.addProperty("base", base);
+            }
+            if ("prayer".equals(name)) {
+                compactSkill.addProperty("points", level);
             }
             compact.add(name, compactSkill);
         }
         return compact;
+    }
+
+    private static JsonObject compactPrayerState(Player player) {
+        JsonObject prayer = new JsonObject();
+        prayer.addProperty("points", player.playerLevel[Constants.PRAYER]);
+        prayer.addProperty("base", baseLevel(player, Constants.PRAYER));
+        prayer.addProperty("xp", player.playerXP[Constants.PRAYER]);
+        return prayer;
+    }
+
+    private static JsonArray compactXxsXp(JsonObject result) {
+        JsonArray array = new JsonArray();
+        if (result == null) {
+            return array;
+        }
+        if (result.has("skillChanges") && result.get("skillChanges").isJsonArray()) {
+            JsonArray changes = result.get("skillChanges").getAsJsonArray();
+            for (int i = 0; i < changes.size() && array.size() < 4; i++) {
+                if (changes.get(i).isJsonObject()) {
+                    array.add(compactXxsSkillChange(changes.get(i).getAsJsonObject()));
+                }
+            }
+            return array;
+        }
+        if (result.has("xpRecent") && result.get("xpRecent").isJsonArray()) {
+            JsonArray recent = result.get("xpRecent").getAsJsonArray();
+            for (int i = 0; i < recent.size() && array.size() < 4; i++) {
+                if (recent.get(i).isJsonObject()) {
+                    array.add(compactXxsRecentXp(recent.get(i).getAsJsonObject()));
+                }
+            }
+        }
+        return array;
+    }
+
+    private static JsonObject compactXxsSkillChange(JsonObject change) {
+        JsonObject xp = new JsonObject();
+        copyIfPresent(change, xp, "skill");
+        copyAs(change, xp, "xpGained", "gained");
+        copyAs(change, xp, "xpAfter", "xp");
+        copyAs(change, xp, "baseAfter", "base");
+        copyAs(change, xp, "currentAfter", "current");
+        copyAs(change, xp, "pointsAfter", "points");
+        copyAs(change, xp, "baseGained", "baseGained");
+        return xp;
+    }
+
+    private static JsonObject compactXxsRecentXp(JsonObject recent) {
+        JsonObject xp = new JsonObject();
+        copyIfPresent(recent, xp, "skill");
+        copyAs(recent, xp, "xpGained", "gained");
+        copyIfPresent(recent, xp, "xp");
+        copyIfPresent(recent, xp, "base");
+        copyIfPresent(recent, xp, "current");
+        copyIfPresent(recent, xp, "points");
+        copyAs(recent, xp, "lastGainAgeMs", "ageMs");
+        return xp;
+    }
+
+    private static void recordRecentXp(Player player, JsonArray changes) {
+        String key = recentXpKey(player);
+        if (key.length() == 0) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        List<RecentSkillGain> gains = RECENT_XP_GAINS.get(key);
+        if (gains == null) {
+            List<RecentSkillGain> created = Collections.synchronizedList(new ArrayList<RecentSkillGain>());
+            List<RecentSkillGain> existing = RECENT_XP_GAINS.putIfAbsent(key, created);
+            gains = existing == null ? created : existing;
+        }
+        synchronized (gains) {
+            pruneRecentXp(gains, now);
+            for (JsonElement element : changes) {
+                if (!element.isJsonObject()) {
+                    continue;
+                }
+                JsonObject change = element.getAsJsonObject();
+                int xpGained = getInt(change, "xpGained", 0);
+                if (xpGained <= 0) {
+                    continue;
+                }
+                gains.add(new RecentSkillGain(
+                        getString(change, "skill", ""),
+                        xpGained,
+                        getInt(change, "xpAfter", 0),
+                        getInt(change, "baseAfter", 1),
+                        getInt(change, "currentAfter", 1),
+                        now));
+            }
+            while (gains.size() > MAX_RECENT_XP_EVENTS) {
+                gains.remove(0);
+            }
+        }
+    }
+
+    private static JsonArray recentXp(Player player) {
+        JsonArray array = new JsonArray();
+        String key = recentXpKey(player);
+        if (key.length() == 0) {
+            return array;
+        }
+        List<RecentSkillGain> gains = RECENT_XP_GAINS.get(key);
+        if (gains == null) {
+            return array;
+        }
+        long now = System.currentTimeMillis();
+        synchronized (gains) {
+            pruneRecentXp(gains, now);
+            LinkedHashMap<String, JsonObject> bySkill = new LinkedHashMap<String, JsonObject>();
+            for (RecentSkillGain gain : gains) {
+                JsonObject aggregate = bySkill.get(gain.skill);
+                if (aggregate == null) {
+                    aggregate = new JsonObject();
+                    aggregate.addProperty("skill", gain.skill);
+                    aggregate.addProperty("xpGained", 0);
+                    aggregate.addProperty("events", 0);
+                    bySkill.put(gain.skill, aggregate);
+                }
+                aggregate.addProperty("xpGained", getInt(aggregate, "xpGained", 0) + gain.xpGained);
+                aggregate.addProperty("events", getInt(aggregate, "events", 0) + 1);
+                aggregate.addProperty("xp", gain.xpAfter);
+                aggregate.addProperty("base", gain.baseAfter);
+                aggregate.addProperty("current", gain.currentAfter);
+                if ("prayer".equals(gain.skill)) {
+                    aggregate.addProperty("points", gain.currentAfter);
+                }
+                aggregate.addProperty("lastGainAgeMs", Math.max(0L, now - gain.timestampMs));
+            }
+            for (JsonObject aggregate : bySkill.values()) {
+                array.add(aggregate);
+            }
+        }
+        return array;
+    }
+
+    private static void pruneRecentXp(List<RecentSkillGain> gains, long now) {
+        for (int i = gains.size() - 1; i >= 0; i--) {
+            if (now - gains.get(i).timestampMs > RECENT_XP_WINDOW_MS) {
+                gains.remove(i);
+            }
+        }
+    }
+
+    private static String recentXpKey(Player player) {
+        if (player == null) {
+            return "";
+        }
+        String name = normalize(player.playerName);
+        return name.isEmpty() ? String.valueOf(player.playerId) : name;
     }
 
     private static JsonObject compactInventorySummary(JsonArray items, int limit) {
@@ -4968,6 +5585,16 @@ public class AgentToolService {
             }
         }
         return null;
+    }
+
+    private static boolean hasExplicitItemMatcher(JsonObject arguments) {
+        if (arguments == null) {
+            return false;
+        }
+        return getInt(arguments, "slot", -1) >= 0
+                || getInt(arguments, "itemId", -1) >= 0
+                || !getIntList(arguments, "itemIds").isEmpty()
+                || !normalize(getString(arguments, "name", getString(arguments, "item", ""))).isEmpty();
     }
 
     private static ItemMatch findPrimitiveInventoryItem(Player player, JsonObject arguments, boolean target) {
@@ -5990,6 +6617,41 @@ public class AgentToolService {
             return ItemConstants.ARROWS;
         }
         return -1;
+    }
+
+    static final class SkillSnapshot {
+        private final int[] current;
+        private final int[] xp;
+        private final int[] base;
+
+        private SkillSnapshot(int[] current, int[] xp, int[] base) {
+            this.current = current;
+            this.xp = xp;
+            this.base = base;
+        }
+
+        private int length() {
+            return Math.min(Math.min(current.length, xp.length), base.length);
+        }
+    }
+
+    private static final class RecentSkillGain {
+        private final String skill;
+        private final int xpGained;
+        private final int xpAfter;
+        private final int baseAfter;
+        private final int currentAfter;
+        private final long timestampMs;
+
+        private RecentSkillGain(String skill, int xpGained, int xpAfter, int baseAfter, int currentAfter,
+                long timestampMs) {
+            this.skill = skill == null ? "" : skill;
+            this.xpGained = xpGained;
+            this.xpAfter = xpAfter;
+            this.baseAfter = baseAfter;
+            this.currentAfter = currentAfter;
+            this.timestampMs = timestampMs;
+        }
     }
 
     static final class FletchingChoice {

@@ -5982,12 +5982,15 @@ public class Game extends RSApplet {
 
 	public boolean sendAgentBridgeClaimCommand(String nonce) {
 		if (stream == null || nonce == null || nonce.trim().isEmpty()) {
+			System.out.println("[AgentClient] agent claim skipped streamReady=" + (stream != null)
+					+ " nonceSet=" + (nonce != null && !nonce.trim().isEmpty()));
 			return false;
 		}
 		String command = "agentbridge claim " + nonce;
 		stream.createFrame(103);
 		stream.writeWordBigEndian(command.length() + 1);
 		stream.writeString(command);
+		System.out.println("[AgentClient] queued auto-claim command attempt=" + (agentAutoClaimAttempts + 1));
 		return true;
 	}
 
@@ -6001,6 +6004,7 @@ public class Game extends RSApplet {
 		agentAutoClaimLastAttemptCycle = loopCycle;
 		if (sendAgentBridgeClaimCommand(ClientSettings.AGENT_AUTO_CLAIM_NONCE)) {
 			agentAutoClaimAttempts++;
+			System.out.println("[AgentClient] auto-claim attempt sent count=" + agentAutoClaimAttempts);
 			agentAutoClaimSent = agentAutoClaimAttempts >= 20;
 		}
 	}
@@ -9597,14 +9601,17 @@ public class Game extends RSApplet {
 			} else {
 				k1 = k - i1;
 			}
-			int l1;
-			if (j1 > l) {
-				l1 = j1 - l;
-			} else {
-				l1 = l - j1;
-			}
-			if (k1 > l1) {
-				int i2 = l1 * 0x10000 / k1;
+				int l1;
+				if (j1 > l) {
+					l1 = j1 - l;
+				} else {
+					l1 = l - j1;
+				}
+				if (k1 == 0 && l1 == 0) {
+					return j;
+				}
+				if (k1 > l1) {
+					int i2 = l1 * 0x10000 / k1;
 				int k2 = 32768;
 				while (k != i1) {
 					if (k < i1) {

@@ -27,6 +27,123 @@
       ]
     },
     {
+      "id": "agility_phase_runner",
+      "name": "Agility Phase Runner",
+      "path": "agent-navigation/tools/agility_phase_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Runs the current Agility phase through course-specific wrappers, preferring the best available defined course for the current level band instead of requiring a raw course id at call time.",
+      "aliases": [
+        "agility phase",
+        "agility plan",
+        "agility 50",
+        "phase agility"
+      ],
+      "tags": [
+        "gameplay",
+        "agility",
+        "training",
+        "runner",
+        "phase"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/agility_phase_runner.py --target-agility-level 50",
+        "python3 agent-navigation/tools/script_registry.py run agility phase -- --target-agility-level 35 --quiet"
+      ]
+    },
+    {
+      "id": "agility_gnome_course_runner",
+      "name": "Gnome Course Runner",
+      "path": "agent-navigation/tools/agility_gnome_course_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Runs the Gnome Agility Course phase through the shared course-wrapper path and is the current practical Agility runner while higher-level course definitions are still being added.",
+      "aliases": [
+        "gnome agility runner",
+        "gnome course runner",
+        "gnome agility phase"
+      ],
+      "tags": [
+        "gameplay",
+        "agility",
+        "gnome",
+        "training",
+        "runner"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/agility_gnome_course_runner.py --target-agility-level 35",
+        "python3 agent-navigation/tools/script_registry.py run gnome course runner -- --quiet"
+      ]
+    },
+    {
+      "id": "agility_pyramid_runner",
+      "name": "Agility Pyramid Runner",
+      "path": "agent-navigation/tools/agility_pyramid_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Course-specific wrapper for the Agility Pyramid phase. It exits with a clear message until the pyramid course definition and route data are added locally.",
+      "aliases": [
+        "agility pyramid runner",
+        "pyramid agility",
+        "pyramid course runner"
+      ],
+      "tags": [
+        "gameplay",
+        "agility",
+        "pyramid",
+        "training",
+        "runner"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/agility_pyramid_runner.py --target-agility-level 40",
+        "python3 agent-navigation/tools/script_registry.py run pyramid agility -- --quiet"
+      ]
+    },
+    {
+      "id": "agility_barbarian_course_runner",
+      "name": "Barbarian Course Runner",
+      "path": "agent-navigation/tools/agility_barbarian_course_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Course-specific wrapper for the Barbarian Outpost Agility phase. It now targets the defined local course data and is the preferred post-35 Agility runner when the player can route to the outpost safely.",
+      "aliases": [
+        "barbarian agility runner",
+        "barbarian course runner",
+        "barbarian outpost agility"
+      ],
+      "tags": [
+        "gameplay",
+        "agility",
+        "barbarian",
+        "training",
+        "runner"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/agility_barbarian_course_runner.py --target-agility-level 50",
+        "python3 agent-navigation/tools/script_registry.py run barbarian course runner -- --quiet"
+      ]
+    },
+    {
+      "id": "progression_phase_runner",
+      "name": "Sequential Progression Runner",
+      "path": "agent-navigation/tools/progression_phase_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Runs the prepared MrFlame progression phases in order: leather completion and sellout, bronze-to-15 Smithing plus iron mining, thieving to 20, then Agility progression through the current phase runner.",
+      "aliases": [
+        "progression",
+        "progression phase",
+        "sequential progression",
+        "mrflame progression"
+      ],
+      "tags": [
+        "gameplay",
+        "progression",
+        "phase",
+        "runner",
+        "orchestration"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/progression_phase_runner.py --quiet",
+        "python3 agent-navigation/tools/script_registry.py run progression -- --target-mining-level 20"
+      ]
+    },
+    {
       "id": "mining_runner",
       "name": "Adaptive Mining Runner",
       "path": "agent-navigation/tools/mining_runner.py",
@@ -186,6 +303,114 @@
       "examples": [
         "python3 agent-navigation/tools/script_registry.py run combat -- --npc goblin --target-level 10 --quiet",
         "python3 agent-navigation/tools/combat_runner.py --npc guard --area varrock --max-rounds 20"
+      ]
+    },
+    {
+      "id": "al_kharid_warrior_runner",
+      "name": "Al Kharid Warrior Combat Runner",
+      "path": "agent-navigation/tools/al_kharid_warrior_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Bespoke Al Kharid Warrior trip runner for early melee training near Al Kharid bank. Uses ML1 routing through the shared primitive trip loop, equips banked combat gear, carries cheap food first, keeps a coin float for toll/food, fights with direct styles, loots runes/herbs/coins/useful stackables, buries bones, banks and restocks.",
+      "aliases": [
+        "al kharid warrior",
+        "alkharid warrior",
+        "warrior combat",
+        "early combat",
+        "melee warrior"
+      ],
+      "tags": [
+        "gameplay",
+        "combat",
+        "melee",
+        "al-kharid",
+        "training",
+        "banking",
+        "runner",
+        "routing"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/al_kharid_warrior_runner.py --target-attack 25 --target-strength 25 --target-defence 25 --quiet",
+        "python3 agent-navigation/tools/script_registry.py run al-kharid-warrior -- --max-cycles 20"
+      ]
+    },
+    {
+      "id": "chaos_druid_runner",
+      "name": "Chaos Druid Combat Runner",
+      "path": "agent-navigation/tools/chaos_druid_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Bespoke Chaos Druid trip runner for Edgeville dungeon training after base-25 melee. Uses the shared primitive trip loop for ML1 routing, food/restock, direct style cycling, herb/rune/coin loot banking, and bone burying.",
+      "aliases": [
+        "chaos druid",
+        "druid combat",
+        "edgeville druid",
+        "herb combat"
+      ],
+      "tags": [
+        "gameplay",
+        "combat",
+        "melee",
+        "chaos-druid",
+        "edgeville",
+        "training",
+        "banking",
+        "runner",
+        "routing"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/chaos_druid_runner.py --target-attack 35 --target-strength 35 --target-defence 35 --quiet"
+      ]
+    },
+    {
+      "id": "white_knight_runner",
+      "name": "White Knight Combat Runner",
+      "path": "agent-navigation/tools/white_knight_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Bespoke Falador White Knight trip runner for 1-food melee training. Prefers reachable outdoor/courtyard White Knights, banks useful drops only at full inventory or when food is consumed, picks up and buries bones, and cycles direct Attack/Strength/Defence styles.",
+      "aliases": [
+        "white knight",
+        "falador knight",
+        "falador combat",
+        "knight combat"
+      ],
+      "tags": [
+        "gameplay",
+        "combat",
+        "melee",
+        "white-knight",
+        "falador",
+        "training",
+        "banking",
+        "runner",
+        "routing"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/white_knight_runner.py --profile MrFlame --target-attack 70 --target-strength 70 --target-defence 70 --food-target 1 --minimum-food-for-trip 1 --min-food-before-fight 1 --bank-at-loot-items 9999 --bank-when-free-slots-at-or-below 0 --quiet"
+      ]
+    },
+    {
+      "id": "moss_giant_runner",
+      "name": "Moss Giant Combat Runner",
+      "path": "agent-navigation/tools/moss_giant_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Bespoke Moss Giant trip runner for the later base-60 melee push. Uses the shared primitive trip loop with stronger food, big-bone burying, useful stackable loot banking, and direct style cycling.",
+      "aliases": [
+        "moss giant",
+        "moss giants",
+        "giant combat",
+        "base 60 combat"
+      ],
+      "tags": [
+        "gameplay",
+        "combat",
+        "melee",
+        "moss-giant",
+        "training",
+        "banking",
+        "runner",
+        "routing"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/moss_giant_runner.py --target-attack 60 --target-strength 60 --target-defence 60 --quiet"
       ]
     },
     {

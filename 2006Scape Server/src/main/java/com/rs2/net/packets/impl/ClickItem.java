@@ -29,7 +29,6 @@ public class ClickItem implements PacketType {
 
 	@Override
 	public void processPacket(Player player, Packet packet) {
-		player.endCurrentTask();
 		packet.readSignedWordBigEndianA();
 		int itemSlot = packet.readUnsignedWordA();
 		int itemId = packet.readUnsignedWordBigEndian();
@@ -39,6 +38,11 @@ public class ClickItem implements PacketType {
 		if(!player.getItemAssistant().playerHasItem(itemId, 1)) {
 			return;
 		}
+		handleItemFirstClick(player, itemId, itemSlot);
+	}
+
+	public static void handleItemFirstClick(Player player, int itemId, int itemSlot) {
+		player.endCurrentTask();
 		player.post(new ItemFirstClickEvent(itemId));
 		GodBooks.sendPreachOptions(player, itemId);
 		if (itemId == 6) {
@@ -313,5 +317,4 @@ public class ClickItem implements PacketType {
 			return;
 		}
 	}
-
 }

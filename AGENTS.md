@@ -162,7 +162,13 @@ Dynamic tools currently supported:
 
 - `rs.observe_state`
 - `rs.observe_state_XS`
+- `rs.observe_state_XXS`
+- `rs.observe_state_if_changed_XS`
+- `rs.observe_state_if_changed_XXS`
+- `rs.combat_state_XS`
+- `rs.combat_state_XXS`
 - `rs.set_run`
+- `rs.set_run_XXS`
 - `rs.send_public_chat`
 - `rs.plan_combat_training`
 - `rs.continue_dialogue`
@@ -171,21 +177,34 @@ Dynamic tools currently supported:
 - `rs.use_item_on_item`
 - `rs.use_item_on_object`
 - `rs.click_interface_button`
+- `rs.click_interface_button_XXS`
 - `rs.select_interface_item`
 - `rs.walk_to_tile`
+- `rs.walk_path_steps`
+- `rs.walk_path_steps_XS`
+- `rs.walk_path_steps_XXS`
 - `rs.walk_to_tile_until_arrived`
 - `rs.walk_to_tile_until_arrived_XS`
+- `rs.walk_to_tile_until_arrived_XXS`
 - `rs.travel_to_landmark`
 - `rs.travel_to_landmark_until_arrived`
 - `rs.travel_to_landmark_until_arrived_XS`
+- `rs.travel_to_landmark_until_arrived_XXS`
 - `rs.wait_ticks`
 - `rs.wait_ticks_XS`
+- `rs.wait_ticks_XXS`
 - `rs.wait_until_idle`
 - `rs.wait_until_idle_XS`
+- `rs.wait_until_idle_XXS`
+- `rs.wait_until_combat_event_XS`
+- `rs.wait_until_combat_event_XXS`
+- `rs.wait_until_combat_event_smart_XS`
+- `rs.wait_until_combat_event_smart_XXS`
 - `rs.find_nearest_npc`
 - `rs.find_training_npc`
 - `rs.interact_npc`
 - `rs.attack_npc`
+- `rs.attack_npc_XXS`
 - `rs.train_combat`
 - `rs.train_smithing_profit`
 - `rs.find_nearest_object`
@@ -193,14 +212,25 @@ Dynamic tools currently supported:
 - `rs.find_nearest_rock`
 - `rs.find_nearest_tree`
 - `rs.set_combat_style`
+- `rs.set_combat_style_XXS`
 - `rs.equip_item`
 - `rs.unequip_item`
 - `rs.unequip_item_XS`
 - `rs.unequip_items_XS`
+- `rs.unequip_items_XXS`
 - `rs.equip_best_items`
+- `rs.equip_best_items_XS`
+- `rs.equip_best_items_XXS`
 - `rs.eat_item`
 - `rs.eat_best_food`
+- `rs.eat_best_food_XXS`
+- `rs.bury_bones`
+- `rs.bury_bones_XS`
+- `rs.bury_bones_XXS`
 - `rs.pickup_ground_item`
+- `rs.pickup_ground_item_XXS`
+- `rs.combat_cleanup_XS`
+- `rs.combat_cleanup_XXS`
 - `rs.fish_food`
 - `rs.cook_food`
 - `rs.light_fire`
@@ -209,6 +239,10 @@ Dynamic tools currently supported:
 - `rs.sell_inventory_item`
 - `rs.sell_inventory_items`
 - `rs.interact_object`
+- `rs.interact_object_XS`
+- `rs.interact_object_XXS`
+- `rs.object_transition_step_XS`
+- `rs.object_transition_step_XXS`
 - `rs.chop_tree`
 - `rs.chop_tree_until_inventory_full`
 - `rs.fletch_logs`
@@ -216,9 +250,16 @@ Dynamic tools currently supported:
 - `rs.drop_inventory_items`
 - `rs.deposit_inventory_items`
 - `rs.deposit_inventory_items_XS`
+- `rs.deposit_inventory_items_XXS`
 - `rs.withdraw_bank_items`
+- `rs.withdraw_bank_items_XS`
+- `rs.withdraw_bank_items_XXS`
 - `rs.food_bank_XS`
+- `rs.food_bank_XXS`
 - `rs.deposit_excess_coins`
+- `rs.deposit_excess_coins_XXS`
+- `rs.combat_restock_trip_XS`
+- `rs.combat_restock_trip_XXS`
 - `rs.mine_ore`
 - `rs.mine_ore_until_inventory_full`
 - `rs.smelt_bar`
@@ -231,9 +272,10 @@ Gameplay guardrails:
 
 - Keep actions server-authoritative and routed through existing mechanics such as `PlayerAssistant.playerWalk`, `CombatAssistant.attackNpc`, `ClickObject`, and `Mining.startMining`.
 - Prefer primitive-backed external scripts for new skill loops. Use `use_item_on_item`, `use_item_on_object`, `click_interface_button`, `select_interface_item`, `interact_object`, `interact_npc`, bank/shop tools, combat tools, and `wait_until_idle` before adding Java skill-specific tools. Existing legacy tools stay for compatibility.
-- Prefer XS dynamic tools when their compact result is enough: `observe_state_XS`, `walk_to_tile_until_arrived_XS`, `travel_to_landmark_until_arrived_XS`, `wait_ticks_XS`, `wait_until_idle_XS`, `find_nearest_object_XS`, `deposit_inventory_items_XS`, `unequip_items_XS`, and `food_bank_XS`. Use full tools only when XS omits a field needed for debugging, complete evidence, or a new workflow.
-- Prefer server-side batch tools for long-running actions. Use `travel_to_landmark_until_arrived_XS` or `walk_to_tile_until_arrived_XS` instead of travel/walk plus repeated one-tick waits, `mine_ore_until_inventory_full` or `chop_tree_until_inventory_full` instead of polling per resource, and `wait_until_idle_XS` after production actions such as smelting, smithing, cooking, fishing, or combat waits.
-- For banking and equipment cleanup, batch intent into one call. `deposit_inventory_items_XS` accepts `itemIds` to deposit multiple item types at once and `keepFoodCount` to preserve food; `unequip_items_XS` accepts `equipmentSlots`, `slotNames`, `itemIds`, `names`/`items`, or `all=true` to unequip several items without looping.
+- Prefer XXS dynamic tools when confirmation plus critical survival state is enough: `observe_state_XXS`, `observe_state_if_changed_XXS`, `combat_state_XXS`, `set_run_XXS`, `walk_path_steps_XXS`, `walk_to_tile_until_arrived_XXS`, `travel_to_landmark_until_arrived_XXS`, `wait_ticks_XXS`, `wait_until_idle_XXS`, `wait_until_combat_event_smart_XXS`, `object_transition_step_XXS`, `interact_object_XXS`, `click_interface_button_XXS`, `attack_npc_XXS`, `eat_best_food_XXS`, `pickup_ground_item_XXS`, `combat_cleanup_XXS`, `bury_bones_XXS`, `deposit_inventory_items_XXS`, `withdraw_bank_items_XXS`, `unequip_items_XXS`, `combat_restock_trip_XXS`, and `food_bank_XXS`. XXS includes only success/message/status/event counters, tile, HP/max HP, run energy/enabled, combat, poison, death, free slots, food, and tiny XP deltas. Prefer XS dynamic tools when compact decision context is needed: `observe_state_XS`, `observe_state_if_changed_XS`, `combat_state_XS`, `walk_path_steps_XS`, `walk_to_tile_until_arrived_XS`, `travel_to_landmark_until_arrived_XS`, `wait_ticks_XS`, `wait_until_idle_XS`, `wait_until_combat_event_smart_XS`, `object_transition_step_XS`, `interact_object_XS`, `find_nearest_object_XS`, `combat_cleanup_XS`, `bury_bones_XS`, `deposit_inventory_items_XS`, `withdraw_bank_items_XS`, `unequip_items_XS`, `combat_restock_trip_XS`, and `food_bank_XS`. Use full tools only when XS omits a field needed for debugging, complete evidence, or a new workflow.
+- Prefer server-side batch tools for long-running actions. Use `travel_to_landmark_until_arrived_XS`/`travel_to_landmark_until_arrived_XXS` or `walk_to_tile_until_arrived_XS`/`walk_to_tile_until_arrived_XXS` instead of travel/walk plus repeated one-tick waits, `walk_path_steps_XS`/`walk_path_steps_XXS` for short adjacent route segments, `object_transition_step_XS`/`object_transition_step_XXS` for doors/gates/stairs/ladders, `mine_ore_until_inventory_full` or `chop_tree_until_inventory_full` instead of polling per resource, `wait_until_combat_event_smart_XXS` during combat when only HP/XP/event status matters, `wait_until_combat_event_smart_XS` when loot or target detail matters, `combat_cleanup_XS`/`combat_cleanup_XXS` after kills, `combat_restock_trip_XS`/`combat_restock_trip_XXS` for combat bank-food cycles, and `wait_until_idle_XS`/`wait_until_idle_XXS` after production actions such as smelting, smithing, cooking, fishing, or non-combat waits.
+- XP-affecting tool results include `skillChanges` and short-lived `xpRecent` summaries when XP changed recently. For Prayer, treat `points`/`current` as current prayer points and `base` as the real Prayer level from XP.
+- For banking and equipment cleanup, batch intent into one call. `deposit_inventory_items_XS` accepts `itemIds` to deposit multiple item types at once and `keepFoodCount` to preserve food; `withdraw_bank_items_XS` accepts `itemIds`/`itemId` plus `amount`; `combat_restock_trip_XS` can route to a supplied bank target, deposit non-food loot, trim coins, withdraw food, and optionally return; `unequip_items_XS` accepts `equipmentSlots`, `slotNames`, `itemIds`, `names`/`items`, or `all=true` to unequip several items without looping.
 - Treat a batch tool response as the next observation; do not immediately call `observe_state` unless the returned state is missing needed context. When waiting on a long-running batch command, estimate the likely completion interval from `maxTicks` or the action loop and poll near that time instead of every few seconds, unless combat, death, a blocker, or near-term completion is likely.
 - Do not add screen automation, admin teleports, item spawning, or direct player state edits for agent behavior.
 - Preserve session scoping: reject offline, disconnected, dead, expired-token, and wrong-player sessions.

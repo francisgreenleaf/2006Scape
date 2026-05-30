@@ -41,6 +41,8 @@ definition under `recommended.routeDefinition`.
 The old route method is deprecated for agents. Do not call bare `agent-navigation/tools/route_runner.py --to ...`
 as the normal routing API. Follow the ML1 `routeSteps` with normal bridge movement primitives, or use a purpose-built ML executor when one exists. Any generated `route_runner.py --route-definition` command is a compatibility executor, not the planner interface.
 
+ML1 supports surface routes and same-cache-area underground routes. It still returns non-actionable `requires-object-transition` for surface/underground crossings and for routes between separate underground cache areas; use the relevant entrance/exit/ladder/stairs/trapdoor/gate first, then request the next route. `unsupported-coordinate-layer` means the tile is outside a supported cache route area. Underground cache-direct routing uses cache-derived clipping plus hard valid-region boundaries so missing underground map regions are not treated as walkable floor.
+
 The route/debug response is compact by default. Use:
 
 - `recommended.next` for the next low-token waypoint;
