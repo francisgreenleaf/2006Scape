@@ -5,6 +5,28 @@ Python scripts as the place for gameplay strategy. Do not add a new Java
 `rs.*` tool for every skill loop. Add Java only when the bridge is missing a
 general gameplay primitive.
 
+## Profile Scope Requirement
+
+All new or modified tools must be profile-safe by construction. `MrFlame` is
+only the legacy default profile for backward compatibility, not a design target.
+
+- External scripts, runners, status commands, stop requests, evidence readers,
+  and wrappers should accept `--profile PROFILE` or honor `RS_PROFILE` /
+  `RSBRIDGE_PROFILE`.
+- The resolved profile must be passed to every bridge call, child process,
+  route executor, trace reader, map helper, and evidence writer. Set
+  `RS_TRACE_PROFILE` when reading profile-filtered movement traces.
+- Writable runner state, route evidence, logs, screenshots, maps, and caches
+  should use profile-scoped names or directories. Shared datasets must carry
+  enough metadata, at minimum `profile`, `playerName`, or `sessionId`, to avoid
+  confusing two characters' observations.
+- Legacy MrFlame paths such as the unqualified bridge session file may be read
+  as compatibility fallbacks, but new tools should not create new MrFlame-only
+  outputs or assume MrFlame's stats, bank, equipment, position, or session.
+- Java bridge additions should stay generic and player/session scoped; route
+  choice, skilling loops, combat trip policy, banking strategy, and recovery
+  decisions belong in Python or data at the profile-aware layer.
+
 ## Stable Java Primitives
 
 Use these from external scripts through `agent-navigation/tools/rs-tool.sh`, prefer `rs-tool_XS.sh` or the dynamic `*_XS` aliases when compact decision context is enough, and use `rs-tool_XXS.sh` / dynamic `*_XXS` aliases when confirmation plus critical survival state is enough:
@@ -29,12 +51,10 @@ Use these from external scripts through `agent-navigation/tools/rs-tool.sh`, pre
   `click_interface_button`, `click_interface_button_XXS`, `select_interface_item`
 - Inventory/equipment/economy primitives: `equip_item`, `unequip_item`,
   `unequip_items_XS`, `unequip_items_XXS`,
-  `equip_best_items`, `equip_best_items_XS`, `equip_best_items_XXS`,
   `eat_item`, `eat_best_food`, `eat_best_food_XXS`, `pickup_ground_item`,
-  `pickup_ground_item_XXS`, `combat_cleanup_XS`, `combat_cleanup_XXS`,
+  `pickup_ground_item_XXS`,
   `bury_bones`, `bury_bones_XS`, `bury_bones_XXS`, `drop_inventory_items`, `deposit_inventory_items`, `deposit_inventory_items_XS`, `deposit_inventory_items_XXS`,
   `withdraw_bank_items`, `withdraw_bank_items_XS`, `withdraw_bank_items_XXS`,
-  `combat_restock_trip_XS`, `combat_restock_trip_XXS`,
   `open_nearest_shop`, `buy_shop_item`, `sell_inventory_item`,
   `sell_inventory_items`, `deposit_excess_coins`
 
@@ -43,9 +63,9 @@ The main compact dynamic surfaces are `observe_state_XS`,
 `walk_to_tile_until_arrived_XS`, `travel_to_landmark_until_arrived_XS`,
 `wait_ticks_XS`, `wait_until_idle_XS`, `wait_until_combat_event_smart_XS`,
 `wait_until_combat_event_XS`, `object_transition_step_XS`,
-`interact_object_XS`, `find_nearest_object_XS`, `combat_cleanup_XS`,
+`interact_object_XS`, `find_nearest_object_XS`,
 `bury_bones_XS`, `deposit_inventory_items_XS`, `withdraw_bank_items_XS`,
-`unequip_items_XS`, `combat_restock_trip_XS`, and `food_bank_XS`.
+`unequip_items_XS`, and `food_bank_XS`.
 They use the same mechanics as their
 full counterparts and return smaller status/player/inventory summaries. Use
 full tools only for missing debug fields or complete evidence capture.
@@ -75,7 +95,8 @@ For cooking, use a raw cookable item on a cooking object with
 `click_interface_button`, then wait through `wait_until_idle`. On current source
 builds, the bridge primitive opens the normal Cooking interface itself for raw
 cookable items used on known cooking objects, so scripts should not need to
-fall back to the legacy `cook_food` tool except on stale runtimes or failures.
+fall back to the legacy `cook_food` tool except in explicit stale-runtime
+compatibility paths.
 
 Use `walk_path_steps` only for short adjacent client-style step queues. It
 enforces clipping by default; pass `allowObjectTransition=true` only directly
@@ -91,11 +112,14 @@ compact result omits needed side, object, or evidence detail.
 
 For combat loops, prefer `wait_until_combat_event_smart_XXS` when HP/XP/event
 status is enough and `wait_until_combat_event_smart_XS` when target or loot
-detail matters. After a kill, prefer `combat_cleanup_XXS` or `_XS` to bury
-bones, pick up whitelisted useful drops, optionally equip upgrades, and return
-counts without a full observe. For bank-food refreshes, `combat_restock_trip_XS`
-or `_XXS` can route to a supplied bank target, deposit non-food loot, trim
-coins, withdraw food, and optionally route back.
+detail matters. After a kill, keep cleanup policy in Python: inspect compact
+loot with `combat_state_XS`, pick selected drops through `pickup_ground_item`,
+bury selected bones through `bury_bones_XS`/`XXS`, and equip deliberately chosen
+items with `equip_item`. For bank-food refreshes, route to the selected bank
+with ML1 or movement primitives, batch deposits with `deposit_inventory_items_XS`,
+trim coins with `deposit_excess_coins`, withdraw food with
+`withdraw_bank_items_XS`, and route back only when the Python strategy asks for
+it.
 
 For repeat object/dialogue transitions, put the learned sequence in
 `bridge_script.py` instead of copying it into each runner. The current reusable
@@ -147,10 +171,13 @@ python3 agent-navigation/tools/bank_loadout.py --preset cowhide-trip --json
 python3 agent-navigation/tools/bank_loadout.py --preset cowhide-trip --dry-run --json
 ```
 
-## Legacy Compatibility Tools
+## Quarantined Legacy Compatibility Tools
 
-The older skill-specific tools remain available so existing scripts and live
-agents do not break:
+The older skill-specific Java strategy tools are not advertised to dynamic
+agents. Server handlers remain only as a migration safety net and are gated by
+`legacyCompatibility=true` (or `compatibility=true`). Use that flag only in an
+explicit stale-runtime compatibility path; new scripts should compose primitives
+instead.
 
 - `mine_ore`, `mine_ore_until_inventory_full`
 - `chop_tree`, `chop_tree_until_inventory_full`
@@ -158,11 +185,12 @@ agents do not break:
 - `fish_food`, `cook_food`, `light_fire`
 - `smelt_bar`, `smith_item`, `smith_best_item`, `plan_smithing`
 - `plan_combat_training`, `train_combat`, `train_smithing_profit`
-- durable goal tools such as `start_combat_goal`, `observe_goal`, `stop_goal`
+- `equip_best_items`, `combat_cleanup`, `combat_restock_trip`
+- durable goal tools such as `start_combat_goal` and `observe_goal`
 
-Use these for compatibility and recovery, but prefer primitive-backed scripts
-for new behavior. When a script needs behavior the primitive layer cannot
-express, add the smallest missing primitive instead of a full strategy tool.
+`stop_goal` may remain callable so old live goals can be stopped. When a script
+needs behavior the primitive layer cannot express, add the smallest missing
+primitive instead of a full strategy tool.
 
 ## Bridge Script State Shapes
 
@@ -180,17 +208,21 @@ loops, but they may omit or compact bank details.
 
 ## External Script Pattern
 
-1. Read state with `observe_state`.
-2. Request normal A-to-B routes through ML1 (`route_ml.py define`) and follow the returned `routeSteps` with movement primitives. Use bare `route_runner.py` only for legacy diagnostics or compatibility-executor regression checks.
-3. Use one primitive action, such as item-on-item, object interaction, shop buy,
+1. Resolve the target profile from `--profile`, `RS_PROFILE`, or
+   `RSBRIDGE_PROFILE`, then pass it explicitly to bridge helpers and child
+   commands.
+2. Read state with `observe_state`, preferably through XS/XXS wrappers when the
+   compact result has enough context.
+3. Request normal A-to-B routes through ML1 (`route_ml.py define`) and follow the returned `routeSteps` with movement primitives. Use bare `route_runner.py` only for legacy diagnostics or compatibility-executor regression checks.
+4. Use one primitive action, such as item-on-item, object interaction, shop buy,
    or NPC attack.
-4. Wait with `wait_until_idle` or a movement batch.
-5. Re-observe from the returned state and decide the next script step.
-6. Record JSONL evidence under an ignored `agent-navigation/data/<domain>/runs/`
-   directory.
+5. Wait with `wait_until_idle` or a movement batch.
+6. Re-observe from the returned state and decide the next script step.
+7. Record JSONL evidence under an ignored profile-scoped path or include
+   explicit `profile`, `playerName`, and `sessionId` fields when writing to a
+   shared `agent-navigation/data/<domain>/runs/` directory.
 
-Keep profile scoping by passing `--profile PROFILE` to scripts or setting
-`RS_PROFILE`. Do not print bridge tokens.
+Do not print bridge tokens.
 
 ## Current Script Entry Points
 
@@ -209,7 +241,8 @@ Current gameplay runners include:
 - `woodcutting_runner.py`: standalone primitive tree chopping with optional
   banking and bird-nest pickup.
 - `fletching_runner.py`: primitive-first woodcutting/fletching loop with
-  fallback to legacy fletching/chop tools for old live runtimes.
+  opt-in compatibility fallback to legacy fletching/chop tools for old live
+  runtimes.
 - `food_runner.py`: fishing, cooking, fish-cook, and firemaking through
   `interact_npc`, item-use, interface-button, and idle-wait primitives.
 - `smithing_runner.py`: smelting and smithing through furnace/anvil object

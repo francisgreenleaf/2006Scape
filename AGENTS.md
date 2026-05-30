@@ -119,6 +119,8 @@ Agent testing profiles:
 
 - The default local testing profile is `MrFlame`. Use another profile only when the user asks or when validating multi-character behavior.
 - Keep repo-side tool calls scoped to the intended character. Use `RS_PROFILE=<name>` or `runtime_doctor.py --profile <name>` so `rs-tool.sh`, route traces, recorder output, and context maps use the matching session/profile.
+- New or modified tools, runners, status commands, map renderers, and evidence readers must be profile-capable. Accept `--profile` or honor `RS_PROFILE`/`RSBRIDGE_PROFILE`, pass the resolved profile to bridge calls and child processes, and avoid new MrFlame-only assumptions.
+- Writable status, evidence, logs, screenshots, maps, and caches should be profile-scoped or include explicit `profile`, `playerName`, and `sessionId` metadata when intentionally shared.
 - `MrFlame` keeps the legacy session file `agent-navigation/.local/rsbridge-session.json`; other profiles use `agent-navigation/.local/rsbridge-session-<profile>.json`.
 - For unattended agent relaunches, prefer the documented startup flow in `docs/local-agent-startup.md`; it uses `-password-character-save`, `-agent-auto-login`, and `-agent-claim` so the local bridge session is claimed without manual typing.
 - Do not stop, replace, or relaunch an active client/server owned by another agent unless the user explicitly asks. Profile-specific launches should avoid clobbering the default client.
@@ -127,7 +129,7 @@ Navigation project:
 
 - Repo-local route memory lives in `agent-navigation/`.
 - For repo-side gameplay control, prefer `agent-navigation/tools/rs-tool.sh <tool> '<json-args>'`; it reads the active profile session file and posts to the local bridge.
-- For new gameplay automation, read `agent-navigation/scripting-primitives.md` and compose stable bridge primitives in Python instead of adding new bespoke Java `rs.*` tools. Keep Java changes for missing general primitives only.
+- For new gameplay automation, read `agent-navigation/scripting-primitives.md` and compose stable bridge primitives in Python instead of adding new bespoke Java `rs.*` tools. Keep Java changes for missing general primitives only; route choice, skilling loops, combat trip policy, banking strategy, and recovery behavior belong in profile-aware Python scripts and data.
 - Use ML1 `python3 agent-navigation/ml-routing/route_ml.py define --from X,Y,H --to PLACE_OR_TILE --combat-level N --food N --run-energy N --run-enabled` for normal A-to-B route selection. Bare `route_runner.py --to ...`, `navdb.py next-step`, and `router.py plan` are legacy diagnostics/fallback debugging, not the preferred agent route method.
 - Use `agent-navigation/tools/navdb.py validate`, `self-test`, `next-step`, `route-risk`, and `record-observation` while learning or validating route data.
 - Use `agent-navigation/tools/script_registry.py search <query>` to find helper scripts by fuzzy name, wildcard, tag, or description before guessing filenames.
@@ -205,8 +207,6 @@ Dynamic tools currently supported:
 - `rs.interact_npc`
 - `rs.attack_npc`
 - `rs.attack_npc_XXS`
-- `rs.train_combat`
-- `rs.train_smithing_profit`
 - `rs.find_nearest_object`
 - `rs.find_nearest_object_XS`
 - `rs.find_nearest_rock`
@@ -218,9 +218,6 @@ Dynamic tools currently supported:
 - `rs.unequip_item_XS`
 - `rs.unequip_items_XS`
 - `rs.unequip_items_XXS`
-- `rs.equip_best_items`
-- `rs.equip_best_items_XS`
-- `rs.equip_best_items_XXS`
 - `rs.eat_item`
 - `rs.eat_best_food`
 - `rs.eat_best_food_XXS`
@@ -229,11 +226,6 @@ Dynamic tools currently supported:
 - `rs.bury_bones_XXS`
 - `rs.pickup_ground_item`
 - `rs.pickup_ground_item_XXS`
-- `rs.combat_cleanup_XS`
-- `rs.combat_cleanup_XXS`
-- `rs.fish_food`
-- `rs.cook_food`
-- `rs.light_fire`
 - `rs.open_nearest_shop`
 - `rs.buy_shop_item`
 - `rs.sell_inventory_item`
@@ -243,10 +235,6 @@ Dynamic tools currently supported:
 - `rs.interact_object_XXS`
 - `rs.object_transition_step_XS`
 - `rs.object_transition_step_XXS`
-- `rs.chop_tree`
-- `rs.chop_tree_until_inventory_full`
-- `rs.fletch_logs`
-- `rs.fletch_logs_until_inventory_empty`
 - `rs.drop_inventory_items`
 - `rs.deposit_inventory_items`
 - `rs.deposit_inventory_items_XS`
@@ -258,24 +246,16 @@ Dynamic tools currently supported:
 - `rs.food_bank_XXS`
 - `rs.deposit_excess_coins`
 - `rs.deposit_excess_coins_XXS`
-- `rs.combat_restock_trip_XS`
-- `rs.combat_restock_trip_XXS`
-- `rs.mine_ore`
-- `rs.mine_ore_until_inventory_full`
-- `rs.smelt_bar`
-- `rs.smith_item`
-- `rs.smith_best_item`
-- `rs.plan_smithing`
 - `rs.cancel_current_action`
 
 Gameplay guardrails:
 
 - Keep actions server-authoritative and routed through existing mechanics such as `PlayerAssistant.playerWalk`, `CombatAssistant.attackNpc`, `ClickObject`, and `Mining.startMining`.
-- Prefer primitive-backed external scripts for new skill loops. Use `use_item_on_item`, `use_item_on_object`, `click_interface_button`, `select_interface_item`, `interact_object`, `interact_npc`, bank/shop tools, combat tools, and `wait_until_idle` before adding Java skill-specific tools. Existing legacy tools stay for compatibility.
-- Prefer XXS dynamic tools when confirmation plus critical survival state is enough: `observe_state_XXS`, `observe_state_if_changed_XXS`, `combat_state_XXS`, `set_run_XXS`, `walk_path_steps_XXS`, `walk_to_tile_until_arrived_XXS`, `travel_to_landmark_until_arrived_XXS`, `wait_ticks_XXS`, `wait_until_idle_XXS`, `wait_until_combat_event_smart_XXS`, `object_transition_step_XXS`, `interact_object_XXS`, `click_interface_button_XXS`, `attack_npc_XXS`, `eat_best_food_XXS`, `pickup_ground_item_XXS`, `combat_cleanup_XXS`, `bury_bones_XXS`, `deposit_inventory_items_XXS`, `withdraw_bank_items_XXS`, `unequip_items_XXS`, `combat_restock_trip_XXS`, and `food_bank_XXS`. XXS includes only success/message/status/event counters, tile, HP/max HP, run energy/enabled, combat, poison, death, free slots, food, and tiny XP deltas. Prefer XS dynamic tools when compact decision context is needed: `observe_state_XS`, `observe_state_if_changed_XS`, `combat_state_XS`, `walk_path_steps_XS`, `walk_to_tile_until_arrived_XS`, `travel_to_landmark_until_arrived_XS`, `wait_ticks_XS`, `wait_until_idle_XS`, `wait_until_combat_event_smart_XS`, `object_transition_step_XS`, `interact_object_XS`, `find_nearest_object_XS`, `combat_cleanup_XS`, `bury_bones_XS`, `deposit_inventory_items_XS`, `withdraw_bank_items_XS`, `unequip_items_XS`, `combat_restock_trip_XS`, and `food_bank_XS`. Use full tools only when XS omits a field needed for debugging, complete evidence, or a new workflow.
-- Prefer server-side batch tools for long-running actions. Use `travel_to_landmark_until_arrived_XS`/`travel_to_landmark_until_arrived_XXS` or `walk_to_tile_until_arrived_XS`/`walk_to_tile_until_arrived_XXS` instead of travel/walk plus repeated one-tick waits, `walk_path_steps_XS`/`walk_path_steps_XXS` for short adjacent route segments, `object_transition_step_XS`/`object_transition_step_XXS` for doors/gates/stairs/ladders, `mine_ore_until_inventory_full` or `chop_tree_until_inventory_full` instead of polling per resource, `wait_until_combat_event_smart_XXS` during combat when only HP/XP/event status matters, `wait_until_combat_event_smart_XS` when loot or target detail matters, `combat_cleanup_XS`/`combat_cleanup_XXS` after kills, `combat_restock_trip_XS`/`combat_restock_trip_XXS` for combat bank-food cycles, and `wait_until_idle_XS`/`wait_until_idle_XXS` after production actions such as smelting, smithing, cooking, fishing, or non-combat waits.
+- Prefer primitive-backed external scripts for new skill loops. Use `use_item_on_item`, `use_item_on_object`, `click_interface_button`, `select_interface_item`, `interact_object`, `interact_npc`, bank/shop tools, combat tools, and `wait_until_idle` before adding Java skill-specific tools. Hidden legacy strategy tools are quarantined compatibility paths and require explicit `legacyCompatibility=true`; do not use them for new behavior.
+- Prefer XXS dynamic tools when confirmation plus critical survival state is enough: `observe_state_XXS`, `observe_state_if_changed_XXS`, `combat_state_XXS`, `set_run_XXS`, `walk_path_steps_XXS`, `walk_to_tile_until_arrived_XXS`, `travel_to_landmark_until_arrived_XXS`, `wait_ticks_XXS`, `wait_until_idle_XXS`, `wait_until_combat_event_smart_XXS`, `object_transition_step_XXS`, `interact_object_XXS`, `click_interface_button_XXS`, `attack_npc_XXS`, `eat_best_food_XXS`, `pickup_ground_item_XXS`, `bury_bones_XXS`, `deposit_inventory_items_XXS`, `withdraw_bank_items_XXS`, `unequip_items_XXS`, and `food_bank_XXS`. XXS includes only success/message/status/event counters, tile, HP/max HP, run energy/enabled, combat, poison, death, free slots, food, and tiny XP deltas. Prefer XS dynamic tools when compact decision context is needed: `observe_state_XS`, `observe_state_if_changed_XS`, `combat_state_XS`, `walk_path_steps_XS`, `walk_to_tile_until_arrived_XS`, `travel_to_landmark_until_arrived_XS`, `wait_ticks_XS`, `wait_until_idle_XS`, `wait_until_combat_event_smart_XS`, `object_transition_step_XS`, `interact_object_XS`, `find_nearest_object_XS`, `bury_bones_XS`, `deposit_inventory_items_XS`, `withdraw_bank_items_XS`, `unequip_items_XS`, and `food_bank_XS`. Use full tools only when XS omits a field needed for debugging, complete evidence, or a new workflow.
+- Prefer server-side batch or wait primitives for long-running actions. Use `travel_to_landmark_until_arrived_XS`/`travel_to_landmark_until_arrived_XXS` or `walk_to_tile_until_arrived_XS`/`walk_to_tile_until_arrived_XXS` instead of travel/walk plus repeated one-tick waits, `walk_path_steps_XS`/`walk_path_steps_XXS` for short adjacent route segments, `object_transition_step_XS`/`object_transition_step_XXS` for doors/gates/stairs/ladders, `wait_until_combat_event_smart_XXS` during combat when only HP/XP/event status matters, `wait_until_combat_event_smart_XS` when loot or target detail matters, and `wait_until_idle_XS`/`wait_until_idle_XXS` after production actions such as smelting, smithing, cooking, fishing, or non-combat waits. Keep mining, woodcutting, fletching, combat cleanup, and bank-restock policy in Python scripts that compose these primitives.
 - XP-affecting tool results include `skillChanges` and short-lived `xpRecent` summaries when XP changed recently. For Prayer, treat `points`/`current` as current prayer points and `base` as the real Prayer level from XP.
-- For banking and equipment cleanup, batch intent into one call. `deposit_inventory_items_XS` accepts `itemIds` to deposit multiple item types at once and `keepFoodCount` to preserve food; `withdraw_bank_items_XS` accepts `itemIds`/`itemId` plus `amount`; `combat_restock_trip_XS` can route to a supplied bank target, deposit non-food loot, trim coins, withdraw food, and optionally return; `unequip_items_XS` accepts `equipmentSlots`, `slotNames`, `itemIds`, `names`/`items`, or `all=true` to unequip several items without looping.
+- For banking and equipment cleanup, batch intent into one call. `deposit_inventory_items_XS` accepts `itemIds` to deposit multiple item types at once and `keepFoodCount` to preserve food; `withdraw_bank_items_XS` accepts `itemIds`/`itemId` plus `amount`; `unequip_items_XS` accepts `equipmentSlots`, `slotNames`, `itemIds`, `names`/`items`, or `all=true` to unequip several items without looping. Route-to-bank, loot policy, coin reserve, food target, and return routing belong in Python.
 - Treat a batch tool response as the next observation; do not immediately call `observe_state` unless the returned state is missing needed context. When waiting on a long-running batch command, estimate the likely completion interval from `maxTicks` or the action loop and poll near that time instead of every few seconds, unless combat, death, a blocker, or near-term completion is likely.
 - Do not add screen automation, admin teleports, item spawning, or direct player state edits for agent behavior.
 - Preserve session scoping: reject offline, disconnected, dead, expired-token, and wrong-player sessions.

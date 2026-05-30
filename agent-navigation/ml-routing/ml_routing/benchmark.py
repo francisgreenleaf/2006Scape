@@ -84,7 +84,7 @@ def run_benchmark(args: SimpleNamespace) -> Dict[str, Any]:
             "runSegments": recommended.get("runSegments"),
             "mlScore": recommended.get("mlScore"),
             "next": recommended.get("next"),
-            "routeRunnerCommand": recommended.get("routeRunnerCommand"),
+            "routeExecutionCommand": recommended.get("routeExecutionCommand"),
         })
     ok_count = sum(1 for item in results if item.get("status") == "ok")
     actionable_count = sum(1 for item in results if item.get("actionable") is True)

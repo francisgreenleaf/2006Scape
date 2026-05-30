@@ -302,7 +302,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_shared_route_args(define)
     define.set_defaults(func=cmd_define)
 
-    go = sub.add_parser("go", help="Compatibility executor: rank a route and run the legacy route_runner command.")
+    go = sub.add_parser("go", help="Compatibility executor: rank a route and run the generated route execution command.")
     add_shared_route_args(go)
     go.add_argument("--dry-run", action="store_true",
                     help="Print the selected command without moving the live character.")
