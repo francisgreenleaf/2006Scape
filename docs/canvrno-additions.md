@@ -14,6 +14,9 @@ This fork adds a local Codex agent layer, route-learning tools, and documentatio
 - `MrFlame` remains the default local profile for backward compatibility.
 - Other profiles, such as `MrGem`, use profile-specific bridge session files, client pid files, client logs, saved-password character files, recorder files, and trace filters.
 - Repo-side tools can be scoped with `RS_PROFILE=<name>`, `RS_TRACE_PROFILE=<name>`, or command flags such as `--profile` and `--trace-profile`.
+- New or modified tools, runners, status readers, map renderers, and evidence writers should be profile-capable by default. Writable artifacts should be profile-scoped or carry explicit `profile`, `playerName`, and `sessionId` metadata when the data is intentionally shared.
+- Current architecture direction is primitive-first: Java bridge additions should be reusable player/session-scoped primitives, while Python scripts and data own route choice, skilling loops, combat trip policy, banking strategy, and recovery behavior.
+- MrFlame-only behavior should be limited to legacy compatibility fallbacks, not introduced into new tooling.
 - Tests cover the bridge session boundary so a token claimed by one player is not accepted for another player.
 
 ## Navigation Harness

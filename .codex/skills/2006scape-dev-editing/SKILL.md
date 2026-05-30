@@ -21,6 +21,10 @@ When a known lesson applies, follow its corrected workflow before improvising. I
 
 When changing runtime bridge behavior, remember that a compiled jar is not live code. Build first, restart through the documented launcher flow, then prove the behavior through the bridge wrapper.
 
+When creating or changing repo tools, make profile agnosticism part of the design check. Runnable helpers should accept `--profile PROFILE` or honor `RS_PROFILE`/`RSBRIDGE_PROFILE`, propagate the resolved profile to child commands and bridge calls, and avoid new MrFlame-only path assumptions. Writable status, evidence, logs, maps, and caches should be profile-scoped or carry explicit `profile`, `playerName`, and `sessionId` metadata when intentionally shared.
+
+For bridge-facing work, keep Java changes to reusable player/session-scoped primitives. Put route choice, skilling loops, combat trip policy, banking strategy, and recovery decisions in Python scripts or data so the strategy layer can select the profile independently of the Java tool surface.
+
 ## Updating Lessons
 
 After completing repo edits or debugging, consider whether to update `references/actionable-lessons.md`.

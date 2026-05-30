@@ -72,7 +72,7 @@ Example shape:
     "command": ["python3", "agent-navigation/tools/execute_route_definition.py", "--to", "draynor_bank_hazard_checkpoint", "--run-mode", "auto", "--eat-at", "10", "--route-definition", "agent-navigation/.local/ml-route-definitions/port_sarim_dock-draynor_bank_hazard_checkpoint-cache_direct-143-17.json"]
   },
   "feedback": {
-    "automaticEvidenceJsonl": "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
+    "automaticEvidenceJsonl": "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl",
     "automaticEvents": ["route_batch"]
   }
 }

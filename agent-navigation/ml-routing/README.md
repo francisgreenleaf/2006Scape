@@ -39,16 +39,16 @@ feedback instructions. Use `route` when debugging planner internals; it wraps th
 definition under `recommended.routeDefinition`.
 
 The old route method is deprecated for agents. Do not call bare `agent-navigation/tools/route_runner.py --to ...`
-as the normal routing API. Follow the ML1 `routeSteps` with normal bridge movement primitives, or use a purpose-built ML executor when one exists. Any generated `route_runner.py --route-definition` command is a compatibility executor, not the planner interface.
+as the normal routing API. Follow the ML1 `routeSteps` with normal bridge movement primitives, normally by running the generated `execute_route_definition.py --route-definition ...` command.
 
 ML1 supports surface routes and same-cache-area underground routes. It still returns non-actionable `requires-object-transition` for surface/underground crossings and for routes between separate underground cache areas; use the relevant entrance/exit/ladder/stairs/trapdoor/gate first, then request the next route. `unsupported-coordinate-layer` means the tile is outside a supported cache route area. Underground cache-direct routing uses cache-derived clipping plus hard valid-region boundaries so missing underground map regions are not treated as walkable floor.
 
 The route/debug response is compact by default. Use:
 
 - `recommended.next` for the next low-token waypoint;
-- `recommended.routeRunnerCommand` only for legacy compatibility execution;
+- `recommended.routeExecutionCommand` for the generated ML1 executor command;
 - `recommended.routeDefinition` for the stable JSON contract agents should pass around;
-- `recommended.improvement.shortcutProbeRecommended` to identify stale detours where the runner should try direct preview/probe flags and learn a better path.
+- `recommended.improvement.shortcutProbeRecommended` to identify stale detours where a targeted probe could learn a better path.
 - `recommended.actionable` to tell whether the result is usable. This is true for full routes and for safe frontier/probe recommendations.
 - `recommended.collision` to see whether the macro route was expanded through cache-derived clipped tiles.
 - `recommended.mode == "cache_direct"` when the planner replaced a stale learned detour/frontier with a cache-clipped direct candidate.
@@ -75,8 +75,8 @@ python3 agent-navigation/ml-routing/route_ml.py go \
   --dry-run
 ```
 
-Prefer `define` plus direct bridge movement over `go` for agent autonomy. Remove `--dry-run` only when the caller deliberately wants the legacy compatibility executor. This command delegates to `agent-navigation/tools/route_runner.py`; it does not bypass normal game mechanics, but it is not the preferred ML1 live-control path.
-Generated execution commands include `--evidence-jsonl agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl`
+Prefer `define` plus the generated `execute_route_definition.py --route-definition ...` command for agent autonomy. Remove `--dry-run` from `go` only when the caller deliberately wants the compatibility executor path. It does not bypass normal game mechanics, but it is not the preferred ML1 live-control path.
+Generated execution commands include `--evidence-jsonl agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl`
 by default, so every route batch contributes run efficiency, HP loss, combat/death, preview, and final-tile evidence.
 Use `--no-route-evidence` only for diagnostics where no local evidence should be written.
 
@@ -220,7 +220,7 @@ Legacy compatibility commands for suspicious or bad routes may add:
 --allow-frontier --direct-if-preview --probe-toward-target
 ```
 
-to the generated `route_runner.py` command. This applies only to the deprecated compatibility executor; agents should still request ML1 first and treat `routeSteps` as the route contract.
+to the deprecated Route Runner command. This applies only to explicit old-planner diagnostics; agents should still request ML1 first and treat `routeSteps` as the route contract.
 
 ## Validation Commands
 
