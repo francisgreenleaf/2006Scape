@@ -33,6 +33,7 @@ if str(SCRIPT_DIR) not in sys.path:
 
 import cache_world_map  # noqa: E402
 import bridge_script as bridge  # noqa: E402
+from profile_utils import resolve_profile  # noqa: E402
 
 
 ORE_DEFS = {
@@ -715,15 +716,16 @@ def ensure_pickaxe(player, site, args, handle):
         })
         equipped = best_usable_pickaxe(player, equipped=True)
         carried = best_usable_pickaxe(player, in_bank=False)
-    if equipped:
-        player = manage_pickaxe_loadout(player, equipped, handle, "equipped_pickaxe")
+    active = best_available_usable_pickaxe(player)
+    if active and (
+        count_equipment_item(player, active["itemId"]) > 0
+        or count_inventory_item(player, active["itemId"]) > 0
+    ):
+        player = manage_pickaxe_loadout(player, active, handle, "active_pickaxe")
         write_event(handle, "equipped_pickaxe", {
-            "pickaxe": equipped,
+            "pickaxe": active,
             "player": compact_player(player),
         })
-        return player
-    if carried:
-        player = manage_pickaxe_loadout(player, carried, handle, "carried_pickaxe")
         return player
     if banked:
         if not player.get("inBankArea"):
@@ -1246,7 +1248,7 @@ def run(args):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Run adaptive 2006Scape mining and ore-banking loops.")
-    parser.add_argument("--profile", default="", help="Bridge profile/session to use.")
+    parser.add_argument("--profile", default=resolve_profile(default=""), help="Bridge profile/session to use.")
     parser.add_argument("--ores", default="copper,tin,iron",
                         help="Comma-separated desired ores. Default: copper,tin,iron.")
     parser.add_argument("--target-mining-level", type=int, default=0,

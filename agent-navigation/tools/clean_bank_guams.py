@@ -5,6 +5,7 @@ import argparse
 import json
 
 import bridge_script as bridge
+from profile_utils import resolve_profile
 
 
 GRIMY_GUAM = 199
@@ -79,7 +80,7 @@ def clean_withdrawn_guams(player, profile):
 
 def main():
     parser = argparse.ArgumentParser(description="Clean banked guams, leaving two grimy guams in the bank.")
-    parser.add_argument("--profile", default="")
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     parser.add_argument("--bank-target", default="falador_west_bank")
     args = parser.parse_args()
 

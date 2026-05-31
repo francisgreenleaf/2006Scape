@@ -115,6 +115,16 @@ public class AgentActionServiceTest {
     }
 
     @Test
+    public void durableGoalIdentityKeysDoNotCollideWhenPlayerSlotIsReused() {
+        Player flame = testPlayer(2, "MrFlame");
+        Player gem = testPlayer(2, "MrGem");
+
+        assertEquals("mrflame", AgentActionService.playerIdentityKey(flame));
+        assertEquals("mrgem", AgentActionService.playerIdentityKey(gem));
+        assertFalse(AgentActionService.playerIdentityKey(flame).equals(AgentActionService.playerIdentityKey(gem)));
+    }
+
+    @Test
     public void durableGoalBanksCommonCombatSupplies() {
         assertTrue(AgentActionService.isCombatSupplyItemForBanking(526)); // bones
         assertTrue(AgentActionService.isCombatSupplyItemForBanking(1739)); // cowhide
@@ -1507,5 +1517,17 @@ public class AgentActionServiceTest {
         assertFalse(AgentActionService.shouldAcquirePickaxeUpgrade(80, 0, true, true, false));
         assertFalse(AgentActionService.shouldAcquirePickaxeUpgrade(80, 0, false, false, false));
         assertFalse(AgentActionService.shouldAcquirePickaxeUpgrade(80, 0, false, true, true));
+    }
+
+    private static Player testPlayer(int playerId, String playerName) {
+        Player player = new TestPlayer(playerId);
+        player.playerName = playerName;
+        return player;
+    }
+
+    private static class TestPlayer extends Player {
+        private TestPlayer(int playerId) {
+            super(playerId);
+        }
     }
 }

@@ -8,6 +8,8 @@ import os
 import sys
 from pathlib import Path
 
+from profile_utils import session_file_for_profile, session_player_name as read_session_player_name
+
 
 ROOT = Path(__file__).resolve().parents[1]
 USAGE_DIR = ROOT / ".local" / "usage"
@@ -23,12 +25,19 @@ def disabled():
 
 
 def profile_name():
-    return (
+    configured = (
         os.environ.get("RS_PROFILE")
         or os.environ.get("RSBRIDGE_PROFILE")
         or os.environ.get("RS_TRACE_PROFILE")
         or ""
     )
+    if configured:
+        return configured
+    return session_player_name()
+
+
+def session_player_name():
+    return read_session_player_name(session_file_for_profile(""))
 
 
 def _sensitive_key(key):

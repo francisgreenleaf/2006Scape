@@ -9,7 +9,8 @@ Capture compact 2006Scape client screenshots from four camera angles.
 
 Options:
   --prefix NAME              Filename prefix, default: cardinal
-  --pid PID                  Java client process id; defaults to .local/client.pid
+  --profile NAME             Select profile-specific client pid file; non-default profiles do not use process fallback
+  --pid PID                  Java client process id; defaults to the selected profile's pid file
   --native-size              Capture at 765x503 output size, default
   --max-size WxH             Capture at a bounded size instead of native-size
   --quarter-turn-seconds N   Seconds to hold right-arrow between angles, default: 0.90
@@ -27,9 +28,11 @@ EOF
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 CAPTURE="$SCRIPT_DIR/capture-client-screenshot.sh"
+PROFILE="${RS_PROFILE:-${RSBRIDGE_PROFILE:-}}"
 PID_FILE="$ROOT/.local/client.pid"
 PREFIX="cardinal"
 CLIENT_PID=""
+PROFILE_PID_REQUIRED=0
 NATIVE_SIZE=1
 MAX_SIZE=""
 QUARTER_TURN_SECONDS="0.90"
@@ -42,6 +45,10 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --prefix)
       PREFIX="${2:?missing value for --prefix}"
+      shift 2
+      ;;
+    --profile)
+      PROFILE="${2:?missing value for --profile}"
       shift 2
       ;;
     --pid)
@@ -90,6 +97,20 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ -n "$PROFILE" ]]; then
+  safe_profile="$(python3 - "$PROFILE" <<'PY'
+import sys
+print("".join(ch for ch in sys.argv[1].strip().lower() if ch.isalnum() or ch in ("-", "_")) or "default")
+PY
+)"
+  if [[ "$safe_profile" == "mrflame" ]]; then
+    PID_FILE="$ROOT/.local/client.pid"
+  else
+    PID_FILE="$ROOT/.local/client-$safe_profile.pid"
+    PROFILE_PID_REQUIRED=1
+  fi
+fi
+
 if [[ -z "$CLIENT_PID" && -f "$PID_FILE" ]]; then
   maybe_pid="$(tr -d '[:space:]' < "$PID_FILE")"
   if [[ "$maybe_pid" =~ ^[0-9]+$ ]]; then
@@ -97,8 +118,13 @@ if [[ -z "$CLIENT_PID" && -f "$PID_FILE" ]]; then
   fi
 fi
 
-if [[ -z "$CLIENT_PID" ]] && command -v pgrep >/dev/null 2>&1; then
+if [[ -z "$CLIENT_PID" && "$PROFILE_PID_REQUIRED" -eq 0 ]] && command -v pgrep >/dev/null 2>&1; then
   CLIENT_PID="$(pgrep -f 'client-1.0-jar-with-dependencies.jar' 2>/dev/null | head -n 1 || true)"
+fi
+
+if [[ -z "$CLIENT_PID" && "$PROFILE_PID_REQUIRED" -eq 1 ]]; then
+  echo "no profile-specific client pid found for $PROFILE; try --pid or start that profile's local runtime" >&2
+  exit 1
 fi
 
 if [[ -z "$CLIENT_PID" ]]; then
@@ -107,6 +133,9 @@ if [[ -z "$CLIENT_PID" ]]; then
 fi
 
 capture_args=(--pid "$CLIENT_PID")
+if [[ -n "$PROFILE" ]]; then
+  capture_args+=(--profile "$PROFILE")
+fi
 if [[ "$NATIVE_SIZE" -eq 1 ]]; then
   capture_args+=(--native-size)
 elif [[ -n "$MAX_SIZE" ]]; then
@@ -114,15 +143,16 @@ elif [[ -n "$MAX_SIZE" ]]; then
 fi
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
-  python3 - "$CLIENT_PID" "$PREFIX" "$NATIVE_SIZE" "$MAX_SIZE" "$QUARTER_TURN_SECONDS" "$SETTLE_SECONDS" <<'PY'
+  python3 - "$CLIENT_PID" "$PREFIX" "$NATIVE_SIZE" "$MAX_SIZE" "$QUARTER_TURN_SECONDS" "$SETTLE_SECONDS" "$PROFILE" <<'PY'
 import json
 import sys
 
-pid, prefix, native_size, max_size, quarter, settle = sys.argv[1:]
+pid, prefix, native_size, max_size, quarter, settle, profile = sys.argv[1:]
 print(json.dumps({
     "success": True,
     "dryRun": True,
     "clientPid": int(pid),
+    "profile": profile,
     "prefix": prefix,
     "outputSizing": "native-size" if native_size == "1" else max_size,
     "directions": ["north", "east", "south", "west"],
@@ -212,7 +242,7 @@ if [[ "$RESTORE_NORTH" -eq 1 ]]; then
   face_north
 fi
 
-python3 - "$tmp" "$CLIENT_PID" <<'PY'
+python3 - "$tmp" "$CLIENT_PID" "$PROFILE" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -221,6 +251,7 @@ records = [json.loads(line) for line in Path(sys.argv[1]).read_text(encoding="ut
 print(json.dumps({
     "success": True,
     "clientPid": int(sys.argv[2]),
+    "profile": sys.argv[3],
     "count": len(records),
     "directions": [record.get("direction") for record in records],
     "screenshots": records,

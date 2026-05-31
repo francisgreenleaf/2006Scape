@@ -15,6 +15,7 @@ import uuid
 from pathlib import Path
 
 import bridge_script as bridge
+from profile_utils import resolve_profile, run_evidence_path
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -716,7 +717,7 @@ def main(argv=None):
     parser.add_argument("--quiet", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--no-final-sell", action="store_true")
     parser.add_argument("--route-evidence-jsonl")
-    parser.add_argument("--profile", default="")
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     args = parser.parse_args(argv)
 
     global RUN_PROFILE
@@ -725,9 +726,8 @@ def main(argv=None):
     RUNS_DIR.mkdir(parents=True, exist_ok=True)
     run_path = RUNS_DIR / "{}-{}.jsonl".format(dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ"), uuid.uuid4().hex[:8])
     if args.route_evidence_jsonl is None:
-        evidence_dir = ROOT / ".local" / "run-evidence"
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        args.route_evidence_jsonl = evidence_dir / "fletching-runner.routes.jsonl"
+        args.route_evidence_jsonl = run_evidence_path(args.profile, "fletching-runner")
+        args.route_evidence_jsonl.parent.mkdir(parents=True, exist_ok=True)
     else:
         args.route_evidence_jsonl = Path(args.route_evidence_jsonl)
 

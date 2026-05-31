@@ -90,6 +90,33 @@ public class AgentPassiveTraceLogTest {
     }
 
     @Test
+    public void idleSuppressionIsScopedByPlayerNameWhenSlotIsReused() throws Exception {
+        TestPlayer flame = new TestPlayer(16);
+        flame.playerName = "MrFlame";
+        flame.absX = 3222;
+        flame.absY = 3218;
+        flame.heightLevel = 0;
+        flame.playerLevel[Constants.HITPOINTS] = 10;
+
+        TestPlayer gem = new TestPlayer(16);
+        gem.playerName = "MrGem";
+        gem.absX = 3222;
+        gem.absY = 3218;
+        gem.heightLevel = 0;
+        gem.playerLevel[Constants.HITPOINTS] = 10;
+
+        AgentPassiveTraceLog.INSTANCE.recordTick(flame, 1L, 3222, 3218, 0, 10, 100);
+        AgentPassiveTraceLog.INSTANCE.recordTick(gem, 2L, 3222, 3218, 0, 10, 100);
+
+        File flameLog = findFile(logDirectory, "mrflame.jsonl");
+        File gemLog = findFile(logDirectory, "mrgem.jsonl");
+        assertNotNull(flameLog);
+        assertNotNull(gemLog);
+        assertEquals(1, Files.readAllLines(flameLog.toPath(), StandardCharsets.UTF_8).size());
+        assertEquals(1, Files.readAllLines(gemLog.toPath(), StandardCharsets.UTF_8).size());
+    }
+
+    @Test
     public void ignoresStaleKillingNpcIndexAfterCombatEnds() throws Exception {
         TestPlayer player = new TestPlayer(15);
         player.playerName = "Respawn Tester";

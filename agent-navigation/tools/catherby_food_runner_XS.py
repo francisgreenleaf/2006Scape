@@ -2,11 +2,11 @@
 """Extra-slim status/control wrapper for the Catherby food runner."""
 
 import argparse
-import os
 import subprocess
 import sys
 from pathlib import Path
 
+from profile_utils import resolve_profile
 from runner_status_XS import catherby_status
 from usage_log import log_usage
 from xs_common import ROOT, compact_text_output, dump, parse_json
@@ -32,7 +32,7 @@ def run_runner(args):
 def main(argv=None):
     raw_args = list(sys.argv[1:] if argv is None else argv)
     parser = argparse.ArgumentParser(description="Compact Catherby food runner status/control wrapper.")
-    parser.add_argument("--profile", default=os.environ.get("RS_PROFILE", "MrFlame"))
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     parser.add_argument("--status", action="store_true")
     parser.add_argument("--efficiency-report", action="store_true")
     parser.add_argument("--request-stop", action="store_true")

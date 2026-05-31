@@ -6,6 +6,7 @@ import json
 import os
 
 import bridge_script as bridge
+from profile_utils import resolve_profile
 
 
 COWHIDE = 1739
@@ -59,7 +60,7 @@ def build_policy(args):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Apply a state-derived bank loadout with bridge primitives.")
-    parser.add_argument("--profile", default=os.environ.get("RS_PROFILE", ""))
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     parser.add_argument("--preset", choices=("custom", "cowhide-trip"), default="custom")
     parser.add_argument("--deposit-item-id", action="append",
                         help="Inventory item id to deposit if carried. May be repeated or comma-separated.")

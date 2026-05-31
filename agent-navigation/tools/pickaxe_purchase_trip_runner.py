@@ -6,6 +6,7 @@ import datetime as dt
 import uuid
 
 import bridge_script as bridge
+from profile_utils import resolve_profile
 
 
 RUNS_DIR = bridge.ROOT / "data" / "mining" / "runs"
@@ -291,7 +292,7 @@ def run(args):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Buy Dwarven Mine pickaxe upgrades, then return to Varrock bank.")
-    parser.add_argument("--profile", default="")
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     parser.add_argument("--start-bank", default=VARROCK_EAST_BANK)
     parser.add_argument("--coin-float", type=int, default=70000)
     parser.add_argument("--travel-max-ticks", type=int, default=250)

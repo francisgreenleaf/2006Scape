@@ -7,13 +7,13 @@ bounded, current, and cheap enough for tactical route debugging.
 
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
 from types import SimpleNamespace
 
 import map_grid
 import render_context_map
+from profile_utils import resolve_profile
 from usage_log import log_usage
 
 
@@ -70,11 +70,11 @@ def main():
     parser.add_argument("--pixels-per-tile", type=positive_int, default=4)
     parser.add_argument("--recent-seconds", type=nonnegative_int, default=90)
     parser.add_argument("--max-trace-records", type=nonnegative_int, default=50000)
-    parser.add_argument("--player", default=os.environ.get("RS_TRACE_PROFILE") or os.environ.get("RS_PROFILE") or "mrflame")
+    parser.add_argument("--player", default=resolve_profile(trace=True, default=""))
     parser.add_argument("--trace-file", action="append")
     parser.add_argument("--output")
     parser.add_argument("--summary")
-    parser.add_argument("--artifact-dir", default=str(CONTEXT_MAP_ARCHIVE),
+    parser.add_argument("--artifact-dir", default="",
                         help="Default archive root for unique context-map artifacts.")
     parser.add_argument("--no-current-marker", action="store_true")
     parser.add_argument("--no-mapfunction-icons", action="store_true",
@@ -138,6 +138,7 @@ def main():
         "output": result["output"],
         "summary": result["summary"],
         "artifact": result.get("artifact"),
+        "profile": result.get("profile"),
         "bounds": result["bounds"],
         "center": result["center"],
         "spanTiles": result["spanTiles"],

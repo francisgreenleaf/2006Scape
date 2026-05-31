@@ -1,14 +1,8 @@
 #!/usr/bin/env python3
 """Render the active Heat Map movement topology."""
 
-from pathlib import Path
-
 import render_movement_topology_v2 as v2
-
-
-ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "topology"
-SUMMARY_OUT = ROOT / ".local" / "map-summaries"
+from profile_utils import canonical_map_paths, profile_display_name, profile_from_argv
 TITLE_PARAGRAPH = (
     "The selected profile is building an evidence-backed navigation graph for Gielinor from "
     "passive player traces, bridge batch traces, curated places, route memory, "
@@ -28,11 +22,13 @@ TITLE_PARAGRAPH = (
 
 
 if __name__ == "__main__":
+    profile = profile_from_argv(trace=True, default="")
+    output, summary = canonical_map_paths(profile, "heat")
     v2.main(
-        default_output=OUT / "movement-topology-v5-heatmap.png",
-        default_summary=SUMMARY_OUT / "movement-topology-v5-heatmap.json",
+        default_output=output,
+        default_summary=summary,
         default_map_version="Heat Map",
-        default_title_text="Heat Map",
+        default_title_text=profile_display_name(profile, default_text="Mrflame"),
         default_title_paragraph=TITLE_PARAGRAPH,
         default_title_paragraph_x=520,
         default_title_paragraph_y=104,

@@ -143,6 +143,13 @@ These notes are repo-specific operational memory from actual agent experience. A
 - **Use instead:** Prefer the tracked client pid files for first-pass cleanup, and if the server still shows the player online, use an escalated `pkill -f client-1.0-jar-with-dependencies.jar` before retrying the bridge claim.
 - **Validation:** After the elevated `pkill`, the server log showed `[DEREGISTERED]: mrflame` and `Players: 0`, which allowed the next escalated claim to succeed cleanly.
 
+### Keep profile client relaunches scoped to that profile
+
+- **Observed:** While hardening multi-character support, `runtime_doctor.py claim --profile MrFlame` and non-runtime `--replace-client` flows could still choose broad client cleanup for the default profile, which would stop another profile's active client.
+- **Cause:** The helper treated the legacy default profile as a single-client runtime and delegated to process-pattern cleanup instead of only the selected profile's pid file.
+- **Use instead:** For profile-scoped `claim` or client replacement, stop only `agent-navigation/.local/client.pid` or `client-<profile>.pid` for the selected profile, and launch with `CLIENT_SINGLE_INSTANCE=0`; reserve broad process cleanup for explicit full `--replace-runtime` work.
+- **Validation:** `python3 agent-navigation/tools/runtime_doctor.py status --profile MrGem` reports `client-mrgem.pid` and `/tmp/2006scape-client-mrgem.log`, while `mvn -q -DskipTests package` and focused bridge tests still pass.
+
 ### Guard `Game.method120()` when camera and player share the same tile
 
 - **Observed:** The client could crash with `ArithmeticException: / by zero` at `Game.method120()` line `9632`, reached from `method146()` during normal drawing.

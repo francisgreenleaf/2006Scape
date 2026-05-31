@@ -192,7 +192,7 @@ def route_hint_edges(generated_at: Optional[str] = None) -> List[Dict[str, Any]]
 def _route_evidence_files(include_local: bool = True) -> List[Path]:
     candidates = []
     if include_local:
-        candidates.extend((NAV_ROOT / ".local" / "run-evidence").glob("*.jsonl"))
+        candidates.extend((NAV_ROOT / ".local" / "run-evidence").rglob("*.jsonl"))
     candidates.extend((NAV_ROOT / "data").rglob("*.routes.jsonl"))
     candidates.extend((NAV_ROOT / "data" / "marathons").glob("*.jsonl"))
     seen = set()
@@ -204,6 +204,23 @@ def _route_evidence_files(include_local: bool = True) -> List[Path]:
         seen.add(resolved)
         files.append(path)
     return sorted(files)
+
+
+def _profile_key(value: Any) -> str:
+    return "".join(ch for ch in str(value or "").strip().lower() if ch.isalnum())
+
+
+def _record_matches_profile(record: Dict[str, Any], profile: str) -> bool:
+    expected = _profile_key(profile)
+    if not expected:
+        return True
+    values = [
+        record.get("profile"),
+        record.get("playerName"),
+        (record.get("player") or {}).get("name") if isinstance(record.get("player"), dict) else "",
+    ]
+    keys = [_profile_key(value) for value in values if _profile_key(value)]
+    return not keys or expected in keys
 
 
 def _extract_tile(record: Dict[str, Any], *keys: str) -> Optional[Dict[str, int]]:
@@ -220,11 +237,13 @@ def _extract_tile(record: Dict[str, Any], *keys: str) -> Optional[Dict[str, int]
     return None
 
 
-def route_attempts(include_local: bool = True, generated_at: Optional[str] = None) -> List[Dict[str, Any]]:
+def route_attempts(profile: str = "", include_local: bool = True, generated_at: Optional[str] = None) -> List[Dict[str, Any]]:
     generated_at = generated_at or utcnow().isoformat().replace("+00:00", "Z")
     records = []
     for path in _route_evidence_files(include_local=include_local):
         for record in iter_jsonl(path):
+            if not _record_matches_profile(record, profile):
+                continue
             event = str(record.get("event") or "")
             if event not in ("route_batch", "batch", "leg_end", "leg_preflight", "route_outcome"):
                 continue
@@ -240,6 +259,7 @@ def route_attempts(include_local: bool = True, generated_at: Optional[str] = Non
                 "generatedAt": generated_at,
                 "sourcePath": str(path),
                 "sourceLine": record.get("_sourceLine"),
+                "profile": record.get("profile") or record.get("playerName") or profile or "",
                 "event": event,
                 "status": status or "unknown",
                 "success": bool(success),
@@ -326,7 +346,7 @@ def export_dataset(args: SimpleNamespace) -> Dict[str, Any]:
         generated_at=generated_at,
     )
     hints = route_hint_edges(generated_at=generated_at)
-    attempts = route_attempts(include_local=not args.no_local_evidence, generated_at=generated_at)
+    attempts = route_attempts(profile=args.profile, include_local=not args.no_local_evidence, generated_at=generated_at)
     transitions = object_transitions(
         profile=args.profile,
         include_unscoped=args.include_unscoped_traces,

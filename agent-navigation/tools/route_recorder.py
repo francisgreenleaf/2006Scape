@@ -22,6 +22,8 @@ import time
 import uuid
 from pathlib import Path
 
+from profile_utils import resolve_profile
+
 
 ROOT = Path(__file__).resolve().parents[1]
 TOOLS = ROOT / "tools"
@@ -407,7 +409,7 @@ def cmd_status(args):
 
 
 def add_common(parser):
-    parser.add_argument("--profile", default=os.environ.get("RS_PROFILE") or os.environ.get("RSBRIDGE_PROFILE"))
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     parser.add_argument("--output")
     parser.add_argument("--pid-file")
     parser.add_argument("--log-file")

@@ -17,6 +17,7 @@ import uuid
 from pathlib import Path
 
 import bridge_script as bridge
+from profile_utils import resolve_profile
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -382,7 +383,7 @@ def compact_player(player):
 
 
 def runner_profile_label(args):
-    profile = (getattr(args, "profile", "") or os.environ.get("RS_PROFILE", "")).strip()
+    profile = resolve_profile(getattr(args, "profile", ""), default="").strip()
     return profile or "default"
 
 
@@ -403,10 +404,7 @@ def runner_primary_stop_path(args):
 
 
 def runner_stop_paths(args):
-    paths = [runner_primary_stop_path(args)]
-    if runner_profile_label(args) != "default":
-        paths.append(RUNNER_CONTROL_DIR / "{}.stop".format(RUNNER_CONTROL_NAME))
-    return paths
+    return [runner_primary_stop_path(args)]
 
 
 def runner_stop_requested(args):
@@ -430,9 +428,7 @@ def clear_runner_stop_requests(args):
 
 def request_runner_stop(args):
     RUNNER_CONTROL_DIR.mkdir(parents=True, exist_ok=True)
-    paths = [runner_primary_stop_path(args)]
-    if runner_profile_label(args) != "default":
-        paths.append(RUNNER_CONTROL_DIR / "{}.stop".format(RUNNER_CONTROL_NAME))
+    paths = runner_stop_paths(args)
     payload = {
         "runner": "cowhide_combat_runner",
         "profile": runner_profile_label(args),
@@ -2034,7 +2030,7 @@ def run(args):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Run bounded cow combat, cowhide pickup, and banking.")
-    parser.add_argument("--profile", default="", help="Bridge profile/session to use. Defaults to the active session.")
+    parser.add_argument("--profile", default=resolve_profile(default=""), help="Bridge profile/session to use. Defaults to the active session.")
     parser.add_argument("--status", action="store_true",
                         help="Print this runner's cooperative status file and exit without touching the game.")
     parser.add_argument("--request-stop", action="store_true",

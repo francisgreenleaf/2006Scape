@@ -39,7 +39,7 @@ For the reliable server/client/login/bridge startup flow used before route explo
 - `tools/bank_loadout.py`: compact primitive bank-loadout helper that plans from observed inventory and applies only needed deposit/food/coin-float actions.
 - `tools/agent_session_XS.py`, `tools/runner_status_XS.py`, `tools/catherby_food_runner_XS.py`, and `tools/route_failure_XS.py`: compact readers for session usage, cooperative runner status, Catherby runner control, and route execution recovery.
 - `tools/cowhide_combat_runner.py`: bounded cow combat, hide pickup, food restock, and banking runner built from route, combat, item, shop, and bank primitives.
-- `tools/render_profile_map.py`, `tools/render_heat_map.py`, `tools/render_fog_map.py`: plain-name active movement map renderers for `Mr. Flame`, `Heat Map`, and `Mr. Flame Fog`.
+- `tools/render_profile_map.py`, `tools/render_heat_map.py`, `tools/render_fog_map.py`: plain-name active movement map renderers for the selected profile movement map, Heat Map, and profile fog.
 - `tools/active_map_refresher.py`: background controller for keeping the three canonical active map PNGs current every five minutes: profile movement, `Heat Map`, and profile fog. Use it for `start`, `status`, `logs`, and `restart`.
 - `tools/refresh_active_maps.py`: lower-level foreground worker used by `active_map_refresher.py`. It writes status/temp files under ignored `.local/map-refresh/`, JSON summaries under ignored `.local/map-summaries/`, and does not refresh auxiliary cache/route maps unless explicitly requested.
 
@@ -97,12 +97,12 @@ For banking, prefer `tools/bank_loadout.py`, `food_bank_XS.py`, or shared `bridg
 Use `tools/character_memory.py` for intentional, sparse, profile-scoped notes that should affect future decisions. This is for things like equipment upgrade goals, recurring blockers, useful preferences, or strategic reminders. It is not for route graph facts, raw telemetry, session transcripts, every level-up, or every inventory batch.
 
 ```sh
-python3 agent-navigation/tools/character_memory.py show --profile MrFlame --json
-python3 agent-navigation/tools/character_memory.py goal --profile MrFlame --priority normal --tags gear --text "Upgrade from a bronze axe when the character has enough coins and shop access."
-python3 agent-navigation/tools/character_memory.py remember --profile MrGem --kind warning --tags supplies --text "Carry food before repeating a route that previously caused low-HP recovery."
+python3 agent-navigation/tools/character_memory.py show --profile PROFILE --json
+python3 agent-navigation/tools/character_memory.py goal --profile PROFILE --priority normal --tags gear --text "Upgrade from a bronze axe when the character has enough coins and shop access."
+python3 agent-navigation/tools/character_memory.py remember --profile PROFILE --kind warning --tags supplies --text "Carry food before repeating a route that previously caused low-HP recovery."
 ```
 
-The default profile is `MrFlame`; pass `--profile` or set `RS_PROFILE` for another character. Known display variants such as `Mr. Flame` and `Mr. Gem` normalize to the same profile directories as `MrFlame` and `MrGem`.
+If no profile is supplied, helpers keep the legacy default profile for backward compatibility. Pass `--profile` or set `RS_PROFILE` for another character. Known display variants such as `Mr. Flame` and `Mr. Gem` normalize to the same profile directories as `MrFlame` and `MrGem`.
 
 ## Learning Workflow
 
@@ -134,7 +134,7 @@ The helper focuses the running Java client, captures its window rectangle when p
 
 ```sh
 python3 agent-navigation/tools/navdb.py record-observation \
-  --player mrflame \
+  --player PROFILE \
   --x 3204 --y 3215 --height 0 \
   --place lumbridge_kitchen_approach \
   --route lumbridge_courtyard_to_kitchen_range \

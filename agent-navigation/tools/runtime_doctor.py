@@ -19,6 +19,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from profile_utils import DEFAULT_PROFILE, is_default_profile, safe_profile, session_file_for_profile
+
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 NAV_ROOT = SCRIPT_DIR.parent
@@ -31,15 +33,10 @@ SERVER_LOG = Path("/tmp/2006scape-server.log")
 CLIENT_LOG = Path("/tmp/2006scape-client.log")
 SERVER_PORT = 43594
 BRIDGE_PORT = 43610
-DEFAULT_USER = "MrFlame"
+DEFAULT_USER = DEFAULT_PROFILE
 ROUTE_RECORDER = SCRIPT_DIR / "route_recorder.py"
-OBSERVE_SLIM = SCRIPT_DIR / "observe-slim.sh"
+OBSERVE_XS = SCRIPT_DIR / "observe_XS.sh"
 NAVDB = SCRIPT_DIR / "navdb.py"
-
-
-def safe_profile(value):
-    text = "".join(ch for ch in str(value or "").strip().lower() if ch.isalnum() or ch in ("-", "_"))
-    return text or "default"
 
 
 def default_user():
@@ -47,16 +44,11 @@ def default_user():
 
 
 def is_default_user(user):
-    return safe_profile(user) == safe_profile(DEFAULT_USER)
+    return is_default_profile(user)
 
 
 def session_file_for_user(user):
-    override = os.environ.get("RSBRIDGE_SESSION_FILE")
-    if override:
-        return Path(override).expanduser()
-    if is_default_user(user):
-        return SESSION_FILE
-    return LOCAL_DIR / "rsbridge-session-{}.json".format(safe_profile(user))
+    return session_file_for_profile(user, local_root=LOCAL_DIR)
 
 
 def password_file_for_user(user):
@@ -155,6 +147,68 @@ def print_json(data):
     print(json.dumps(data, sort_keys=True, separators=(",", ":")))
 
 
+def starter_character_lines(user, password):
+    starter_items = [
+        (1351, 1), (590, 1), (303, 1), (315, 1), (1925, 1), (1931, 1),
+        (2309, 1), (1265, 1), (1205, 1), (1277, 1), (1171, 1), (841, 1),
+        (882, 25), (556, 25), (558, 15), (555, 6), (557, 4), (559, 2),
+    ]
+    looks = [0, 7, 25, 29, 35, 39, 44, 14, 7, 8, 9, 5, 0]
+    lines = [
+        "[ACCOUNT]",
+        "character-username = {}".format(safe_profile(user)),
+        "character-password = {}".format(password),
+        "",
+        "[CHARACTER]",
+        "character-height = 0",
+        "character-posx = 3233",
+        "character-posy = 3229",
+        "character-rights = 0",
+        "xp-rate = 1",
+        "hasStarter = true",
+        "tutorial-progress = 36",
+        "canWalkTutorial = true",
+        "character-energy = 100",
+        "isRunning = false",
+        "lastX = 3233",
+        "lastY = 3229",
+        "lastH = 0",
+        "",
+        "[EQUIPMENT]",
+    ]
+    for slot in range(14):
+        lines.append("character-equip = {}\t-1\t0".format(slot))
+    lines += ["", "[LOOK]"]
+    for slot, value in enumerate(looks):
+        lines.append("character-look = {}\t{}".format(slot, value))
+    lines += ["", "[SKILLS]"]
+    for skill in range(25):
+        level = 10 if skill == 3 else 1
+        xp = 1300 if skill == 3 else 0
+        lines.append("character-skill = {}\t{}\t{}".format(skill, level, xp))
+    lines += ["", "[ITEMS]"]
+    for slot, item in enumerate(starter_items):
+        item_id, amount = item
+        lines.append("character-item = {}\t{}\t{}".format(slot, item_id + 1, amount))
+    lines += ["", "[BANK]", "", "[FRIENDS]", "", "[IGNORES]", "", "[NPC-KILLS]", "", "[EOF]", ""]
+    return "\n".join(lines)
+
+
+def write_private_text(path, text):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    fd = os.open(str(path), flags, 0o600)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(text)
+    except Exception:
+        try:
+            path.unlink()
+        except OSError:
+            pass
+        raise
+
+
 def read_session_summary(session_file):
     if not session_file.exists():
         return {"exists": False}
@@ -197,8 +251,8 @@ def cmd_status(args):
         env = os.environ.copy()
         env["RS_PROFILE"] = args.user
         env["RSBRIDGE_SESSION_FILE"] = str(session_file)
-        proc = run_cmd([str(OBSERVE_SLIM)], check=False, capture=True, env=env)
-        summary["observeSlim"] = {
+        proc = run_cmd([str(OBSERVE_XS)], check=False, capture=True, env=env)
+        summary["observeXS"] = {
             "ok": proc.returncode == 0,
             "returncode": proc.returncode,
             "outputPreview": (proc.stdout or proc.stderr or "").strip()[:300],
@@ -298,10 +352,7 @@ def start_server_if_needed(args):
 
 def launch_client(args, nonce):
     env = os.environ.copy()
-    if not is_default_user(args.user):
-        env["CLIENT_SINGLE_INSTANCE"] = "0"
-    elif args.replace_client:
-        env["CLIENT_REPLACE_EXISTING"] = "1"
+    env["CLIENT_SINGLE_INSTANCE"] = "0"
     env["RS_PROFILE"] = args.user
     password_file = resolve_password_file(args)
     client_log = resolve_client_log(args)
@@ -372,11 +423,11 @@ def verify_runtime(args):
         env = os.environ.copy()
         env["RS_PROFILE"] = getattr(args, "user", default_user())
         env["RSBRIDGE_SESSION_FILE"] = str(session_file)
-        proc = run_cmd([str(OBSERVE_SLIM)], check=False, capture=True, env=env)
+        proc = run_cmd([str(OBSERVE_XS)], check=False, capture=True, env=env)
         if proc.returncode != 0:
-            failures.append("observe-slim failed: {}".format((proc.stderr or proc.stdout or "").strip()[:300]))
+            failures.append("observe_XS failed: {}".format((proc.stderr or proc.stdout or "").strip()[:300]))
         else:
-            print("observe_slim_ok")
+            print("observe_xs_ok")
 
     if args.navdb:
         run_cmd([sys.executable, str(NAVDB), "validate"])
@@ -402,7 +453,7 @@ def cmd_restart(args):
     elif args.replace_client:
         print("stopping_client_helpers")
         stop_runtime(include_server=False, include_client=True, session_file=resolve_session_file(args),
-                     client_pid_file=resolve_client_pid_file(args), broad_client=is_default_user(args.user))
+                     client_pid_file=resolve_client_pid_file(args), broad_client=False)
     build_runtime(args)
     start_server_if_needed(args)
     nonce = secrets.token_urlsafe(32)
@@ -421,7 +472,7 @@ def cmd_claim(args):
     wait_for_port(BRIDGE_PORT, args.server_timeout, "agent bridge")
     if args.replace_client:
         stop_runtime(include_server=False, include_client=True, session_file=resolve_session_file(args),
-                     client_pid_file=resolve_client_pid_file(args), broad_client=is_default_user(args.user))
+                     client_pid_file=resolve_client_pid_file(args), broad_client=False)
     nonce = secrets.token_urlsafe(32)
     launch_client(args, nonce)
     claim_session(nonce, args.claim_timeout, resolve_session_file(args))
@@ -433,6 +484,20 @@ def cmd_claim(args):
 
 def cmd_verify(args):
     return verify_runtime(args)
+
+
+def cmd_init_profile(args):
+    password_file = resolve_password_file(args)
+    if password_file.exists():
+        raise SystemExit("character file already exists: {}".format(password_file))
+    password = secrets.token_urlsafe(36)
+    write_private_text(password_file, starter_character_lines(args.user, password))
+    print_json({
+        "created": True,
+        "profile": args.user,
+        "passwordFile": str(password_file),
+    })
+    return 0
 
 
 def cmd_recorder(args):
@@ -481,8 +546,13 @@ def main(argv=None):
 
     status = sub.add_parser("status", help="Report ports, pid files, and session file status without printing tokens.")
     add_profile_args(status)
-    status.add_argument("--observe", action="store_true", help="Also run observe-slim and include a compact preview.")
+    status.add_argument("--observe", action="store_true", help="Also run observe_XS and include a compact preview.")
     status.set_defaults(func=cmd_status)
+
+    init_profile = sub.add_parser("init-profile", help="Create an initial saved character file for auto-login.")
+    add_profile_args(init_profile)
+    init_profile.add_argument("--password-file")
+    init_profile.set_defaults(func=cmd_init_profile)
 
     restart = sub.add_parser("restart", help="Start or replace the server/client and claim a bridge session.")
     add_claim_args(restart)

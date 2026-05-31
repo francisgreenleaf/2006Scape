@@ -4,10 +4,10 @@
 import argparse
 import datetime as dt
 import json
-import os
 import subprocess
 from pathlib import Path
 
+from profile_utils import resolve_profile
 from usage_log import log_usage
 from xs_common import ROOT, dump, parse_json
 
@@ -124,7 +124,7 @@ def list_status_files():
 
 def main():
     parser = argparse.ArgumentParser(description="Read compact cooperative runner status.")
-    parser.add_argument("--profile", default=os.environ.get("RS_PROFILE", "MrFlame"))
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     parser.add_argument("--runner", default="catherby-food", choices=["catherby-food"])
     parser.add_argument("--no-efficiency", action="store_true")
     parser.add_argument("--list", action="store_true", help="List known runner status files instead of a runner-specific summary.")

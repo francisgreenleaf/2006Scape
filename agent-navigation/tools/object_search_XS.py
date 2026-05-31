@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 
+from profile_utils import resolve_profile
 from usage_log import log_usage
 from xs_common import ROOT, compact_bridge, dump, game_object, run_command
 
@@ -41,8 +42,15 @@ def matches(entry, name, resource, object_ids):
     return bool(object_ids or name or resource)
 
 
-def observe_candidates(name, resource, object_ids, limit):
-    proc = run_command([str(RS_TOOL), "observe_state", "{}"], cwd=ROOT, env=os.environ.copy())
+def command_env(profile):
+    env = os.environ.copy()
+    if profile:
+        env["RS_PROFILE"] = profile
+    return env
+
+
+def observe_candidates(name, resource, object_ids, limit, profile):
+    proc = run_command([str(RS_TOOL), "observe_state", "{}"], cwd=ROOT, env=command_env(profile))
     try:
         data = json.loads(proc.stdout)
     except json.JSONDecodeError:
@@ -64,6 +72,7 @@ def main():
     parser.add_argument("--object-ids", default="")
     parser.add_argument("--max-distance", type=int, default=60)
     parser.add_argument("--limit", type=int, default=8)
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     args = parser.parse_args()
     object_ids = list(args.object_id) + parse_object_ids(args.object_ids)
     payload = {"maxDistance": args.max_distance}
@@ -75,7 +84,7 @@ def main():
         payload["objectIds"] = object_ids
     log_usage("object_search_XS", surface="xs", argv=vars(args))
     proc = run_command([str(RS_TOOL), "find_nearest_object", json.dumps(payload, separators=(",", ":"))],
-                       cwd=ROOT, env=os.environ.copy())
+                       cwd=ROOT, env=command_env(args.profile))
     try:
         data = json.loads(proc.stdout)
     except json.JSONDecodeError:
@@ -83,7 +92,7 @@ def main():
         return proc.returncode or 2
     out = compact_bridge(data, "find_nearest_object")
     if isinstance(out, dict) and not out.get("ok", out.get("success", False)):
-        out["candidates"] = observe_candidates(norm(args.name), norm(args.resource), object_ids, max(1, args.limit))
+        out["candidates"] = observe_candidates(norm(args.name), norm(args.resource), object_ids, max(1, args.limit), args.profile)
     dump(out)
     return proc.returncode
 

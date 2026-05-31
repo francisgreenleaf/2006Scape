@@ -6,6 +6,7 @@ import datetime as dt
 import uuid
 
 import bridge_script as bridge
+from profile_utils import resolve_profile
 
 
 RUNS_DIR = bridge.ROOT / "data" / "combat" / "runs"
@@ -177,7 +178,7 @@ def run(args):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Run primitive-backed combat training.")
-    parser.add_argument("--profile", default="")
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     parser.add_argument("--npc", default="goblin")
     parser.add_argument("--area", default="", help="Optional route target before each combat round.")
     parser.add_argument("--target-level", type=int, default=10)

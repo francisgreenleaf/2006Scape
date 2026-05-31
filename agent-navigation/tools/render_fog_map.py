@@ -1,30 +1,21 @@
 #!/usr/bin/env python3
 """Render the active profile fog movement topology."""
 
-from pathlib import Path
-import os
-
 import render_movement_topology_v2 as v2
-
-
-ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "topology"
-SUMMARY_OUT = ROOT / ".local" / "map-summaries"
+from profile_utils import canonical_map_paths, profile_display_name, profile_from_argv
 
 
 def profile_title():
-    value = os.environ.get("RS_TRACE_PROFILE") or os.environ.get("RS_PROFILE") or ""
-    normalized = "".join(ch for ch in value.lower() if ch.isalnum())
-    if not value or normalized == "mrflame":
-        value = "Mrflame"
-    return value
+    return profile_display_name(profile_from_argv(trace=True, default=""), default_text="Mrflame")
 
 
 if __name__ == "__main__":
+    profile = profile_from_argv(trace=True, default="")
     title = profile_title()
+    output, summary = canonical_map_paths(profile, "fog")
     v2.main(
-        default_output=OUT / "movement-topology-v6.png",
-        default_summary=SUMMARY_OUT / "movement-topology-v6.json",
+        default_output=output,
+        default_summary=summary,
         default_map_version=title + " Fog",
         default_title_text=title,
         default_title_stats_panel=True,

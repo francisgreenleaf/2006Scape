@@ -155,8 +155,8 @@ public class AgentToolService {
             new FletchingChoice(1513, 72, 80, 83.25D),
             new FletchingChoice(1513, 70, 85, 91.5D)
     };
-    private static final ConcurrentMap<Integer, Long> MINING_CLICK_COOLDOWN_UNTIL =
-            new ConcurrentHashMap<Integer, Long>();
+    private static final ConcurrentMap<String, Long> MINING_CLICK_COOLDOWN_UNTIL =
+            new ConcurrentHashMap<String, Long>();
     private static final ConcurrentMap<String, List<RecentSkillGain>> RECENT_XP_GAINS =
             new ConcurrentHashMap<String, List<RecentSkillGain>>();
     private static final ConcurrentMap<String, String> OBSERVE_STATE_HASHES =
@@ -446,13 +446,21 @@ public class AgentToolService {
         return result;
     }
 
-    private static String observeStateHashKey(Player player, JsonObject arguments) {
+    static String observeStateHashKey(Player player, JsonObject arguments) {
+        String playerKey = observeStatePlayerKey(player);
         String explicitKey = getString(arguments, "key", "");
         if (!explicitKey.isEmpty()) {
-            return explicitKey;
+            return playerKey + ":" + explicitKey;
         }
-        String playerName = player == null || player.playerName == null ? "unknown" : player.playerName;
-        return playerName.toLowerCase(Locale.ENGLISH) + ":" + (player == null ? -1 : player.playerId);
+        return playerKey;
+    }
+
+    private static String observeStatePlayerKey(Player player) {
+        String playerName = player == null || player.playerName == null ? "unknown" : normalize(player.playerName);
+        if (playerName.isEmpty()) {
+            playerName = "unknown";
+        }
+        return playerName + ":" + (player == null ? -1 : player.playerId);
     }
 
     static String observationStateHash(Player player) {
@@ -2988,7 +2996,7 @@ public class AgentToolService {
     }
 
     private static JsonObject miningCooldownResult(Player player, long nowMs) {
-        int key = miningCooldownKey(player);
+        String key = miningCooldownKey(player);
         Long cooldownUntil = MINING_CLICK_COOLDOWN_UNTIL.get(key);
         if (!shouldWaitAfterMiningClick(nowMs, cooldownUntil == null ? 0L : cooldownUntil.longValue(),
                 player.isMining, player.miningRock)) {
@@ -3005,8 +3013,12 @@ public class AgentToolService {
         MINING_CLICK_COOLDOWN_UNTIL.put(miningCooldownKey(player), nowMs + MINING_RECLICK_COOLDOWN_MS);
     }
 
-    private static int miningCooldownKey(Player player) {
-        return player.playerId >= 0 ? player.playerId : System.identityHashCode(player);
+    static String miningCooldownKey(Player player) {
+        if (player == null) {
+            return "unknown:-1";
+        }
+        String name = normalize(player.playerName);
+        return name.isEmpty() ? "player-id:" + player.playerId : name + ":" + player.playerId;
     }
 
     static boolean shouldWaitAfterMiningClick(long nowMs, long cooldownUntilMs, boolean isMining, boolean miningRock) {
@@ -4479,6 +4491,7 @@ public class AgentToolService {
 
     private static void addPlayerState(JsonObject result, Player player) {
         JsonObject playerJson = new JsonObject();
+        playerJson.addProperty("playerId", player.playerId);
         playerJson.addProperty("name", player.playerName);
         playerJson.addProperty("x", player.absX);
         playerJson.addProperty("y", player.absY);
@@ -4866,6 +4879,8 @@ public class AgentToolService {
         if (player == null) {
             return state;
         }
+        state.addProperty("playerId", player.playerId);
+        state.addProperty("name", player.playerName);
         state.addProperty("tile", player.absX + "," + player.absY + "," + player.heightLevel);
         state.addProperty("hp", player.playerLevel[Constants.HITPOINTS]);
         state.addProperty("maxHp", baseLevel(player, Constants.HITPOINTS));
@@ -4882,6 +4897,8 @@ public class AgentToolService {
     private static JsonObject criticalPlayerState(JsonObject player, JsonObject result) {
         JsonObject state = new JsonObject();
         if (player != null) {
+            copyIfPresent(player, state, "playerId");
+            copyIfPresent(player, state, "name");
             String tile = tileText(player);
             if (tile.length() > 0) {
                 state.addProperty("tile", tile);
@@ -4922,6 +4939,7 @@ public class AgentToolService {
 
     private static JsonObject compactPlayerState(Player player) {
         JsonObject playerJson = new JsonObject();
+        playerJson.addProperty("playerId", player.playerId);
         playerJson.addProperty("name", player.playerName);
         playerJson.addProperty("tile", player.absX + "," + player.absY + "," + player.heightLevel);
         playerJson.addProperty("hp", player.playerLevel[Constants.HITPOINTS]);
@@ -4942,6 +4960,7 @@ public class AgentToolService {
 
     private static JsonObject compactPlayerState(JsonObject player) {
         JsonObject playerJson = new JsonObject();
+        copyIfPresent(player, playerJson, "playerId");
         copyIfPresent(player, playerJson, "name");
         playerJson.addProperty("tile", tileText(player));
         copyAs(player, playerJson, "hitpoints", "hp");

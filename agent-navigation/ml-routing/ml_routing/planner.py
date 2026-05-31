@@ -23,6 +23,18 @@ def _load_nav_modules():
     return navdb, router, route_eval
 
 
+def _profile_scoped_route_evidence_jsonl(profile: str) -> str:
+    if not profile:
+        return DEFAULT_ROUTE_EXECUTOR_EVIDENCE_JSONL
+    ensure_tool_imports()
+    try:
+        from profile_utils import run_evidence_path  # type: ignore
+
+        return str(run_evidence_path(profile))
+    except Exception:
+        return DEFAULT_ROUTE_EXECUTOR_EVIDENCE_JSONL
+
+
 def _install_route_call_caches(navdb: Any, router: Any):
     """Cache expensive trace graph reads inside one route request."""
     original_build_trace_graph = navdb.build_trace_graph
@@ -239,6 +251,8 @@ def _route_runner_command(args: SimpleNamespace, candidate: Dict[str, Any]) -> L
     if args.trace_profile:
         command.extend(["--trace-profile", args.trace_profile])
     evidence_jsonl = getattr(args, "route_evidence_jsonl", DEFAULT_ROUTE_EVIDENCE_JSONL)
+    if evidence_jsonl == DEFAULT_ROUTE_EVIDENCE_JSONL and args.trace_profile:
+        evidence_jsonl = _profile_scoped_route_evidence_jsonl(args.trace_profile)
     if evidence_jsonl and not bool(getattr(args, "no_route_evidence", False)):
         command.extend(["--evidence-jsonl", evidence_jsonl])
     wants_shortcut_probe = (
@@ -338,7 +352,7 @@ def route_definition(args: SimpleNamespace, candidate: Dict[str, Any]) -> Dict[s
         if index + 1 < len(legacy_command):
             evidence_jsonl = legacy_command[index + 1]
     if not evidence_jsonl:
-        evidence_jsonl = DEFAULT_ROUTE_EXECUTOR_EVIDENCE_JSONL
+        evidence_jsonl = _profile_scoped_route_evidence_jsonl(args.trace_profile)
     command = _route_executor_command(args, evidence_jsonl) if actionable else []
     route_steps = candidate.get("routeSteps") or candidate.get("waypoints") or []
     run_plan = candidate.get("runPlan") or {

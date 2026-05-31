@@ -21,6 +21,7 @@ from ml_routing.dataset import export_dataset
 from ml_routing.feedback import record_outcome
 from ml_routing.model import train_model
 from ml_routing.planner import DEFAULT_ROUTE_EVIDENCE_JSONL, rank_routes
+from profile_utils import is_default_profile, resolve_profile, route_definition_dir
 from usage_log import log_usage
 
 
@@ -45,7 +46,14 @@ def persist_route_definition(args: argparse.Namespace, definition: dict | None) 
         return definition
     if not definition.get("routeSteps"):
         return definition
-    output_dir = Path(getattr(args, "route_definition_dir", "") or DEFAULT_ROUTE_DEFINITION_DIR)
+    configured_dir = getattr(args, "route_definition_dir", "") or ""
+    profile = getattr(args, "trace_profile", "") or getattr(args, "profile", "")
+    if configured_dir:
+        output_dir = Path(configured_dir)
+    elif profile and not is_default_profile(profile):
+        output_dir = route_definition_dir(profile)
+    else:
+        output_dir = Path(DEFAULT_ROUTE_DEFINITION_DIR)
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / safe_route_filename(definition.get("routeId"))
     execution = definition.setdefault("execution", {})
@@ -91,7 +99,8 @@ def add_shared_route_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--allow-lethal", action="store_true")
     parser.add_argument("--allow-failed-candidate", action="store_true")
     parser.add_argument("--trace-file", action="append")
-    parser.add_argument("--trace-profile", default="")
+    parser.add_argument("--trace-profile", default=resolve_profile(trace=True, default=""),
+                        help="Only use traces and route evidence for this profile. Defaults to RS_PROFILE/RSBRIDGE_PROFILE when set.")
     parser.add_argument("--include-unscoped-traces", action="store_true")
     parser.add_argument("--graph-snap-distance", type=int, default=16)
     parser.add_argument("--hazard-buffer", type=int, default=10)
@@ -140,7 +149,7 @@ def add_shared_route_args(parser: argparse.ArgumentParser) -> None:
                         help="Include this many ranked alternatives in JSON output. Default keeps agent output compact.")
     parser.add_argument("--runner-max-batches", type=int, default=8)
     parser.add_argument("--route-evidence-jsonl", default=DEFAULT_ROUTE_EVIDENCE_JSONL,
-                        help="Path the legacy compatibility executor should append per-batch route evidence to.")
+                        help="Path the legacy compatibility executor should append per-batch route evidence to. Non-default profiles use a profile-scoped path unless this is explicitly set.")
     parser.add_argument("--no-route-evidence", action="store_true",
                         help="Do not add --evidence-jsonl to generated compatibility commands.")
     parser.add_argument("--route-definition-dir", default=DEFAULT_ROUTE_DEFINITION_DIR,
@@ -276,7 +285,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command")
 
     export = sub.add_parser("export", help="Export training/evaluation datasets from existing route evidence.")
-    export.add_argument("--profile", default="")
+    export.add_argument("--profile", default=resolve_profile(default=""))
     export.add_argument("--run-id", default="")
     export.add_argument("--output-dir", default="")
     export.add_argument("--trace-file", action="append")
@@ -338,7 +347,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     loop = sub.add_parser("loop", help="Asynchronous export/train/benchmark improvement loop.")
     add_shared_route_args(loop)
-    loop.add_argument("--profile", default="")
+    loop.add_argument("--profile", default=resolve_profile(default=""))
     loop.add_argument("--run-id", default="")
     loop.add_argument("--output-dir", default="")
     loop.add_argument("--dataset-dir", default="")
@@ -356,7 +365,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     outcome = sub.add_parser("record-outcome", help="Append route outcome/problem feedback for future training/export.")
     outcome.add_argument("--route-id", default="")
-    outcome.add_argument("--profile", default="")
+    outcome.add_argument("--profile", default=resolve_profile(default=""))
     outcome.add_argument("--from", dest="from_tile", required=True,
                          help="Start tile x,y,h or original route request string.")
     outcome.add_argument("--to", required=True, help="Target place id/name or x,y,h tile.")

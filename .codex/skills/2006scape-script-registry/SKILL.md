@@ -41,7 +41,7 @@ python3 agent-navigation/tools/script_registry.py run food -- --mode fish-cook -
 python3 agent-navigation/tools/script_registry.py run smithing -- --mode smith --item sword --amount 10
 python3 agent-navigation/tools/script_registry.py run bank-loadout -- --preset cowhide-trip --dry-run --json
 python3 agent-navigation/tools/script_registry.py run cowhide -- --stop-when-inventory-full --quiet
-python3 agent-navigation/tools/script_registry.py run character-memory -- show --profile MrFlame --json
+python3 agent-navigation/tools/script_registry.py run character-memory -- show --profile PROFILE --json
 ```
 
 The catalog lives at `agent-navigation/data/script_registry.json`. Keep this skill context-light: add script metadata there, not here.

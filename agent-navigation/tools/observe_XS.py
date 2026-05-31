@@ -3,9 +3,11 @@
 
 import json
 import os
+import argparse
 from pathlib import Path
 
 from xs_common import ROOT, compact_observe, dump, run_command
+from profile_utils import resolve_profile
 from usage_log import log_usage
 
 
@@ -13,7 +15,12 @@ RS_TOOL = Path(__file__).resolve().parent / "rs-tool.sh"
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Observe the selected profile with compact XS output.")
+    parser.add_argument("--profile", default=resolve_profile(default=""))
+    args = parser.parse_args()
     env = os.environ.copy()
+    if args.profile:
+        env["RS_PROFILE"] = args.profile
     log_usage("observe_XS", surface="xs")
     proc = run_command([str(RS_TOOL), "observe_state", "{}"], cwd=ROOT, env=env)
     try:

@@ -4,9 +4,9 @@
 import argparse
 import collections
 import json
-import os
 from pathlib import Path
 
+from profile_utils import resolve_profile
 from usage_log import log_usage
 from xs_common import ROOT, dump, tile
 
@@ -165,7 +165,7 @@ def summarize(path, recent_limit=10, failure_limit=10):
 
 def main():
     parser = argparse.ArgumentParser(description="Summarize latest/current agent session logs in compact form.")
-    parser.add_argument("--profile", default=os.environ.get("RS_PROFILE", "MrFlame"))
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     parser.add_argument("--date", default="")
     parser.add_argument("--session-id", default="")
     parser.add_argument("--latest", action="store_true", default=True)

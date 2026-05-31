@@ -247,21 +247,21 @@ agent-navigation/topology/movement-topology-v5-heatmap.png
 agent-navigation/topology/movement-topology-v6.png
 ```
 
-Render canonical active maps by overwriting the same three PNGs. The active movement topology wrappers use the cache-backed world map as their background by default and read the latest unified movement traces at render time. During live route exploration, prefer `render_agent_context_map.py`; it writes ignored timestamped context artifacts under `agent-navigation/.local/context-maps/<date>/`.
+Render the selected profile's canonical active maps. The active movement topology wrappers use the cache-backed world map as their background by default and read the latest unified movement traces for the selected profile at render time. During live route exploration, prefer `render_agent_context_map.py`; it writes ignored timestamped context artifacts under `agent-navigation/.local/context-maps/<date>/`.
 
 ```sh
 agent-navigation/tools/cache_world_map.py --output agent-navigation/.local/map-summaries/cache-world-map.png --summary agent-navigation/.local/map-summaries/cache-world-map.json
-agent-navigation/tools/render_profile_map.py
-agent-navigation/tools/render_heat_map.py
-agent-navigation/tools/render_fog_map.py
+agent-navigation/tools/render_profile_map.py --trace-profile PROFILE
+agent-navigation/tools/render_heat_map.py --trace-profile PROFILE
+agent-navigation/tools/render_fog_map.py --trace-profile PROFILE
 ```
 
-Do not create one-off route PNGs in `agent-navigation/topology/`. Keep only the three active map PNGs there; JSON summaries, surface-route renders, cache-map renders, shortcut/proof context maps, and stable `agent-context-map.*` exports belong under ignored `.local` paths unless the user explicitly asks otherwise.
+Do not create one-off route PNGs in `agent-navigation/topology/`. Keep only the profile-scoped active map PNGs there; JSON summaries, surface-route renders, cache-map renders, shortcut/proof context maps, and stable `agent-context-map.*` exports belong under ignored `.local` paths unless the user explicitly asks otherwise.
 
 When the user asks for the PNG, render it, then show it with an absolute local path:
 
 ```md
-![Mr. Flame map](/Users/kevin/Documents/2006Scape/agent-navigation/topology/movement-topology-v4.png)
+![Profile movement map](/Users/kevin/Documents/2006Scape/agent-navigation/topology/movement-topology-v4.png)
 ```
 
 ## Current learned context from the prior rollout

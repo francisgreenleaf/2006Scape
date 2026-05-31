@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.Locale;
 import java.util.UUID;
 
 import com.google.gson.JsonArray;
@@ -250,7 +251,7 @@ public class AgentActionService {
 
     private final ConcurrentLinkedQueue<QueuedAction> queuedActions = new ConcurrentLinkedQueue<QueuedAction>();
     private final AtomicLong serverTick = new AtomicLong(0L);
-    private final ConcurrentHashMap<Integer, CombatGoal> combatGoals = new ConcurrentHashMap<Integer, CombatGoal>();
+    private final ConcurrentHashMap<String, CombatGoal> combatGoals = new ConcurrentHashMap<String, CombatGoal>();
 
     public JsonObject submitTool(String token, String tool, JsonObject arguments) {
         final boolean xs = AgentToolService.isXsTool(tool);
@@ -1392,7 +1393,7 @@ public class AgentActionService {
                 targetLevel, stepIntervalTicks, maxActions, area, npc, style, fixedArea, fixedStyle);
         goal.updateLevels(player);
         goal.rememberLoggedLevels();
-        combatGoals.put(Integer.valueOf(player.playerId), goal);
+        combatGoals.put(playerIdentityKey(player), goal);
         JsonObject result = AgentToolService.success("Started combat goal toward base " + targetLevel + ".");
         result.add("goal", goal.toJson());
         result.add("state", AgentToolService.observeState(player));
@@ -1401,7 +1402,7 @@ public class AgentActionService {
     }
 
     private JsonObject observeGoal(Player player) {
-        CombatGoal goal = combatGoals.get(Integer.valueOf(player.playerId));
+        CombatGoal goal = combatGoals.get(playerIdentityKey(player));
         if (goal == null) {
             JsonObject result = AgentToolService.failure("No active goal is registered for this player.");
             result.add("state", AgentToolService.observeState(player));
@@ -1414,7 +1415,7 @@ public class AgentActionService {
     }
 
     private JsonObject stopGoal(AgentSession session, Player player) {
-        CombatGoal goal = combatGoals.get(Integer.valueOf(player.playerId));
+        CombatGoal goal = combatGoals.get(playerIdentityKey(player));
         if (goal == null) {
             JsonObject result = AgentToolService.failure("No active goal is registered for this player.");
             result.add("state", AgentToolService.observeState(player));
@@ -1550,6 +1551,15 @@ public class AgentActionService {
 
     private static boolean isValidPlayerIndex(int playerId) {
         return playerId >= 0 && playerId < PlayerHandler.players.length;
+    }
+
+    static String playerIdentityKey(Player player) {
+        if (player == null) {
+            return "unknown:-1";
+        }
+        String name = player.playerName == null ? "" : player.playerName.trim().toLowerCase(Locale.ENGLISH)
+                .replace('_', ' ');
+        return name.isEmpty() ? "player-id:" + player.playerId : name;
     }
 
     private static AgentSession goalLogSession(CombatGoal goal, AgentSession session, Player player) {

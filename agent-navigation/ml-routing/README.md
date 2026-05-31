@@ -102,7 +102,7 @@ python3 agent-navigation/ml-routing/route_ml.py record-outcome \
 Export the feature lake from existing evidence:
 
 ```sh
-python3 agent-navigation/ml-routing/route_ml.py export --profile mrflame
+python3 agent-navigation/ml-routing/route_ml.py export --profile PROFILE
 ```
 
 Train the current model with threaded aggregation:
@@ -154,7 +154,7 @@ Run one asynchronous improvement cycle:
 
 ```sh
 python3 agent-navigation/ml-routing/route_ml.py loop \
-  --profile mrflame \
+  --profile PROFILE \
   --workers 16 \
   --once
 ```
@@ -163,7 +163,7 @@ Run a repeated background-style loop from a scheduler or separate shell:
 
 ```sh
 python3 agent-navigation/ml-routing/route_ml.py loop \
-  --profile mrflame \
+  --profile PROFILE \
   --workers 16 \
   --interval-seconds 1800
 ```

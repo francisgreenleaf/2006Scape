@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 
 from usage_log import log_usage
+from profile_utils import resolve_profile
 from xs_common import ROOT, dump, run_command
 
 
@@ -23,6 +24,7 @@ def xxs_tool_name(tool):
 
 def main():
     parser = argparse.ArgumentParser(description="Call an rs bridge tool and emit a minimal XXS response.")
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     parser.add_argument("tool")
     parser.add_argument("arguments", nargs="?", default="{}")
     args = parser.parse_args()
@@ -38,6 +40,8 @@ def main():
 
     tool = xxs_tool_name(args.tool)
     env = os.environ.copy()
+    if args.profile:
+        env["RS_PROFILE"] = args.profile
     env["AGENT_NAV_XS_PARENT"] = "xxs"
     log_usage("rs-tool_XXS", surface="xxs", argv=[tool, parsed])
     proc = run_command([str(RS_TOOL), tool, json.dumps(parsed, separators=(",", ":"))], cwd=ROOT, env=env)

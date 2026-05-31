@@ -13,11 +13,11 @@ import uuid
 from pathlib import Path
 
 import bridge_script as bridge
+from profile_utils import resolve_profile, run_evidence_path
 from usage_log import log_usage
 
 
 RUNS_DIR = bridge.ROOT / "data" / "food" / "catherby-runs"
-EVIDENCE_DIR = bridge.REPO_ROOT / "agent-navigation" / ".local" / "run-evidence"
 RUNNER_CONTROL_DIR = bridge.ROOT / ".local" / "runners"
 RUNNER_CONTROL_NAME = "catherby-food"
 PASSIVE_TRACE_DIR = bridge.REPO_ROOT / "2006Scape Server" / "data" / "logs" / "player-movement-traces"
@@ -109,7 +109,7 @@ def log(args, message):
 
 
 def runner_profile_label(args):
-    profile = (getattr(args, "profile", "") or os.environ.get("RS_PROFILE", "")).strip()
+    profile = resolve_profile(getattr(args, "profile", ""), default="").strip()
     return profile or "default"
 
 
@@ -125,15 +125,16 @@ def runner_status_path(args):
     return RUNNER_CONTROL_DIR / "{}.status.json".format(runner_control_stem(args))
 
 
+def route_evidence_path(args):
+    return run_evidence_path(resolve_profile(getattr(args, "profile", ""), default=""), "catherby-food")
+
+
 def runner_primary_stop_path(args):
     return RUNNER_CONTROL_DIR / "{}.stop".format(runner_control_stem(args))
 
 
 def runner_stop_paths(args):
-    paths = [runner_primary_stop_path(args)]
-    if runner_profile_label(args) != "default":
-        paths.append(RUNNER_CONTROL_DIR / "{}.stop".format(RUNNER_CONTROL_NAME))
-    return paths
+    return [runner_primary_stop_path(args)]
 
 
 def runner_stop_requested(args):
@@ -386,7 +387,7 @@ def write_runner_status(args, status, run_path=None, reason=None, cycle=None, pl
     }
     if run_path is not None:
         payload["runLog"] = str(run_path)
-        payload["routeEvidencePath"] = str(EVIDENCE_DIR / "catherby-food.routes.jsonl")
+        payload["routeEvidencePath"] = str(route_evidence_path(args))
     if cycle is not None:
         payload["cycle"] = cycle
     if player is not None:
@@ -652,7 +653,7 @@ def execute_route_definition(definition, target, args, handle):
         "--eat-at",
         str(args.eat_at),
         "--evidence-jsonl",
-        str(EVIDENCE_DIR / "catherby-food.routes.jsonl"),
+        str(route_evidence_path(args)),
         "--route-definition",
         str(route_path),
     ]
@@ -1660,7 +1661,7 @@ def targets_met(player, args):
 
 def run(args):
     RUNS_DIR.mkdir(parents=True, exist_ok=True)
-    EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
+    route_evidence_path(args).parent.mkdir(parents=True, exist_ok=True)
     run_path = RUNS_DIR / "{}-{}.jsonl".format(
         dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ"),
         uuid.uuid4().hex[:8],
@@ -1768,7 +1769,7 @@ def run(args):
 def main(argv=None):
     argv_list = list(sys.argv[1:] if argv is None else argv)
     parser = argparse.ArgumentParser(description="Run Catherby fish/cook/drop/bank cycles.")
-    parser.add_argument("--profile", default=os.environ.get("RS_PROFILE", ""))
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     parser.add_argument("--cycles", type=int, default=1)
     parser.add_argument("--target-fishing-level", type=int)
     parser.add_argument("--target-cooking-level", type=int)

@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: agent-navigation/tools/rs-tool.sh TOOL [JSON_ARGUMENTS]
+Usage: agent-navigation/tools/rs-tool.sh [--profile PROFILE] TOOL [JSON_ARGUMENTS]
 
 Call a 2006Scape rs bridge tool through the active local session.
 
@@ -13,6 +13,7 @@ Examples:
 
 Environment:
   RS_PROFILE              Select a profile-specific session file
+  RSBRIDGE_PROFILE        Fallback profile when RS_PROFILE is unset
   RSBRIDGE_SESSION_FILE  Override session file path
   RSBRIDGE_EXPECT_PLAYER Validate the session player before sending the tool call
   RSBRIDGE_TOOL_URL      Override tool URL, default http://127.0.0.1:43610/agent/tool
@@ -27,8 +28,35 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PROFILE="${RS_PROFILE:-${RSBRIDGE_PROFILE:-}}"
-if [[ -n "${RSBRIDGE_SESSION_FILE:-}" ]]; then
-  SESSION_FILE="$RSBRIDGE_SESSION_FILE"
+SESSION_FILE_OVERRIDE="${RSBRIDGE_SESSION_FILE:-}"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --profile)
+      PROFILE="${2:?missing value for --profile}"
+      shift 2
+      ;;
+    --session-file)
+      SESSION_FILE_OVERRIDE="${2:?missing value for --session-file}"
+      shift 2
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+if [[ $# -lt 1 ]]; then
+  usage
+  exit 0
+fi
+
+if [[ -n "$SESSION_FILE_OVERRIDE" ]]; then
+  SESSION_FILE="$SESSION_FILE_OVERRIDE"
 elif [[ -n "$PROFILE" ]]; then
   SAFE_PROFILE="$(python3 - "$PROFILE" <<'PY'
 import sys

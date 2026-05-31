@@ -31,6 +31,7 @@ if str(SCRIPT_DIR) not in sys.path:
 
 import navdb  # noqa: E402
 import route_eval  # noqa: E402
+from profile_utils import resolve_profile  # noqa: E402
 
 
 DEFAULT_CIRCUIT = [
@@ -655,7 +656,7 @@ def run(args):
 def main(argv=None):
     global RUN_PROFILE
     parser = argparse.ArgumentParser(description="Run timed repeated 2006Scape route laps.")
-    parser.add_argument("--profile", default=os.environ.get("RS_PROFILE") or os.environ.get("RSBRIDGE_PROFILE") or "",
+    parser.add_argument("--profile", default=resolve_profile(default=""),
                         help="Use this profile's bridge session and matching trace profile.")
     parser.add_argument("--laps", type=int, default=10)
     parser.add_argument("--circuit", nargs="*", help="Waypoint ids/tiles. Default is Lumbridge->Varrock->Falador->Draynor-edge->Lumbridge.")
@@ -700,7 +701,7 @@ def main(argv=None):
     parser.add_argument("--include-unverified", action="store_true")
     parser.add_argument("--trace-file", action="append")
     parser.add_argument("--trace-profile",
-                        default=os.environ.get("RS_TRACE_PROFILE") or os.environ.get("RS_PROFILE") or os.environ.get("RSBRIDGE_PROFILE") or "",
+                        default=resolve_profile(trace=True, default=""),
                         help="Only use traces recorded by this player/profile.")
     parser.add_argument("--include-unscoped-traces", action="store_true")
     args = parser.parse_args(argv)

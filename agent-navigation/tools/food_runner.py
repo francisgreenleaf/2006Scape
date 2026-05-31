@@ -7,6 +7,7 @@ import sys
 import uuid
 
 import bridge_script as bridge
+from profile_utils import resolve_profile
 from usage_log import log_usage
 
 
@@ -270,7 +271,7 @@ def run(args):
 def main(argv=None):
     argv_list = list(sys.argv[1:] if argv is None else argv)
     parser = argparse.ArgumentParser(description="Run primitive-backed fishing, cooking, and firemaking.")
-    parser.add_argument("--profile", default="")
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     parser.add_argument("--mode", choices=["fish", "cook", "fish-cook", "firemake"], default="fish-cook")
     parser.add_argument("--fishing-spot", default="lumbridge_fishing_spot")
     parser.add_argument("--cooking-place", default="lumbridge_kitchen_range")
