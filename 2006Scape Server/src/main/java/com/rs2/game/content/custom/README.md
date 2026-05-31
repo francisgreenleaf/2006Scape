@@ -20,6 +20,9 @@ com/rs2/game/content/custom/
     lumbridge/
       pantrypanic/
         PantryPanicQuest.java        # Standalone custom quest implementation.
+    dwarvenmine/
+      dwarfcannon/
+        DwarfCannonQuest.java        # Standalone custom quest for cannon access and cannonball tutorial.
 ```
 
 Tests for this package live under:

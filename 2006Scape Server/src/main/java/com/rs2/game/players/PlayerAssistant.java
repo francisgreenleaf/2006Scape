@@ -1382,8 +1382,8 @@ public class PlayerAssistant {
 				if (opponent.duelStatus == 5) {
 					opponent.duelStatus++;
 				}
-				if (opponent.getCannon().hasCannon()) {
-					opponent.getCannon().handleDeath();
+				if (player.getCannon().hasCannon()) {
+					player.getCannon().handleDeath();
 				}
 			}
 		}

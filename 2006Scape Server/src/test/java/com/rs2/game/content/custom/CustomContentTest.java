@@ -68,8 +68,8 @@ public class CustomContentTest {
 
     @Test
     public void registryContributesQuestPointsAndQuestButtonInformation() throws Exception {
-        assertEquals(1, CustomContent.getTotalQuestPoints());
-        assertEquals(QuestAssistant.BASE_QUESTPOINTS + 1, QuestAssistant.MAXIMUM_QUESTPOINTS);
+        assertEquals(2, CustomContent.getTotalQuestPoints());
+        assertEquals(QuestAssistant.BASE_QUESTPOINTS + 2, QuestAssistant.MAXIMUM_QUESTPOINTS);
 
         assertFalse(CustomContent.showQuestInformation(player, -1));
         assertTrue(CustomContent.showQuestInformation(player, PantryPanicQuest.QUEST_BUTTON));

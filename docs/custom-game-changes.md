@@ -19,6 +19,7 @@ Custom content should still keep its implementation details close to the code un
 | Lumbridge quests | `Pantry Panic` custom quest | Implemented; restart smoke passed | Adds a short Lumbridge story quest with NPC dialogue, item gathering, hand-in, reward, and agent guide. |
 | Lumbridge shops | Bob's Brilliant Axes stock expansion | Implemented; restart smoke passed | Adds better standard axes to Bob's shop at OSRS shop prices; black and dragon axes are excluded by request. |
 | Barbarian Outpost agility | Entrance gate and pipe interaction fix | Implemented; unit-tested | Handles the gate pair `2115/2116` and keeps the pipe entrance `2287` tied to the correct side-adjacent tiles so clicks do not silently no-op. |
+| Dwarf Cannon quest and recovery | Nulodion custom quest, cannonball tutorial, and cannon recovery path | Implemented; tested | Moves Nulodion interaction into custom quest content, makes the cannon shop path reachable through dialogue, teaches cannonball crafting, and fixes death recovery so the dead player's cannon is reclaimed correctly. |
 
 ## Pantry Panic
 
@@ -123,6 +124,43 @@ Implementation:
 Validation:
 
 - `mvn -q -pl "2006Scape Server" -Dtest=DoubleGatesTest test`
+
+## Dwarf Cannon Quest And Recovery
+
+Type: Custom dwarf quest plus a core cannon-death bug fix.
+
+Player-facing behavior:
+
+- Nulodion now handles the cannon feature through the custom quest layer instead of the dead core branch.
+- Players can start a small Dwarf Cannon quest from Nulodion, learn that cannonballs require an ammo mould and steel bar, and complete the quest after making a cannonball.
+- Nulodion can open the cannon parts shop from dialogue, so the cannon acquisition path is reachable in-game.
+- Lost cannon recovery still returns the four cannon parts, and the death path now clears the dead player's cannon instead of the killer's.
+
+Reasoning:
+
+- The stock code had the cannon mechanic but not a complete, reachable feature path.
+- The custom-content framework is the right home for quest logic, dialogue flow, and the Nulodion shop/recovery experience.
+- The only core change needed was the death-recovery bug fix; everything else belongs behind the generic custom-content hook.
+
+Implementation:
+
+- Custom quest: `2006Scape Server/src/main/java/com/rs2/game/content/custom/quests/dwarvenmine/dwarfcannon/DwarfCannonQuest.java`
+- Quest guide: `2006Scape Server/src/main/java/com/rs2/game/content/custom/quests/dwarvenmine/dwarfcannon/GUIDE.md`
+- Custom registry: `2006Scape Server/src/main/java/com/rs2/game/content/custom/CustomContent.java`
+- Death fix: `2006Scape Server/src/main/java/com/rs2/game/players/PlayerAssistant.java`
+- Custom-content docs: `2006Scape Server/src/main/java/com/rs2/game/content/custom/README.md`
+- Tests: `2006Scape Server/src/test/java/com/rs2/game/content/custom/DwarfCannonQuestTest.java`
+
+Validation:
+
+- `mvn -q -pl "2006Scape Server" -Dtest=CustomContentTest,DwarfCannonQuestTest test`
+- `mvn -q -pl "2006Scape Server" test`
+- `git diff --check`
+
+Known follow-up:
+
+- The running server will not see the new quest until it is deliberately rebuilt and restarted.
+- The quest uses the existing cannonball crafting object routing; if a future map or object refactor changes those furnace ids, the guide and quest text should be updated together.
 
 ## Template For Future Entries
 
