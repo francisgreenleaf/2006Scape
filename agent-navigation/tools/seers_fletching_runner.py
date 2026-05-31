@@ -533,6 +533,9 @@ def primitive_chop_until_inventory_full(tree, args, handle, reason):
         if not interact_result.get("success", False) or not wait_result.get("success", False):
             last_result["batchStatus"] = "blocked"
             break
+        if int(player.get("freeInventorySlots", 0) or 0) > 0:
+            player = pickup_nearby_bird_nests(args, handle, "during_chop")
+            last_result["player"] = player
         if int(player.get("freeInventorySlots", 0) or 0) < 1:
             last_result["batchStatus"] = "inventory_full"
             break
