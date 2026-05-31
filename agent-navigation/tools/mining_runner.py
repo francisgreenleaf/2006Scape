@@ -108,6 +108,10 @@ PICKAXE_COIN_FLOAT = {
     1275: 12800,
 }
 
+# Random gems can appear while mining. Bank them with ore so long mining runs
+# keep full inventory capacity without throwing away useful byproducts.
+MINING_BYPRODUCT_ITEM_IDS = [1623, 1621, 1619, 1617, 1625, 1627, 1629]
+
 
 def utc_now():
     return dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z")
@@ -1109,6 +1113,7 @@ def bank_ores(player, site, ores, args, handle):
             raise RuntimeError("could not route to bank to deposit ores")
         player = observe()
     item_ids = [ORE_DEFS[ore]["itemId"] for ore in (ORE_DEFS.keys() if args.bank_all_ores else ores)]
+    item_ids.extend(MINING_BYPRODUCT_ITEM_IDS)
     result = call_tool("deposit_inventory_items", {"itemIds": item_ids})
     player = player_from(result)
     write_event(handle, "bank_ores", {
