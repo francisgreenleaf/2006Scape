@@ -44,7 +44,8 @@ Use these from external scripts through `agent-navigation/tools/rs-tool.sh`, pre
   `travel_to_landmark_until_arrived`, `object_transition_step_XS`,
   `object_transition_step_XXS`
 - Game interactions: `interact_object`, `interact_object_XS`,
-  `interact_object_XXS`, `interact_npc`, `attack_npc`,
+  `interact_object_XXS`, `find_nearest_object_XS`,
+  `find_nearest_rock_XS`, `find_nearest_tree_XS`, `interact_npc`, `attack_npc`,
   `attack_npc_XXS`,
   `continue_dialogue`, `select_dialogue_option`, `close_interfaces`
 - Item and UI primitives: `use_item_on_item`, `use_item_on_object`,
@@ -63,7 +64,8 @@ The main compact dynamic surfaces are `observe_state_XS`,
 `walk_to_tile_until_arrived_XS`, `travel_to_landmark_until_arrived_XS`,
 `wait_ticks_XS`, `wait_until_idle_XS`, `wait_until_combat_event_smart_XS`,
 `wait_until_combat_event_XS`, `object_transition_step_XS`,
-`interact_object_XS`, `find_nearest_object_XS`,
+`interact_object_XS`, `find_nearest_object_XS`, `find_nearest_rock_XS`,
+`find_nearest_tree_XS`,
 `bury_bones_XS`, `deposit_inventory_items_XS`, `withdraw_bank_items_XS`,
 `unequip_items_XS`, and `food_bank_XS`.
 They use the same mechanics as their
@@ -194,30 +196,41 @@ primitive instead of a full strategy tool.
 
 ## Bridge Script State Shapes
 
-`bridge_script.call_tool("observe_state", {}, profile=PROFILE)` returns the
-raw bridge response. Unwrap it with `bridge_script.player_from(result)` when
-you need the player object.
+`bridge_script.observe_xxs(profile=PROFILE)` returns the minimal critical
+player state for confirmation/status loops. Use it when tile, HP, combat/death,
+run state, free slots, food, and short XP deltas answer the next question.
 
-`bridge_script.observe(profile=PROFILE)` already returns the unwrapped player
-dict from full `observe_state`; do not pass that value back through
-`player_from`.
+`bridge_script.observe_xs(profile=PROFILE)` returns compact decision state and
+is the default for route, skilling, combat, and recovery loops. It keeps compact
+inventory, bank/equipment summaries, nearby entities, and skills without loading
+the full observe payload.
 
-Use full `observe_state` or `bridge_script.observe` when a script needs complete
-bank contents. XS and XXS observe variants are preferred for normal control
-loops, but they may omit or compact bank details.
+`bridge_script.observe_full(profile=PROFILE)` and the legacy
+`bridge_script.observe(profile=PROFILE)` call full `observe_state`. Use them
+only when a script can name the missing field, usually complete bank contents,
+complete equipment/inventory evidence, profile/personality context, or a new
+debug workflow. Do not call full observe before narrow helpers such as
+`find_nearest_rock`, `find_nearest_tree`, or after every compact wait just to
+refresh.
+
+`bridge_script.call_tool("observe_state_XS", {}, profile=PROFILE)` returns the
+raw compact bridge response. Unwrap it with `bridge_script.player_from(result)`
+when you need the player object.
 
 ## External Script Pattern
 
 1. Resolve the target profile from `--profile`, `RS_PROFILE`, or
    `RSBRIDGE_PROFILE`, then pass it explicitly to bridge helpers and child
    commands.
-2. Read state with `observe_state`, preferably through XS/XXS wrappers when the
-   compact result has enough context.
+2. Read state with `observe_xxs` or `observe_xs`. Use full observe only after
+   naming the missing field and keeping that call out of hot loops.
 3. Request normal A-to-B routes through ML1 (`route_ml.py define`) and follow the returned `routeSteps` with movement primitives. Use bare `route_runner.py` only for legacy diagnostics or compatibility-executor regression checks.
 4. Use one primitive action, such as item-on-item, object interaction, shop buy,
    or NPC attack.
 5. Wait with `wait_until_idle` or a movement batch.
-6. Re-observe from the returned state and decide the next script step.
+6. Treat the returned compact state as the next observation. Re-observe with XS
+   only when the result omitted needed state; re-observe full only for complete
+   bank/evidence/debug fields.
 7. Record JSONL evidence under an ignored profile-scoped path or include
    explicit `profile`, `playerName`, and `sessionId` fields when writing to a
    shared `agent-navigation/data/<domain>/runs/` directory.

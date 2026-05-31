@@ -97,7 +97,17 @@ def observe_state():
     return call_tool("observe_state", {})
 
 
+def observe_state_xs():
+    return call_tool("observe_state_XS", {})
+
+
+def observe_xs():
+    result = observe_state_xs()
+    return bridge.player_from(result)
+
+
 def observe():
+    """Legacy full observe for bank/shop/product-count paths."""
     result = observe_state()
     return bridge.player_from(result)
 
@@ -261,7 +271,6 @@ def primitive_fletch_until_empty(player, args, handle, reason):
     last_result = {"success": True, "player": player, "batchStatus": "not_started", "batchTicks": 0}
     while rounds < 8 and total_ticks < args.fletch_ticks:
         rounds += 1
-        player = observe()
         if fletching_target_reached(player, args):
             last_result = {"success": True, "player": player, "batchStatus": "target_level_reached"}
             break
@@ -394,14 +403,13 @@ def legacy_chop_until_inventory_full(tree, args):
 def primitive_chop_until_inventory_full(tree, args, handle, reason):
     total_ticks = 0
     rounds = 0
-    player = observe()
+    player = observe_xs()
     last_result = {"success": True, "player": player, "batchStatus": "not_started", "batchTicks": 0}
     while total_ticks < args.chop_ticks:
-        player = observe()
         if int(player.get("freeInventorySlots", 0) or 0) < 1:
             last_result = {"success": True, "player": player, "batchStatus": "inventory_full"}
             break
-        find_result = call_tool("find_nearest_tree", {
+        find_result = call_tool("find_nearest_tree_XS", {
             "tree": tree,
             "maxDistance": args.tree_max_distance,
             "reachable": True,
@@ -412,7 +420,7 @@ def primitive_chop_until_inventory_full(tree, args, handle, reason):
             last_result["batchStatus"] = "blocked"
             break
         obj = find_result.get("object") or {}
-        interact_result = call_tool("interact_object", {
+        interact_result = call_tool("interact_object_XS", {
             "objectId": obj.get("objectId"),
             "x": obj.get("x"),
             "y": obj.get("y"),
@@ -479,9 +487,11 @@ def ensure_run(player, min_energy, handle):
     before = compact_player(player)
     if before["runEnabled"] or before["runEnergy"] < min_energy:
         return player
-    result = call_tool("set_run", {"enabled": True})
-    write_event(handle, "set_run", {"before": before, "after": compact_player(result["player"])})
-    return result["player"]
+    result = call_tool("set_run_XXS", {"enabled": True})
+    updated = dict(player)
+    updated.update(bridge.player_from(result))
+    write_event(handle, "set_run", {"before": before, "after": compact_player(updated)})
+    return updated
 
 
 def ensure_axe_equipped(player, handle):
@@ -526,12 +536,12 @@ def close_interfaces_if_needed(player, handle, reason):
 
 def pickup_nearby_bird_nests(args, handle, reason):
     if not args.pickup_bird_nests:
-        return observe()
+        return observe_xs()
     picked = 0
-    player = observe()
+    player = observe_xs()
     for attempt in range(max(1, args.nest_pickup_attempts)):
-        state = observe_state()
-        player = state.get("player") or player
+        state = observe_state_xs()
+        player = bridge._player_from_or(state, player)
         nests = ground_bird_nests(state)
         if not nests:
             break
@@ -841,7 +851,7 @@ def main(argv=None):
             player = close_interfaces_if_needed(player, handle, "before_chop")
             if args.chop_anchor:
                 route_to(args.chop_anchor, args, handle, "chop_anchor")
-                player = observe()
+                player = observe_xs()
             result = chop_until_inventory_full(tree, args, handle, "cycle")
             player = result["player"]
             player = pickup_nearby_bird_nests(args, handle, "after_chop")
