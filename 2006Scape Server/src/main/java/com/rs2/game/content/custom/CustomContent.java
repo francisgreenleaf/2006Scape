@@ -3,6 +3,7 @@ package com.rs2.game.content.custom;
 import java.io.BufferedWriter;
 import java.io.IOException;
 
+import com.rs2.game.content.custom.quests.dwarvenmine.dwarfcannon.DwarfCannonQuest;
 import com.rs2.game.content.custom.quests.lumbridge.pantrypanic.PantryPanicQuest;
 import com.rs2.game.players.Player;
 
@@ -11,7 +12,8 @@ public final class CustomContent {
     private static final String SAVE_PREFIX = "customQuestStage-";
 
     private static final CustomQuest[] QUESTS = {
-            PantryPanicQuest.INSTANCE
+            PantryPanicQuest.INSTANCE,
+            DwarfCannonQuest.INSTANCE
     };
 
     private CustomContent() {
