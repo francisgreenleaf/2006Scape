@@ -278,7 +278,7 @@ def set_withdraw_mode(player, take_notes, profile, handle, reason):
 
 
 def walk_exact(player, destination, profile, handle, reason, max_ticks=40):
-    result = bridge.call_tool("walk_to_tile_until_arrived", {
+    result = bridge.call_tool("walk_to_tile_until_arrived_XS", {
         "x": int(destination["x"]),
         "y": int(destination["y"]),
         "height": int(destination.get("height", 0) or 0),
@@ -551,7 +551,7 @@ def craft_batch(player, profile, handle, args):
         raise
     bridge.call_tool("wait_ticks", {"ticks": 1}, profile=profile)
     button = bridge.call_tool("click_interface_button", {"buttonId": int(recipe["buttonId"])}, profile=profile)
-    wait = bridge.call_tool("wait_until_idle", {
+    wait = bridge.call_tool("wait_until_idle_XS", {
         "maxTicks": int(args.craft_wait_ticks),
         "movement": True,
         "skilling": True,

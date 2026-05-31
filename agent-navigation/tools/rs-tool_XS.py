@@ -13,6 +13,39 @@ from usage_log import log_usage
 
 RS_TOOL = Path(__file__).resolve().parent / "rs-tool.sh"
 
+XS_TOOL_BASES = {
+    "observe_state",
+    "observe_state_if_changed",
+    "combat_state",
+    "walk_path_steps",
+    "walk_to_tile_until_arrived",
+    "travel_to_landmark_until_arrived",
+    "wait_ticks",
+    "wait_until_idle",
+    "wait_until_combat_event",
+    "wait_until_combat_event_smart",
+    "object_transition_step",
+    "interact_object",
+    "find_nearest_object",
+    "bury_bones",
+    "deposit_inventory_items",
+    "withdraw_bank_items",
+    "unequip_item",
+    "unequip_items",
+    "food_bank",
+}
+
+
+def xs_tool_name(tool):
+    if tool.endswith("_XS"):
+        return tool
+    if tool.endswith("_XXS"):
+        base = tool[:-4]
+        return base + "_XS" if base in XS_TOOL_BASES else tool
+    if tool in XS_TOOL_BASES:
+        return tool + "_XS"
+    return tool
+
 
 def main():
     parser = argparse.ArgumentParser(description="Call an rs bridge tool and emit an extra-slim response.")
@@ -30,20 +63,21 @@ def main():
         dump({"ok": False, "error": "arguments must be a JSON object"})
         return 2
 
+    tool = xs_tool_name(args.tool)
     env = os.environ.copy()
     if args.profile:
         env["RS_PROFILE"] = args.profile
-    log_usage("rs-tool_XS", surface="xs", argv=[args.tool, parsed])
-    proc = run_command([str(RS_TOOL), args.tool, json.dumps(parsed, separators=(",", ":"))], cwd=ROOT, env=env)
+    log_usage("rs-tool_XS", surface="xs", argv=[tool, parsed])
+    proc = run_command([str(RS_TOOL), tool, json.dumps(parsed, separators=(",", ":"))], cwd=ROOT, env=env)
     try:
         data = json.loads(proc.stdout)
     except json.JSONDecodeError:
-        dump({"ok": False, "tool": args.tool, "stderr": proc.stderr.strip()[-500:], "stdout": proc.stdout.strip()[-500:]})
+        dump({"ok": False, "tool": tool, "stderr": proc.stderr.strip()[-500:], "stdout": proc.stdout.strip()[-500:]})
         return proc.returncode or 2
 
-    payload = compact_bridge(data, args.tool)
+    payload = compact_bridge(data, tool)
     if isinstance(payload, dict):
-        payload.setdefault("tool", args.tool)
+        payload.setdefault("tool", tool)
     dump(payload)
     return proc.returncode
 

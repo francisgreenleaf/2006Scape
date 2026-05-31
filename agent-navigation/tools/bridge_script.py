@@ -120,14 +120,49 @@ def call_tool(tool_name, arguments=None, profile=""):
     return call_tool_direct(tool_name, arguments, profile=profile)
 
 
+def _compact_collection_items(value, prefer_counts=False):
+    if isinstance(value, list):
+        return value
+    if not isinstance(value, dict):
+        return []
+    primary = value.get("counts") if prefer_counts else value.get("items")
+    secondary = value.get("items") if prefer_counts else value.get("counts")
+    if isinstance(primary, list):
+        return primary
+    if isinstance(secondary, list):
+        return secondary
+    return []
+
+
+def _enrich_compact_player(result, player):
+    if not isinstance(result, dict) or not isinstance(player, dict):
+        return player
+    enriched = dict(player)
+    if not isinstance(enriched.get("inventory"), list):
+        inventory = _compact_collection_items(result.get("inventory"), prefer_counts=True)
+        if inventory:
+            enriched["inventory"] = inventory
+    if not isinstance(enriched.get("bank"), list):
+        bank = _compact_collection_items(result.get("bank"))
+        if bank:
+            enriched["bank"] = bank
+    if not isinstance(enriched.get("equipment"), list):
+        equipment = _compact_collection_items(result.get("equipment"))
+        if equipment:
+            enriched["equipment"] = equipment
+    if "combatReadiness" not in enriched and isinstance(result.get("combat"), dict):
+        enriched["combatReadiness"] = result["combat"]
+    return enriched
+
+
 def player_from(result):
     """Extract the player dict from a raw bridge or compact tool response."""
     player = result.get("player")
     if isinstance(player, dict):
-        return player
+        return _enrich_compact_player(result, player)
     state = result.get("state")
     if isinstance(state, dict) and isinstance(state.get("player"), dict):
-        return state["player"]
+        return _enrich_compact_player(state, state["player"])
     raise RuntimeError("bridge response did not include player state")
 
 
@@ -165,7 +200,7 @@ def _item_id(item):
 
 
 def _item_amount(item):
-    return int(item.get("amount", 0) or 0)
+    return int(item.get("amount", item.get("a", 0)) or 0)
 
 
 def _unique_ints(values):
@@ -762,7 +797,7 @@ def _walk_gate_transition_steps(player, steps, profile="", handle=None, reason="
     })
     if not result.get("success"):
         return queued
-    waited = call_tool("wait_until_idle", {
+    waited = call_tool("wait_until_idle_XS", {
         "maxTicks": int(max_ticks),
         "movement": True,
         "skilling": False,
@@ -840,7 +875,7 @@ def open_object_then_walk_steps(player, object_ref, steps=(), profile="", handle
             )
             return player
         if opened.get("success"):
-            waited = call_tool("wait_until_idle", {
+            waited = call_tool("wait_until_idle_XS", {
                 "maxTicks": int(cross_wait_ticks),
                 "movement": True,
                 "skilling": False,
@@ -1172,7 +1207,7 @@ def enter_edgeville_dungeon_trapdoor(player, profile="", handle=None, reason="",
         option="first",
         compact_player_fn=compact_player_fn,
     )
-    waited = call_tool("wait_until_idle", {"maxTicks": 8, "movement": True, "skilling": False, "combat": False}, profile=profile)
+    waited = call_tool("wait_until_idle_XS", {"maxTicks": 8, "movement": True, "skilling": False, "combat": False}, profile=profile)
     player = _player_from_or(waited, player)
     if not edgeville_dungeon_underground_side(player):
         player = observe(profile=profile)
@@ -1195,7 +1230,7 @@ def enter_edgeville_dungeon_trapdoor(player, profile="", handle=None, reason="",
         option="open",
         compact_player_fn=compact_player_fn,
     )
-    waited = call_tool("wait_until_idle", {"maxTicks": 4, "movement": True, "skilling": False, "combat": False}, profile=profile)
+    waited = call_tool("wait_until_idle_XS", {"maxTicks": 4, "movement": True, "skilling": False, "combat": False}, profile=profile)
     player = _player_from_or(waited, player)
     if not _same_player_tile_ref(player, EDGEVILLE_DUNGEON_SURFACE_APPROACH):
         player = _walk_exact_tile(
@@ -1217,7 +1252,7 @@ def enter_edgeville_dungeon_trapdoor(player, profile="", handle=None, reason="",
         option="first",
         compact_player_fn=compact_player_fn,
     )
-    waited = call_tool("wait_until_idle", {"maxTicks": 10, "movement": True, "skilling": False, "combat": False}, profile=profile)
+    waited = call_tool("wait_until_idle_XS", {"maxTicks": 10, "movement": True, "skilling": False, "combat": False}, profile=profile)
     player = _player_from_or(waited, player)
     if not edgeville_dungeon_underground_side(player):
         player = observe(profile=profile)
@@ -1263,7 +1298,7 @@ def exit_edgeville_dungeon_trapdoor(player, profile="", handle=None, reason="", 
         option="first",
         compact_player_fn=compact_player_fn,
     )
-    waited = call_tool("wait_until_idle", {"maxTicks": 10, "movement": True, "skilling": False, "combat": False}, profile=profile)
+    waited = call_tool("wait_until_idle_XS", {"maxTicks": 10, "movement": True, "skilling": False, "combat": False}, profile=profile)
     player = _player_from_or(waited, player)
     if not edgeville_dungeon_surface_side(player):
         player = observe(profile=profile)
@@ -1333,7 +1368,7 @@ def enter_varrock_sewer_manhole(player, profile="", handle=None, reason="", comp
                 option=option,
                 compact_player_fn=compact_player_fn,
             )
-            waited = call_tool("wait_until_idle", {
+            waited = call_tool("wait_until_idle_XS", {
                 "maxTicks": 10,
                 "movement": True,
                 "skilling": False,
@@ -1397,7 +1432,7 @@ def exit_varrock_sewer_ladder(player, profile="", handle=None, reason="", compac
         option="first",
         compact_player_fn=compact_player_fn,
     )
-    waited = call_tool("wait_until_idle", {
+    waited = call_tool("wait_until_idle_XS", {
         "maxTicks": 10,
         "movement": True,
         "skilling": False,
@@ -1636,7 +1671,7 @@ def _walk_exact_tile(player, destination, profile="", handle=None, reason="", ma
     h = int(destination.get("height", 0))
     if _same_player_tile(player, x, y, h):
         return player
-    result = call_tool("walk_to_tile_until_arrived", {
+    result = call_tool("walk_to_tile_until_arrived_XS", {
         "x": x,
         "y": y,
         "height": h,
@@ -1657,7 +1692,7 @@ def _walk_exact_tile(player, destination, profile="", handle=None, reason="", ma
         "player": _transition_compact(updated, compact_player_fn),
     })
     if not _same_player_tile(updated, x, y, h):
-        waited = call_tool("wait_until_idle", {
+        waited = call_tool("wait_until_idle_XS", {
             "maxTicks": 6,
             "movement": True,
             "skilling": False,
@@ -1665,7 +1700,7 @@ def _walk_exact_tile(player, destination, profile="", handle=None, reason="", ma
         }, profile=profile)
         updated = _player_from_or(waited, updated)
     if not _same_player_tile(updated, x, y, h) and chebyshev(tile_from_player(updated), destination) <= 8:
-        retry = call_tool("walk_to_tile_until_arrived", {
+        retry = call_tool("walk_to_tile_until_arrived_XS", {
             "x": x,
             "y": y,
             "height": h,

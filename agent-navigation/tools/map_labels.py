@@ -1,4 +1,4 @@
-"""Shared static and place-derived map labels for cache and topology renders."""
+"""Shared map labels and death-site anchors for cache and topology renders."""
 
 import json
 from pathlib import Path
@@ -52,14 +52,6 @@ STATIC_LABELS = [
         "color": "yellow",
     },
     {
-        "text": "White Wolf Mountain",
-        "tile": {"x": 2870, "y": 3437, "height": 0},
-        "dx": -88,
-        "dy": -24,
-        "color": "white",
-        "outline": True,
-    },
-    {
         "text": "Tree Gnome Stronghold",
         "tile": {"x": 2464, "y": 3435, "height": 0},
         "dx": -102,
@@ -109,20 +101,35 @@ STATIC_LABELS = [
         "color": "yellow",
     },
     {
+        "text": "Nardah",
+        "tile": {"x": 3424, "y": 2916, "height": 0},
+        "dx": -30,
+        "dy": -18,
+        "color": "yellow",
+    },
+]
+
+DEATH_LABEL_ANCHORS = [
+    {
+        "text": "White Wolf Mountain",
+        "tile": {"x": 2870, "y": 3437, "height": 0},
+        "dx": -88,
+        "dy": -24,
+        "radius": 72,
+    },
+    {
         "text": "Dark Wizards",
         "tile": {"x": 3222, "y": 3372, "height": 0},
         "dx": -50,
         "dy": -18,
-        "color": "white",
-        "outline": True,
+        "radius": 48,
     },
     {
-        "text": "Highwayman",
+        "text": "Highwaymen",
         "tile": {"x": 3006, "y": 3275, "height": 0},
         "dx": -48,
         "dy": -18,
-        "color": "white",
-        "outline": True,
+        "radius": 48,
     },
 ]
 

@@ -22,7 +22,7 @@ CLIENT_SINGLE_INSTANCE=0 ./scripts/start-client.sh -u "MrGem" -scale 2 -no-nav
 
 ## Agent-Owned Relaunch
 
-Use this when Codex needs to operate the route harness from the repo with `agent-navigation/tools/rs-tool.sh`. This is the path that has been the most reliable.
+Use this when Codex needs to operate the route harness from the repo with `agent-navigation/tools/observe_XXS.sh`, `agent-navigation/tools/observe_XS.sh`, `agent-navigation/tools/rs-tool_XXS.sh`, or `agent-navigation/tools/rs-tool_XS.sh`. This is the path that has been the most reliable.
 
 ### Preferred Helper
 
@@ -33,10 +33,16 @@ python3 agent-navigation/tools/runtime_doctor.py status --observe
 python3 agent-navigation/tools/runtime_doctor.py status --profile MrGem --observe
 ```
 
-If the status check shows a usable `observe-slim` session for the intended profile, reuse it. If the user asked for a clean restart or the runtime is stale, run:
+If the status check shows a usable `observe_XS` session for the intended profile, reuse it. If the user asked for a clean restart or the runtime is stale, run:
 
 ```sh
 python3 agent-navigation/tools/runtime_doctor.py restart --replace-runtime --build --verify
+```
+
+For a brand-new profile, create the initial saved character file before claiming the client. This writes `2006Scape Server/data/characters/<profile>.txt` with a generated local password for `-password-character-save`; it does not print the password.
+
+```sh
+python3 agent-navigation/tools/runtime_doctor.py init-profile --profile MrFish
 ```
 
 For a second profile against an existing server, prefer claiming only that profile so the default active client is not replaced:
@@ -120,7 +126,7 @@ PY
 
 5. Claim the bridge session and write the ignored profile session file.
 
-   The claim response contains a bridge token. Do not display the response in a terminal, paste it into chat, or write it anywhere except the ignored `.local` session file used by `rs-tool.sh`.
+   The claim response contains a bridge token. Do not display the response in a terminal, paste it into chat, or write it anywhere except the ignored `.local` session file used by the bridge wrappers.
 
    ```sh
    python3 - "$nonce" <<'PY'
@@ -175,19 +181,21 @@ raise SystemExit("bridge session claim timed out: %s" % last_error)
 PY
    ```
 
-6. Verify with the wrapper, not raw `curl`:
+6. Verify with a compact wrapper, not raw `curl`:
 
    ```sh
-   agent-navigation/tools/observe-slim.sh
+   agent-navigation/tools/observe_XXS.sh
+   agent-navigation/tools/observe_XS.sh
    ```
 
-   A successful response should show `player.name` as the intended profile, current tile, HP, inventory food, nearby NPCs, and `success:true`.
+   A successful XXS response should show the intended player name, current tile, HP, run state, combat/death flags, inventory free slots/food, and `success:true`. Use XS when nearby NPC/object or compact inventory context is needed.
 
-   For non-default profiles, set `RS_PROFILE` so `rs-tool.sh` validates and uses the matching session:
+   For non-default profiles, set `RS_PROFILE` so wrappers validate and use the matching session:
 
    ```sh
-   RS_PROFILE=MrGem agent-navigation/tools/observe-slim.sh
-   RS_PROFILE=MrGem agent-navigation/tools/rs-tool.sh observe_state '{}'
+   RS_PROFILE=MrGem agent-navigation/tools/observe_XXS.sh
+   RS_PROFILE=MrGem agent-navigation/tools/observe_XS.sh
+   RS_PROFILE=MrGem agent-navigation/tools/rs-tool_XXS.sh observe_state '{}'
    ```
 
 ## What Made This Reliable
@@ -199,7 +207,7 @@ PY
 - Use `-password-character-save "2006Scape Server/data/characters/<profile>.txt"` with `-agent-auto-login` so the client logs in without manual typing when the saved profile exists.
 - Use `-agent-claim <nonce>` and then claim through `POST /agent/session/claim`; this creates the scoped local bridge session for repo tools.
 - Write only ignored files under `agent-navigation/.local/`. Never print or inspect the bridge token.
-- Prefer `agent-navigation/tools/rs-tool.sh` and `agent-navigation/tools/observe-slim.sh` after startup. They read the active profile session file and keep tool calls consistent.
+- Prefer `agent-navigation/tools/observe_XXS.sh`, `agent-navigation/tools/observe_XS.sh`, `agent-navigation/tools/rs-tool_XXS.sh`, and `agent-navigation/tools/rs-tool_XS.sh` after startup. They read the selected profile session file and keep tool calls compact and consistent. Use `observe-slim.sh` or full `rs-tool.sh` only when compact output omits a specific field needed for debugging or evidence.
 - Do not stack idle clients. Reuse a logged-in client or stop only the stale client for the intended profile before starting over.
 
 ## Troubleshooting

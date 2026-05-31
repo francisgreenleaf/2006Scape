@@ -1275,7 +1275,7 @@ def walk_direct_tile(player, target, plan, args, handle, reason, max_ticks=80, m
 
     while ticks_used < int(max_ticks):
         chunk_ticks = max(1, min(safety_ticks, int(max_ticks) - ticks_used))
-        result = bridge.call_tool("walk_to_tile_until_arrived", {
+        result = bridge.call_tool("walk_to_tile_until_arrived_XS", {
             "x": int(destination["x"]),
             "y": int(destination["y"]),
             "height": int(destination["height"]),

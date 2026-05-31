@@ -38,8 +38,14 @@ python3 agent-navigation/ml-routing/route_ml.py define \
 feedback instructions. Use `route` when debugging planner internals; it wraps the same
 definition under `recommended.routeDefinition`.
 
+Persisted route-definition JSON defaults to the legacy shared directory
+`agent-navigation/.local/ml-route-definitions/`. Route execution evidence is profile-scoped when
+`--trace-profile` is set, but the route-definition artifact directory is shared unless the caller
+passes `--route-definition-dir`; agents should run the returned execution command instead of
+guessing a profile-specific route-definition path.
+
 The old route method is deprecated for agents. Do not call bare `agent-navigation/tools/route_runner.py --to ...`
-as the normal routing API. Follow the ML1 `routeSteps` with normal bridge movement primitives, normally by running the generated `execute_route_definition.py --route-definition ...` command.
+as the normal routing API. Treat ML1 `routeSteps` as guide rails and execute them with normal bridge movement primitives, normally by running the generated `execute_route_definition.py --route-definition ...` command.
 
 ML1 supports surface routes and same-cache-area underground routes. It still returns non-actionable `requires-object-transition` for surface/underground crossings and for routes between separate underground cache areas; use the relevant entrance/exit/ladder/stairs/trapdoor/gate first, then request the next route. `unsupported-coordinate-layer` means the tile is outside a supported cache route area. Underground cache-direct routing uses cache-derived clipping plus hard valid-region boundaries so missing underground map regions are not treated as walkable floor.
 
@@ -52,14 +58,15 @@ The route/debug response is compact by default. Use:
 - `recommended.actionable` to tell whether the result is usable. This is true for full routes and for safe frontier/probe recommendations.
 - `recommended.collision` to see whether the macro route was expanded through cache-derived clipped tiles.
 - `recommended.mode == "cache_direct"` when the planner replaced a stale learned detour/frontier with a cache-clipped direct candidate.
-- `recommended.selectedOverLearned` to see why a cache-direct candidate replaced learned graph evidence.
+- `recommended.mode == "cache_mesh"` when the planner kept required learned object transitions but rebuilt the ordinary walking legs from cache-derived clipping.
+- `recommended.selectedOverLearned` to see why a cache-derived candidate replaced learned graph evidence.
 - `recommended.routeSteps`, `recommended.runPlan`, and `recommended.runSegments` for the compact full route and the stretches where run should be saved/spent.
 
 Add `--output-candidates N` only when debugging alternatives; the default omits alternatives to keep agent context small.
 
 Use `--planner fast` by default. It answers from the trained model graph and is intended for live agent calls.
 Use `--planner full` only for slower diagnostics through the existing `router.py` / `route_eval.py` wrapper.
-Fast planning expands selected macro edges through cache-derived clipping by default, mirroring the server's terrain/object clip masks from `RegionFactory` and `Region`. It can also try a hazard-costed cache-direct candidate when learned evidence is incomplete or clearly taking the long way. Use `--no-cache-collision` or `--no-cache-direct` only for diagnostics.
+Fast planning expands selected macro edges through cache-derived clipping by default, mirroring the server's terrain/object clip masks from `RegionFactory` and `Region`. It can also try cache-derived candidates when learned evidence is incomplete or clearly taking the long way: `cache_direct` searches start-to-target, while `cache_mesh` keeps only required object-transition crossings from the learned path and replans the walkable legs from cache collision. Use `--no-cache-collision`, `--no-cache-direct`, or `--no-cache-mesh` only for diagnostics.
 Curated route hints are read from the current navigation DB at request time. The trained model still provides edge timing/risk priors, but a stale model artifact should not resurrect old route anchors after `places.json` or `routes.json` changes.
 
 Compatibility execution surface:
@@ -78,6 +85,9 @@ python3 agent-navigation/ml-routing/route_ml.py go \
 Prefer `define` plus the generated `execute_route_definition.py --route-definition ...` command for agent autonomy. Remove `--dry-run` from `go` only when the caller deliberately wants the compatibility executor path. It does not bypass normal game mechanics, but it is not the preferred ML1 live-control path.
 Generated execution commands include `--evidence-jsonl agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl`
 by default, so every route batch contributes run efficiency, HP loss, combat/death, preview, and final-tile evidence.
+`execute_route_definition.py` walks ahead across bounded route-step chunks by default
+(`--lookahead-distance 30`, `--lookahead-step-limit 4`) instead of stopping at every waypoint.
+Use `--no-lookahead` only when deliberately reproducing old one-step executor behavior.
 Use `--no-route-evidence` only for diagnostics where no local evidence should be written.
 
 Manual outcome feedback, for example after an agent notices a bad route, enemy, stall, or blocker:
@@ -196,7 +206,9 @@ Tracked source files and docs live outside `artifacts/`.
 
 The first model is an interpretable empirical edge-cost/risk model. It is not a neural graph model yet.
 It aggregates observed trace edges, route batches, object transitions, run efficiency, combat/HP/death signals,
-and hazard proximity. Route selection still uses deterministic safety gates, then the ML model ranks candidate paths.
+and hazard proximity. Combat exposure is explicit: edges and regions with high observed combat ticks,
+HP loss, or death/failure history become more expensive even when they are geometrically shorter.
+Route selection still uses deterministic safety gates, then the ML model ranks candidate paths.
 The fast planner then runs a deterministic cache-collision pass over the selected macro route. It builds tile clips
 from terrain flags plus loc.dat object solidity/interactivity/footprints, expands long route-hint edges into adjacent
 walk tiles, tries exact waypoints first, and falls back to a small near-waypoint radius when a saved target is clipped.
@@ -205,10 +217,15 @@ line as a valid route.
 
 When the learned graph is missing the actual target or has a large detour ratio, the fast planner may build a
 `cache_direct` candidate. That path searches the cache collision grid from start to target and adds soft costs around
-hazards, so it can discover routes such as Lumbridge-to-Falador without replaying a stale Varrock detour while still
+hazards plus learned regional combat exposure, so it can discover routes such as Lumbridge-to-Falador without replaying a stale Varrock detour while still
 skirting highwaymen, dark wizards, and other danger zones. The output includes compact `routeSteps` so agents do not
 need every adjacent tile in prompt context. It also includes a `runPlan`: normal stretches conserve run, while hazard
 segments are marked for running when combat, food, and run energy make the shortcut plausible.
+
+When a direct cache search cannot cross a known object transition, the fast planner may build a `cache_mesh` candidate.
+It extracts only short required object-transition crossings from the learned route, then uses cache-derived walkability
+for the ordinary legs between start, transition sides, and target. This keeps useful gate/door knowledge without
+forcing long trips through remembered banks, shops, or other service anchors that are not the current destination.
 
 Named benchmark places should use practical walkable anchors. For example, `barbarian_village`
 uses the road/shop-area tile rather than an interior-looking shop marker so cache-direct routing

@@ -28,18 +28,14 @@ public class ObjectHandler {
 		
 	}
 	
-	 public Objects getObjectByPosition(int x, int y) {
-			for (Objects o : globalObjects) {
-			    for(int j = 0; j < globalObjects.size(); j++) {
-	            globalObjects.get(j);
-	            globalObjects.get(j);
-	            if(o.objectX == x && o.objectY == y) {
-	                return globalObjects.get(j);
-	            }	
+	public Objects getObjectByPosition(int x, int y) {
+		for (Objects o : globalObjects) {
+			if (o.objectX == x && o.objectY == y) {
+				return o;
 			}
 		}
-	    return null;
-	 }
+		return null;
+	}
 
 	    public void createAnObject(int id, int x, int y, int face) {
 	        Objects OBJECT = new Objects(id, x, y, 0, face, 10, 0);

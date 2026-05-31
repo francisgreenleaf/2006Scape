@@ -717,7 +717,7 @@ def walk_tile(tile, args, max_ticks=24, max_distance=24, stop_distance=0, handle
                     "reason": reason,
                     "message": str(exc),
                 })
-    result = bridge.call_tool("walk_to_tile_until_arrived", {
+    result = bridge.call_tool("walk_to_tile_until_arrived_XS", {
         "x": int(tile["x"]),
         "y": int(tile["y"]),
         "height": int(tile.get("height", 0) or 0),
@@ -770,7 +770,7 @@ def exit_range_building_toward_shore(args, handle):
         "allowObjectTransition": True,
     }, profile=args.profile)
     player = bridge._player_from_or(queued, player)
-    waited = bridge.call_tool("wait_until_idle", {
+    waited = bridge.call_tool("wait_until_idle_XS", {
         "maxTicks": 12,
         "movement": True,
         "skilling": False,
@@ -930,6 +930,56 @@ def fishing_method(player):
     }
 
 
+def item_total(player, item_id):
+    return bridge.count_inventory_item(player, item_id) + bridge.count_bank_item(player, item_id)
+
+
+def coin_total(player):
+    return item_total(player, bridge.COINS)
+
+
+def missing_supply_cost(player, desired):
+    cost = 0
+    for item_id, amount in desired:
+        missing = max(0, int(amount) - item_total(player, int(item_id)))
+        if missing <= 0:
+            continue
+        price = SHOP_PRICE_ESTIMATES.get(int(item_id))
+        if price is None:
+            return None
+        cost += price * missing
+    return cost
+
+
+def fishing_method_for_supplies(args, handle, player):
+    method = fishing_method(player)
+    if method["name"] != "rod_bait_sardine_herring":
+        return method
+    desired = [(FISHING_ROD, 1), (FISHING_BAIT, max(1, int(args.bait_inventory_target)))]
+    supply_cost = missing_supply_cost(player, desired)
+    if supply_cost is not None and supply_cost <= coin_total(player):
+        return method
+    fallback = {
+        "name": "small_net_shrimp",
+        "tool": SMALL_NET,
+        "npcIds": NET_FISHING_SPOTS,
+        "option": "first",
+        "bait": None,
+    }
+    write_event(handle, "fishing_method_supply_fallback", {
+        "fromMethod": method["name"],
+        "toMethod": fallback["name"],
+        "reason": "insufficient rod/bait supplies or coins",
+        "inventoryCoins": bridge.count_inventory_item(player, bridge.COINS),
+        "bankCoins": bridge.count_bank_item(player, bridge.COINS),
+        "rodTotal": item_total(player, FISHING_ROD),
+        "baitTotal": item_total(player, FISHING_BAIT),
+        "estimatedMissingSupplyCost": supply_cost,
+        "player": bridge.compact_player(player, ("fishing", "cooking")),
+    })
+    return fallback
+
+
 def close_interfaces(args, handle, reason):
     result = bridge.call_tool("close_interfaces", {}, profile=args.profile)
     player = bridge._player_from_or(result, bridge.observe(args.profile))
@@ -950,12 +1000,19 @@ def buy_supplies(args, handle, requests):
     if bridge.count_inventory_item(player, bridge.COINS) < estimated_cost:
         player = ensure_bank(args, handle)
         if bridge.count_inventory_item(player, bridge.COINS) < estimated_cost:
+            need = max(
+                estimated_cost - bridge.count_inventory_item(player, bridge.COINS),
+                args.supply_coin_float - bridge.count_inventory_item(player, bridge.COINS),
+            )
+            banked_coins = bridge.count_bank_item(player, bridge.COINS)
+            if banked_coins <= 0:
+                raise RuntimeError("not enough coins to buy supplies: need at least {}, have {}".format(
+                    estimated_cost,
+                    bridge.count_inventory_item(player, bridge.COINS),
+                ))
             result = bridge.call_tool("withdraw_bank_items", {
                 "itemId": bridge.COINS,
-                "amount": max(
-                    estimated_cost - bridge.count_inventory_item(player, bridge.COINS),
-                    args.supply_coin_float - bridge.count_inventory_item(player, bridge.COINS),
-                ),
+                "amount": min(need, banked_coins),
             }, profile=args.profile)
             player = bridge._player_from_or(result, player)
             write_event(handle, "withdraw_supply_coins", {
@@ -963,6 +1020,11 @@ def buy_supplies(args, handle, requests):
                 "message": result.get("message"),
                 "player": bridge.compact_player(player, ("fishing", "cooking")),
             })
+            if bridge.count_inventory_item(player, bridge.COINS) < estimated_cost:
+                raise RuntimeError("not enough coins to buy supplies: need at least {}, have {}".format(
+                    estimated_cost,
+                    bridge.count_inventory_item(player, bridge.COINS),
+                ))
 
     try:
         player = ml_route_to(CATHERBY_FISHING_SHOP_TARGET, args, handle)
@@ -1202,10 +1264,16 @@ def ensure_shore(args, handle, method=None):
 
 
 def find_usable_range(args, handle, player, reason):
-    found = bridge.call_tool("find_nearest_object", {
-        "objectIds": [CATHERBY_RANGE_OBJECT["objectId"]],
-        "maxDistance": max(int(args.object_max_distance), 8),
-    }, profile=args.profile)
+    try:
+        found = bridge.call_tool("find_nearest_object", {
+            "objectIds": [CATHERBY_RANGE_OBJECT["objectId"]],
+            "maxDistance": max(int(args.object_max_distance), 8),
+        }, profile=args.profile)
+    except RuntimeError as exc:
+        found = {
+            "success": False,
+            "message": str(exc),
+        }
     range_object = found.get("object") if isinstance(found, dict) else None
     ready = False
     if isinstance(range_object, dict):
@@ -1242,17 +1310,17 @@ def walk_to_range_interaction_tile(args, handle, player, range_object, reason):
 
 def fish_until_full(args, handle, run_path=None, cycle=None):
     player = bridge.observe(args.profile)
-    method = fishing_method(player)
+    method = fishing_method_for_supplies(args, handle, player)
     player = ensure_method_supplies(args, handle, method)
     player = ensure_shore(args, handle, method)
     write_runner_status(args, "running", run_path=run_path, reason="fishing_at_shore",
                         cycle=cycle, player=player, extra={"phase": "fishing"})
-    method = fishing_method(player)
+    method = fishing_method_for_supplies(args, handle, player)
     total_ticks = 0
     rounds = 0
     no_progress = 0
     while total_ticks < args.max_fish_ticks and int(player.get("freeInventorySlots", 0) or 0) > 0:
-        next_method = fishing_method(player)
+        next_method = fishing_method_for_supplies(args, handle, player)
         if next_method["name"] != method["name"]:
             carried_raw = count_any(player, RAW_FISH_IDS)
             if carried_raw > 0:
@@ -1307,7 +1375,7 @@ def fish_until_full(args, handle, run_path=None, cycle=None):
                                 "expectedWaitTicks": fish_round_ticks,
                                 "expectedWaitSeconds": wait_seconds(fish_round_ticks),
                             })
-        wait = bridge.call_tool("wait_until_idle", {
+        wait = bridge.call_tool("wait_until_idle_XS", {
             "maxTicks": fish_round_ticks,
             "movement": True,
             "skilling": True,
@@ -1449,7 +1517,7 @@ def primitive_cook_once(args, handle, player, run_path=None, cycle=None, cook_ro
                             "expectedWaitTicks": int(args.max_cook_ticks),
                             "expectedWaitSeconds": wait_seconds(args.max_cook_ticks),
                         })
-    wait = bridge.call_tool("wait_until_idle", {
+    wait = bridge.call_tool("wait_until_idle_XS", {
         "maxTicks": args.max_cook_ticks,
         "movement": True,
         "skilling": True,
@@ -1497,7 +1565,7 @@ def compatibility_cook_batch(args, handle, player):
         "maxDistance": args.object_max_distance,
         "legacyCompatibility": True,
     }, profile=args.profile)
-    wait = bridge.call_tool("wait_until_idle", {
+    wait = bridge.call_tool("wait_until_idle_XS", {
         "maxTicks": args.max_cook_ticks,
         "movement": True,
         "skilling": True,
@@ -1679,7 +1747,7 @@ def run(args):
                             cycle=0, player=player, extra={"phase": "started"})
         cycles = 0
         stopped_reason = None
-        while cycles < args.cycles:
+        while args.cycles <= 0 or cycles < args.cycles:
             player = bridge.observe(args.profile)
             write_runner_status(args, "running", run_path=run_path, reason="cycle_start",
                                 cycle=cycles, player=player, extra={"phase": "cycle_start"})
@@ -1738,7 +1806,7 @@ def run(args):
                 stopped_reason = "stop_requested"
                 break
         if stopped_reason is None:
-            stopped_reason = "max_cycles" if cycles >= args.cycles else "target_levels"
+            stopped_reason = "max_cycles" if args.cycles > 0 and cycles >= args.cycles else "target_levels"
         write_event(handle, "run_finish", {
             "cycles": cycles,
             "reason": stopped_reason,
@@ -1770,7 +1838,8 @@ def main(argv=None):
     argv_list = list(sys.argv[1:] if argv is None else argv)
     parser = argparse.ArgumentParser(description="Run Catherby fish/cook/drop/bank cycles.")
     parser.add_argument("--profile", default=resolve_profile(default=""))
-    parser.add_argument("--cycles", type=int, default=1)
+    parser.add_argument("--cycles", type=int, default=1,
+                        help="Number of fish/cook/bank cycles to run. Use 0 or a negative value to run forever.")
     parser.add_argument("--target-fishing-level", type=int)
     parser.add_argument("--target-cooking-level", type=int)
     parser.add_argument("--run-mode", choices=["auto", "always", "never", "preserve"], default="auto")

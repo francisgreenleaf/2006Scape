@@ -63,11 +63,12 @@ def tail_text(text, limit=600):
 def tile(value):
     if not isinstance(value, dict):
         return value
+    compact_tile = value.get("tile", value.get("t"))
     x = value.get("x")
     y = value.get("y")
     h = value.get("height", value.get("h", 0))
     if x is None or y is None:
-        return value
+        return compact_tile if compact_tile is not None else value
     return "{},{},{}".format(x, y, h)
 
 
@@ -77,12 +78,13 @@ def item(value):
     out = {
         "s": value.get("slot"),
         "slot": value.get("slotName"),
-        "id": value.get("id"),
-        "n": value.get("name"),
-        "a": value.get("amount"),
+        "id": value.get("id", value.get("itemId")),
+        "n": value.get("name", value.get("n")),
+        "a": value.get("amount", value.get("a")),
     }
-    if value.get("foodHeal"):
-        out["heal"] = value.get("foodHeal")
+    heal = value.get("foodHeal", value.get("heal"))
+    if heal:
+        out["heal"] = heal
     return {k: v for k, v in out.items() if v is not None}
 
 
@@ -91,8 +93,8 @@ def ground_item(value):
         return value
     out = {
         "id": value.get("id", value.get("itemId")),
-        "n": value.get("name"),
-        "a": value.get("amount"),
+        "n": value.get("name", value.get("n")),
+        "a": value.get("amount", value.get("a")),
         "t": tile(value),
         "d": value.get("distance", value.get("dist")),
     }
@@ -103,8 +105,8 @@ def npc(value):
     if not isinstance(value, dict):
         return value
     out = {
-        "i": value.get("npcIndex", value.get("idx")),
-        "n": value.get("name"),
+        "i": value.get("npcIndex", value.get("idx", value.get("index", value.get("i")))),
+        "n": value.get("name", value.get("n")),
         "lvl": value.get("combatLevel", value.get("level")),
         "t": tile(value),
         "d": value.get("distance", value.get("dist")),
@@ -123,7 +125,7 @@ def game_object(value):
         return value
     out = {
         "id": value.get("objectId", value.get("id")),
-        "n": value.get("name"),
+        "n": value.get("name", value.get("n")),
         "t": tile(value),
         "d": value.get("distance", value.get("dist")),
         "r": value.get("reachable"),
@@ -310,11 +312,15 @@ def inventory_counts(items, limit=12):
     for entry in items:
         if not isinstance(entry, dict):
             continue
-        key = (entry.get("id"), entry.get("name"), entry.get("foodHeal"))
+        key = (
+            entry.get("id", entry.get("itemId")),
+            entry.get("name", entry.get("n")),
+            entry.get("foodHeal", entry.get("heal")),
+        )
         if key not in counts:
             counts[key] = 0
             order.append(key)
-        counts[key] += int(entry.get("amount") or 1)
+        counts[key] += int(entry.get("amount", entry.get("a")) or 1)
     out = []
     for key in order[:limit]:
         item_id, name, heal = key
@@ -332,11 +338,28 @@ def inventory_from(data, limit=12):
     inv = data.get("inventory") if isinstance(data, dict) else None
     if inv is None and isinstance(p, dict):
         inv = p.get("inventory")
+    if isinstance(inv, dict):
+        items = inv.get("items") if isinstance(inv.get("items"), list) else []
+        counts = inv.get("counts") if isinstance(inv.get("counts"), list) else []
+        out = {
+            "food": inv.get("food"),
+            "heal": inv.get("heal"),
+            "coins": inv.get("coins"),
+            "slots": inv.get("slots"),
+            "free": inv.get("free", inv.get("freeSlots")),
+            "counts": [item(entry) for entry in counts[:limit]],
+            "items": [item(entry) for entry in items[:limit]],
+        }
+        return {k: v for k, v in out.items() if v not in (None, [], {})}
     inv = inv if isinstance(inv, list) else []
-    food = [entry for entry in inv if isinstance(entry, dict) and entry.get("foodHeal")]
+    food = [entry for entry in inv if isinstance(entry, dict) and entry.get("foodHeal", entry.get("heal"))]
     return {
         "food": len(food),
-        "heal": sum(int(entry.get("foodHeal") or 0) * int(entry.get("amount") or 1) for entry in food),
+        "heal": sum(
+            int(entry.get("foodHeal", entry.get("heal")) or 0)
+            * int(entry.get("amount", entry.get("a")) or 1)
+            for entry in food
+        ),
         "counts": inventory_counts(inv),
         "items": [item(entry) for entry in inv[:limit]],
     }
@@ -344,12 +367,26 @@ def inventory_from(data, limit=12):
 
 def equipment_from(player_data, limit=8):
     equipment = player_data.get("equipment") if isinstance(player_data, dict) else []
+    if not isinstance(equipment, list) and isinstance(player_data, dict) and isinstance(player_data.get("player"), dict):
+        equipment = player_data.get("equipment")
     if not isinstance(equipment, list):
         return []
     return [item(entry) for entry in equipment[:limit]]
 
 
 def bank_summary(player_data, limit=8):
+    if isinstance(player_data, dict) and "bank" not in player_data and any(
+        key in player_data for key in ("items", "slots", "coins", "food", "heal")
+    ):
+        items = player_data.get("items") if isinstance(player_data.get("items"), list) else []
+        out = {
+            "count": player_data.get("count", player_data.get("slots")),
+            "coins": player_data.get("coins"),
+            "food": player_data.get("food"),
+            "heal": player_data.get("heal"),
+            "items": [item(entry) for entry in items[:limit]],
+        }
+        return {k: v for k, v in out.items() if v not in (None, [], {})}
     bank = player_data.get("bank") if isinstance(player_data, dict) else []
     if not isinstance(bank, list):
         return None
@@ -361,10 +398,11 @@ def bank_summary(player_data, limit=8):
             continue
         if int(entry.get("id") or 0) == 995:
             coins += int(entry.get("amount") or 0)
-        if entry.get("foodHeal"):
-            amount = int(entry.get("amount") or 1)
+        heal = entry.get("foodHeal", entry.get("heal"))
+        if heal:
+            amount = int(entry.get("amount", entry.get("a")) or 1)
             food += amount
-            food_heal += amount * int(entry.get("foodHeal") or 0)
+            food_heal += amount * int(heal or 0)
     return {
         "count": len(bank),
         "coins": coins,
@@ -393,14 +431,20 @@ def compact_observe(data, npc_limit=8, object_limit=12, include_bank=True,
     combat = p.get("combatReadiness") if isinstance(p, dict) else {}
     if not isinstance(combat, dict):
         combat = data.get("combatReadiness", {}) if isinstance(data, dict) else {}
+    if not isinstance(combat, dict) or not combat:
+        combat = data.get("combat", {}) if isinstance(data, dict) else {}
     area = combat.get("recommendedArea") if isinstance(combat, dict) else None
+    if area is None and isinstance(combat, dict):
+        area = combat.get("area")
     if isinstance(area, dict):
         area = {
             "name": area.get("name"),
-            "npc": area.get("npcName"),
+            "npc": area.get("npcName", area.get("npc")),
             "maxHit": area.get("maxHit"),
-            "until": area.get("recommendedUntilLevel"),
+            "until": area.get("recommendedUntilLevel", area.get("until")),
         }
+    bank_data = data.get("bank") if isinstance(data, dict) and isinstance(data.get("bank"), dict) else p
+    equipment_data = data if isinstance(data, dict) and isinstance(data.get("equipment"), list) else p
     payload = {
         "ok": bool(data.get("success")),
         "tick": data.get("serverTick", data.get("tick")),
@@ -410,18 +454,18 @@ def compact_observe(data, npc_limit=8, object_limit=12, include_bank=True,
             "target": npc(data.get("targetNpc") or p.get("targetNpc")) if isinstance(p, dict) and (data.get("targetNpc") or p.get("targetNpc")) else None,
             "by": p.get("underAttackBy") if isinstance(p, dict) else None,
             "by2": p.get("underAttackBy2") if isinstance(p, dict) else None,
-            "eat": combat.get("eatAtHitpoints"),
-            "retreat": combat.get("retreatAtHitpoints"),
-            "invFood": combat.get("inventoryFoodCount"),
-            "invHeal": combat.get("inventoryFoodHealing"),
-            "bankFood": combat.get("bankFoodCount"),
+            "eat": combat.get("eatAtHitpoints", combat.get("eatAt")),
+            "retreat": combat.get("retreatAtHitpoints", combat.get("retreatAt")),
+            "invFood": combat.get("inventoryFoodCount", combat.get("inventoryFood")),
+            "invHeal": combat.get("inventoryFoodHealing", combat.get("inventoryHeal")),
+            "bankFood": combat.get("bankFoodCount", combat.get("bankFood")),
             "invCoins": combat.get("inventoryCoins"),
             "bankCoins": combat.get("bankCoins"),
             "area": area,
         },
         "inv": inventory_from(data, limit=inventory_limit),
-        "eq": equipment_from(p) if include_equipment else [],
-        "bank": bank_summary(p) if include_bank else None,
+        "eq": equipment_from(equipment_data) if include_equipment else [],
+        "bank": bank_summary(bank_data) if include_bank else None,
         "npcs": [npc(entry) for entry in sorted(data.get("nearbyNpcs", []), key=lambda n: n.get("distance", n.get("dist", 999)))[:npc_limit]],
         "objs": [game_object(entry) for entry in sorted(data.get("nearbyObjects", []), key=lambda o: o.get("distance", o.get("dist", 999)))[:object_limit]],
         "ground": [ground_item(entry) for entry in sorted(data.get("nearbyGroundItems", []), key=lambda item: item.get("distance", item.get("dist", 999)))[:8]],
@@ -499,10 +543,11 @@ def safety(value):
         "hazards": (value.get("hazardWarnings") or value.get("hazards"))[:5]
         if isinstance(value.get("hazardWarnings") or value.get("hazards"), list)
         else value.get("hazardWarnings") or value.get("hazards"),
+        "exposure": value.get("learnedExposure"),
         "wrongWay": value.get("wrongWayFlags")[:5] if isinstance(value.get("wrongWayFlags"), list) else value.get("wrongWayFlags"),
         "detours": value.get("detourSegments")[:5] if isinstance(value.get("detourSegments"), list) else value.get("detourSegments"),
     }
-    return {k: v for k, v in out.items() if v not in (None, "", [])}
+    return {k: v for k, v in out.items() if v not in (None, "", [], {})}
 
 
 def route_evidence(value):
@@ -554,6 +599,8 @@ def route_definition(data):
         "strategy": execution.get("strategy"),
         "maxBatch": execution.get("maxBatchDistance"),
         "runnerMax": execution.get("runnerMaxBatches"),
+        "lookahead": execution.get("lookaheadDistance"),
+        "lookaheadSteps": execution.get("lookaheadStepLimit"),
     } if execution else None
     if isinstance(exec_summary, dict):
         exec_summary = {k: v for k, v in exec_summary.items() if v not in (None, "", [], {})}
@@ -759,29 +806,38 @@ def compact_food_bank(data):
     if not isinstance(data, dict):
         return data
     player_data = data.get("player") if isinstance(data.get("player"), dict) else data
-    combat = player_data.get("combatReadiness") if isinstance(player_data, dict) else {}
-    inv = inventory_from({"player": player_data}, limit=12)
-    bank = bank_summary(player_data, limit=12)
+    combat = data.get("combat") if isinstance(data.get("combat"), dict) else None
+    if combat is None and isinstance(player_data, dict):
+        combat = player_data.get("combatReadiness")
+    inv = inventory_from(data, limit=12)
+    bank_data = data.get("bank") if isinstance(data.get("bank"), dict) else player_data
+    bank = bank_summary(bank_data, limit=12)
     raw_food = []
     cooked_food = []
     burnt_food = []
     tools = []
-    inventory = player_data.get("inventory") if isinstance(player_data, dict) else []
-    bank_items = player_data.get("bank") if isinstance(player_data, dict) else []
+    inventory_summary = data.get("inventory") if isinstance(data.get("inventory"), dict) else {}
+    bank_summary_data = data.get("bank") if isinstance(data.get("bank"), dict) else {}
+    inventory = inventory_summary.get("items") if isinstance(inventory_summary.get("items"), list) else None
+    bank_items = bank_summary_data.get("items") if isinstance(bank_summary_data.get("items"), list) else None
+    if inventory is None and isinstance(player_data, dict):
+        inventory = player_data.get("inventory")
+    if bank_items is None and isinstance(player_data, dict):
+        bank_items = player_data.get("bank")
     for source, collection in (("inv", inventory), ("bank", bank_items)):
         if not isinstance(collection, list):
             continue
         for entry in collection:
             if not isinstance(entry, dict):
                 continue
-            name = str(entry.get("name") or "").lower()
+            name = str(entry.get("name") or entry.get("n") or "").lower()
             compact = item(entry)
             compact["src"] = source
             if "raw " in name:
                 raw_food.append(compact)
             elif "burnt" in name:
                 burnt_food.append(compact)
-            elif entry.get("foodHeal"):
+            elif entry.get("foodHeal", entry.get("heal")):
                 cooked_food.append(compact)
             elif name in ("small fishing net", "fishing rod", "fly fishing rod", "harpoon", "lobster pot", "knife", "tinderbox"):
                 tools.append(compact)
@@ -797,11 +853,11 @@ def compact_food_bank(data):
             "tools": tools[:8],
         },
         "combat": {
-            "eat": combat.get("eatAtHitpoints") if isinstance(combat, dict) else None,
-            "retreat": combat.get("retreatAtHitpoints") if isinstance(combat, dict) else None,
-            "invFood": combat.get("inventoryFoodCount") if isinstance(combat, dict) else None,
-            "invHeal": combat.get("inventoryFoodHealing") if isinstance(combat, dict) else None,
-            "bankFood": combat.get("bankFoodCount") if isinstance(combat, dict) else None,
+            "eat": combat.get("eatAtHitpoints", combat.get("eatAt")) if isinstance(combat, dict) else None,
+            "retreat": combat.get("retreatAtHitpoints", combat.get("retreatAt")) if isinstance(combat, dict) else None,
+            "invFood": combat.get("inventoryFoodCount", combat.get("inventoryFood")) if isinstance(combat, dict) else None,
+            "invHeal": combat.get("inventoryFoodHealing", combat.get("inventoryHeal")) if isinstance(combat, dict) else None,
+            "bankFood": combat.get("bankFoodCount", combat.get("bankFood")) if isinstance(combat, dict) else None,
             "bankCoins": combat.get("bankCoins") if isinstance(combat, dict) else None,
         },
     }

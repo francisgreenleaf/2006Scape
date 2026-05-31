@@ -119,6 +119,7 @@ def _base_args(args: SimpleNamespace, include_partial=False, include_derived=Fal
         shortcut_corridor_radius=getattr(args, "shortcut_corridor_radius", 18),
         route_step_gap=getattr(args, "route_step_gap", 10),
         no_cache_direct=getattr(args, "no_cache_direct", False),
+        no_cache_mesh=getattr(args, "no_cache_mesh", False),
         direct_candidate_min_detour=getattr(args, "direct_candidate_min_detour", 1.22),
         direct_candidate_min_savings=getattr(args, "direct_candidate_min_savings", 24),
         direct_hazard_buffer=getattr(args, "direct_hazard_buffer", 10),
@@ -183,20 +184,31 @@ def _model_score(model: Dict[str, Any] | None, candidate: Dict[str, Any]) -> Dic
             "sourceMix": {"fallback": max(0, len(waypoints) - 1)},
         }
     ticks = 0.0
+    combat_tick_estimate = 0.0
     risks = []
+    exposures = []
+    hp_losses = []
     confidences = []
     source_mix: Dict[str, int] = {}
     for left, right in zip(waypoints, waypoints[1:]):
         prediction = segment_prediction(model, left, right)
-        ticks += prediction["predictedTicks"]
+        predicted_ticks = float(prediction["predictedTicks"])
+        ticks += predicted_ticks
+        combat_tick_estimate += predicted_ticks * float(prediction.get("combatExposure") or 0.0)
         risks.append(prediction["riskScore"])
+        exposures.append(float(prediction.get("combatExposure") or 0.0))
+        hp_losses.append(float(prediction.get("hpLossPerAttempt") or 0.0))
         confidences.append(prediction["confidence"])
         source_mix[prediction["source"]] = source_mix.get(prediction["source"], 0) + 1
     risk = max(risks) if risks else 0.0
+    exposure = combat_tick_estimate / max(1.0, ticks)
     confidence = sum(confidences) / max(1, len(confidences))
     return {
         "predictedTicks": round(ticks, 2),
         "riskScore": round(risk, 6),
+        "combatExposure": round(exposure, 6),
+        "maxCombatExposure": round(max(exposures) if exposures else 0.0, 6),
+        "hpLossPerAttempt": round(max(hp_losses) if hp_losses else 0.0, 5),
         "confidence": round(confidence, 6),
         "sourceMix": source_mix,
     }
@@ -207,6 +219,8 @@ def _score_candidate(model: Dict[str, Any] | None, candidate: Dict[str, Any]) ->
     weights = (model or {}).get("weights", {})
     tick_weight = float(weights.get("tick", 1.0))
     risk_penalty = float(weights.get("riskPenalty", 950.0))
+    combat_exposure_penalty = float(weights.get("combatExposurePenalty", 420.0))
+    hp_loss_penalty = float(weights.get("hpLossPenalty", 35.0))
     confidence_penalty = float(weights.get("lowConfidencePenalty", 140.0))
     detour_penalty = float(weights.get("detourPenalty", 220.0))
     building_penalty = float(weights.get("insideBuildingPenalty", 180.0))
@@ -215,6 +229,8 @@ def _score_candidate(model: Dict[str, Any] | None, candidate: Dict[str, Any]) ->
     detour_ratio = float(candidate.get("detourRatio") or (route_distance / max(1.0, direct)))
     score = model_part["predictedTicks"] * tick_weight
     score += model_part["riskScore"] * risk_penalty
+    score += model_part.get("combatExposure", 0.0) * combat_exposure_penalty
+    score += model_part.get("hpLossPerAttempt", 0.0) * hp_loss_penalty
     score += (1.0 - min(1.0, model_part["confidence"])) * confidence_penalty
     score += max(0.0, detour_ratio - 1.0) * detour_penalty
     score += _quality_penalty(candidate.get("quality"))
@@ -311,6 +327,7 @@ def _route_evidence(candidate: Dict[str, Any]) -> Dict[str, Any]:
     trace_edges = int(sources.get("model_trace") or 0)
     route_hint_edges = int(sources.get("route_hint") or 0)
     cache_direct_edges = int(sources.get("cache_direct") or 0)
+    cache_mesh_edges = int(sources.get("cache_mesh") or 0)
     status_ok = candidate.get("status") == "ok"
     if status_ok and trace_edges:
         level = "trace_proven"
@@ -324,7 +341,7 @@ def _route_evidence(candidate: Dict[str, Any]) -> Dict[str, Any]:
         level = "route_hint_backed"
         proven = False
         summary = "Selected route is backed by navigation route hints, but no specific verified route id was attached."
-    elif cache_direct_edges:
+    elif cache_direct_edges or cache_mesh_edges:
         level = "cache_planned"
         proven = False
         summary = "Selected route is planned from cache collision data rather than a successful movement trace."
@@ -345,7 +362,6 @@ def route_definition(args: SimpleNamespace, candidate: Dict[str, Any]) -> Dict[s
     """Stable compact contract for agents that just need a route to execute."""
     route_id = candidate.get("routeId") or _route_id(args, candidate)
     legacy_command = candidate.get("routeRunnerCommand") or _route_runner_command(args, candidate)
-    actionable = _is_actionable(candidate)
     evidence_jsonl = ""
     if "--evidence-jsonl" in legacy_command:
         index = legacy_command.index("--evidence-jsonl")
@@ -353,7 +369,6 @@ def route_definition(args: SimpleNamespace, candidate: Dict[str, Any]) -> Dict[s
             evidence_jsonl = legacy_command[index + 1]
     if not evidence_jsonl:
         evidence_jsonl = _profile_scoped_route_evidence_jsonl(args.trace_profile)
-    command = _route_executor_command(args, evidence_jsonl) if actionable else []
     route_steps = candidate.get("routeSteps") or candidate.get("waypoints") or []
     run_plan = candidate.get("runPlan") or {
         "policy": "default",
@@ -362,6 +377,19 @@ def route_definition(args: SimpleNamespace, candidate: Dict[str, Any]) -> Dict[s
         "walkTileDistance": candidate.get("routeDistance"),
         "segmentCount": 0,
     }
+    run_segments = candidate.get("runSegments") or []
+    run_segment_warnings = []
+    max_run_requirement = max([int(segment.get("minRunEnergy") or 0) for segment in run_segments] or [0])
+    if max_run_requirement > 0:
+        current_run = getattr(args, "run_energy", None)
+        if current_run is None:
+            run_segment_warnings.append("run energy unknown; route has run segment requiring {}".format(max_run_requirement))
+        elif int(current_run) < max_run_requirement:
+            run_segment_warnings.append("run energy {} < route segment required {}".format(current_run, max_run_requirement))
+        if getattr(args, "run_enabled", None) is False:
+            run_segment_warnings.append("run disabled but route has required run segments")
+    actionable = _is_actionable(candidate) and not run_segment_warnings
+    command = _route_executor_command(args, evidence_jsonl) if actionable else []
     hazard_warnings = candidate.get("hazardWarnings") or []
     quality = candidate.get("quality")
     evidence = _route_evidence(candidate)
@@ -374,6 +402,9 @@ def route_definition(args: SimpleNamespace, candidate: Dict[str, Any]) -> Dict[s
         review_reasons.append("route is outside a supported cache route area")
     if hazard_warnings:
         review_reasons.append("hazard warnings present")
+    if run_segment_warnings:
+        review_reasons.append("run segment requirements are not met")
+    learned_exposure = candidate.get("learnedExposure") or {}
     return {
         "schemaVersion": 1,
         "api": "2006scape.route-definition",
@@ -398,12 +429,14 @@ def route_definition(args: SimpleNamespace, candidate: Dict[str, Any]) -> Dict[s
         "routeStepCount": len(route_steps),
         "evidence": evidence,
         "runPlan": run_plan,
-        "runSegments": candidate.get("runSegments") or [],
+        "runSegments": run_segments,
         "safety": {
             "allowLethal": bool(getattr(args, "allow_lethal", False)),
             "requiresReview": bool(review_reasons),
             "reviewReasons": review_reasons,
             "hazardWarnings": hazard_warnings[:8],
+            "runWarnings": run_segment_warnings,
+            "learnedExposure": learned_exposure,
             "wrongWayFlags": (candidate.get("wrongWayFlags") or [])[:5],
             "detourSegments": (candidate.get("detourSegments") or [])[:5],
         },
@@ -413,6 +446,8 @@ def route_definition(args: SimpleNamespace, candidate: Dict[str, Any]) -> Dict[s
             "legacyRouteRunnerCommand": legacy_command if actionable else [],
             "maxBatchDistance": getattr(args, "max_batch_distance", None),
             "runnerMaxBatches": getattr(args, "runner_max_batches", None),
+            "lookaheadDistance": 30 if actionable else None,
+            "lookaheadStepLimit": 4 if actionable else None,
             "notes": (
                 "Run this only when live movement is intended; it follows routeSteps through bridge primitives and appends route-batch evidence automatically."
                 if actionable else
@@ -617,7 +652,7 @@ def _compact_candidate(candidate: Dict[str, Any]) -> Dict[str, Any]:
         "edgeSources", "routesUsed", "hazardWarnings", "objectSteps", "wrongWayFlags",
         "detourSegments", "frontierScore", "routeExecutionCommand", "routeRunnerCommand", "includes", "error",
         "message", "coordinateLayers", "transition", "planEnrichmentError", "improvement", "directCandidate", "selectedOverLearned",
-        "learnedCandidate", "runPlan", "runSegments", "routeId", "routeDefinition",
+        "learnedCandidate", "cacheMeshCandidate", "learnedExposure", "runPlan", "runSegments", "routeId", "routeDefinition",
     ]
     compact = {key: candidate[key] for key in keep if key in candidate and candidate[key] not in (None, [], {})}
     compact["actionable"] = _is_actionable(candidate)

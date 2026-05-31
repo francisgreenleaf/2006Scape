@@ -206,14 +206,27 @@ def call_tool(tool_name, arguments=None):
 
 
 def player_from(result):
-    player = result.get("player")
-    if not isinstance(player, dict):
-        raise RuntimeError("bridge response did not include player state")
-    return player
+    return bridge.player_from(result)
 
 
 def observe():
     return player_from(call_tool("observe_state", {}))
+
+
+def player_from_wait_result(result, handle, event_name):
+    try:
+        return player_from(result)
+    except RuntimeError as exc:
+        if "bridge response did not include player state" not in str(exc):
+            raise
+        player = observe()
+        write_event(handle, event_name, {
+            "message": result.get("message"),
+            "batchStatus": result.get("batchStatus"),
+            "fallback": "observe_state",
+            "player": compact_player(player),
+        })
+        return player
 
 
 def run_delta(before, after):
@@ -982,7 +995,7 @@ def primitive_mine_batch(ore, site, args, handle, start_player=None):
                 break
             wait_ticks = min(6, max(1, int(args.mine_max_ticks) - total_ticks))
             wait_result = call_tool("wait_ticks", {"ticks": wait_ticks})
-            player = player_from(wait_result)
+            player = player_from_wait_result(wait_result, handle, "primitive_mine_wait_observe_fallback")
             total_ticks += wait_ticks
             write_event(handle, "primitive_mine_wait", {
                 "ore": ore,
@@ -1002,13 +1015,13 @@ def primitive_mine_batch(ore, site, args, handle, start_player=None):
             "option": "first",
         })
         wait_ticks = min(40, max(1, int(args.mine_max_ticks) - total_ticks))
-        wait_result = call_tool("wait_until_idle", {
+        wait_result = call_tool("wait_until_idle_XS", {
             "maxTicks": wait_ticks,
             "movement": True,
             "skilling": True,
             "combat": False,
         })
-        player = player_from(wait_result)
+        player = player_from_wait_result(wait_result, handle, "primitive_mine_idle_observe_fallback")
         used_ticks = int(wait_result.get("batchTicks", wait_ticks) or wait_ticks)
         total_ticks += max(1, used_ticks)
         rounds += 1

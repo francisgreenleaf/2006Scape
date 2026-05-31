@@ -112,7 +112,7 @@ def attack_round(profile, args, handle):
         raise RuntimeError(find_result.get("message", "no combat target found"))
     npc = find_result.get("npc") or {}
     attack = bridge.call_tool("attack_npc", {"npcIndex": int(npc["npcIndex"])}, profile=profile)
-    wait = bridge.call_tool("wait_until_idle", {
+    wait = bridge.call_tool("wait_until_idle_XS", {
         "maxTicks": args.fight_ticks,
         "movement": True,
         "skilling": False,

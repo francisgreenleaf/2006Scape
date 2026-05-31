@@ -1,6 +1,6 @@
 {
-  "datasetDir": "artifacts/datasets/20260527T072707Z",
-  "modelId": "20260527T072714Z",
-  "modelPath": "artifacts/models/20260527T072714Z/model.json",
-  "trainedAt": "2026-05-27T07:27:14Z"
+  "datasetDir": "artifacts/datasets/20260531T045439Z",
+  "modelId": "20260531T045449Z",
+  "modelPath": "artifacts/models/20260531T045449Z/model.json",
+  "trainedAt": "2026-05-31T04:54:49Z"
 }

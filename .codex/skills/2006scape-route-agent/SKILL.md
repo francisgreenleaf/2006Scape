@@ -88,11 +88,10 @@ For normal A-to-B travel, prefer ML1 after observing the current tile:
 
 ```sh
 python3 agent-navigation/ml-routing/route_ml_XS.py define --from X,Y,H --to PLACE --combat-level N --food N --run-energy N --run-enabled
-python3 agent-navigation/tools/execute_route_definition.py --route-definition agent-navigation/.local/ml-route-definitions/ROUTE.json --run-mode auto --eat-at 10
 python3 agent-navigation/tools/route_failure_XS.py
 ```
 
-Read the returned `status`, `quality`, `safety`, `steps`, `run`, and `runSegments`. ML1 supports surface routes and same-cache-area underground routes. If `status=requires-object-transition`, use the object-transition workflow to get through the entrance/exit/ladder/stairs/trapdoor/gate first, then request the next route on the destination layer or underground area. If `status=unsupported-coordinate-layer`, do not execute a route; the tile is outside a supported cache route area. The old route method is deprecated: do not call bare `route_runner.py --to ...` for normal travel. If live movement is intended, run the returned `cmd`/persisted route-definition path; it uses `execute_route_definition.py` to follow route steps, eat before the next step at `--eat-at 10`, capture nearby NPC context on combat/HP loss, and write route feedback. If movement fails or recovery context is needed, read `route_failure_XS.py` before opening full route evidence JSONL. Use full `route_ml.py define` only when XS omits a field needed for planner debugging.
+Read the returned `status`, `quality`, `safety`, `steps`, `run`, and `runSegments`. ML1 supports surface routes and same-cache-area underground routes. If `status=requires-object-transition`, use the object-transition workflow to get through the entrance/exit/ladder/stairs/trapdoor/gate first, then request the next route on the destination layer or underground area. For level-3/10-HP White Wolf crossings, cross the Taverley gate to `taverley_white_wolf_gate_west_side` first, then request `catherby_bank` with run enabled and at least 70 run energy; do not execute if ML1 omits `cmd` or reports `strategy:not_actionable`. If `status=unsupported-coordinate-layer`, do not execute a route; the tile is outside a supported cache route area. The old route method is deprecated: do not call bare `route_runner.py --to ...` for normal travel. If live movement is intended, run the returned `cmd`/`execution.command` exactly as emitted instead of guessing a route-definition path; current route-definition JSON uses the legacy shared `.local/ml-route-definitions/` directory unless `--route-definition-dir` is supplied, while route evidence becomes profile-scoped when `--trace-profile` is set. The executor uses `execute_route_definition.py` to follow route steps, eat before the next step at `--eat-at 10`, capture nearby NPC context on combat/HP loss, and write route feedback. If movement fails or recovery context is needed, read `route_failure_XS.py` before opening full route evidence JSONL. Use full `route_ml.py define` only when XS omits a field needed for planner debugging.
 
 Use navdb for route DB validation, route-data edits, and fallback next-step checks:
 
@@ -128,7 +127,6 @@ Coordinate targets are valid for frontier/routing work:
 
 ```sh
 python3 agent-navigation/ml-routing/route_ml_XS.py define --from X,Y,H --to TARGET_X,TARGET_Y,TARGET_H --combat-level N --food N --run-energy N --run-enabled
-python3 agent-navigation/tools/execute_route_definition.py --route-definition agent-navigation/.local/ml-route-definitions/ROUTE.json --run-mode auto --eat-at 10
 ```
 
 Use Route Runner coordinate targets only as explicit legacy diagnostics after loading `2006scape-route-planner-dev`.
@@ -197,8 +195,9 @@ XS and full agent-facing CLIs append local audit events to `agent-navigation/.lo
 - Use `observe_XXS.sh` for routine confirmation/status checks and `observe_XS.sh` for route decisions; avoid full observe unless a specific field is missing.
 - Use `runtime_doctor.py` for stale bridge/runtime repair instead of retyping the session-claim flow.
 - Use `capture-cardinal-screenshots.sh` for compact visual proof when route geometry is ambiguous.
-- Use ML1 `route_ml_XS.py define` for normal A-to-B travel; fall back to full `route_ml.py` only for missing debug fields.
-- Treat bare `route_runner.py` as deprecated for live routing; use it only for compatibility/debugging. Use `execute_route_definition.py --route-definition ...` for ML1 live execution.
+- Use ML1 `route_ml_XS.py define` for normal A-to-B travel; fall back to full `route_ml.py` only for missing debug fields. The model is trained globally from all player traces, not from one profile, and route scoring now penalizes combat exposure such as combat ticks, HP loss, deaths/failures, and recorded hazards, especially for weaker characters.
+- Treat bare `route_runner.py` as deprecated for live routing; use it only for compatibility/debugging. Use the returned `cmd`/`execution.command` or `execute_route_definition.py --route-definition ...` for ML1 live execution. The executor uses bounded lookahead by default and treats `routeSteps` as guide rails rather than mandatory stop points; do not add `--no-lookahead` unless deliberately debugging old one-step behavior.
+- Continue recording route outcomes with `route_ml_XS.py record-outcome` for enemy contact, deaths, stalls, bad detours, or wrong destinations so combat-risk scoring keeps improving.
 - Check orient `frontierScore` for coordinate targets; if the proposed frontier's first step goes away from the target, prefer a target-directed probe or local preview.
 - Use `--run-reserve auto` when moving through long or hazard-adjacent routes so normal travel does not drain energy needed for hazards.
 - Use `render_agent_context_map_XS.py` to inspect current location, grid cells, recent movement, and route segments before replaying inefficient detours. Its default artifacts are timestamped under `.local/context-maps`.

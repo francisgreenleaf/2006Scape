@@ -7,8 +7,6 @@ import com.rs2.util.Misc;
 import com.rs2.world.Boundary;
 import com.rs2.world.clip.Region;
 
-import java.util.ArrayList;
-
 import static com.rs2.game.content.StaticNpcList.*;
 
 public class NpcData {
@@ -76,7 +74,8 @@ public class NpcData {
 	}
 
 	public static int getCloseRandomPlayer(int i) {
-		ArrayList<Integer> players = new ArrayList<Integer>();
+		int selectedPlayer = 0;
+		int candidateCount = 0;
 		for (int j = 0; j < PlayerHandler.players.length; j++) {
 			if (PlayerHandler.players[j] != null) {
 				if (NpcHandler.goodDistance(
@@ -91,17 +90,16 @@ public class NpcData {
 							&& PlayerHandler.players[j].underAttackBy2 <= 0
 							|| Boundary.isIn(PlayerHandler.players[j], Boundary.MULTI)) {
 						if (PlayerHandler.players[j].heightLevel == NpcHandler.npcs[i].heightLevel) {
-							players.add(j);
+							candidateCount++;
+							if (Misc.random(candidateCount - 1) == 0) {
+								selectedPlayer = j;
+							}
 						}
 					}
 				}
 			}
 		}
-		if (players.size() > 0) {
-			return players.get(Misc.random(players.size() - 1));
-		} else {
-			return 0;
-		}
+		return selectedPlayer;
 	}
 
 	public static void startAnimation(int animId, int i) {

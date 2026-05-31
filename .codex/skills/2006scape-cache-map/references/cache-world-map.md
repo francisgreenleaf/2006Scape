@@ -26,9 +26,9 @@ Canonical reusable and active map outputs live under `agent-navigation/topology/
 ```text
 cache-world-map-full.png
 cache-world-map-level0.png
-movement-topology-v4.png
-movement-topology-v5-heatmap.png
-movement-topology-v6.png
+<profile>-map.png
+<profile>-heatmap.png
+<profile>-fog-map.png
 ```
 
 `cache-world-map-full.png` is the labeled full cache-bounds base export. `cache-world-map-level0.png` is the labeled level-0 surface export cropped to the main surface region. Both are 4 px/tile, north-up, generated without resizing, and contain no movement overlays. Other local scripts that need a static base map should use one of these exports instead of sampling the Java client or creating one-off copies.

@@ -92,7 +92,7 @@ def interact_object(profile, obj, handle, reason):
 
 
 def walk_to_tile(profile, tile, handle, reason, max_ticks=40):
-    result = bridge.call_tool("walk_to_tile_until_arrived", {
+    result = bridge.call_tool("walk_to_tile_until_arrived_XS", {
         "x": int(tile["x"]),
         "y": int(tile["y"]),
         "height": int(tile.get("height", 0) or 0),

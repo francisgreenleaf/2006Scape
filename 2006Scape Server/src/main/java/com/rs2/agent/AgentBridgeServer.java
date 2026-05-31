@@ -52,6 +52,7 @@ public class AgentBridgeServer {
             response.addProperty("ok", true);
             response.addProperty("service", "2006scape-agent");
             response.addProperty("sessions", AgentSessionManager.INSTANCE.getSessionCount());
+            response.addProperty("pendingClaims", AgentSessionManager.INSTANCE.getPendingClaimCount());
             sendJson(exchange, 200, response);
         }
     }

@@ -266,6 +266,83 @@
     ]
   },
     {
+      "id": "white_wolf_north_low_level_run_band",
+      "name": "White Wolf North Route Low-Level Run Band",
+      "type": "npc_zone",
+      "region": "white_wolf_mountain",
+      "center": {
+        "x": 2873,
+        "y": 3444,
+        "height": 0
+      },
+      "radius": 12,
+      "risk": "low-level-run-contact",
+      "status": "run-through-for-level-3",
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "minRunEnergy": 70,
+        "requiresRun": true
+      },
+      "npcs": [
+        {
+          "name": "White wolf",
+          "combatLevel": 25,
+          "aggressive": false,
+          "hostileWhenAttackedOrPathingTooClose": true
+        }
+      ],
+      "avoidWhen": [
+        "run energy below 70",
+        "run disabled",
+        "hitpoints below 8",
+        "route is not using the north-side White Wolf path"
+      ],
+      "notes": "Low-level accounts should cross this band on the north-side White Wolf route with run enabled. MrFish crossed the band on 2026-05-31 with combat level 3, HP 10 -> 7, no food, and reached Catherby alive. This is not proof that the shorter lower/middle wolf route is safe for level-3 characters.",
+      "observations": [
+        "2026-05-31 mrfish passive trace: 2934,3451 -> 2888,3430 -> 2873,3444 -> 2873,3466 -> 2868,3524 -> Catherby; one brief wolf contact at 2873,3444/3446 dropped HP 10 -> 7.",
+        "2026-05-31 white-wolf trace review found MrAthlete and MrFish using the north-side mountain path; the safer low-level crossing still needs run to keep wolf contact brief."
+      ]
+    },
+    {
+      "id": "white_wolf_middle_low_level_contact",
+      "name": "White Wolf Middle Shortcut Low-Level Contact",
+      "type": "npc_zone",
+      "region": "white_wolf_mountain",
+      "center": {
+        "x": 2858,
+        "y": 3495,
+        "height": 0
+      },
+      "radius": 6,
+      "risk": "high-combat-contact",
+      "status": "avoid-for-level-3",
+      "requirements": {
+        "minCombatLevel": 20,
+        "minFood": 3,
+        "minRunEnergy": 70,
+        "requiresRun": true
+      },
+      "npcs": [
+        {
+          "name": "White wolf",
+          "combatLevel": 25,
+          "aggressive": false,
+          "hostileWhenAttackedOrPathingTooClose": true
+        }
+      ],
+      "avoidWhen": [
+        "combat level below 20",
+        "food below 3",
+        "route can use the north-side White Wolf path instead"
+      ],
+      "notes": "This covers the shorter middle White Wolf shortcut used by the MrFlame-class proven route. MrFish's lower/middle crossing attempt on 2026-05-31 reached this area with HP already low and is not the preferred route for level-3/no-food characters.",
+      "observations": [
+        "2026-05-25 MrFlame-class proof took one 5 HP wolf hit near 2850,3495 and arrived alive with HP 15/20 and food.",
+        "2026-05-31 mrfish first mountain attempt passed through the lower/middle wolf route, dropped to very low HP around 2860,3490 through 2846,3508, and should not be used as the level-3 safe path."
+      ]
+    },
+    {
       "id": "dwarven_mine_descent_unverified",
       "name": "Dwarven Mine Descent Unverified",
       "type": "navigation_gate",

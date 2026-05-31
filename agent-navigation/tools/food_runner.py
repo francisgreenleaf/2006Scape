@@ -57,7 +57,7 @@ def walk_to_object_interaction_tile(player, obj, profile, handle, args, reason):
     target = obj.get("nearestInteractionTile") or obj.get("interactionWalkTarget")
     if not isinstance(target, dict):
         return player
-    result = bridge.call_tool("walk_to_tile_until_arrived", {
+    result = bridge.call_tool("walk_to_tile_until_arrived_XS", {
         "x": int(target["x"]),
         "y": int(target["y"]),
         "height": int(target.get("height", 0) or 0),
@@ -110,7 +110,7 @@ def fish_until_full(profile, args, handle):
             "requireReachable": True,
         }, profile=profile)
         wait_ticks = min(80, max(1, args.max_ticks - total_ticks))
-        wait = bridge.call_tool("wait_until_idle", {
+        wait = bridge.call_tool("wait_until_idle_XS", {
             "maxTicks": wait_ticks,
             "movement": True,
             "skilling": True,
@@ -166,7 +166,7 @@ def cook_inventory(profile, args, handle):
         }, profile=profile)
         button = bridge.call_tool("click_interface_button", {"buttonId": args.cook_button_id}, profile=profile)
         wait_ticks = min(160, max(1, args.max_ticks - total_ticks))
-        wait = bridge.call_tool("wait_until_idle", {
+        wait = bridge.call_tool("wait_until_idle_XS", {
             "maxTicks": wait_ticks,
             "movement": True,
             "skilling": True,
@@ -215,7 +215,7 @@ def light_fires(profile, args, handle):
             "itemId": TINDERBOX,
             "targetItemId": int(logs["id"]),
         }, profile=profile)
-        wait = bridge.call_tool("wait_until_idle", {
+        wait = bridge.call_tool("wait_until_idle_XS", {
             "maxTicks": args.fire_ticks,
             "movement": True,
             "skilling": True,

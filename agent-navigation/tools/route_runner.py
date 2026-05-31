@@ -965,7 +965,7 @@ def run(args):
             force_reason="long_leg_pre_batch" if force_run else "",
         )
         batch_start_player = dict(player)
-        result = call_tool("walk_to_tile_until_arrived", {
+        result = call_tool("walk_to_tile_until_arrived_XS", {
             "x": walk_target["x"],
             "y": walk_target["y"],
             "height": walk_target.get("height", 0),

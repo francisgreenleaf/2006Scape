@@ -55,6 +55,18 @@ def _record_stats(record: Dict[str, Any]) -> Dict[str, float]:
     return stats
 
 
+def _capability_bucket(record: Dict[str, Any]) -> str:
+    """Small, explainable profile/stat bucket for later route-risk analysis."""
+    level = int(record.get("combatLevel") or record.get("combat_level") or 0)
+    if level <= 0:
+        return "unknown"
+    if level < 20:
+        return "low"
+    if level < 45:
+        return "mid"
+    return "high"
+
+
 def _aggregate_chunk(records: List[Dict[str, Any]]) -> Dict[str, Any]:
     edge_stats = {}
     region_stats = defaultdict(_empty_stats)
@@ -95,6 +107,7 @@ def _finalize_stats(stats: Dict[str, float], prior: Dict[str, float] | None = No
     object_rate = stats.get("objectInteractions", 0.0) / max(1.0, attempts)
     run_batches = stats.get("runEffectiveBatches", 0.0) + stats.get("runIneffectiveBatches", 0.0)
     run_effective_rate = stats.get("runEffectiveBatches", 0.0) / max(1.0, run_batches)
+    combat_exposure = min(1.0, combat_rate + min(0.35, hp_per_attempt / 20.0))
     risk = min(1.0, failure_rate + (combat_rate * 0.6) + min(0.35, hp_per_attempt / 20.0))
     confidence = min(0.99, (successes + 1.0) / (attempts + 3.0))
     return {
@@ -106,6 +119,7 @@ def _finalize_stats(stats: Dict[str, float], prior: Dict[str, float] | None = No
         "averageDistance": round(avg_distance, 5),
         "failureRate": round(failure_rate, 6),
         "combatRate": round(combat_rate, 6),
+        "combatExposure": round(combat_exposure, 6),
         "hpLossPerAttempt": round(hp_per_attempt, 5),
         "objectInteractionRate": round(object_rate, 6),
         "runEffectiveRate": round(run_effective_rate, 6),
@@ -150,6 +164,8 @@ def _route_attempt_training_record(record: Dict[str, Any]) -> Dict[str, Any] | N
         "routeBatchSamples": 1,
         "runEffectiveBatches": 0,
         "runIneffectiveBatches": 0,
+        "combatLevel": int(record.get("combatLevel") or 0),
+        "capabilityBucket": _capability_bucket(record),
     }
 
 
@@ -226,6 +242,11 @@ def train_model(args: SimpleNamespace) -> Dict[str, Any]:
         "weights": {
             "tick": 1.0,
             "riskPenalty": 950.0,
+            "combatExposurePenalty": 420.0,
+            "hpLossPenalty": 35.0,
+            "combatExposureTilePenalty": 18.0,
+            "hpLossTilePenalty": 1.5,
+            "failureTilePenalty": 8.0,
             "lowConfidencePenalty": 140.0,
             "detourPenalty": 220.0,
             "insideBuildingPenalty": 180.0,
@@ -282,6 +303,8 @@ def segment_prediction(model: Dict[str, Any], from_tile: Dict[str, int], to_tile
         "source": source,
         "predictedTicks": round(predicted_ticks, 4),
         "riskScore": float(edge.get("riskScore") or 0.0),
+        "combatExposure": float(edge.get("combatExposure") or edge.get("combatRate") or 0.0),
+        "hpLossPerAttempt": float(edge.get("hpLossPerAttempt") or 0.0),
         "confidence": float(edge.get("confidence") or 0.0),
         "failureRate": float(edge.get("failureRate") or 0.0),
         "combatRate": float(edge.get("combatRate") or 0.0),

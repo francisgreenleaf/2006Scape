@@ -40,6 +40,7 @@ public class Game extends RSApplet {
 	
 	private boolean graphicsEnabled = true;
 	private static final long AGENT_AUTO_LOGIN_RETRY_DELAY_MS = 30000L;
+	private static final int AGENT_AUTO_CLAIM_MAX_ATTEMPTS = 3;
 	private static final int AGENT_TERMINAL_TAB = 7;
 	private static final int AGENT_TERMINAL_PANEL_X = 5;
 	private static final int AGENT_TERMINAL_PANEL_Y = 6;
@@ -5995,7 +5996,16 @@ public class Game extends RSApplet {
 	}
 
 	private void maybeAutoClaimAgentBridge() {
-		if (agentAutoClaimSent || ClientSettings.AGENT_AUTO_CLAIM_NONCE == null || ClientSettings.AGENT_AUTO_CLAIM_NONCE.trim().isEmpty()) {
+		if (ClientSettings.AGENT_AUTO_CLAIM_NONCE == null || ClientSettings.AGENT_AUTO_CLAIM_NONCE.trim().isEmpty()) {
+			return;
+		}
+		if (agentAutoClaimNonce == null || !agentAutoClaimNonce.equals(ClientSettings.AGENT_AUTO_CLAIM_NONCE)) {
+			agentAutoClaimNonce = ClientSettings.AGENT_AUTO_CLAIM_NONCE;
+			agentAutoClaimSent = false;
+			agentAutoClaimAttempts = 0;
+			agentAutoClaimLastAttemptCycle = 0;
+		}
+		if (agentAutoClaimSent) {
 			return;
 		}
 		if (agentAutoClaimAttempts > 0 && loopCycle - agentAutoClaimLastAttemptCycle < 25) {
@@ -6005,7 +6015,7 @@ public class Game extends RSApplet {
 		if (sendAgentBridgeClaimCommand(ClientSettings.AGENT_AUTO_CLAIM_NONCE)) {
 			agentAutoClaimAttempts++;
 			System.out.println("[AgentClient] auto-claim attempt sent count=" + agentAutoClaimAttempts);
-			agentAutoClaimSent = agentAutoClaimAttempts >= 20;
+			agentAutoClaimSent = agentAutoClaimAttempts >= AGENT_AUTO_CLAIM_MAX_ATTEMPTS;
 		}
 	}
 
@@ -6464,8 +6474,6 @@ public class Game extends RSApplet {
 					loggedIn = true;
 					agentAutoLoginAttempted = false;
 					agentNextAutoLoginAttemptAt = 0L;
-					agentAutoClaimSent = false;
-					agentAutoCommandSent = false;
 					stream.currentOffset = 0;
 					inStream.currentOffset = 0;
 					pktType = -1;
@@ -12627,6 +12635,7 @@ public class Game extends RSApplet {
 	private boolean agentTerminalInputFocused;
 	private AgentTerminalLog agentTerminalLog;
 	private AgentClientController agentController;
+	private String agentAutoClaimNonce;
 	private boolean agentAutoClaimSent;
 	private int agentAutoClaimAttempts;
 	private int agentAutoClaimLastAttemptCycle;

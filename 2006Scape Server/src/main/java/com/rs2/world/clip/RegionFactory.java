@@ -2,6 +2,8 @@ package com.rs2.world.clip;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apollo.cache.IndexedFileSystem;
 import org.apollo.cache.archive.Archive;
@@ -11,9 +13,14 @@ import org.apollo.util.CompressionUtil;
 public class RegionFactory {
 	
 	private static Region[] regions;
+	private static Map<Integer, Region> regionsById;
 	
 	public static Region[] getRegions() {
 		return regions;
+	}
+
+	public static Region getRegion(int regionId) {
+		return regionsById == null ? null : regionsById.get(regionId);
 	}
 
 	public static void load(IndexedFileSystem fs) throws IOException {
@@ -24,6 +31,7 @@ public class RegionFactory {
 
 		int size = buffer.capacity() / 7;
 		regions = new Region[size];
+		regionsById = new HashMap<Integer, Region>(size * 2);
 		int[] regionIds = new int[size];
 		int[] mapGroundFileIds = new int[size];
 		int[] mapObjectsFileIds = new int[size];
@@ -43,6 +51,7 @@ public class RegionFactory {
 		}
 		for (int i = 0; i < size; i++) {
 			regions[i] = new Region(regionIds[i], isMembers[i]);
+			regionsById.put(regionIds[i], regions[i]);
 		}
 		//GameEngine.getLogger(Region.class).info(size + " Regions created.");
 		//GameEngine.getLogger(Region.class).info("Populating regions...");

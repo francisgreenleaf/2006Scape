@@ -141,13 +141,7 @@ def call_tool(tool_name, arguments=None):
 
 
 def player_from(result):
-    player = result.get("player")
-    if isinstance(player, dict):
-        return player
-    state = result.get("state")
-    if isinstance(state, dict) and isinstance(state.get("player"), dict):
-        return state["player"]
-    raise RuntimeError("bridge response did not include player state")
+    return bridge.player_from(result)
 
 
 def player_from_or(result, fallback):
@@ -758,7 +752,7 @@ def route_or_stop(target, args, handle, reason, run_path, player=None):
 
 def walk_short(player, destination, args, handle, reason, max_ticks=None, max_distance=None):
     x, y, h = destination
-    result = call_tool("walk_to_tile_until_arrived", {
+    result = call_tool("walk_to_tile_until_arrived_XS", {
         "x": int(x),
         "y": int(y),
         "height": int(h),
@@ -955,7 +949,7 @@ def walk_gate_transition_steps(player, destinations, args, handle, reason):
     })
     if not result.get("success"):
         return queued
-    waited = call_tool("wait_until_idle", {
+    waited = call_tool("wait_until_idle_XS", {
         "maxTicks": int(args.cow_gate_cross_ticks),
         "movement": True,
         "skilling": False,

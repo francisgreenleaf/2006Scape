@@ -43,7 +43,7 @@ public class Constants {
     public static boolean GUI_ENABLED = false, FILE_SERVER = true, SERVER_DEBUG = false, MEMBERS_ONLY = false, TUTORIAL_ISLAND = false,
             PARTY_ROOM_DISABLED = false, CLUES_ENABLED = true, ITEM_REQUIREMENTS = true,
             ADMIN_CAN_TRADE = false, ADMIN_DROP_ITEMS = false, ADMIN_CAN_SELL_ITEMS = false, VARIABLE_XP_RATE = false,
-            WEBSITE_INTEGRATION = false, CYCLE_LOGGING = true;
+            WEBSITE_INTEGRATION = false, CYCLE_LOGGING = true, PERFORMANCE_LOGGING = false;
     public static int[] VARIABLE_XP_RATES = new int[] {1, 2, 5, 10};
     public static double TEST_VERSION = 2.3, XP_RATE = 1.0;
 

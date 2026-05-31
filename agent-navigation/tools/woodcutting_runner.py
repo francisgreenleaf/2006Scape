@@ -78,7 +78,7 @@ def chop_round(tree, profile, args, handle):
         "y": obj.get("y"),
         "option": "first",
     }, profile=profile)
-    wait_result = bridge.call_tool("wait_until_idle", {
+    wait_result = bridge.call_tool("wait_until_idle_XS", {
         "maxTicks": args.chop_ticks,
         "movement": True,
         "skilling": True,

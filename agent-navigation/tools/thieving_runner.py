@@ -203,7 +203,7 @@ def pickpocket_once(player, profile, handle, args):
     }, profile=profile)
     updated = bridge._player_from_or(interact, player)
     if interact.get("approaching"):
-        wait = bridge.call_tool("wait_until_idle", {"maxTicks": 30, "movement": True, "combat": False}, profile=profile)
+        wait = bridge.call_tool("wait_until_idle_XS", {"maxTicks": 30, "movement": True, "combat": False}, profile=profile)
         updated = bridge.player_from(wait)
         interact = bridge.call_tool("interact_npc", {
             "npcIndex": npc.get("npcIndex", npc.get("index")),

@@ -128,6 +128,8 @@ def add_shared_route_args(parser: argparse.ArgumentParser) -> None:
                         help="Gap for compact routeSteps derived from the clipped path.")
     parser.add_argument("--no-cache-direct", action="store_true",
                         help="Disable cache-clipped direct-route candidates for diagnostics.")
+    parser.add_argument("--no-cache-mesh", action="store_true",
+                        help="Disable cache-derived mesh candidates that rebuild learned routes around required object transitions.")
     parser.add_argument("--direct-candidate-min-detour", type=float, default=1.22,
                         help="Try a cache-direct candidate when the learned route detour ratio reaches this value.")
     parser.add_argument("--direct-candidate-min-savings", type=int, default=24,

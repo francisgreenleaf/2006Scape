@@ -16,7 +16,7 @@ agent-navigation/tools/observe_XXS.sh
 agent-navigation/tools/observe_XS.sh
 RS_PROFILE=MrGem agent-navigation/tools/observe_XXS.sh
 RS_PROFILE=MrGem agent-navigation/tools/observe_XS.sh
-agent-navigation/tools/rs-tool_XS.sh <tool> '<json-args>'
+agent-navigation/tools/rs-tool_XS.sh <tool-or-tool_XS> '<json-args>'
 agent-navigation/tools/rs-tool_XXS.sh <tool-or-tool_XXS> '<json-args>'
 agent-navigation/tools/rs-tool_XS.sh observe_state_XS '{}'
 agent-navigation/tools/rs-tool_XS.sh observe_state_if_changed_XS '{"key":"progression-loop"}'
@@ -31,7 +31,7 @@ agent-navigation/tools/rs-tool_XS.sh unequip_items_XS '{"slotNames":["weapon","s
 python3 agent-navigation/tools/food_bank_XS.py
 ```
 
-Default order is XXS, then XS, then full. Use XXS for confirmation, health, position, survival, event, and stable status polls. Use XS when the next decision needs compact inventory, equipment, bank, nearby NPC/object, route, or skill context. Use `observe-slim.sh`, full `observe_state`, or `rs-tool.sh` only when compact output omits a named field needed for debugging, complete evidence, or a new workflow. Do not call full state in loops or immediately after every compact action result just to refresh; treat compact batch/tool results as the next observation when they contain the needed state.
+Default order is XXS, then XS, then full. Use XXS for confirmation, health, position, survival, event, and stable status polls. Use XS when the next decision needs compact inventory, equipment, bank, nearby NPC/object, route, or skill context. `rs-tool_XS.sh` and `rs-tool_XXS.sh` automatically map known compact-capable base names to server-side `_XS`/`_XXS` aliases. Use `observe-slim.sh`, full `observe_state`, or `rs-tool.sh` only when compact output omits a named field needed for debugging, complete evidence, or a new workflow. Do not call full state in loops or immediately after every compact action result just to refresh; treat compact batch/tool results as the next observation when they contain the needed state.
 
 Do not use admin teleports, item spawning, direct player-state edits, raw bridge tokens, screen automation, or game-source changes. Other agents may be active; observe first and treat unexpected state as possibly user-driven.
 

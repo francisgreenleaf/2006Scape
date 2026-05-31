@@ -32,7 +32,7 @@ route_ml.py define/route/go/benchmark
 cache-derived clipped path expansion for selected macro routes
         |
         v
-optional hazard-costed cache-direct candidate when learned evidence detours or only reaches a frontier
+optional cache-direct/cache-mesh candidates when learned evidence detours or only reaches a frontier
 ```
 
 ## Modules
@@ -62,7 +62,7 @@ This creates a clean training/evaluation surface for later gradient-boosted mode
 
 ## Fast And Full Planning
 
-`--planner fast` is the default agent-facing path. It loads the latest trained model, builds an in-memory graph from learned edge statistics and route hints, applies deterministic hazard checks, expands the selected macro path through cache-derived clipping, and returns a compact recommendation. If the learned graph is incomplete or clearly detouring, it can also test a cache-clipped direct path with hazard costs and select it over the learned candidate. This is the low-token, low-latency path agents should call during play.
+`--planner fast` is the default agent-facing path. It loads the latest trained model, builds an in-memory graph from learned edge statistics and route hints, applies deterministic hazard checks, expands the selected macro path through cache-derived clipping, and returns a compact recommendation. If the learned graph is incomplete or clearly detouring, it can also test cache-derived alternatives and select them over the learned candidate. `cache_direct` searches start-to-target with hazard costs. `cache_mesh` keeps required learned object transitions, then replans ordinary walking legs from cache-derived clipping. This is the low-token, low-latency path agents should call during play.
 
 `--planner full` wraps the existing `router.py` and `route_eval.py` logic. It is slower because it rebuilds trace-backed graphs, but it is useful for diagnostics and parity checks against the older deterministic planner.
 
@@ -78,6 +78,7 @@ Each candidate is scored by:
 
 - predicted ticks;
 - learned risk;
+- learned combat exposure from combat ticks, HP loss, and death/failure evidence;
 - low confidence;
 - detour ratio;
 - wrong-way/target-distance increases;
@@ -97,9 +98,11 @@ The game does not walk straight lines between waypoints. `PlayerAssistant.player
 
 `ml_routing.collision` mirrors those rules offline. The planner keeps its compact learned graph for speed, but after choosing a macro route it expands route-hint and snap edges into adjacent cache-clipped tiles. It tries each macro waypoint exactly first, then allows a small near-waypoint stop when the saved click target itself is clipped, matching `moveNear=true` walking. This makes map overlays and `recommended.next` follow bridges, docks, fences, walls, and buildings. Object-transition edges are reported and left as transitions rather than pretending a closed door or gate is ordinary walking.
 
-For large detours, the same collision grid can be searched directly from start to target. That `cache_direct` path adds soft costs around hazard radii and buffers, so the planner can discover unrecorded shortcuts while still preferring a wide path around death/high-risk NPC zones. This is not a replacement for learned route evidence; it is a target-aware candidate generator that gives the agent a better route to prove and record.
+For large detours, the same collision grid can be searched directly from start to target. That `cache_direct` path adds soft costs around hazard radii, buffers, and learned regional combat exposure, so the planner can discover unrecorded shortcuts while still preferring a wide path around death/high-risk NPC zones. This is not a replacement for learned route evidence; it is a target-aware candidate generator that gives the agent a better route to prove and record.
 
-`cache_direct` also produces a compact execution shape: `routeSteps` are the every-N-tile/turn waypoints, and `runPlan`/`runSegments` identify hazard-adjacent stretches where the agent should spend run energy instead of walking. `route_ml.py define` wraps those fields in the stable `2006scape.route-definition` API, including compatibility execution metadata and feedback instructions. Benchmark maps draw those run segments in yellow over the fast-route line.
+Some long routes need an object transition, such as a gate, before a pure start-to-target cache search can succeed. For those cases `cache_mesh` extracts only short object-transition crossings from the learned path and asks the cache collision layer to solve the walkable legs between start, transition sides, and target. The learned route contributes gate/door knowledge; banks, shops, and other service anchors do not become mandatory stops just because an old remembered path visited them.
+
+`cache_direct` and `cache_mesh` both produce a compact execution shape: `routeSteps` are the every-N-tile/turn waypoints, and `runPlan`/`runSegments` identify hazard-adjacent stretches where the agent should spend run energy instead of walking. `route_ml.py define` wraps those fields in the stable `2006scape.route-definition` API, including compatibility execution metadata and feedback instructions. The preferred executor treats `routeSteps` as guide rails and walks ahead across bounded chunks, while still recording which route-step range each batch covered. Benchmark maps draw run segments in yellow over the fast-route line.
 
 Route execution feedback is intentionally low-friction. Legacy compatibility executor commands append `route_batch` records under ignored `.local/run-evidence/`, and agents can add `route_outcome` records with `record-outcome` for higher-level problems such as enemy contact, death, stalls, blockers, wrong destinations, or bad detours. Dataset export folds both into `route_attempts.jsonl`.
 

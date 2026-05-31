@@ -6,7 +6,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 import com.google.gson.JsonArray;
@@ -257,6 +259,7 @@ public class AgentActionService {
         final boolean xs = AgentToolService.isXsTool(tool);
         final boolean xxs = AgentToolService.isXxsTool(tool);
         final String effectiveTool = AgentToolService.baseToolName(tool);
+        final String submittedToolName = submittedToolName(effectiveTool, xs, xxs);
         final AgentToolService.SkillSnapshot skillBefore = captureSkillSnapshot(token);
         final JsonObject submittedArguments = arguments == null ? new JsonObject() : arguments;
         if (AgentToolService.isLegacyStrategyTool(effectiveTool)
@@ -264,28 +267,44 @@ public class AgentActionService {
             JsonObject result = AgentToolService.legacyCompatibilityFailure(effectiveTool);
             return finishSubmittedTool(token, effectiveTool, xs, xxs, result, skillBefore);
         }
+        if ("observe_state".equals(effectiveTool) && (xs || xxs)) {
+            return submitOnGameTick(token, submittedToolName, new Callable<JsonObject>() {
+                @Override
+                public JsonObject call() {
+                    AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
+                    if (session == null) {
+                        return AgentToolService.failure("Agent session is no longer valid.");
+                    }
+                    Player player = session.getPlayer();
+                    if (player == null) {
+                        return AgentToolService.failure("The claimed player is no longer online.");
+                    }
+                    return xxs ? AgentToolService.observeStateXxs(player) : AgentToolService.observeStateXs(player);
+                }
+            });
+        }
         if ("walk_to_tile_until_arrived".equals(effectiveTool)) {
-            JsonObject result = walkToTileUntilArrived(token, arguments == null ? new JsonObject() : arguments);
+            JsonObject result = walkToTileUntilArrived(token, arguments == null ? new JsonObject() : arguments, xs, xxs);
             return finishSubmittedTool(token, effectiveTool, xs, xxs, result, skillBefore);
         }
         if ("travel_to_landmark_until_arrived".equals(effectiveTool)) {
-            JsonObject result = travelToLandmarkUntilArrived(token, arguments == null ? new JsonObject() : arguments);
+            JsonObject result = travelToLandmarkUntilArrived(token, arguments == null ? new JsonObject() : arguments, xs, xxs);
             return finishSubmittedTool(token, effectiveTool, xs, xxs, result, skillBefore);
         }
         if ("mine_ore_until_inventory_full".equals(effectiveTool)) {
-            JsonObject result = mineOreUntilInventoryFull(token, arguments == null ? new JsonObject() : arguments);
+            JsonObject result = mineOreUntilInventoryFull(token, arguments == null ? new JsonObject() : arguments, xs, xxs);
             return finishSubmittedTool(token, effectiveTool, xs, xxs, result, skillBefore);
         }
         if ("chop_tree_until_inventory_full".equals(effectiveTool)) {
-            JsonObject result = chopTreeUntilInventoryFull(token, arguments == null ? new JsonObject() : arguments);
+            JsonObject result = chopTreeUntilInventoryFull(token, arguments == null ? new JsonObject() : arguments, xs, xxs);
             return finishSubmittedTool(token, effectiveTool, xs, xxs, result, skillBefore);
         }
         if ("fletch_logs_until_inventory_empty".equals(effectiveTool)) {
-            JsonObject result = fletchLogsUntilInventoryEmpty(token, arguments == null ? new JsonObject() : arguments);
+            JsonObject result = fletchLogsUntilInventoryEmpty(token, arguments == null ? new JsonObject() : arguments, xs, xxs);
             return finishSubmittedTool(token, effectiveTool, xs, xxs, result, skillBefore);
         }
         if ("wait_until_idle".equals(effectiveTool)) {
-            JsonObject result = waitUntilIdle(token, arguments == null ? new JsonObject() : arguments);
+            JsonObject result = waitUntilIdle(token, arguments == null ? new JsonObject() : arguments, xs, xxs);
             return finishSubmittedTool(token, effectiveTool, xs, xxs, result, skillBefore);
         }
         if ("wait_until_combat_event".equals(effectiveTool)) {
@@ -297,7 +316,7 @@ public class AgentActionService {
             return finishSubmittedTool(token, effectiveTool, xs, xxs, result, skillBefore);
         }
         if ("object_transition_step".equals(effectiveTool)) {
-            JsonObject result = objectTransitionStep(token, arguments == null ? new JsonObject() : arguments);
+            JsonObject result = objectTransitionStep(token, arguments == null ? new JsonObject() : arguments, xs, xxs);
             return finishSubmittedTool(token, effectiveTool, xs, xxs, result, skillBefore);
         }
         if ("combat_cleanup".equals(effectiveTool)) {
@@ -313,14 +332,14 @@ public class AgentActionService {
             final long submittedTick = serverTick.get();
             final long targetTick = submittedTick + ticks;
             long timeoutMs = Math.max(ACTION_TIMEOUT_MS, (long) (ticks + 2) * Constants.CYCLE_TIME);
-            JsonObject result = submitForTick(targetTick, new Callable<JsonObject>() {
+            JsonObject result = submitForTick(targetTick, submittedToolName, new Callable<JsonObject>() {
                 @Override
                 public JsonObject call() {
                     AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
                     if (session == null || session.getPlayer() == null) {
                         return AgentToolService.failure("Agent session is no longer valid.");
                     }
-                    JsonObject result = AgentToolService.observeState(session.getPlayer());
+                    JsonObject result = observeForSubmittedTool(session.getPlayer(), xs, xxs);
                     result.addProperty("waitedTicks", ticks);
                     result.addProperty("submittedTick", submittedTick);
                     result.addProperty("targetTick", targetTick);
@@ -331,7 +350,7 @@ public class AgentActionService {
         }
         if ("start_combat_goal".equals(effectiveTool) || "observe_goal".equals(effectiveTool)
                 || "stop_goal".equals(effectiveTool)) {
-            JsonObject result = submitOnGameTick(token, new Callable<JsonObject>() {
+            JsonObject result = submitOnGameTick(token, submittedToolName, new Callable<JsonObject>() {
                 @Override
                 public JsonObject call() {
                     AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
@@ -354,7 +373,7 @@ public class AgentActionService {
             });
             return finishSubmittedTool(token, effectiveTool, xs, xxs, result, skillBefore);
         }
-        JsonObject result = submitOnGameTick(token, new Callable<JsonObject>() {
+        JsonObject result = submitOnGameTick(token, submittedToolName, new Callable<JsonObject>() {
             @Override
             public JsonObject call() {
                 AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
@@ -376,6 +395,12 @@ public class AgentActionService {
     }
 
     private JsonObject walkToTileUntilArrived(final String token, final JsonObject arguments) {
+        return walkToTileUntilArrived(token, arguments, false, false);
+    }
+
+    private JsonObject walkToTileUntilArrived(final String token, final JsonObject arguments,
+            final boolean xs, final boolean xxs) {
+        final String submittedToolName = submittedToolName("walk_to_tile_until_arrived", xs, xxs);
         int maxTicks = Math.max(1, Math.min(250, getInt(arguments, "maxTicks", 120)));
         final int x = getInt(arguments, "x", -1);
         final int y = getInt(arguments, "y", -1);
@@ -390,7 +415,7 @@ public class AgentActionService {
                 serverTick.get());
         JsonObject lastResult = null;
         for (int tick = 0; tick < maxTicks; tick++) {
-            lastResult = submitOnGameTick(token, new Callable<JsonObject>() {
+            lastResult = submitOnGameTick(token, submittedToolName, new Callable<JsonObject>() {
                 @Override
                 public JsonObject call() {
                     AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
@@ -402,12 +427,12 @@ public class AgentActionService {
                         return AgentToolService.failure("The claimed player is no longer online.");
                     }
                     if (tileArrived(player, x, y, height, stopDistance)) {
-                        JsonObject result = AgentToolService.observeState(player);
+                        JsonObject result = observeForSubmittedTool(player, xs, xxs);
                         result.addProperty("complete", true);
                         return result;
                     }
                     if (player.isMoving) {
-                        JsonObject result = AgentToolService.observeState(player);
+                        JsonObject result = observeForPollingTool(player, xs, xxs);
                         result.addProperty("complete", false);
                         return result;
                     }
@@ -459,6 +484,12 @@ public class AgentActionService {
     }
 
     private JsonObject travelToLandmarkUntilArrived(final String token, final JsonObject arguments) {
+        return travelToLandmarkUntilArrived(token, arguments, false, false);
+    }
+
+    private JsonObject travelToLandmarkUntilArrived(final String token, final JsonObject arguments,
+            final boolean xs, final boolean xxs) {
+        final String submittedToolName = submittedToolName("travel_to_landmark_until_arrived", xs, xxs);
         int maxTicks = Math.max(1, Math.min(250, getInt(arguments, "maxTicks", 120)));
         final boolean stopOnCombat = getBoolean(arguments, "stopOnCombat", true);
         final boolean stopOnStall = getBoolean(arguments, "stopOnStall", true);
@@ -466,7 +497,7 @@ public class AgentActionService {
                 serverTick.get());
         JsonObject lastResult = null;
         for (int tick = 0; tick < maxTicks; tick++) {
-            lastResult = submitOnGameTick(token, new Callable<JsonObject>() {
+            lastResult = submitOnGameTick(token, submittedToolName, new Callable<JsonObject>() {
                 @Override
                 public JsonObject call() {
                     AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
@@ -478,7 +509,7 @@ public class AgentActionService {
                         return AgentToolService.failure("The claimed player is no longer online.");
                     }
                     if (player.isMoving) {
-                        return AgentToolService.observeState(player);
+                        return observeForPollingTool(player, xs, xxs);
                     }
                     return AgentToolService.handle(player, "travel_to_landmark", arguments);
                 }
@@ -526,10 +557,16 @@ public class AgentActionService {
     }
 
     private JsonObject mineOreUntilInventoryFull(final String token, final JsonObject arguments) {
+        return mineOreUntilInventoryFull(token, arguments, false, false);
+    }
+
+    private JsonObject mineOreUntilInventoryFull(final String token, final JsonObject arguments,
+            final boolean xs, final boolean xxs) {
+        final String submittedToolName = submittedToolName("mine_ore_until_inventory_full", xs, xxs);
         int maxTicks = Math.max(1, Math.min(250, getInt(arguments, "maxTicks", 180)));
         JsonObject lastResult = null;
         for (int tick = 0; tick < maxTicks; tick++) {
-            lastResult = submitOnGameTick(token, new Callable<JsonObject>() {
+            lastResult = submitOnGameTick(token, submittedToolName, new Callable<JsonObject>() {
                 @Override
                 public JsonObject call() {
                     AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
@@ -541,10 +578,10 @@ public class AgentActionService {
                         return AgentToolService.failure("The claimed player is no longer online.");
                     }
                     if (player.getItemAssistant().freeSlots() < 1) {
-                        return AgentToolService.observeState(player);
+                        return observeForSubmittedTool(player, xs, xxs);
                     }
                     if (player.isMoving || player.isMining || player.miningRock) {
-                        return AgentToolService.observeState(player);
+                        return observeForPollingTool(player, xs, xxs);
                     }
                     return AgentToolService.handle(player, "mine_ore", arguments);
                 }
@@ -565,10 +602,16 @@ public class AgentActionService {
     }
 
     private JsonObject chopTreeUntilInventoryFull(final String token, final JsonObject arguments) {
+        return chopTreeUntilInventoryFull(token, arguments, false, false);
+    }
+
+    private JsonObject chopTreeUntilInventoryFull(final String token, final JsonObject arguments,
+            final boolean xs, final boolean xxs) {
+        final String submittedToolName = submittedToolName("chop_tree_until_inventory_full", xs, xxs);
         int maxTicks = Math.max(1, Math.min(250, getInt(arguments, "maxTicks", 180)));
         JsonObject lastResult = null;
         for (int tick = 0; tick < maxTicks; tick++) {
-            lastResult = submitOnGameTick(token, new Callable<JsonObject>() {
+            lastResult = submitOnGameTick(token, submittedToolName, new Callable<JsonObject>() {
                 @Override
                 public JsonObject call() {
                     AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
@@ -580,10 +623,10 @@ public class AgentActionService {
                         return AgentToolService.failure("The claimed player is no longer online.");
                     }
                     if (player.getItemAssistant().freeSlots() < 1) {
-                        return AgentToolService.observeState(player);
+                        return observeForSubmittedTool(player, xs, xxs);
                     }
                     if (player.isMoving || player.isWoodcutting) {
-                        return AgentToolService.observeState(player);
+                        return observeForPollingTool(player, xs, xxs);
                     }
                     return AgentToolService.handle(player, "chop_tree", arguments);
                 }
@@ -604,12 +647,18 @@ public class AgentActionService {
     }
 
     private JsonObject fletchLogsUntilInventoryEmpty(final String token, final JsonObject arguments) {
+        return fletchLogsUntilInventoryEmpty(token, arguments, false, false);
+    }
+
+    private JsonObject fletchLogsUntilInventoryEmpty(final String token, final JsonObject arguments,
+            final boolean xs, final boolean xxs) {
+        final String submittedToolName = submittedToolName("fletch_logs_until_inventory_empty", xs, xxs);
         int maxTicks = Math.max(1, Math.min(250, getInt(arguments, "maxTicks", 120)));
         final int targetFletchingLevel = getInt(arguments, "targetFletchingLevel",
                 getInt(arguments, "targetLevel", -1));
         JsonObject lastResult = null;
         for (int tick = 0; tick < maxTicks; tick++) {
-            lastResult = submitOnGameTick(token, new Callable<JsonObject>() {
+            lastResult = submitOnGameTick(token, submittedToolName, new Callable<JsonObject>() {
                 @Override
                 public JsonObject call() {
                     AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
@@ -621,13 +670,13 @@ public class AgentActionService {
                         return AgentToolService.failure("The claimed player is no longer online.");
                     }
                     if (targetFletchingLevel > 0 && player.playerLevel[Constants.FLETCHING] >= targetFletchingLevel) {
-                        return AgentToolService.observeState(player);
+                        return observeForSubmittedTool(player, xs, xxs);
                     }
                     if (AgentToolService.countInventoryFletchableLogs(player) < 1) {
-                        return AgentToolService.observeState(player);
+                        return observeForSubmittedTool(player, xs, xxs);
                     }
                     if (player.playerIsFletching || player.isFletching || player.isMoving) {
-                        return AgentToolService.observeState(player);
+                        return observeForPollingTool(player, xs, xxs);
                     }
                     return AgentToolService.handle(player, "fletch_logs", arguments);
                 }
@@ -655,13 +704,19 @@ public class AgentActionService {
     }
 
     private JsonObject waitUntilIdle(final String token, final JsonObject arguments) {
+        return waitUntilIdle(token, arguments, false, false);
+    }
+
+    private JsonObject waitUntilIdle(final String token, final JsonObject arguments,
+            final boolean xs, final boolean xxs) {
+        final String submittedToolName = submittedToolName("wait_until_idle", xs, xxs);
         int maxTicks = Math.max(1, Math.min(250, getInt(arguments, "maxTicks", 60)));
         final boolean includeMovement = getBoolean(arguments, "movement", getBoolean(arguments, "includeMovement", true));
         final boolean includeSkilling = getBoolean(arguments, "skilling", getBoolean(arguments, "includeSkilling", true));
         final boolean includeCombat = getBoolean(arguments, "combat", getBoolean(arguments, "includeCombat", false));
         JsonObject lastResult = null;
         for (int tick = 0; tick < maxTicks; tick++) {
-            lastResult = submitOnGameTick(token, new Callable<JsonObject>() {
+            lastResult = submitOnGameTick(token, submittedToolName, new Callable<JsonObject>() {
                 @Override
                 public JsonObject call() {
                     AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
@@ -672,8 +727,11 @@ public class AgentActionService {
                     if (player == null) {
                         return AgentToolService.failure("The claimed player is no longer online.");
                     }
-                    JsonObject result = AgentToolService.observeState(player);
-                    result.addProperty("complete", playerIsIdle(player, includeMovement, includeSkilling, includeCombat));
+                    boolean complete = playerIsIdle(player, includeMovement, includeSkilling, includeCombat);
+                    JsonObject result = complete
+                            ? observeForSubmittedTool(player, xs, xxs)
+                            : observeForPollingTool(player, xs, xxs);
+                    result.addProperty("complete", complete);
                     return result;
                 }
             });
@@ -843,12 +901,18 @@ public class AgentActionService {
     }
 
     private JsonObject objectTransitionStep(final String token, final JsonObject arguments) {
+        return objectTransitionStep(token, arguments, false, false);
+    }
+
+    private JsonObject objectTransitionStep(final String token, final JsonObject arguments,
+            final boolean xs, final boolean xxs) {
+        final String submittedToolName = submittedToolName("object_transition_step", xs, xxs);
         int maxTicks = Math.max(1, Math.min(80, getInt(arguments, "maxTicks", 20)));
         final boolean includeCombat = getBoolean(arguments, "combat", getBoolean(arguments, "includeCombat", false));
         final boolean[] interacted = {false};
         JsonObject lastResult = null;
         for (int tick = 0; tick < maxTicks; tick++) {
-            lastResult = submitOnGameTick(token, new Callable<JsonObject>() {
+            lastResult = submitOnGameTick(token, submittedToolName, new Callable<JsonObject>() {
                 @Override
                 public JsonObject call() {
                     AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
@@ -871,8 +935,10 @@ public class AgentActionService {
                         result.addProperty("complete", playerIsIdle(player, true, true, includeCombat));
                         return result;
                     }
-                    JsonObject result = AgentToolService.observeState(player);
                     boolean idle = playerIsIdle(player, true, true, includeCombat);
+                    JsonObject result = idle
+                            ? observeForSubmittedTool(player, xs, xxs)
+                            : observeForPollingTool(player, xs, xxs);
                     result.addProperty("phase", idle ? "idle_after_object" : "waiting_after_object");
                     result.addProperty("complete", idle);
                     return result;
@@ -1308,7 +1374,11 @@ public class AgentActionService {
     }
 
     public JsonObject submitOnGameTick(String token, Callable<JsonObject> action) {
-        return submitForTick(serverTick.get() + 1L, action);
+        return submitOnGameTick(token, "unknown", action);
+    }
+
+    public JsonObject submitOnGameTick(String token, String actionName, Callable<JsonObject> action) {
+        return submitForTick(serverTick.get() + 1L, actionName, action);
     }
 
     private AgentToolService.SkillSnapshot captureSkillSnapshot(String token) {
@@ -1318,6 +1388,23 @@ public class AgentActionService {
     private Player playerForToken(String token) {
         AgentSession session = AgentSessionManager.INSTANCE.getSession(token);
         return session == null ? null : session.getPlayer();
+    }
+
+    private JsonObject observeForSubmittedTool(Player player, boolean xs, boolean xxs) {
+        if (xxs) {
+            return AgentToolService.observeStateXxs(player);
+        }
+        if (xs) {
+            return AgentToolService.observePlayerState(player);
+        }
+        return AgentToolService.observeState(player);
+    }
+
+    private JsonObject observeForPollingTool(Player player, boolean xs, boolean xxs) {
+        if (xxs) {
+            return AgentToolService.observeStateXxs(player);
+        }
+        return AgentToolService.observePlayerState(player);
     }
 
     private JsonObject finishSubmittedTool(String token, String effectiveTool, boolean xs, boolean xxs, JsonObject result,
@@ -1337,15 +1424,19 @@ public class AgentActionService {
 
     JsonObject submitAfterGameTicks(int ticks, Callable<JsonObject> action) {
         int clampedTicks = Math.max(1, Math.min(25, ticks));
-        return submitForTick(serverTick.get() + clampedTicks, action);
+        return submitForTick(serverTick.get() + clampedTicks, "delayed", action);
     }
 
     private JsonObject submitForTick(long targetTick, Callable<JsonObject> action) {
-        return submitForTick(targetTick, action, ACTION_TIMEOUT_MS);
+        return submitForTick(targetTick, "unknown", action, ACTION_TIMEOUT_MS);
     }
 
-    private JsonObject submitForTick(long targetTick, Callable<JsonObject> action, long timeoutMs) {
-        QueuedAction queuedAction = new QueuedAction(targetTick, action);
+    private JsonObject submitForTick(long targetTick, String actionName, Callable<JsonObject> action) {
+        return submitForTick(targetTick, actionName, action, ACTION_TIMEOUT_MS);
+    }
+
+    private JsonObject submitForTick(long targetTick, String actionName, Callable<JsonObject> action, long timeoutMs) {
+        QueuedAction queuedAction = new QueuedAction(targetTick, actionName, action);
         queuedActions.add(queuedAction);
         try {
             if (!queuedAction.await(timeoutMs)) {
@@ -1358,10 +1449,11 @@ public class AgentActionService {
         return queuedAction.getResult();
     }
 
-    public void processPendingActions() {
+    public TickStats processPendingActions() {
         long tick = serverTick.incrementAndGet();
         int processed = 0;
         int queuedAtStart = queuedActions.size();
+        Map<String, ActionTiming> timings = new HashMap<String, ActionTiming>();
         QueuedAction queuedAction;
         for (int scanned = 0; scanned < queuedAtStart && processed < 100; scanned++) {
             queuedAction = queuedActions.poll();
@@ -1370,12 +1462,125 @@ public class AgentActionService {
             }
             if (queuedAction.isReady(tick)) {
                 queuedAction.execute(tick);
+                recordActionTiming(timings, queuedAction);
                 processed++;
             } else {
                 queuedActions.add(queuedAction);
             }
         }
         processCombatGoals();
+        return new TickStats(tick, queuedAtStart, processed, queuedActions.size(), combatGoals.size(), timings);
+    }
+
+    private static void recordActionTiming(Map<String, ActionTiming> timings, QueuedAction action) {
+        if (timings == null || action == null) {
+            return;
+        }
+        String name = action.actionName();
+        ActionTiming timing = timings.get(name);
+        if (timing == null) {
+            timing = new ActionTiming(name);
+            timings.put(name, timing);
+        }
+        timing.record(action.durationMs());
+    }
+
+    private static String submittedToolName(String effectiveTool, boolean xs, boolean xxs) {
+        if (effectiveTool == null || effectiveTool.length() == 0) {
+            effectiveTool = "unknown";
+        }
+        if (xxs) {
+            return effectiveTool + "_XXS";
+        }
+        return xs ? effectiveTool + "_XS" : effectiveTool;
+    }
+
+    public static final class TickStats {
+        public final long tick;
+        public final int queuedAtStart;
+        public final int processed;
+        public final int queuedAfter;
+        public final int combatGoals;
+        public final long actionTimedMs;
+        public final String slowestAction;
+        public final long slowestActionMs;
+        public final String actionSummary;
+
+        private TickStats(long tick, int queuedAtStart, int processed, int queuedAfter, int combatGoals,
+                Map<String, ActionTiming> timings) {
+            this.tick = tick;
+            this.queuedAtStart = queuedAtStart;
+            this.processed = processed;
+            this.queuedAfter = queuedAfter;
+            this.combatGoals = combatGoals;
+            ActionTiming slowest = slowest(timings);
+            this.actionTimedMs = totalActionMs(timings);
+            this.slowestAction = slowest == null ? "" : slowest.name;
+            this.slowestActionMs = slowest == null ? 0L : slowest.maxMs;
+            this.actionSummary = summarizeTimings(timings);
+        }
+    }
+
+    private static ActionTiming slowest(Map<String, ActionTiming> timings) {
+        if (timings == null || timings.isEmpty()) {
+            return null;
+        }
+        ActionTiming slowest = null;
+        for (ActionTiming timing : timings.values()) {
+            if (slowest == null || timing.maxMs > slowest.maxMs) {
+                slowest = timing;
+            }
+        }
+        return slowest;
+    }
+
+    private static long totalActionMs(Map<String, ActionTiming> timings) {
+        long total = 0L;
+        if (timings == null) {
+            return total;
+        }
+        for (ActionTiming timing : timings.values()) {
+            total += timing.totalMs;
+        }
+        return total;
+    }
+
+    private static String summarizeTimings(Map<String, ActionTiming> timings) {
+        if (timings == null || timings.isEmpty()) {
+            return "";
+        }
+        StringBuilder builder = new StringBuilder(160);
+        for (ActionTiming timing : timings.values()) {
+            if (builder.length() > 0) {
+                builder.append(';');
+            }
+            builder.append(timing.name).append('=').append(timing.count)
+                    .append('/').append(timing.totalMs).append('/').append(timing.maxMs);
+            if (builder.length() > 240) {
+                builder.setLength(240);
+                break;
+            }
+        }
+        return builder.toString();
+    }
+
+    private static final class ActionTiming {
+        private final String name;
+        private int count;
+        private long totalMs;
+        private long maxMs;
+
+        private ActionTiming(String name) {
+            this.name = name == null || name.length() == 0 ? "unknown" : name;
+        }
+
+        private void record(long durationMs) {
+            count++;
+            totalMs += durationMs;
+            if (durationMs > maxMs) {
+                maxMs = durationMs;
+            }
+        }
     }
 
     private JsonObject startCombatGoal(AgentSession session, Player player, JsonObject arguments) {
@@ -7781,12 +7986,15 @@ public class AgentActionService {
 
     private static class QueuedAction {
         private final long targetTick;
+        private final String actionName;
         private final Callable<JsonObject> action;
         private final CountDownLatch latch = new CountDownLatch(1);
         private JsonObject result;
+        private long durationMs;
 
-        private QueuedAction(long targetTick, Callable<JsonObject> action) {
+        private QueuedAction(long targetTick, String actionName, Callable<JsonObject> action) {
             this.targetTick = targetTick;
+            this.actionName = actionName == null || actionName.length() == 0 ? "unknown" : actionName;
             this.action = action;
         }
 
@@ -7795,6 +8003,7 @@ public class AgentActionService {
         }
 
         private void execute(long tick) {
+            long startedAt = System.currentTimeMillis();
             try {
                 result = action.call();
                 if (result != null && !result.has("serverTick")) {
@@ -7804,8 +8013,17 @@ public class AgentActionService {
                 result = AgentToolService.failure("Agent action failed: " + e.getMessage());
                 result.addProperty("serverTick", tick);
             } finally {
+                durationMs = System.currentTimeMillis() - startedAt;
                 latch.countDown();
             }
+        }
+
+        private String actionName() {
+            return actionName;
+        }
+
+        private long durationMs() {
+            return durationMs;
         }
 
         private boolean await(long timeoutMs) throws InterruptedException {

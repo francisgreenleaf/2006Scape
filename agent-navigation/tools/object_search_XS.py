@@ -50,7 +50,7 @@ def command_env(profile):
 
 
 def observe_candidates(name, resource, object_ids, limit, profile):
-    proc = run_command([str(RS_TOOL), "observe_state", "{}"], cwd=ROOT, env=command_env(profile))
+    proc = run_command([str(RS_TOOL), "observe_state_XS", "{}"], cwd=ROOT, env=command_env(profile))
     try:
         data = json.loads(proc.stdout)
     except json.JSONDecodeError:
@@ -83,14 +83,14 @@ def main():
     if object_ids:
         payload["objectIds"] = object_ids
     log_usage("object_search_XS", surface="xs", argv=vars(args))
-    proc = run_command([str(RS_TOOL), "find_nearest_object", json.dumps(payload, separators=(",", ":"))],
+    proc = run_command([str(RS_TOOL), "find_nearest_object_XS", json.dumps(payload, separators=(",", ":"))],
                        cwd=ROOT, env=command_env(args.profile))
     try:
         data = json.loads(proc.stdout)
     except json.JSONDecodeError:
-        dump({"ok": False, "error": "find_nearest_object returned invalid JSON", "stderr": proc.stderr.strip()[-300:]})
+        dump({"ok": False, "error": "find_nearest_object_XS returned invalid JSON", "stderr": proc.stderr.strip()[-300:]})
         return proc.returncode or 2
-    out = compact_bridge(data, "find_nearest_object")
+    out = compact_bridge(data, "find_nearest_object_XS")
     if isinstance(out, dict) and not out.get("ok", out.get("success", False)):
         out["candidates"] = observe_candidates(norm(args.name), norm(args.resource), object_ids, max(1, args.limit), args.profile)
     dump(out)
