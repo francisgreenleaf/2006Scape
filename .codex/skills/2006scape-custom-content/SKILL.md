@@ -11,6 +11,8 @@ Use this skill for gameplay content layered on top of the stock 2006Scape server
 
 For source edits, also use `2006scape-dev-editing`.
 
+If a custom quest, shop, item, or object name is unclear, `2006scape-osrs-wiki` is a good first-pass reference for the modern OSRS naming and expected behavior. Use it for hints only; confirm the repo actually supports the content before wiring code or docs around it.
+
 ## First Reads
 
 - `AGENTS.md`: repo guardrails, build commands, runtime cautions, and no-secrets rules.
