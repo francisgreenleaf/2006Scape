@@ -166,7 +166,7 @@
       ],
       "examples": [
         "python3 agent-navigation/tools/script_registry.py run mining -- --target-mining-level 20 --auto-buy-bronze-pickaxe",
-        "python3 agent-navigation/tools/mining_runner.py --ores iron --max-loads 1 --quiet",
+        "python3 agent-navigation/tools/mining_runner.py --ores iron --max-loads 1",
         "python3 agent-navigation/tools/mining_runner.py --list-sites --ores copper,tin,iron"
       ]
     },
@@ -590,6 +590,32 @@
       "examples": [
         "python3 agent-navigation/tools/script_registry.py run smithing -- --mode smelt --bar bronze --quiet",
         "python3 agent-navigation/tools/smithing_runner.py --mode smith --item sword --amount 10"
+      ]
+    },
+    {
+      "id": "mining_smithing_goal_runner",
+      "name": "Mining and Smithing Goal Runner",
+      "path": "agent-navigation/tools/mining_smithing_goal_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Orchestrates Mining and Smithing targets by composing the existing mining, bronze/iron metals, smelting, smithing, banking, furnace, and anvil runners. Uses Varrock east iron mining, Al Kharid furnace smelting, and Varrock west anvils.",
+      "aliases": [
+        "mining smithing",
+        "mine smith",
+        "metals goal",
+        "30 mining 30 smithing",
+        "metal training"
+      ],
+      "tags": [
+        "gameplay",
+        "mining",
+        "smithing",
+        "smelting",
+        "runner",
+        "orchestration"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/mining_smithing_goal_runner.py --profile MrFlame --target-mining-level 30 --target-smithing-level 30",
+        "python3 agent-navigation/tools/script_registry.py run mining smithing -- --profile MrFlame --target-mining-level 30 --target-smithing-level 30 --quiet"
       ]
     },
     {

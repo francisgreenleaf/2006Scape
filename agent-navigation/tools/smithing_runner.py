@@ -128,7 +128,7 @@ def choose_smith_item(player, args):
     ]
     if not available:
         raise RuntimeError("no requested smithing item is available for level and carried bars")
-    available.sort(key=lambda item: (-item["xp"], -item["level"], item["bars"], item["itemId"]))
+    available.sort(key=lambda item: (-(float(item["xp"]) / max(1, int(item["bars"]))), -item["level"], -item["xp"], item["bars"], item["itemId"]))
     return available[0]
 
 
