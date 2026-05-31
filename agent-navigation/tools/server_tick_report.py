@@ -11,6 +11,10 @@ DEFAULT_LOG = Path("/tmp/2006scape-server.log")
 CYCLE_RE = re.compile(
     r"Cycle #(?P<cycle>\d+) took (?P<duration>\d+) ms\. Players: (?P<players>\d+), NPCs: (?P<npcs>\d+).*Threads: (?P<threads>\d+)\."
 )
+CADENCE_RE = re.compile(
+    r"Cadence: interval=(?P<interval>-?\d+)ms, avg=(?P<avg>-?\d+)ms, min=(?P<min>-?\d+)ms, "
+    r"max=(?P<max>-?\d+)ms, samples=(?P<samples>\d+), short=(?P<short>\d+), long=(?P<long>\d+)\."
+)
 LEVEL_RE = re.compile(r"\[(?P<level>INFO|ERROR|WARN|WARNING)\].*?(?P<message>(NOTICE|WARNING|ERROR): .*duration exceeded .*?ms!?)(?: Duration: (?P<duration>\d+) ms\.)?")
 
 
@@ -48,22 +52,48 @@ def summarize(lines, include_lines=False):
                 "npcs": int(cycle_match.group("npcs")),
                 "threads": int(cycle_match.group("threads")),
             }
+            cadence_match = CADENCE_RE.search(line)
+            if cadence_match:
+                row["cadence"] = {
+                    "intervalMs": int(cadence_match.group("interval")),
+                    "avgMs": int(cadence_match.group("avg")),
+                    "minMs": int(cadence_match.group("min")),
+                    "maxMs": int(cadence_match.group("max")),
+                    "samples": int(cadence_match.group("samples")),
+                    "shortIntervals": int(cadence_match.group("short")),
+                    "longIntervals": int(cadence_match.group("long")),
+                }
             if include_lines:
                 row["line"] = line
             cycle_rows.append(row)
 
     durations = [row["durationMs"] for row in cycle_rows]
+    cadence_rows = [row["cadence"] for row in cycle_rows if "cadence" in row]
     report = {
         "thresholdCounts": threshold_counts,
         "cycleSamples": len(cycle_rows),
         "maxCycleDurationMs": max(durations) if durations else None,
         "recentCycle": cycle_rows[-1] if cycle_rows else None,
         "slowCycleSamples": [row for row in cycle_rows if row["durationMs"] > 100][-10:],
+        "cadenceSamples": len(cadence_rows),
+        "cadence": summarize_cadence(cadence_rows),
     }
     if include_lines:
         report["recentWarnings"] = warnings[-10:]
         report["recentErrors"] = errors[-10:]
     return report
+
+
+def summarize_cadence(cadence_rows):
+    if not cadence_rows:
+        return None
+    return {
+        "recent": cadence_rows[-1],
+        "maxIntervalMs": max(row["maxMs"] for row in cadence_rows),
+        "minIntervalMs": min(row["minMs"] for row in cadence_rows),
+        "shortIntervals": sum(row["shortIntervals"] for row in cadence_rows),
+        "longIntervals": sum(row["longIntervals"] for row in cadence_rows),
+    }
 
 
 def print_text_report(path, tail_limit, report, include_lines=False):
@@ -75,6 +105,20 @@ def print_text_report(path, tail_limit, report, include_lines=False):
     if report["recentCycle"]:
         row = report["recentCycle"]
         print("recent cycle: #{cycle} {durationMs}ms players={players} npcs={npcs} threads={threads}".format(**row))
+    if report.get("cadence"):
+        cadence = report["cadence"]
+        recent = cadence["recent"]
+        print(
+            "cadence samples: {} recent interval={}ms avg={}ms range={}..{}ms short={} long={}".format(
+                report["cadenceSamples"],
+                recent["intervalMs"],
+                recent["avgMs"],
+                recent["minMs"],
+                recent["maxMs"],
+                cadence["shortIntervals"],
+                cadence["longIntervals"],
+            )
+        )
     if report["slowCycleSamples"]:
         print("slow sampled cycles:")
         for row in report["slowCycleSamples"]:

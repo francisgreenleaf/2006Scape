@@ -40,12 +40,16 @@ public final class PerformanceLogger {
 
     private static void write(TickSample sample) {
         long now = System.currentTimeMillis();
+        long tickIntervalDriftMs = -1L;
+        if (sample.cadenceStats.lastIntervalMs >= 0L && sample.cadenceStats.expectedIntervalMs >= 0L) {
+            tickIntervalDriftMs = sample.cadenceStats.lastIntervalMs - sample.cadenceStats.expectedIntervalMs;
+        }
         File dayDirectory = new File(Constants.SERVER_LOG_DIR, "performance");
         if (!dayDirectory.exists() && !dayDirectory.mkdirs()) {
             return;
         }
         File logFile = new File(dayDirectory, "tick-performance-" + dateStamp(now) + ".jsonl");
-        StringBuilder builder = new StringBuilder(512);
+        StringBuilder builder = new StringBuilder(768);
         builder.append('{');
         append(builder, "timestamp", timestamp(now)).append(',');
         append(builder, "event", "server_tick").append(',');
@@ -74,7 +78,16 @@ public final class PerformanceLogger {
         append(builder, "usedMemMb", sample.usedMemMb).append(',');
         append(builder, "totalMemMb", sample.totalMemMb).append(',');
         append(builder, "maxMemMb", sample.maxMemMb).append(',');
-        append(builder, "threads", sample.threads);
+        append(builder, "threads", sample.threads).append(',');
+        append(builder, "tickIntervalExpectedMs", sample.cadenceStats.expectedIntervalMs).append(',');
+        append(builder, "tickIntervalMs", sample.cadenceStats.lastIntervalMs).append(',');
+        append(builder, "tickIntervalDriftMs", tickIntervalDriftMs).append(',');
+        append(builder, "tickIntervalSamples", sample.cadenceStats.samples).append(',');
+        append(builder, "tickIntervalMinMs", sample.cadenceStats.minIntervalMs).append(',');
+        append(builder, "tickIntervalAvgMs", sample.cadenceStats.avgIntervalMs).append(',');
+        append(builder, "tickIntervalMaxMs", sample.cadenceStats.maxIntervalMs).append(',');
+        append(builder, "tickIntervalShortCount", sample.cadenceStats.shortIntervals).append(',');
+        append(builder, "tickIntervalLongCount", sample.cadenceStats.longIntervals);
         builder.append('}').append('\n');
         try {
             Files.write(logFile.toPath(), builder.toString().getBytes(StandardCharsets.UTF_8),
@@ -139,11 +152,12 @@ public final class PerformanceLogger {
         public final long totalMemMb;
         public final long maxMemMb;
         public final int threads;
+        public final TickCadenceStats cadenceStats;
 
         public TickSample(long gameCycle, AgentActionService.TickStats agentStats, long totalMs, long agentMs,
                 long itemMs, long playerMs, long npcMs, long shopMs, long objectHandlerMs, long objectManagerMs,
                 long cycleEventMs, long saveMs, int players, int npcs, long usedMemMb, long totalMemMb,
-                long maxMemMb, int threads) {
+                long maxMemMb, int threads, TickCadenceStats cadenceStats) {
             this.gameCycle = gameCycle;
             this.agentTick = agentStats == null ? -1L : agentStats.tick;
             this.totalMs = totalMs;
@@ -170,6 +184,32 @@ public final class PerformanceLogger {
             this.totalMemMb = totalMemMb;
             this.maxMemMb = maxMemMb;
             this.threads = threads;
+            this.cadenceStats = cadenceStats == null ? TickCadenceStats.EMPTY : cadenceStats;
+        }
+    }
+
+    public static final class TickCadenceStats {
+        private static final TickCadenceStats EMPTY = new TickCadenceStats(-1L, -1L, 0L, -1L, -1L, -1L, 0L, 0L);
+
+        public final long expectedIntervalMs;
+        public final long lastIntervalMs;
+        public final long samples;
+        public final long minIntervalMs;
+        public final long avgIntervalMs;
+        public final long maxIntervalMs;
+        public final long shortIntervals;
+        public final long longIntervals;
+
+        public TickCadenceStats(long expectedIntervalMs, long lastIntervalMs, long samples, long minIntervalMs,
+                long avgIntervalMs, long maxIntervalMs, long shortIntervals, long longIntervals) {
+            this.expectedIntervalMs = expectedIntervalMs;
+            this.lastIntervalMs = lastIntervalMs;
+            this.samples = samples;
+            this.minIntervalMs = minIntervalMs;
+            this.avgIntervalMs = avgIntervalMs;
+            this.maxIntervalMs = maxIntervalMs;
+            this.shortIntervals = shortIntervals;
+            this.longIntervals = longIntervals;
         }
     }
 }
