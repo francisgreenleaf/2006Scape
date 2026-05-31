@@ -166,9 +166,24 @@ def player_from(result):
     raise RuntimeError("bridge response did not include player state")
 
 
-def observe(profile=""):
+def observe_full(profile=""):
     """Return the already-unwrapped player state from full observe_state."""
     return player_from(call_tool("observe_state", {}, profile=profile))
+
+
+def observe_xs(profile=""):
+    """Return compact decision state from observe_state_XS."""
+    return player_from(call_tool("observe_state_XS", {}, profile=profile))
+
+
+def observe_xxs(profile=""):
+    """Return minimal critical state from observe_state_XXS."""
+    return player_from(call_tool("observe_state_XXS", {}, profile=profile))
+
+
+def observe(profile=""):
+    """Legacy full-state observe. Prefer observe_xs/observe_xxs in new loops."""
+    return observe_full(profile=profile)
 
 
 def inventory(player):
@@ -461,8 +476,9 @@ def write_event(handle, event, data):
 def ensure_run(player, min_energy, profile="", handle=None, reason=""):
     if bool(player.get("runEnabled", False)) or int(player.get("runEnergy", 0) or 0) < min_energy:
         return player
-    result = call_tool("set_run", {"enabled": True}, profile=profile)
-    next_player = player_from(result)
+    result = call_tool("set_run_XXS", {"enabled": True}, profile=profile)
+    next_player = dict(player)
+    next_player.update(player_from(result))
     write_event(handle, "set_run", {
         "reason": reason,
         "before": compact_player(player),
@@ -1859,7 +1875,7 @@ def cross_taverley_white_wolf_gate(player, to_west=True, profile="", handle=None
 
 
 def route_to(target, profile="", handle=None, reason="route", extra_args=None):
-    player = observe(profile=profile)
+    player = observe_xs(profile=profile)
     current = tile_string(tile_from_player(player))
     readiness = player.get("combatReadiness") or {}
     food = int(readiness.get("inventoryFoodCount", 0) or sum(

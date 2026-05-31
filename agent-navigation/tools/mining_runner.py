@@ -213,8 +213,17 @@ def player_from(result):
     return bridge.player_from(result)
 
 
-def observe():
+def observe_full():
     return player_from(call_tool("observe_state", {}))
+
+
+def observe_xs():
+    return player_from(call_tool("observe_state_XS", {}))
+
+
+def observe():
+    """Legacy full observe for bank/loadout paths that need complete bank state."""
+    return observe_full()
 
 
 def player_from_wait_result(result, handle, event_name):
@@ -223,11 +232,11 @@ def player_from_wait_result(result, handle, event_name):
     except RuntimeError as exc:
         if "bridge response did not include player state" not in str(exc):
             raise
-        player = observe()
+        player = observe_xs()
         write_event(handle, event_name, {
             "message": result.get("message"),
             "batchStatus": result.get("batchStatus"),
-            "fallback": "observe_state",
+            "fallback": "observe_state_XS",
             "player": compact_player(player),
         })
         return player
@@ -279,8 +288,9 @@ def ensure_run(player, args, handle=None, reason="general"):
         event["after"] = before
         write_event(handle, "run_policy", event)
         return player
-    result = call_tool("set_run", {"enabled": True})
-    updated = player_from(result)
+    result = call_tool("set_run_XXS", {"enabled": True})
+    updated = dict(player)
+    updated.update(player_from(result))
     event["decision"] = "set_run"
     event["success"] = bool(result.get("success"))
     event["message"] = result.get("message")
@@ -635,7 +645,7 @@ def route_to_target(target, args, handle, reason):
     else:
         max_attempts = max(1, min(8, int(args.max_batches_per_leg)))
     for attempt in range(1, max_attempts + 1):
-        player_before = bridge.observe(profile=args.profile)
+        player_before = bridge.observe_xs(profile=args.profile)
         before_tile = tile_from_player(player_before)
         before_distance = chebyshev(before_tile, target_tile) if target_tile else None
         if target_tile and before_distance <= int(args.arrival_radius):
@@ -643,7 +653,7 @@ def route_to_target(target, args, handle, reason):
         try:
             bridge.route_to(target, profile=args.profile, handle=handle, reason=reason, extra_args=extra_args)
         except Exception as exc:
-            player_after = bridge.observe(profile=args.profile)
+            player_after = bridge.observe_xs(profile=args.profile)
             after_tile = tile_from_player(player_after)
             after_distance = chebyshev(after_tile, target_tile) if target_tile else None
             progressed = (
@@ -668,7 +678,7 @@ def route_to_target(target, args, handle, reason):
                 continue
             return False
 
-        player_after = bridge.observe(profile=args.profile)
+        player_after = bridge.observe_xs(profile=args.profile)
         after_tile = tile_from_player(player_after)
         if target_tile is None:
             return True
@@ -885,7 +895,7 @@ def route_to_site_if_needed(player, site, args, handle):
         return player
     if not route_to_tile(site["tile"], args, handle, "mine_site"):
         raise RuntimeError("could not route to mine site {}".format(site["id"]))
-    return observe()
+    return observe_xs()
 
 
 def choose_live_ore(player, site, ores, args, handle):
@@ -903,7 +913,7 @@ def choose_live_ore(player, site, ores, args, handle):
         preferred = "copper" if copper <= tin else "tin"
     live = []
     for ore in candidates:
-        result = call_tool("find_nearest_rock", {
+        result = call_tool("find_nearest_rock_XS", {
             "resource": ore,
             "maxDistance": int(site["rockScanDistance"]),
         })
@@ -975,18 +985,17 @@ def legacy_mine_batch(ore, site, args, handle, start_player=None):
 
 
 def primitive_mine_batch(ore, site, args, handle, start_player=None):
-    player = start_player or observe()
+    player = start_player or observe_xs()
     started = time.monotonic()
     total_ticks = 0
     rounds = 0
     single_round_only = args.strategy == "bronze-balanced" and ore in ("copper", "tin")
     last_result = {"success": True, "player": player, "batchStatus": "not_started", "batchTicks": 0}
     while total_ticks < int(args.mine_max_ticks):
-        player = observe()
         if int(player.get("freeInventorySlots", 0) or 0) < 1:
             last_result = {"success": True, "player": player, "batchStatus": "inventory_full"}
             break
-        find_result = call_tool("find_nearest_rock", {
+        find_result = call_tool("find_nearest_rock_XS", {
             "resource": ore,
             "maxDistance": int(site["rockScanDistance"]),
             "reachable": True,
@@ -998,7 +1007,7 @@ def primitive_mine_batch(ore, site, args, handle, start_player=None):
                 last_result["batchStatus"] = "blocked"
                 break
             wait_ticks = min(6, max(1, int(args.mine_max_ticks) - total_ticks))
-            wait_result = call_tool("wait_ticks", {"ticks": wait_ticks})
+            wait_result = call_tool("wait_ticks_XS", {"ticks": wait_ticks})
             player = player_from_wait_result(wait_result, handle, "primitive_mine_wait_observe_fallback")
             total_ticks += wait_ticks
             write_event(handle, "primitive_mine_wait", {
@@ -1012,11 +1021,23 @@ def primitive_mine_batch(ore, site, args, handle, start_player=None):
             last_result["batchStatus"] = "waiting_for_respawn"
             continue
         obj = find_result.get("object") or {}
-        interact_result = call_tool("interact_object", {
+        obj_tile = obj.get("tile")
+        if isinstance(obj_tile, str):
+            obj_tile = parse_tile(obj_tile)
+        elif isinstance(obj_tile, dict):
+            obj_tile = tile(
+                obj_tile.get("x", obj_tile.get("localX", 0)),
+                obj_tile.get("y", obj_tile.get("localY", 0)),
+                obj_tile.get("height", obj_tile.get("z", 0)),
+            )
+        else:
+            obj_tile = tile(obj.get("x", 0), obj.get("y", 0), obj.get("height", 0))
+        interact_result = call_tool("interact_object_XS", {
             "objectId": obj.get("objectId"),
-            "x": obj.get("x"),
-            "y": obj.get("y"),
-            "option": "first",
+            "x": obj_tile["x"],
+            "y": obj_tile["y"],
+            "height": obj_tile.get("height", 0),
+            "action": "Mine",
         })
         wait_ticks = min(40, max(1, int(args.mine_max_ticks) - total_ticks))
         wait_result = call_tool("wait_until_idle_XS", {

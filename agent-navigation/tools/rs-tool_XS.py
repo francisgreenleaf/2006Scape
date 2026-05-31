@@ -27,6 +27,8 @@ XS_TOOL_BASES = {
     "object_transition_step",
     "interact_object",
     "find_nearest_object",
+    "find_nearest_rock",
+    "find_nearest_tree",
     "bury_bones",
     "deposit_inventory_items",
     "withdraw_bank_items",
