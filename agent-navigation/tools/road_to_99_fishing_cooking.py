@@ -28,10 +28,9 @@ CALEB_NPC = 666
 
 CATHERBY_BANK_TARGET = "catherby_bank"
 CATHERBY_ARHEIN_TARGET = "2806,3433,0"
-CATHERBY_CALEB_TARGET = "2819,3452,0"
 
 COOKED_FISH_IDS = [315, 319, 325, 333, 329, 347, 351, 355, 361, 365, 373, 379, 385]
-SELL_UNTIL_GAUNTLETS_KEEP_LOBSTERS = 100
+SELL_UNTIL_GAUNTLETS_KEEP_LOBSTERS = 0
 GAUNTLET_COST = 25000
 
 
@@ -255,6 +254,14 @@ def owns_cooking_gauntlets(player):
     return total_item(player, COOKING_GAUNTLETS) > 0
 
 
+def refresh_if_gauntlets_missing(args, player):
+    if owns_cooking_gauntlets(player):
+        return player
+    # Compact bank/deposit responses can omit equipment and make equipped
+    # gauntlets look absent. Re-observe before any sale or purchase decision.
+    return bridge.observe_xs(args.profile)
+
+
 def targets_met(player, args):
     return (
         bridge.skill_level(player, "fishing") >= int(args.target_fishing_level)
@@ -456,11 +463,25 @@ def sell_policy_batches(args, handle, player):
     total_sold = 0
     total_coins = 0
     batches = 0
+    player = refresh_if_gauntlets_missing(args, player)
+    if owns_cooking_gauntlets(player):
+        write_event(handle, "sell_policy_skip", {
+            "reason": "owns_cooking_gauntlets",
+            "player": compact_player(player),
+        })
+        return player, total_sold, total_coins
     player, sold, coins = sell_inventory_before_bank(args, handle, player)
     total_sold += sold
     total_coins += coins
     player = ensure_bank(args, handle, "sell_policy_start")
     while batches < int(args.max_sale_batches):
+        player = refresh_if_gauntlets_missing(args, player)
+        if owns_cooking_gauntlets(player):
+            write_event(handle, "sell_policy_skip", {
+                "reason": "owns_cooking_gauntlets_after_bank_refresh",
+                "player": compact_player(player),
+            })
+            break
         plan = sale_plan(player, args)
         if not plan:
             break
@@ -489,6 +510,7 @@ def sell_policy_batches(args, handle, player):
 
 def buy_cooking_gauntlets_if_ready(args, handle, player):
     player = ensure_bank(args, handle, "gauntlet_check")
+    player = refresh_if_gauntlets_missing(args, player)
     if owns_cooking_gauntlets(player):
         return player, False
     if coin_total(player) < int(args.gauntlet_coin_target):
@@ -511,20 +533,34 @@ def buy_cooking_gauntlets_if_ready(args, handle, player):
             "player": compact_player(player),
         })
     player = close_interfaces(args, handle, "before_caleb")
-    bridge.route_to(
-        CATHERBY_CALEB_TARGET,
+    player = bridge.enter_catherby_caleb_house(
+        player,
         profile=args.profile,
         handle=handle,
-        reason="road99_caleb",
-        extra_args={"runner_max_batches": args.route_max_batches, "max_batch_distance": args.max_batch_distance},
+        reason="road99_caleb_house",
+        compact_player_fn=compact_player,
     )
     found = call_tool("find_nearest_npc", {"npcIds": [CALEB_NPC], "maxDistance": int(args.npc_max_distance)}, profile=args.profile)
     npc = found.get("npc") or {}
     if not found.get("success") or npc.get("npcIndex") is None:
         raise RuntimeError("could not find Caleb for cooking gauntlets")
     talked = call_tool("interact_npc", {"npcIndex": npc.get("npcIndex"), "option": "first", "requireReachable": True}, profile=args.profile)
+    if talked.get("approaching"):
+        waited = call_tool("wait_until_idle_XS", {"maxTicks": 40}, profile=args.profile)
+        write_event(handle, "approach_caleb", {
+            "success": bool(waited.get("success")),
+            "message": waited.get("message"),
+            "player": compact_player(player_from_or_observe(waited, args.profile)),
+        })
+        found = call_tool("find_nearest_npc", {"npcIds": [CALEB_NPC], "maxDistance": int(args.npc_max_distance)}, profile=args.profile)
+        npc = found.get("npc") or {}
+        if not found.get("success") or npc.get("npcIndex") is None:
+            raise RuntimeError("could not find Caleb after approach for cooking gauntlets")
+        talked = call_tool("interact_npc", {"npcIndex": npc.get("npcIndex"), "option": "first", "requireReachable": True}, profile=args.profile)
+    if not talked.get("success"):
+        raise RuntimeError("could not start Caleb dialogue: {}".format(talked.get("message", "")))
     continued = call_tool("continue_dialogue", {}, profile=args.profile)
-    selected = call_tool("select_dialogue_option", {"option": 1}, profile=args.profile)
+    selected = call_tool("click_interface_button_XS", {"buttonId": 9157}, profile=args.profile)
     player = player_from_or_observe(selected, args.profile)
     if total_item(player, COOKING_GAUNTLETS) > 0 and equipment_count(player, COOKING_GAUNTLETS) <= 0:
         equipped = call_tool("equip_item", {"itemId": COOKING_GAUNTLETS}, profile=args.profile)
@@ -664,6 +700,16 @@ def run(args):
         player = bridge.observe_xs(args.profile)
         write_event(handle, "run_start", {"args": args_summary(args), "player": compact_player(player), "runLog": str(run_path)})
         write_runner_status(args, "running", "started", run_path=run_path, cycle=cycles, player=player)
+        if not owns_cooking_gauntlets(player) and sale_plan(player, args):
+            write_runner_status(args, "running", "pre_cycle_policy", run_path=run_path, cycle=cycles, player=player)
+            player, sold, coins = sell_policy_batches(args, handle, player)
+            player, bought = buy_cooking_gauntlets_if_ready(args, handle, player)
+            write_event(handle, "pre_cycle_policy_finish", {
+                "sold": sold,
+                "coinsReceived": coins,
+                "boughtCookingGauntlets": bought,
+                "player": compact_player(player),
+            })
         while args.cycles <= 0 or cycles < args.cycles:
             if runner_stop_requested(args):
                 write_runner_status(args, "stopped", "stop_requested", run_path=run_path, cycle=cycles, player=player)

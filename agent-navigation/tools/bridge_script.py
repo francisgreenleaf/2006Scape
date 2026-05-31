@@ -1134,6 +1134,19 @@ CATHERBY_SOUTH_RANGE_DOOR_APPROACHES = [
 ]
 CATHERBY_SOUTH_RANGE_TILE = {"x": 2817, "y": 3443, "height": 0}
 
+CATHERBY_CALEB_HOUSE_DOOR = {"objectId": 1530, "x": 2815, "y": 3448, "height": 0}
+CATHERBY_CALEB_HOUSE_APPROACH = {"x": 2814, "y": 3448, "height": 0}
+CATHERBY_CALEB_HOUSE_INTERIOR = {"x": 2816, "y": 3448, "height": 0}
+CATHERBY_CALEB_HOUSE_ENTRY_STEPS = [
+    {"x": 2815, "y": 3448, "height": 0},
+    CATHERBY_CALEB_HOUSE_INTERIOR,
+]
+CATHERBY_CALEB_HOUSE_INTERIOR_TILES = [
+    CATHERBY_CALEB_HOUSE_INTERIOR,
+    {"x": 2816, "y": 3449, "height": 0},
+    {"x": 2817, "y": 3450, "height": 0},
+]
+
 
 def _same_player_tile_ref(player, tile):
     return _same_player_tile(player, tile["x"], tile["y"], tile.get("height", 0))
@@ -1185,6 +1198,33 @@ def open_catherby_south_range_door(player, profile="", handle=None, reason="",
         profile=profile,
         handle=handle,
         reason=reason or "catherby_south_range_door",
+        compact_player_fn=compact_player_fn,
+    )
+
+
+def enter_catherby_caleb_house(player, profile="", handle=None, reason="",
+                               compact_player_fn=None):
+    """Enter Caleb's Catherby house through the proven western family-house door."""
+    player = observe(profile=profile)
+    if _same_player_any_tile(player, CATHERBY_CALEB_HOUSE_INTERIOR_TILES):
+        return player
+    player = _walk_exact_tile(
+        player,
+        CATHERBY_CALEB_HOUSE_APPROACH,
+        profile=profile,
+        handle=handle,
+        reason="catherby_caleb_house_door_approach",
+        max_ticks=30,
+        max_walk_distance=24,
+        compact_player_fn=compact_player_fn,
+    )
+    return open_object_then_walk_steps(
+        player,
+        CATHERBY_CALEB_HOUSE_DOOR,
+        steps=CATHERBY_CALEB_HOUSE_ENTRY_STEPS,
+        profile=profile,
+        handle=handle,
+        reason=reason or "catherby_caleb_house_door",
         compact_player_fn=compact_player_fn,
     )
 

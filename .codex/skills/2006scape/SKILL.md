@@ -30,6 +30,8 @@ For live gameplay and navigation, use the smallest state surface that can suppor
 
 For Python runners, prefer `bridge_script.observe_xxs()` or `bridge_script.observe_xs()` and carry forward compact `player` results from action/wait tools. `bridge_script.observe()` is the legacy full-state helper; leave it only for complete bank contents, complete evidence, profile/personality context, or a named missing field.
 
+When a live route fails near a building, door, gate, ladder, or other object blocker, do not leave the fix as a one-off manual recovery. Inspect compact nearby object evidence first, then use server data such as `2006Scape Server/data/doors.json`, context maps, or passive traces to identify the exact object id/tile/approach/post-state. Once proved, encode the transition in the runner or a location-specific `bridge_script` helper and document it in `2006scape-object-transitions` or `scripting-primitives.md` so the next run uses the learned primitive automatically.
+
 ## Skill Router
 
 | Need | Read | Good first move | Boundary |
