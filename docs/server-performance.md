@@ -1,0 +1,9 @@
+# Server Performance Notes
+
+## Door Lookup Indexing
+
+The door handler now takes the fast path for normal door movement. The inherited implementation kept every single door in one mutable list and searched it linearly on every first-clicked object. That is a bad fit for an agent-heavy server: object clicks happen constantly during routing, and doors are exactly the kind of repeated transition where we should be spending microseconds, not scanning a world-sized list. The new path builds a keyed index from door id, tile, and height at startup, then reindexes the same mutable door record whenever the door opens or closes. The old linear lookup remains in the file as the rollback path, but the default behavior is now indexed lookup.
+
+This is a high-leverage server fix because it improves a core movement primitive without changing gameplay semantics. Door movement still goes through the same `handleDoor` state transition, object placement, face rotation, and distance checks; only the lookup strategy changed. The implementation also closes a related reload problem: region changes were calling `Doors.load()` repeatedly, and the old method could append another copy of the door data each time. Loading is now idempotent, so the server keeps one stable door set and one stable index instead of letting route-heavy sessions inflate the door list over time.
+
+The change is deliberately switchable and observable. `USE_INDEXED_DOOR_LOOKUP` enables the new mode, `VALIDATE_INDEXED_DOOR_LOOKUP` can compare the indexed result against the old linear scan when debugging, and `LOG_EACH_DOOR_USE` records before/after door transitions during live validation. A successful live test should show a door click with the original door id and tile, followed by the reindexed opened door id and tile. That gives practical proof that the new path is active, while the repair/fallback logs give us a clear signal if an indexed lookup ever misses a known single-door transition.
