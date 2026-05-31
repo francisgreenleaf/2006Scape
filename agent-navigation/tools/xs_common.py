@@ -590,6 +590,34 @@ def compact_feedback(value):
     return {k: v for k, v in out.items() if v not in (None, "", [], {})}
 
 
+def route_decision(data, command):
+    if not isinstance(data, dict):
+        return None
+    evidence = data.get("evidence") if isinstance(data.get("evidence"), dict) else {}
+    safety_data = data.get("safety") if isinstance(data.get("safety"), dict) else {}
+    status = data.get("status")
+    level = evidence.get("level")
+    actionable = bool(data.get("actionable"))
+    command_present = bool(command)
+    review = bool(safety_data.get("requiresReview") or safety_data.get("review"))
+
+    if status == "requires-object-transition":
+        return "transition_first: use the required door/ladder/gate/etc, then request the next route"
+    if status == "unsupported-coordinate-layer":
+        return "do_not_execute: unsupported coordinate layer"
+    if review:
+        return "review_before_execute: safety review is required"
+    if actionable and command_present and status == "ok":
+        if level == "cache_planned":
+            return "execute: cache-planned route is valid to try; proven=false only means not player-proven yet"
+        return "execute: route is valid to try; run cmd"
+    if actionable and command_present:
+        return "probe_or_partial: actionable route/probe; run cmd only if this matches the task"
+    if actionable:
+        return "usable_context: actionable result, but no execution command was returned"
+    return "do_not_execute: route is not actionable"
+
+
 def route_definition(data):
     if not isinstance(data, dict):
         return data
@@ -611,6 +639,7 @@ def route_definition(data):
         "from": data.get("from"),
         "to": data.get("to"),
         "status": data.get("status"),
+        "decision": route_decision(data, command),
         "quality": data.get("quality"),
         "mode": data.get("mode"),
         "score": data.get("score"),

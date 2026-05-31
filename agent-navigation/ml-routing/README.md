@@ -51,6 +51,7 @@ ML1 supports surface routes and same-cache-area underground routes. It still ret
 
 The route/debug response is compact by default. Use:
 
+- `decision` in XS output as the first action hint. If it starts with `execute`, run `cmd`; if it says `transition_first` or `do_not_execute`, handle that blocker first.
 - `recommended.next` for the next low-token waypoint;
 - `recommended.routeExecutionCommand` for the generated ML1 executor command;
 - `recommended.routeDefinition` for the stable JSON contract agents should pass around;
@@ -61,6 +62,8 @@ The route/debug response is compact by default. Use:
 - `recommended.mode == "cache_mesh"` when the planner kept required learned object transitions but rebuilt the ordinary walking legs from cache-derived clipping.
 - `recommended.selectedOverLearned` to see why a cache-derived candidate replaced learned graph evidence.
 - `recommended.routeSteps`, `recommended.runPlan`, and `recommended.runSegments` for the compact full route and the stretches where run should be saved/spent.
+
+For cache-planned routes, `evidence.proven:false` means the route is not player/route-hint proven yet. It is still valid to try when the response is actionable, has an execution command, and does not require safety review.
 
 Add `--output-candidates N` only when debugging alternatives; the default omits alternatives to keep agent context small.
 

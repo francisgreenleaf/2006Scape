@@ -340,15 +340,15 @@ def _route_evidence(candidate: Dict[str, Any]) -> Dict[str, Any]:
     elif status_ok and route_hint_edges:
         level = "route_hint_backed"
         proven = False
-        summary = "Selected route is backed by navigation route hints, but no specific verified route id was attached."
+        summary = "Actionable route-hint-backed candidate: route hints support this path, but no specific verified route id was attached."
     elif cache_direct_edges or cache_mesh_edges:
         level = "cache_planned"
         proven = False
-        summary = "Selected route is planned from cache collision data rather than a successful movement trace."
+        summary = "Actionable model/cache-planned route: cache collision found a walkable path, but no player has proven it yet."
     else:
         level = "unproven"
         proven = False
-        summary = "Selected route has no successful movement-trace or verified-route evidence attached."
+        summary = "Unproven route: no successful movement trace, verified route hint, or complete cache-planned path is attached."
     return {
         "level": level,
         "proven": proven,
