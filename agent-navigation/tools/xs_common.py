@@ -534,18 +534,61 @@ def run_plan(value):
     return out or value
 
 
+def _plain_safety_note(text):
+    text = str(text or "").strip()
+    low = text.lower()
+    if not text:
+        return ""
+    if "food" in low:
+        return "food helps low-level accounts"
+    if "run energy" in low or "run disabled" in low or "required run" in low:
+        return "run helps through this section"
+    if "combat" in low:
+        return "higher combat makes this safer"
+    if "coordinate layer" in low or "underground" in low:
+        return "use the matching entrance or exit first"
+    return text[:90]
+
+
+def _unique_notes(notes, limit=3):
+    result = []
+    seen = set()
+    for note in notes:
+        note = str(note or "").strip()
+        if not note or note in seen:
+            continue
+        seen.add(note)
+        result.append(note)
+        if len(result) >= limit:
+            break
+    return result
+
+
 def safety(value):
     if not isinstance(value, dict):
         return value
+    hazard_values = value.get("hazardWarnings") or value.get("hazards")
+    notes = []
+    if isinstance(hazard_values, list):
+        for item in hazard_values:
+            if isinstance(item, dict):
+                warnings = item.get("warnings") or []
+                if warnings:
+                    for warning in warnings:
+                        notes.append(_plain_safety_note(warning))
+                elif item.get("risk"):
+                    notes.append(str(item.get("risk")).replace("-", " "))
+            else:
+                notes.append(_plain_safety_note(item))
+    elif hazard_values:
+        notes.append(_plain_safety_note(hazard_values))
+    for warning in value.get("warnings") or []:
+        notes.append(_plain_safety_note(warning))
+    for warning in value.get("runWarnings") or []:
+        notes.append(_plain_safety_note(warning))
     out = {
         "review": value.get("requiresReview"),
-        "warnings": value.get("warnings")[:5] if isinstance(value.get("warnings"), list) else value.get("warnings"),
-        "hazards": (value.get("hazardWarnings") or value.get("hazards"))[:5]
-        if isinstance(value.get("hazardWarnings") or value.get("hazards"), list)
-        else value.get("hazardWarnings") or value.get("hazards"),
-        "exposure": value.get("learnedExposure"),
-        "wrongWay": value.get("wrongWayFlags")[:5] if isinstance(value.get("wrongWayFlags"), list) else value.get("wrongWayFlags"),
-        "detours": value.get("detourSegments")[:5] if isinstance(value.get("detourSegments"), list) else value.get("detourSegments"),
+        "notes": _unique_notes(notes, limit=3),
     }
     return {k: v for k, v in out.items() if v not in (None, "", [], {})}
 
@@ -553,15 +596,22 @@ def safety(value):
 def route_evidence(value):
     if not isinstance(value, dict):
         return value
-    routes = value.get("routesUsed")
+    proven = value.get("proven")
+    summary = value.get("summary")
+    level = value.get("level")
+    if not summary:
+        if proven:
+            summary = "Backed by successful prior travel."
+        elif level == "cache_planned":
+            summary = "Planned from the cache map; record the trip so it improves."
+        elif level in ("verified_route_hint", "route_hint_backed"):
+            summary = "Route found from route notes; record the trip so it improves."
+        else:
+            summary = "Route found; record the trip so it improves."
     out = {
-        "level": value.get("level"),
-        "proven": value.get("proven"),
-        "src": value.get("edgeSources"),
-        "routes": list(routes.keys())[:3] if isinstance(routes, dict) else routes,
+        "proven": proven,
+        "summary": str(summary)[:100],
     }
-    if value.get("summary"):
-        out["note"] = str(value.get("summary"))[:120]
     return {k: v for k, v in out.items() if v not in (None, "", [], {})}
 
 
@@ -624,45 +674,36 @@ def route_definition(data):
     execution = data.get("execution") if isinstance(data.get("execution"), dict) else {}
     command = execution.get("command")
     exec_summary = {
-        "strategy": execution.get("strategy"),
         "maxBatch": execution.get("maxBatchDistance"),
         "runnerMax": execution.get("runnerMaxBatches"),
         "lookahead": execution.get("lookaheadDistance"),
         "lookaheadSteps": execution.get("lookaheadStepLimit"),
-    } if execution else None
+    } if execution and command else None
     if isinstance(exec_summary, dict):
         exec_summary = {k: v for k, v in exec_summary.items() if v not in (None, "", [], {})}
     out = {
         "api": data.get("api"),
-        "ok": data.get("actionable"),
         "id": data.get("routeId"),
         "from": data.get("from"),
         "to": data.get("to"),
         "status": data.get("status"),
         "decision": route_decision(data, command),
-        "quality": data.get("quality"),
         "mode": data.get("mode"),
-        "score": data.get("score"),
         "dist": data.get("routeDistance"),
         "distTiles": data.get("distanceTiles"),
-        "direct": data.get("directDistance"),
-        "detour": data.get("detourRatio"),
         "ticks": data.get("estimatedTicks"),
         "arrival": data.get("arrivalRadius"),
         "planner": data.get("planner"),
-        "tdInc": data.get("targetDistanceIncreases"),
         "evidence": route_evidence(data.get("evidence")),
         "next": tile(data.get("next")),
         "end": tile(data.get("endTile") or data.get("targetTile")),
         "stepCount": data.get("routeStepCount"),
         "steps": route_steps(data.get("routeSteps"), limit=8),
         "run": run_plan(data.get("runPlan")),
-        "runSegments": data.get("runSegments")[:4] if isinstance(data.get("runSegments"), list) else data.get("runSegments"),
         "safety": safety(data.get("safety")),
         "path": execution.get("routeDefinitionPath"),
         "cmd": compact_command(command, limit=10),
         "exec": exec_summary,
-        "feedback": compact_feedback(data.get("feedback")),
         "error": data.get("error"),
         "message": data.get("message"),
         "layers": data.get("coordinateLayers"),

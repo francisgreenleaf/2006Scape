@@ -54,7 +54,7 @@ Use these from external scripts through `agent-navigation/tools/rs-tool.sh`, pre
   `unequip_items_XS`, `unequip_items_XXS`,
   `eat_item`, `eat_best_food`, `eat_best_food_XXS`, `pickup_ground_item`,
   `pickup_ground_item_XXS`,
-  `bury_bones`, `bury_bones_XS`, `bury_bones_XXS`, `drop_inventory_items`, `deposit_inventory_items`, `deposit_inventory_items_XS`, `deposit_inventory_items_XXS`,
+  `bury_bones`, `bury_bones_XS`, `bury_bones_XXS`, `drop_inventory_items`, `bank_item_count_XS`, `deposit_inventory_items`, `deposit_inventory_items_XS`, `deposit_inventory_items_XXS`,
   `withdraw_bank_items`, `withdraw_bank_items_XS`, `withdraw_bank_items_XXS`,
   `open_nearest_shop`, `buy_shop_item`, `sell_inventory_item`,
   `sell_inventory_items`, `deposit_excess_coins`
@@ -66,7 +66,7 @@ The main compact dynamic surfaces are `observe_state_XS`,
 `wait_until_combat_event_XS`, `object_transition_step_XS`,
 `interact_object_XS`, `find_nearest_object_XS`, `find_nearest_rock_XS`,
 `find_nearest_tree_XS`,
-`bury_bones_XS`, `deposit_inventory_items_XS`, `withdraw_bank_items_XS`,
+`bury_bones_XS`, `bank_item_count_XS`, `deposit_inventory_items_XS`, `withdraw_bank_items_XS`,
 `unequip_items_XS`, and `food_bank_XS`.
 They use the same mechanics as their
 full counterparts and return smaller status/player/inventory summaries. Use
@@ -171,6 +171,10 @@ that are not present, then executes only the needed primitive calls: one
 junk/resources using `itemIds` for multiple item types, one
 `deposit_inventory_items` call with `keepFoodCount` for excess food, and one
 coin-float adjustment through `deposit_excess_coins` or `withdraw_bank_items`.
+For one-off supply questions, call `bank_item_count_XS` instead of full
+`observe_state`; it accepts `itemId`, `itemIds`, `name`, `names`, `item`, or a
+mixed `items` array and returns exact bank amount plus inventory/equipment
+amounts for the matched canonical item ids.
 
 Do not loop over the same bank item several times unless the bridge returns a
 real partial-move failure. For the current cow trip loadout, run this only when

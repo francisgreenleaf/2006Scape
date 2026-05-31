@@ -32,6 +32,7 @@ XS_TOOL_BASES = {
     "bury_bones",
     "deposit_inventory_items",
     "withdraw_bank_items",
+    "bank_item_count",
     "unequip_item",
     "unequip_items",
     "food_bank",
