@@ -625,6 +625,42 @@ class ApiTests(unittest.TestCase):
         self.assertTrue(definition["evidence"]["proven"])
         self.assertEqual(definition["feedback"]["automaticEvidenceJsonl"], "agent-navigation/.local/run-evidence/test.routes.jsonl")
 
+    def test_cache_planned_evidence_is_actionable_not_player_proven(self):
+        args = SimpleNamespace(
+            from_tile="1,1,0",
+            to="3,1,0",
+            allow_lethal=False,
+            max_batch_distance=24,
+            runner_max_batches=8,
+            trace_profile="",
+            route_evidence_jsonl="agent-navigation/.local/run-evidence/test.routes.jsonl",
+            no_route_evidence=False,
+            planner="fast",
+        )
+        candidate = {
+            "planner": "fast",
+            "mode": "cache_direct",
+            "status": "ok",
+            "quality": "watch",
+            "targetTile": {"x": 3, "y": 1, "height": 0},
+            "routeDistance": 2,
+            "estimatedTicks": 2.0,
+            "next": {"x": 2, "y": 1, "height": 0},
+            "edgeSources": {"cache_direct": 2},
+            "routeSteps": [
+                {"x": 1, "y": 1, "height": 0},
+                {"x": 2, "y": 1, "height": 0},
+                {"x": 3, "y": 1, "height": 0},
+            ],
+            "runPlan": {"policy": "default", "routeDistance": 2, "runTileDistance": 0, "walkTileDistance": 2, "segmentCount": 0},
+            "routeRunnerCommand": ["python3", "agent-navigation/tools/route_runner.py", "--to", "3,1,0"],
+        }
+        definition = route_definition(args, candidate)
+        self.assertTrue(definition["actionable"])
+        self.assertEqual(definition["evidence"]["level"], "cache_planned")
+        self.assertFalse(definition["evidence"]["proven"])
+        self.assertIn("Actionable model/cache-planned route", definition["evidence"]["summary"])
+
     def test_route_definition_explains_coordinate_layer_transition_block(self):
         args = SimpleNamespace(
             from_tile="3093,3498,0",
