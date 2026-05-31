@@ -120,6 +120,31 @@
       ]
     },
     {
+      "id": "agility_barbarian_outpost_runner",
+      "name": "Barbarian Outpost Course Runner",
+      "path": "agent-navigation/tools/agility_barbarian_outpost_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Course-specific runner for the Barbarian Outpost Agility Course 35-65 phase. Targets the course start at 2551,3554,0 and delegates obstacle execution to the adaptive agility runner.",
+      "aliases": [
+        "barbarian outpost runner",
+        "barbarian outpost course",
+        "barbarian outpost agility runner",
+        "barb outpost agility"
+      ],
+      "tags": [
+        "gameplay",
+        "agility",
+        "barbarian",
+        "outpost",
+        "training",
+        "runner"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/agility_barbarian_outpost_runner.py --target-agility-level 65",
+        "python3 agent-navigation/tools/script_registry.py run barbarian outpost runner -- --profile Mrathlete"
+      ]
+    },
+    {
       "id": "progression_phase_runner",
       "name": "Sequential Progression Runner",
       "path": "agent-navigation/tools/progression_phase_runner.py",
