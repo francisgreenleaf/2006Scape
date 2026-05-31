@@ -99,6 +99,13 @@ These notes are repo-specific operational memory from actual agent experience. A
 - **Use instead:** Add each proven gate to a small transition catalog with a primitive family such as `simple_timed_open_gate`, `toll_dialogue_gate`, or `chained_timed_open_gate`. Use exact per-direction approach/open/step/proof data and disable auto-retaliate in hostile areas before crossing.
 - **Validation:** The Edgeville second druid gate proved southbound from its midline to `3132,9916,0`, and the full Chaos Druid bank loop crossed both gates, exited the ladder, banked, and stopped safely.
 
+### Promote discovered doors into runner primitives
+
+- **Observed:** `road_to_99_fishing_cooking.py` reached 25,000 coins but failed buying Cooking gauntlets because the route to Caleb's spawn tile stopped at the Catherby range area, and a nearby shop door was easy to confuse with Caleb's house door.
+- **Cause:** The wrapper treated Caleb as an ordinary coordinate route instead of a building/object transition, and compact object search returned the nearest door rather than the intended house entrance.
+- **Use instead:** When a runner fails near a door or object blocker, inspect `2006Scape Server/data/doors.json`, context-map markers, compact object search, and live post-state to identify the exact object. Then add a location helper in `bridge_script.py` and call it from the runner instead of leaving a manual recovery path.
+- **Validation:** `bridge_script.enter_catherby_caleb_house(...)` now opens Door `1530` at `2815,3448,0`, steps to `2816,3448,0`, and the Road-to-99 wrapper uses Caleb's purchase button `9157` before equipping item `775`.
+
 ### Gate Catherby fishing methods by Cooking level
 
 - **Observed:** `agent-navigation/tools/catherby_food_runner.py` switched from harpoon tuna to lobster at Fishing 40, filled an inventory of raw lobsters, then failed with `cooking made no progress for 2 rounds` at Cooking 37.

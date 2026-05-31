@@ -147,6 +147,14 @@ location-specific helper. The Catherby southern range door proof starts at
 range from `2817,3443,0` against Range `2728` at `2817,3444,0`. Keep exact approach and proof coordinates in the
 location helper instead of assuming every door swings the same way.
 
+The Catherby Caleb house proof for Cooking gauntlets uses
+`bridge_script.enter_catherby_caleb_house(...)`: stand at `2814,3448,0`, open
+Door `1530` at `2815,3448,0`, then immediately queue
+`2815,3448,0 -> 2816,3448,0` with `allowObjectTransition=true`. Caleb can then
+be reached from inside the house. The purchase dialogue uses the two-option
+button `9157` for "Yes please" after the first continue; do not rely on the
+generic dialogue-option mapping for this specific Caleb exchange.
+
 For ML1 route definitions, prefer
 `agent-navigation/tools/execute_route_definition.py --route-definition PATH`
 over one-off inline Python. It follows the persisted `routeSteps` through

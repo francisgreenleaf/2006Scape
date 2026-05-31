@@ -501,7 +501,7 @@
       "name": "Road to 99 Fishing and Cooking",
       "path": "agent-navigation/tools/road_to_99_fishing_cooking.py",
       "kind": "gameplay_runner",
-      "description": "Long-running Mrfish-style wrapper around the Catherby Food Runner. Before Cooking gauntlets, runs one proven Catherby fish/cook cycle at a time, keeps cooked fish in inventory, sells directly at Arhein, deposits coins, keeps exactly 100 cooked lobsters, buys/equips Cooking gauntlets from Caleb at 25k coins, then switches back to banking all food while continuing toward 99 Fishing and 99 Cooking.",
+      "description": "Long-running Mrfish-style wrapper around the Catherby Food Runner. Before Cooking gauntlets, runs one proven Catherby fish/cook cycle at a time, keeps cooked fish in inventory, sells directly at Arhein, deposits coins, sells lobsters too instead of reserving food, buys/equips Cooking gauntlets from Caleb at 25k coins, then switches back to banking all food while continuing toward 99 Fishing and 99 Cooking.",
       "aliases": [
         "road-to-99-fishing-cooking",
         "road to 99 fishing and cooking",
