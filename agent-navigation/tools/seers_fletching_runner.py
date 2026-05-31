@@ -11,6 +11,7 @@ import datetime as dt
 import json
 import os
 import subprocess
+import time
 import uuid
 from pathlib import Path
 
@@ -400,20 +401,40 @@ def primitive_fletch_until_empty(player, args, handle, reason):
                 "batchStatus": "blocked",
             }
             break
+        round_started = time.monotonic()
+        use_started = time.monotonic()
         use_result = call_tool("use_item_on_item", {
             "itemId": KNIFE_ID,
             "targetItemId": choice["logId"],
         })
+        use_ms = int((time.monotonic() - use_started) * 1000)
+        button_started = time.monotonic()
         button_result = call_tool("click_interface_button", {
             "buttonId": choice["makeAllButtonId"],
         })
+        button_ms = int((time.monotonic() - button_started) * 1000)
+        clicked_player = bridge._player_from_or(button_result, bridge._player_from_or(use_result, player))
+        write_event(handle, "primitive_fletch_start", {
+            "reason": reason,
+            "round": rounds,
+            "choice": choice,
+            "useSuccess": bool(use_result.get("success")),
+            "buttonSuccess": bool(button_result.get("success")),
+            "useMs": use_ms,
+            "buttonMs": button_ms,
+            "player": compact_player(clicked_player),
+            "logs": fletchable_log_count(clicked_player),
+            "products": product_count(clicked_player),
+        })
         wait_ticks = max(1, min(250, args.fletch_ticks - total_ticks))
+        wait_started = time.monotonic()
         wait_result = call_tool("wait_until_idle_XS", {
             "maxTicks": wait_ticks,
             "movement": True,
             "skilling": True,
             "combat": False,
         })
+        wait_ms = int((time.monotonic() - wait_started) * 1000)
         player = bridge._player_from_or(
             wait_result,
             bridge._player_from_or(button_result, bridge._player_from_or(use_result, player)),
@@ -430,6 +451,10 @@ def primitive_fletch_until_empty(player, args, handle, reason):
             "useSuccess": bool(use_result.get("success")),
             "buttonSuccess": bool(button_result.get("success")),
             "waitStatus": wait_result.get("batchStatus"),
+            "useMs": use_ms,
+            "buttonMs": button_ms,
+            "waitMs": wait_ms,
+            "roundMs": int((time.monotonic() - round_started) * 1000),
             "player": compact_player(player),
             "logs": fletchable_log_count(player),
             "products": product_count(player),
@@ -480,20 +505,24 @@ def legacy_chop_until_inventory_full(tree, args):
     return result
 
 
-def primitive_chop_until_inventory_full(tree, args, handle, reason):
+def primitive_chop_until_inventory_full(tree, args, handle, reason, player=None):
     total_ticks = 0
     rounds = 0
-    player = observe_xs()
+    if player is None:
+        player = observe_xs()
     last_result = {"success": True, "player": player, "batchStatus": "not_started", "batchTicks": 0}
     while total_ticks < args.chop_ticks:
+        round_started = time.monotonic()
         if int(player.get("freeInventorySlots", 0) or 0) < 1:
             last_result = {"success": True, "player": player, "batchStatus": "inventory_full"}
             break
+        find_started = time.monotonic()
         find_result = call_tool("find_nearest_tree_XS", {
             "tree": tree,
             "maxDistance": args.tree_max_distance,
             "reachable": True,
         })
+        find_ms = int((time.monotonic() - find_started) * 1000)
         if not find_result.get("success"):
             last_result = find_result
             last_result["player"] = player
@@ -501,19 +530,36 @@ def primitive_chop_until_inventory_full(tree, args, handle, reason):
             break
         obj = find_result.get("object") or {}
         obj_tile = tile_from_compact_object(obj)
+        interact_started = time.monotonic()
         interact_result = call_tool("interact_object_XS", {
             "objectId": obj.get("objectId"),
             "x": obj_tile["x"],
             "y": obj_tile["y"],
             "option": "first",
         })
+        interact_ms = int((time.monotonic() - interact_started) * 1000)
+        clicked_player = bridge._player_from_or(interact_result, player)
+        write_event(handle, "primitive_chop_click", {
+            "reason": reason,
+            "round": rounds + 1,
+            "tree": tree,
+            "object": obj,
+            "findMs": find_ms,
+            "interactMs": interact_ms,
+            "success": bool(interact_result.get("success")),
+            "message": interact_result.get("message"),
+            "player": compact_player(clicked_player),
+            "logs": fletchable_log_count(clicked_player),
+        })
         wait_ticks = min(args.chop_round_ticks, max(1, args.chop_ticks - total_ticks))
+        wait_started = time.monotonic()
         wait_result = call_tool("wait_until_idle_XS", {
             "maxTicks": wait_ticks,
             "movement": True,
             "skilling": True,
             "combat": False,
         })
+        wait_ms = int((time.monotonic() - wait_started) * 1000)
         player = bridge._player_from_or(wait_result, bridge._player_from_or(interact_result, player))
         total_ticks += max(1, int(wait_result.get("batchTicks", wait_ticks) or wait_ticks))
         rounds += 1
@@ -527,6 +573,10 @@ def primitive_chop_until_inventory_full(tree, args, handle, reason):
             "object": obj,
             "interactSuccess": bool(interact_result.get("success")),
             "waitStatus": wait_result.get("batchStatus"),
+            "findMs": find_ms,
+            "interactMs": interact_ms,
+            "waitMs": wait_ms,
+            "roundMs": int((time.monotonic() - round_started) * 1000),
             "player": compact_player(player),
             "logs": fletchable_log_count(player),
         })
@@ -546,11 +596,11 @@ def primitive_chop_until_inventory_full(tree, args, handle, reason):
     return last_result
 
 
-def chop_until_inventory_full(tree, args, handle, reason):
+def chop_until_inventory_full(tree, args, handle, reason, player=None):
     if args.legacy_chop_tool:
         return legacy_chop_until_inventory_full(tree, args)
     try:
-        return primitive_chop_until_inventory_full(tree, args, handle, reason)
+        return primitive_chop_until_inventory_full(tree, args, handle, reason, player=player)
     except RuntimeError as exc:
         if not args.legacy_chop_fallback:
             raise
@@ -665,7 +715,7 @@ def pickup_nearby_bird_nests(args, handle, reason):
     return player
 
 
-def route_to(target, args, handle, reason):
+def route_to(target, args, handle, reason, player=None):
     target_key = str(target)
     extra_args = {
         "runner_max_batches": args.route_max_batches,
@@ -675,16 +725,17 @@ def route_to(target, args, handle, reason):
         "evidence_jsonl": args.route_evidence_jsonl,
     }
     if target_key in SEERS_TILES:
-        player = observe_xs()
+        if player is None:
+            player = observe_xs()
         current = tile_from_player(player)
         destination = SEERS_TILES[target_key]
         local_seers_target = target_key in (SEERS_BANK, SEERS_OAK, SEERS_WILLOW) and current["x"] <= 2760
         if local_seers_target:
-            route_to_seers_target(target_key, args, handle, reason)
-            return
+            return route_to_seers_target(target_key, args, handle, reason, player=player)
         bridge.route_to(tile_string(destination), profile=RUN_PROFILE, handle=handle, reason=reason, extra_args=extra_args)
-        return
+        return observe_xs()
     bridge.route_to(target, profile=RUN_PROFILE, handle=handle, reason=reason, extra_args=extra_args)
+    return observe_xs()
 
 
 def chop_anchor_for_tree(tree):
@@ -700,8 +751,9 @@ def tile_string(tile):
     return "{},{},{}".format(int(tile["x"]), int(tile["y"]), int(tile.get("height", 0)))
 
 
-def route_to_seers_target(target, args, handle, reason):
-    player = observe_xs()
+def route_to_seers_target(target, args, handle, reason, player=None):
+    if player is None:
+        player = observe_xs()
     current = tile_from_player(player)
     destination = SEERS_TILES[target]
     if tile_distance(current, destination) <= 1:
@@ -737,6 +789,16 @@ def route_to_seers_target(target, args, handle, reason):
     for index, tile in enumerate(waypoints, start=1):
         if tile_distance(tile_from_player(player), tile) <= 1:
             continue
+        step_started = time.monotonic()
+        stop_distance = 1 if target in (SEERS_OAK, SEERS_WILLOW) else 0
+        write_event(handle, "hardcoded_route_step_start", {
+            "reason": reason,
+            "target": target,
+            "step": index,
+            "tile": tile,
+            "stopDistance": stop_distance,
+            "player": compact_player(player),
+        })
         result = call_tool("walk_to_tile_until_arrived_XS", {
             "x": int(tile["x"]),
             "y": int(tile["y"]),
@@ -744,6 +806,7 @@ def route_to_seers_target(target, args, handle, reason):
             "maxTicks": args.local_route_ticks,
             "maxWalkDistance": args.local_route_distance,
             "stopOnStall": True,
+            "stopDistance": stop_distance,
         })
         player = bridge._player_from_or(result, player)
         write_event(handle, "hardcoded_route_step", {
@@ -754,6 +817,8 @@ def route_to_seers_target(target, args, handle, reason):
             "success": bool(result.get("success")),
             "batchStatus": result.get("batchStatus"),
             "batchTicks": result.get("batchTicks"),
+            "stopDistance": stop_distance,
+            "durationMs": int((time.monotonic() - step_started) * 1000),
             "player": compact_player(player),
         })
         if not result.get("success", False):
@@ -1240,10 +1305,23 @@ def main(argv=None):
             tree = choose_tree(player, args.tree)
             player = close_interfaces_if_needed(player, handle, "before_chop")
             chop_anchor = args.chop_anchor or chop_anchor_for_tree(tree)
+            prepare_started = time.monotonic()
+            routed = False
             if chop_anchor:
-                route_to(chop_anchor, args, handle, "chop_anchor")
-                player = observe_xs()
-            result = chop_until_inventory_full(tree, args, handle, "cycle")
+                routed_player = route_to(chop_anchor, args, handle, "chop_anchor", player=player)
+                if routed_player:
+                    player = routed_player
+                routed = True
+            write_event(handle, "chop_prepare", {
+                "cycle": cycle,
+                "tree": tree,
+                "chopAnchor": chop_anchor or None,
+                "routed": routed,
+                "durationMs": int((time.monotonic() - prepare_started) * 1000),
+                "player": compact_player(player),
+                "logs": fletchable_log_count(player),
+            })
+            result = chop_until_inventory_full(tree, args, handle, "cycle", player=player)
             player = result["player"]
             player = pickup_nearby_bird_nests(args, handle, "after_chop")
             player = bank_bird_nests_if_needed(player, args, handle, "after_chop")

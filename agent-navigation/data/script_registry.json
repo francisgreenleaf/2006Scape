@@ -196,6 +196,32 @@
       ]
     },
     {
+      "id": "falador_mining_guild_runner",
+      "name": "Falador Mining Guild Runner",
+      "path": "agent-navigation/tools/falador_mining_guild_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Location-specific Mining Guild wrapper that routes between Falador East Bank and the guild ladders, mines a selected ore through the primitive mining runner, banks coal/gems/products, and keeps the best usable pickaxe equipped.",
+      "aliases": [
+        "falador mining guild",
+        "mining guild coal",
+        "guild coal",
+        "falador coal",
+        "coal guild runner"
+      ],
+      "tags": [
+        "gameplay",
+        "mining",
+        "coal",
+        "falador",
+        "mining-guild",
+        "runner"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/falador_mining_guild_runner.py --ore coal",
+        "python3 agent-navigation/tools/script_registry.py run falador mining guild -- --max-loads 1"
+      ]
+    },
+    {
       "id": "fletching_runner",
       "name": "Adaptive Fletching Runner",
       "path": "agent-navigation/tools/fletching_runner.py",
