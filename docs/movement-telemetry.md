@@ -4,7 +4,7 @@
 
 ## Producers
 
-- `AgentPassiveTraceLog`: primary and default route-learning producer. Runs inside the game server tick and object packet path, writing passive player movement and object interaction traces without an AI request loop.
+- `AgentPassiveTraceLog`: primary and default route-learning producer. Captures passive player movement and object interaction events from the game server tick and object packet path without an AI request loop. Disk writes are queued to a bounded async writer so telemetry does not block the game tick.
 - `AgentMovementTraceLog`: bridge batch diagnostics producer. Records detailed tool execution traces for `walk_to_tile_until_arrived`, `travel_to_landmark_until_arrived`, and object transitions. These traces are retained for debugging, but are not consumed by default when passive player traces exist because they duplicate the same movement.
 - `agent-navigation/tools/route_recorder.py`: fallback/dev producer. Polls `rs.observe_state` and writes compact records only when a build does not yet have passive server telemetry or extra NPC snapshots are explicitly useful.
 

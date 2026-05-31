@@ -13,6 +13,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -32,11 +36,24 @@ public class AgentPassiveTraceLog {
     private static final Gson GSON = new Gson();
     private static final String LOG_DIR = "player-movement-traces";
     private static final int IDLE_HEARTBEAT_TICKS = 25;
+    private static final boolean ASYNC_WRITES = true;
+    private static final int WRITE_QUEUE_CAPACITY = 8192;
+    private static final int WRITE_FLUSH_INTERVAL = 25;
+    private static final int WRITE_STATUS_INTERVAL = 1000;
+    private static final int WRITE_DROP_LOG_INTERVAL = 100;
 
     private final Object lock = new Object();
+    private final Object writerLock = new Object();
     private final Map<String, Snapshot> snapshots = new HashMap<String, Snapshot>();
     private final Map<String, PendingMovement> pendingMovements = new HashMap<String, PendingMovement>();
     private final Map<String, ObjectInteraction> pendingObjectInteractions = new HashMap<String, ObjectInteraction>();
+    private final Map<String, BufferedWriter> asyncWriters = new HashMap<String, BufferedWriter>();
+    private final BlockingQueue<WriteRequest> writeQueue = new ArrayBlockingQueue<WriteRequest>(WRITE_QUEUE_CAPACITY);
+    private final AtomicBoolean writerStarted = new AtomicBoolean(false);
+    private final AtomicLong queuedWrites = new AtomicLong();
+    private final AtomicLong completedWrites = new AtomicLong();
+    private final AtomicLong droppedWrites = new AtomicLong();
+    private final AtomicLong failedWrites = new AtomicLong();
     private File logDirectoryForTests;
 
     public void captureBeforeMovement(Player player, long serverTick) {
@@ -466,18 +483,137 @@ public class AgentPassiveTraceLog {
     private void write(Player player, long now, JsonObject event) {
         event.addProperty("timestamp", timestamp(now));
         event.addProperty("timestampMs", now);
+
+        if (!ASYNC_WRITES || logDirectoryForTests != null) {
+            writeNow(logFile(player, now), GSON.toJson(event));
+            return;
+        }
+
+        startWriter();
+        WriteRequest request = new WriteRequest(logFile(player, now), GSON.toJson(event));
+        if (writeQueue.offer(request)) {
+            queuedWrites.incrementAndGet();
+        } else {
+            long dropped = droppedWrites.incrementAndGet();
+            if (dropped == 1 || dropped % WRITE_DROP_LOG_INTERVAL == 0) {
+                System.err.println("Passive player trace queue full; dropped=" + dropped + ", queued="
+                        + queuedWrites.get() + ", written=" + completedWrites.get() + ", failed="
+                        + failedWrites.get());
+            }
+        }
+    }
+
+    private File logFile(Player player, long now) {
         File dayDirectory = new File(resolveLogDirectory(), dateStamp(now));
+        return new File(dayDirectory, safeFileStem(player) + ".jsonl");
+    }
+
+    private void writeNow(File logFile, String line) {
+        File dayDirectory = logFile.getParentFile();
         if (!dayDirectory.exists() && !dayDirectory.mkdirs()) {
             System.err.println("Unable to create passive player trace directory: " + dayDirectory.getAbsolutePath());
             return;
         }
-        File logFile = new File(dayDirectory, safeFileStem(player) + ".jsonl");
         try (BufferedWriter writer = Files.newBufferedWriter(logFile.toPath(), StandardCharsets.UTF_8,
                 StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
-            writer.write(GSON.toJson(event));
+            writer.write(line);
             writer.newLine();
         } catch (IOException e) {
             System.err.println("Unable to write passive player trace: " + e.getMessage());
+        }
+    }
+
+    private void startWriter() {
+        if (!writerStarted.compareAndSet(false, true)) {
+            return;
+        }
+        Thread writerThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                drainWriteQueue();
+            }
+        }, "AgentPassiveTraceWriter");
+        writerThread.setDaemon(true);
+        writerThread.start();
+        Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+            @Override
+            public void run() {
+                closeAsyncWriters();
+            }
+        }, "AgentPassiveTraceWriterShutdown"));
+        System.out.println("Passive player trace async writer started; capacity=" + WRITE_QUEUE_CAPACITY + ".");
+    }
+
+    private void drainWriteQueue() {
+        try {
+            while (true) {
+                WriteRequest request = writeQueue.take();
+                writeQueued(request);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            closeWriters();
+        }
+    }
+
+    private void writeQueued(WriteRequest request) {
+        synchronized (writerLock) {
+            try {
+                BufferedWriter writer = asyncWriters.get(request.path);
+                if (writer == null) {
+                    File dayDirectory = request.logFile.getParentFile();
+                    if (!dayDirectory.exists() && !dayDirectory.mkdirs()) {
+                        throw new IOException("Unable to create passive player trace directory: "
+                                + dayDirectory.getAbsolutePath());
+                    }
+                    writer = Files.newBufferedWriter(request.logFile.toPath(), StandardCharsets.UTF_8,
+                            StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+                    asyncWriters.put(request.path, writer);
+                }
+                writer.write(request.line);
+                writer.newLine();
+                long written = completedWrites.incrementAndGet();
+                if (written % WRITE_FLUSH_INTERVAL == 0 || written % WRITE_STATUS_INTERVAL == 0) {
+                    writer.flush();
+                }
+                if (written % WRITE_STATUS_INTERVAL == 0) {
+                    System.out.println("Passive player trace writes: queued=" + queuedWrites.get() + ", written="
+                            + written + ", dropped=" + droppedWrites.get() + ", failed=" + failedWrites.get()
+                            + ", pending=" + writeQueue.size() + ".");
+                }
+            } catch (IOException e) {
+                long failed = failedWrites.incrementAndGet();
+                if (failed == 1 || failed % WRITE_DROP_LOG_INTERVAL == 0) {
+                    System.err.println("Unable to write passive player trace asynchronously: " + e.getMessage()
+                            + "; failed=" + failed + ".");
+                }
+            }
+        }
+    }
+
+    private void closeAsyncWriters() {
+        if (!writerStarted.get()) {
+            return;
+        }
+        WriteRequest request;
+        while ((request = writeQueue.poll()) != null) {
+            writeQueued(request);
+        }
+        closeWriters();
+    }
+
+    private void closeWriters() {
+        synchronized (writerLock) {
+            for (BufferedWriter writer : asyncWriters.values()) {
+                try {
+                    writer.flush();
+                    writer.close();
+                } catch (IOException e) {
+                    System.err.println("Unable to close passive player trace writer: " + e.getMessage());
+                }
+            }
+            asyncWriters.clear();
         }
     }
 
@@ -594,6 +730,18 @@ public class AgentPassiveTraceLog {
         private ObjectInteraction withObject(Objects newObject) {
             return new ObjectInteraction(traceId, objectId, objectX, objectY, objectHeight, objectOption,
                     packetOpcode, newObject);
+        }
+    }
+
+    private static class WriteRequest {
+        private final File logFile;
+        private final String path;
+        private final String line;
+
+        private WriteRequest(File logFile, String line) {
+            this.logFile = logFile;
+            this.path = logFile.getAbsolutePath();
+            this.line = line;
         }
     }
 }
