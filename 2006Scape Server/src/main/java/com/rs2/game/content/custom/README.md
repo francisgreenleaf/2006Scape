@@ -4,6 +4,8 @@ This package is the home for user-requested content that should not be mixed int
 
 The goal is simple: new custom content should be easy to add, test, review, and remove without scattering one-off imports through `DialogueHandler`, `NpcActions`, `ObjectsActions`, `ItemOnNpc`, `Player`, or `PlayerSave`.
 
+The high-level customization ledger lives at `docs/custom-game-changes.md`. Update it when adding or materially changing player-facing custom content.
+
 ## Current Structure
 
 ```text
@@ -11,6 +13,9 @@ com/rs2/game/content/custom/
   CustomContent.java                 # Registry and dispatcher for custom content.
   CustomQuest.java                   # Interface implemented by custom quests.
   CustomQuestState.java              # Generic player quest-stage storage helper.
+  shops/
+    CustomShops.java                 # Registry and overrides for custom shop stock/prices.
+    README.md                        # Shop modification practices and Bob's Axes details.
   quests/
     lumbridge/
       pantrypanic/
@@ -56,6 +61,8 @@ The current generic hooks are:
 - `CustomContent.savePlayerQuestStages(...)`
 
 If new custom content needs another server event, add one generic hook to `CustomContent` and one minimal call site in the relevant core handler. Do not add a custom quest import to the core handler.
+
+Custom shop changes currently use `shops/CustomShops.java`, with one load-time hook from `ShopHandler` for stock overrides and one price hook from `ShopAssistant`. See `shops/README.md` before adding another shop override.
 
 ## Adding A Custom Quest
 

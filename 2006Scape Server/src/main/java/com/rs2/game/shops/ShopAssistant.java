@@ -1,14 +1,14 @@
 package com.rs2.game.shops;
 
 import com.rs2.Constants;
-import org.apollo.cache.def.ItemDefinition;
-
 import com.rs2.game.bots.BotHandler;
+import com.rs2.game.content.custom.shops.CustomShops;
 import com.rs2.game.items.DeprecatedItems;
 import com.rs2.game.items.ItemConstants;
 import com.rs2.game.players.Player;
 import com.rs2.game.players.PlayerHandler;
 import com.rs2.util.GameLogger;
+import org.apollo.cache.def.ItemDefinition;
 
 /**
  * Many Fixes/Things Added
@@ -98,6 +98,10 @@ public class ShopAssistant {
 	}
 
 	public int getItemShopValue(int ItemID, int Type, boolean isSelling) {
+		Integer customShopValue = CustomShops.getShopValue(player.shopId, ItemID, isSelling);
+		if (customShopValue != null) {
+			return customShopValue;
+		}
 		double ShopValue = 1;
 		double TotPrice = 0;
 		double sellingRatio = isSelling ? 0.85 : 1;

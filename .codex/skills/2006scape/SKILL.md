@@ -1,6 +1,6 @@
 ---
 name: 2006scape
-description: "Use as the single entry skill for work in /Users/kevin/Documents/2006Scape, especially when a task broadly mentions 2006Scape or the right specialized workflow is unclear. Provides routing guidance, boundaries, starter commands, and child-skill pointers for runtime/bridge sessions, script discovery, route exploration, route-planner/ML graph development, object transitions, frontier exploration, compact screenshots, gameplay progression, profile-scoped character memories/goals, cache maps, map visualization, session logs, bridge-tool development, and general repo editing without preloading every specialized skill body."
+description: "Use as the single entry skill for work in /Users/kevin/Documents/2006Scape, especially when a task broadly mentions 2006Scape or the right specialized workflow is unclear. Provides routing guidance, boundaries, starter commands, and child-skill pointers for runtime/bridge sessions, script discovery, route exploration, route-planner/ML graph development, object transitions, frontier exploration, compact screenshots, gameplay progression, custom quests/shops/gameplay content, profile-scoped character memories/goals, cache maps, map visualization, session logs, bridge-tool development, and general repo editing without preloading every specialized skill body."
 ---
 
 # 2006Scape
@@ -33,6 +33,7 @@ For live gameplay and navigation, use the smallest state surface that can suppor
 | Need | Read | Good first move | Boundary |
 | --- | --- | --- | --- |
 | General repo edits, Java/Maven work, maintenance, tests, code review, or durable lessons | `.codex/skills/2006scape-dev-editing/SKILL.md` | Read `AGENTS.md`; for edits, inspect `references/actionable-lessons.md` when relevant | Do not touch unrelated dirty files or add broad lessons from stale context |
+| Custom gameplay content, quests, shop/store stock or price changes, rewards, NPC/object/item interactions, guides, or the customization ledger | `.codex/skills/2006scape-custom-content/SKILL.md` | Read `docs/custom-game-changes.md`, the custom content README, and targeted quest/shop docs | Keep feature code under `com.rs2.game.content.custom`; core hooks generic and minimal; update tests and the ledger |
 | Starting, stopping, relaunching, diagnosing, or claiming the local server/client/bridge runtime | `.codex/skills/2006scape-local-runtime/SKILL.md` | `python3 agent-navigation/tools/runtime_doctor.py status --observe` | Do not kill/restart active runtimes unless asked or clearly stale; keep profile sessions scoped; never print tokens |
 | Adding, debugging, reviewing, or documenting `rs.*` bridge primitives or compatibility tools | `.codex/skills/2006scape-agent-bridge-dev/SKILL.md` | Read `agent-navigation/scripting-primitives.md`, then inspect `AgentActionService`, `AgentToolService`, and `CodexAppServerClient` | Prefer external scripts for strategy; build success is not live proof; restart through `runtime_doctor.py` only when live validation is requested |
 | Live route exploration, route DB edits, hazards, blockers, doors, gates, stairs, trapdoors, or topology from navigation data | `.codex/skills/2006scape-route-agent/SKILL.md` | `agent-navigation/tools/observe_XS.sh`, then prefer `route_ml_XS.py define` for A-to-B routing | Use bridge tools only; do not use admin teleports, direct state edits, or visual guesses without evidence |
@@ -55,6 +56,10 @@ Run these from the repo root only as orientation. Open the relevant child skill 
 # 2006scape-dev-editing: common validation after repo edits
 mvn -q -DskipTests package
 mvn -q clean test
+
+# 2006scape-custom-content: focused custom content validation
+mvn -q -pl "2006Scape Server" -Dtest=CustomContentTest test
+mvn -q -pl "2006Scape Server" -Dtest=CustomShopsTest test
 
 # 2006scape-local-runtime: inspect or repair the local runtime/bridge
 python3 agent-navigation/tools/runtime_doctor.py status --observe

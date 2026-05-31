@@ -2,6 +2,7 @@ package com.rs2.game.shops;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import com.rs2.game.content.custom.shops.CustomShops;
 import com.rs2.game.players.Client;
 import com.rs2.game.players.Player;
 import com.rs2.game.players.PlayerHandler;
@@ -141,6 +142,7 @@ public class ShopHandler {
                 }
                 totalshops++;
             }
+            CustomShops.applyStockOverrides();
         } catch (FileNotFoundException fileex) {
             System.out.println("shops.json: file not found.");
         }

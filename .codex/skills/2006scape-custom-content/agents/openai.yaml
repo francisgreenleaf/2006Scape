@@ -1,0 +1,4 @@
+interface:
+  display_name: "2006Scape Custom Content"
+  short_description: "Add quests, shops, and custom gameplay"
+  default_prompt: "Use $2006scape-custom-content to add or document a custom 2006Scape quest, shop, or gameplay change."
