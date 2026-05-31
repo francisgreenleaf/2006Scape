@@ -464,18 +464,80 @@
               },
               "approachTile": {
                 "x": 2532,
-                "y": 3545,
+                "y": 3546,
                 "height": 1
               }
             }
           ]
         },
         {
-          "id": "crumbling_wall",
-          "name": "Crumbling wall",
+          "id": "crumbling_wall_1",
+          "name": "Crumbling wall 1",
           "expectedHeight": 0,
           "maxTicks": 18,
-          "postRadius": 2,
+          "postRadius": 1,
+          "postTiles": [
+            {
+              "x": 2537,
+              "y": 3553,
+              "height": 0
+            }
+          ],
+          "variants": [
+            {
+              "id": "west_wall",
+              "objectId": 1948,
+              "objectName": "Crumbling wall",
+              "objectTile": {
+                "x": 2536,
+                "y": 3553,
+                "height": 0
+              },
+              "approachTile": {
+                "x": 2535,
+                "y": 3553,
+                "height": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "crumbling_wall_2",
+          "name": "Crumbling wall 2",
+          "expectedHeight": 0,
+          "maxTicks": 18,
+          "postRadius": 1,
+          "postTiles": [
+            {
+              "x": 2540,
+              "y": 3553,
+              "height": 0
+            }
+          ],
+          "variants": [
+            {
+              "id": "middle_wall",
+              "objectId": 1948,
+              "objectName": "Crumbling wall",
+              "objectTile": {
+                "x": 2539,
+                "y": 3553,
+                "height": 0
+              },
+              "approachTile": {
+                "x": 2538,
+                "y": 3553,
+                "height": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "crumbling_wall_3",
+          "name": "Crumbling wall 3",
+          "expectedHeight": 0,
+          "maxTicks": 18,
+          "postRadius": 1,
           "postTiles": [
             {
               "x": 2543,

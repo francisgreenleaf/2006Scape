@@ -111,11 +111,11 @@ def player_from(result):
 
 
 def observe():
-    return player_from(call_tool("observe_state", {}))
+    return player_from(call_tool("observe_state_XS", {}))
 
 
 def observe_with_tick():
-    result = call_tool("observe_state", {})
+    result = call_tool("observe_state_XS", {})
     return player_from(result), int(result.get("serverTick", 0) or 0)
 
 
@@ -130,7 +130,7 @@ def ensure_run(player, args, current_tick=0):
         return player, current_tick
     if bool(player.get("runEnabled", False)):
         return player, current_tick
-    result = call_tool("set_run", {"enabled": True})
+    result = call_tool("set_run_XS", {"enabled": True})
     return player_from(result), response_tick(result, current_tick)
 
 
@@ -278,7 +278,12 @@ def nearby_object_override(player, variant):
     return updated
 
 
-def walk_to(tile, args):
+def walk_to(tile, args, current_player=None, current_tick=0):
+    if current_player is None:
+        player, current_tick = observe_with_tick()
+    else:
+        player = current_player
+    ensure_run(player, args, current_tick)
     return call_tool("walk_to_tile_until_arrived_XS", {
         "x": int(tile["x"]),
         "y": int(tile["y"]),
@@ -329,14 +334,14 @@ def step_index_from_state(course, player):
     if tile_distance(tile, start_tile) <= int(course.get("startRadius", 4)):
         return 0
     for index, step in enumerate(steps):
-        if int(tile.get("height", 0)) == int(step.get("expectedHeight", 0)):
-            for variant in step.get("variants", []):
-                if tile_distance(tile, variant["approachTile"]) <= 3:
-                    return index
         if in_post_state(step, tile):
             if index == len(steps) - 1:
                 return 0
             return min(index + 1, len(steps))
+        if int(tile.get("height", 0)) == int(step.get("expectedHeight", 0)):
+            for variant in step.get("variants", []):
+                if tile_distance(tile, variant["approachTile"]) <= 3:
+                    return index
     matching_height = [
         (manhattan(tile, variant["approachTile"]), index)
         for index, step in enumerate(steps)
@@ -360,6 +365,8 @@ def recover_to_course(course, args, handle, run_id, lap, reason):
             "state": compact_player(player),
         })
         return False
+    player, _ = ensure_run(player, args)
+    tile = tile_from_player(player)
     if tile_distance(tile, start) <= int(course.get("startRadius", 6)):
         return True
     if int(tile.get("height", 0)) == int(start.get("height", 0)) and manhattan(tile, start) <= args.local_recovery_distance:
@@ -422,7 +429,7 @@ def run_step(course, step, policy, args, handle, run_id, lap, step_number, curre
     elif int(start_tile.get("height", 0)) != int(approach.get("height", 0)):
         reason = "wrong_height"
     elif tile_distance(start_tile, approach) > args.approach_radius:
-        walk_result = walk_to(approach, args)
+        walk_result = walk_to(approach, args, player, start_tick)
         last_tool_result = walk_result
         player = player_from(walk_result)
         if player.get("isDead") or player.get("isInCombat"):
@@ -435,7 +442,7 @@ def run_step(course, step, policy, args, handle, run_id, lap, step_number, curre
     interact_result = None
     if reason is None:
         obj_tile = variant["objectTile"]
-        interact_result = call_tool("interact_object", {
+        interact_result = call_tool("interact_object_XS", {
             "objectId": int(variant["objectId"]),
             "x": int(obj_tile["x"]),
             "y": int(obj_tile["y"]),
@@ -449,7 +456,7 @@ def run_step(course, step, policy, args, handle, run_id, lap, step_number, curre
             if refreshed_variant.get("objectTile") != obj_tile:
                 variant = refreshed_variant
                 obj_tile = variant["objectTile"]
-                interact_result = call_tool("interact_object", {
+                interact_result = call_tool("interact_object_XS", {
                     "objectId": int(variant["objectId"]),
                     "x": int(obj_tile["x"]),
                     "y": int(obj_tile["y"]),
@@ -465,6 +472,8 @@ def run_step(course, step, policy, args, handle, run_id, lap, step_number, curre
         idle_result, player = wait_for_post_state(
             step, step.get("maxTicks", args.step_max_ticks), args.post_poll_ticks)
         last_tool_result = idle_result
+        if not player.get("isDead") and not player.get("isInCombat"):
+            player, _ = ensure_run(player, args, response_tick(idle_result or {}, start_tick))
 
     end_player = compact_player(player)
     end_tile = end_player["tile"]
