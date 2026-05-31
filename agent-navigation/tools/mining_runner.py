@@ -97,6 +97,7 @@ PICKAXES = [
 ]
 
 PICKAXE_BY_ID = {pickaxe["itemId"]: pickaxe for pickaxe in PICKAXES}
+PICKAXE_ITEM_IDS = [pickaxe["itemId"] for pickaxe in PICKAXES]
 PICKAXE_COIN_FLOAT = {
     1265: 1,
     1267: 64,
@@ -343,6 +344,75 @@ def strongest_usable_pickaxe_owned(player):
 def current_pickaxe_tier(player):
     owned = strongest_usable_pickaxe_owned(player)
     return int((owned or {}).get("tier", 0) or 0)
+
+
+def pickaxe_tier(pickaxe):
+    return int((pickaxe or {}).get("tier", 0) or 0)
+
+
+def best_available_usable_pickaxe(player):
+    candidates = [
+        best_usable_pickaxe(player, equipped=True),
+        best_usable_pickaxe(player, in_bank=False),
+        best_usable_pickaxe(player, in_bank=True),
+    ]
+    candidates = [pickaxe for pickaxe in candidates if pickaxe]
+    if not candidates:
+        return None
+    candidates.sort(key=lambda pickaxe: -pickaxe_tier(pickaxe))
+    return candidates[0]
+
+
+def carried_pickaxe_item_ids(player, exclude_item_id=None):
+    exclude = None if exclude_item_id is None else int(exclude_item_id)
+    ids = []
+    seen = set()
+    for pickaxe in PICKAXES:
+        item_id = int(pickaxe["itemId"])
+        if exclude is not None and item_id == exclude:
+            continue
+        if item_id in seen:
+            continue
+        if count_inventory_item(player, item_id) > 0:
+            seen.add(item_id)
+            ids.append(item_id)
+    return ids
+
+
+def manage_pickaxe_loadout(player, active_pickaxe, handle, reason):
+    if not active_pickaxe:
+        return player
+    active_item_id = int(active_pickaxe["itemId"])
+    equipped = best_usable_pickaxe(player, equipped=True)
+    if not equipped or int(equipped["itemId"]) != active_item_id:
+        if count_inventory_item(player, active_item_id) > 0:
+            result = call_tool("equip_item", {"itemId": active_item_id})
+            updated = player_from(result)
+            write_event(handle, "equip_pickaxe", {
+                "reason": reason,
+                "pickaxe": active_pickaxe,
+                "success": bool(result.get("success")),
+                "message": result.get("message"),
+                "player": compact_player(updated),
+            })
+            if result.get("success"):
+                player = updated
+    active_equipped = best_usable_pickaxe(player, equipped=True)
+    active_carried = best_usable_pickaxe(player, in_bank=False)
+    keep_item_id = int((active_equipped or active_carried or active_pickaxe)["itemId"])
+    deposit_ids = carried_pickaxe_item_ids(player, exclude_item_id=keep_item_id)
+    if deposit_ids and player.get("inBankArea"):
+        result = call_tool("deposit_inventory_items", {"itemIds": deposit_ids})
+        player = player_from(result)
+        write_event(handle, "deposit_unused_pickaxes", {
+            "reason": reason,
+            "activePickaxe": active_pickaxe,
+            "itemIds": deposit_ids,
+            "success": bool(result.get("success")),
+            "message": result.get("message"),
+            "player": compact_player(player),
+        })
+    return player
 
 
 def usable_upgrade_candidates(player):
@@ -626,27 +696,48 @@ def ensure_pickaxe(player, site, args, handle):
         if upgraded is not None:
             player = upgraded
     equipped = best_usable_pickaxe(player, equipped=True)
+    carried = best_usable_pickaxe(player, in_bank=False)
+    banked = best_usable_pickaxe(player, in_bank=True)
+    best = best_available_usable_pickaxe(player)
+    carried_or_equipped_tier = max(pickaxe_tier(equipped), pickaxe_tier(carried))
+    if banked and best == banked and pickaxe_tier(banked) > carried_or_equipped_tier:
+        if not player.get("inBankArea"):
+            if not route_to_bank(site, args, handle):
+                raise RuntimeError("could not route to bank to withdraw {}".format(banked["name"]))
+            player = observe()
+        result = call_tool("withdraw_bank_items", {"itemId": banked["itemId"], "amount": 1})
+        player = player_from(result)
+        write_event(handle, "withdraw_pickaxe_upgrade", {
+            "pickaxe": banked,
+            "previousEquipped": equipped,
+            "previousCarried": carried,
+            "result": compact_player(player),
+        })
+        equipped = best_usable_pickaxe(player, equipped=True)
+        carried = best_usable_pickaxe(player, in_bank=False)
     if equipped:
+        player = manage_pickaxe_loadout(player, equipped, handle, "equipped_pickaxe")
         write_event(handle, "equipped_pickaxe", {
             "pickaxe": equipped,
             "player": compact_player(player),
         })
         return player
-    carried = best_usable_pickaxe(player, in_bank=False)
     if carried:
+        player = manage_pickaxe_loadout(player, carried, handle, "carried_pickaxe")
         return player
-    banked = best_usable_pickaxe(player, in_bank=True)
     if banked:
         if not player.get("inBankArea"):
             if not route_to_bank(site, args, handle):
                 raise RuntimeError("could not route to bank to withdraw {}".format(banked["name"]))
             player = observe()
         result = call_tool("withdraw_bank_items", {"itemId": banked["itemId"], "amount": 1})
+        player = player_from(result)
         write_event(handle, "withdraw_pickaxe", {
             "pickaxe": banked,
-            "result": compact_player(player_from(result)),
+            "result": compact_player(player),
         })
-        return player_from(result)
+        player = manage_pickaxe_loadout(player, banked, handle, "withdraw_pickaxe")
+        return player
     if args.auto_buy_bronze_pickaxe:
         return buy_bronze_pickaxe(player, args, handle)
     raise RuntimeError("no usable pickaxe is carried or banked; rerun with --auto-buy-bronze-pickaxe if a seller is reachable")
@@ -1016,6 +1107,7 @@ def bank_ores(player, site, ores, args, handle):
         mining_level(player),
         mining_xp(player),
     ))
+    player = ensure_pickaxe(player, site, args, handle)
     return player
 
 
