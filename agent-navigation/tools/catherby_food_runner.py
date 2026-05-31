@@ -168,6 +168,7 @@ def runner_args_summary(args):
         "fish_round_max_ticks",
         "max_cook_ticks",
         "cook_interface_ticks",
+        "post_cook_action",
         "quiet",
     )
     return {key: getattr(args, key, None) for key in keys}
@@ -674,11 +675,11 @@ def execute_route_definition(definition, target, args, handle):
         "stdoutTail": proc.stdout.strip().splitlines()[-6:],
         "stderr": proc.stderr.strip()[:1000],
     })
-    return proc.returncode == 0, bridge.observe(args.profile)
+    return proc.returncode == 0, bridge.observe_xs(args.profile)
 
 
 def ml_route_to(target, args, handle, accept_bank_area=False):
-    player = bridge.observe(args.profile)
+    player = bridge.observe_xs(args.profile)
     definition = route_define(target, player, args)
     write_event(handle, "ml_route_define", {
         "target": str(target),
@@ -703,7 +704,7 @@ def walk_tile(tile, args, max_ticks=24, max_distance=24, stop_distance=0, handle
     fallback_player = None
     if getattr(args, "run_mode", "auto") != "off":
         try:
-            fallback_player = bridge.observe(args.profile)
+            fallback_player = bridge.observe_xs(args.profile)
             fallback_player = bridge.ensure_run(
                 fallback_player,
                 1,
@@ -730,7 +731,7 @@ def walk_tile(tile, args, max_ticks=24, max_distance=24, stop_distance=0, handle
     try:
         player = bridge.player_from(result)
     except RuntimeError:
-        player = fallback_player if fallback_player is not None else bridge.observe(args.profile)
+        player = fallback_player if fallback_player is not None else bridge.observe_xs(args.profile)
     return player, result
 
 
@@ -1719,6 +1720,24 @@ def bank_raw_fish(args, handle, reason):
     return player
 
 
+def finish_cooked_inventory(args, handle, reason):
+    if args.post_cook_action != "keep-cooked-inventory":
+        player = bank_cooked(args, handle)
+        return bank_raw_fish(args, handle, reason + "_raw_leftovers")
+    player = bridge.observe(args.profile)
+    raw = count_any(player, RAW_FISH_IDS)
+    cooked = count_any(player, COOKED_FISH_IDS)
+    if raw > 0:
+        player = bank_raw_fish(args, handle, reason + "_raw_leftovers")
+    write_event(handle, "keep_cooked_inventory", {
+        "reason": reason,
+        "cookedKept": cooked,
+        "rawBefore": raw,
+        "player": bridge.compact_player(player, ("fishing", "cooking")),
+    })
+    return player
+
+
 def targets_met(player, args):
     if args.target_fishing_level and bridge.skill_level(player, "fishing") < args.target_fishing_level:
         return False
@@ -1766,10 +1785,10 @@ def run(args):
                                     cycle=cycles, player=player, extra={"phase": "cooking"})
                 player = cook_inventory(args, handle, run_path=run_path, cycle=cycles)
                 player = drop_burnt(args, handle)
-                player = bank_cooked(args, handle)
-                player = bank_raw_fish(args, handle, "recover_raw_leftovers")
-                write_runner_status(args, "running", run_path=run_path, reason="recover_raw_banked",
-                                    cycle=cycles, player=player, extra={"phase": "banked"})
+                player = finish_cooked_inventory(args, handle, "recover_raw")
+                recovered_phase = "sale_ready" if args.post_cook_action == "keep-cooked-inventory" else "banked"
+                write_runner_status(args, "running", run_path=run_path, reason="recover_raw_" + recovered_phase,
+                                    cycle=cycles, player=player, extra={"phase": recovered_phase})
                 if safe_stop_requested(args, handle, "after_recover_raw_bank", cycles, player, run_path):
                     stopped_reason = "stop_requested"
                     break
@@ -1779,9 +1798,10 @@ def run(args):
                 write_runner_status(args, "running", run_path=run_path, reason="recover_cooked",
                                     cycle=cycles, player=player, extra={"phase": "banking"})
                 player = drop_burnt(args, handle)
-                player = bank_cooked(args, handle)
-                write_runner_status(args, "running", run_path=run_path, reason="recover_cooked_banked",
-                                    cycle=cycles, player=player, extra={"phase": "banked"})
+                player = finish_cooked_inventory(args, handle, "recover_cooked")
+                recovered_phase = "sale_ready" if args.post_cook_action == "keep-cooked-inventory" else "banked"
+                write_runner_status(args, "running", run_path=run_path, reason="recover_cooked_" + recovered_phase,
+                                    cycle=cycles, player=player, extra={"phase": recovered_phase})
                 if safe_stop_requested(args, handle, "after_recover_cooked_bank", cycles, player, run_path):
                     stopped_reason = "stop_requested"
                     break
@@ -1798,10 +1818,10 @@ def run(args):
             player = drop_burnt(args, handle)
             write_runner_status(args, "running", run_path=run_path, reason="banking",
                                 cycle=cycles, player=player, extra={"phase": "banking"})
-            player = bank_cooked(args, handle)
-            player = bank_raw_fish(args, handle, "cycle_raw_leftovers")
-            write_runner_status(args, "running", run_path=run_path, reason="banked",
-                                cycle=cycles, player=player, extra={"phase": "banked"})
+            player = finish_cooked_inventory(args, handle, "cycle")
+            finished_phase = "sale_ready" if args.post_cook_action == "keep-cooked-inventory" else "banked"
+            write_runner_status(args, "running", run_path=run_path, reason=finished_phase,
+                                cycle=cycles, player=player, extra={"phase": finished_phase})
             if safe_stop_requested(args, handle, "after_cycle_bank", cycles, player, run_path):
                 stopped_reason = "stop_requested"
                 break
@@ -1861,6 +1881,8 @@ def main(argv=None):
     parser.add_argument("--max-no-progress-rounds", type=int, default=2)
     parser.add_argument("--compat-cook", choices=["auto", "always", "never"], default="never",
                         help="Opt in to the legacy Java cook_food compatibility path only when deliberately testing a stale runtime.")
+    parser.add_argument("--post-cook-action", choices=["bank", "keep-cooked-inventory"], default="bank",
+                        help="After cooking, either bank cooked fish or leave cooked fish in inventory for a supervising wrapper to sell.")
     parser.add_argument("--status", action="store_true",
                         help="Print this runner's cooperative status file and exit without touching the game.")
     parser.add_argument("--efficiency-report", action="store_true",
