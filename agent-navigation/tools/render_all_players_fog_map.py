@@ -565,10 +565,14 @@ def update_summary(
                 "displayName": display_profile(stats.get("profile", "")),
                 "totalLevel": stats.get("totalLevel"),
                 "hoursPlayed": stats.get("hoursPlayed"),
-                "levels": {
-                    short: skill_level(stats, name)
-                    for name, short in LEVEL_SKILLS
-                },
+                "topSkills": [
+                    {
+                        "name": skill.get("name"),
+                        "level": int(skill.get("baseLevel", skill.get("currentLevel", 1))),
+                        "xp": int(skill.get("xp", 0)),
+                    }
+                    for skill in top_skills(stats)
+                ],
             }
             for stats in profile_stats
         ],
