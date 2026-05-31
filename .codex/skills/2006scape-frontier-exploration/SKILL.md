@@ -1,6 +1,6 @@
 ---
 name: 2006scape-frontier-exploration
-description: "Use when live-exploring unknown or partially known 2006Scape areas with the selected profile to expand the route graph safely and cheaply, including ML1 coordinate targets, frontier selection, short probes, server preview checks, compact screenshots, hazard/death recording, place naming, and turning passive traces into reusable navigation data. Bare route_runner use is deprecated except for legacy diagnostics."
+description: "Use when live-exploring unknown or partially known 2006Scape areas with the selected profile to expand the route graph safely and cheaply, including ML2 coordinate targets, frontier selection, short probes, server preview checks, compact screenshots, hazard/death recording, place naming, and turning passive traces into reusable navigation data. Bare route_runner and ML1 use are deprecated except for legacy diagnostics."
 ---
 
 # 2006Scape Frontier Exploration
@@ -17,8 +17,8 @@ Use passive server telemetry as the primary data source. Do not poll full state 
 
 ```sh
 agent-navigation/tools/observe_XS.sh
-python3 agent-navigation/ml-routing/route_ml_XS.py define --from X,Y,H --to TARGET --combat-level N --food N --run-energy N --run-enabled
-python3 agent-navigation/tools/execute_route_definition.py --route-definition agent-navigation/.local/ml-route-definitions/ROUTE.json --run-mode auto --eat-at 10
+python3 agent-navigation/ml2-routing/route_ml_XS.py define --from X,Y,H --to TARGET --combat-level N --food N --run-energy N --run-enabled
+python3 agent-navigation/ml2-routing/tools/execute_route_definition.py --route-definition agent-navigation/.local/ml2-route-definitions/ROUTE.json --run-mode auto --eat-at 10
 agent-navigation/tools/rs-tool_XS.sh walk_to_tile_until_arrived_XS '{"x":X,"y":Y,"height":0,"maxTicks":60,"maxWalkDistance":32,"stopOnCombat":true,"stopOnStall":true}'
 agent-navigation/tools/rs-tool_XS.sh preview_local_path '{"x":X,"y":Y,"height":0,"moveNear":true,"applyBounds":true,"maxWalkDistance":48}'
 agent-navigation/tools/capture-cardinal-screenshots.sh --prefix frontier-reason
@@ -30,9 +30,9 @@ python3 agent-navigation/tools/navdb_XS.py self-test
 ## Decision Loop
 
 1. Observe current tile, HP, food, run energy, combat state, and nearby hazards.
-2. Use ML1 `route_ml_XS.py define --to X,Y,H ...` before moving. For coordinate targets, inspect `status`, `quality`, `safety`, `steps`, `run`, and whether the result is a full route or a frontier/probe recommendation.
+2. Use ML2 `agent-navigation/ml2-routing/route_ml_XS.py define --to X,Y,H ...` before moving. For coordinate targets, inspect `status`, `quality`, `safety`, `steps`, `run`, typed object transitions, and whether the result is a full route or a frontier/probe recommendation.
 3. Preview local path for unknown legs and avoid repeated blocked vectors.
-4. Move with the ML1 `execution.command` / `execute_route_definition.py --route-definition ...` for full route definitions, or use `walk_to_tile_until_arrived` for short clipped probes with combat/stall stop conditions. Do not use bare `route_runner.py --to ...` as the normal exploration executor.
+4. Move with the ML2 `execution.command` / `agent-navigation/ml2-routing/tools/execute_route_definition.py --route-definition ...` for full route definitions, or use `walk_to_tile_until_arrived` for short clipped probes with combat/stall stop conditions. Do not use bare `route_runner.py --to ...` as the normal exploration executor.
 5. If combat, HP loss, death, stall, or oscillation happens, stop probing that line and record it as evidence.
 6. If the route succeeds, name durable places/frontiers only when they are useful future targets.
 7. Validate route data and keep maps current when the graph changes materially.

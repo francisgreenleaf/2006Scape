@@ -84,7 +84,7 @@ The current harness has shifted normal gameplay toward compact, purpose-built su
 | --- | --- | --- |
 | State checks | Full `observe_state` was routine. | `observe_state_XXS`, `observe_state_XS`, and `observe_state_if_changed_*` are the default choices. |
 | Action confirmations | Many simple actions returned broad player snapshots. | XXS actions return confirmation plus critical survival/status state only. |
-| Movement and routing | Walk/travel calls were often paired with full observes or route dumps. | `walk_path_steps_*`, `walk_to_tile_until_arrived_*`, `travel_to_landmark_until_arrived_*`, and ML1 route definitions keep route context compact. |
+| Movement and routing | Walk/travel calls were often paired with full observes or route dumps. | `walk_path_steps_*`, `walk_to_tile_until_arrived_*`, `travel_to_landmark_until_arrived_*`, and ML2 route definitions keep route context compact. |
 | Waiting and polling | Agents frequently used repeated waits and follow-up observes. | `wait_until_idle_*` and `wait_until_combat_event_smart_*` let the server wait to meaningful boundaries. |
 | XP updates | Agents needed broader state or extra calls to notice XP changes. | `skillChanges` and short-lived `xpRecent` expose compact deltas, including Prayer-specific base/current semantics. |
 | Banking/equipment | Single-item loops and post-action full observes were common. | Batch XS/XXS deposit, withdraw, unequip, food-bank, and excess-coin tools reduce both calls and payloads. |
