@@ -17,8 +17,8 @@ Use this skill for how map outputs should look and be reviewed. Use `2006scape-c
 - `agent-navigation/.local/map-summaries/*.json`: ignored summaries for active map renders and auxiliary map outputs.
 - `agent-navigation/.local/context-maps/<date>/*.png`: ignored, timestamped agent context-map artifacts for current-location and segment debugging.
 - `agent-navigation/.local/context-maps/<date>/*.json`: matching machine-readable context-map summaries with bounds, center, POI markers, and place markers.
-- `agent-navigation/ml-routing/artifacts/comparisons/<runId>/*.png`: ignored ML benchmark route maps. Use these for route-quality visual review, not as active topology outputs.
-- `agent-navigation/ml-routing/artifacts/comparisons/<runId>/*.json`: per-case marker/metric sidecars; the aggregate `comparison-report.json` is compact and points to these details.
+- `agent-navigation/ml2-routing/artifacts/comparisons/<runId>/*.png`: ignored ML benchmark route maps. Use these for route-quality visual review, not as active topology outputs.
+- `agent-navigation/ml2-routing/artifacts/comparisons/<runId>/*.json`: per-case marker/metric sidecars; the aggregate `comparison-report.json` is compact and points to these details.
 - `agent-navigation/analysis/movement-topology-<date>.png`: dated analysis renders when comparison is useful.
 
 `agent-navigation/topology/` should stay uncluttered: keep only the profile-scoped active user-facing movement PNGs plus the two reusable cache-world-map base exports there. Avoid timestamp clutter, JSON sidecars, surface-route renders, and one-off proof/shortcut/context exports in `topology/`; those belong under ignored `.local/` paths unless the user explicitly asks for a shareable artifact.
@@ -82,7 +82,7 @@ For cache-map internals or full-map rendering, switch to `2006scape-cache-map`.
 For ML route comparison/review maps:
 
 ```sh
-python3 agent-navigation/ml-routing/route_ml_XS.py compare-maps \
+python3 agent-navigation/ml2-routing/route_ml_XS.py compare-maps \
   --case CASE_NAME \
   --combat-level N \
   --food N \
@@ -90,7 +90,7 @@ python3 agent-navigation/ml-routing/route_ml_XS.py compare-maps \
   --run-enabled
 ```
 
-`compare-maps` uses the shared cache/context-map base layers, so benchmark images already include terrain, water, mapscene buildings, large object footprints, mapfunction icons, and place labels. It renders the selected fast ML route in cyan by default, with hazard/run segments in yellow. Add `--include-old-planner` only for explicit regression comparisons; that overlays the deprecated full planner in red. Read the compact `comparison-report.json` first; use the per-case sidecar JSON for marker labels/coordinates, compact `routeSteps`, and `runPlan` details, and open the PNG only when route geometry itself needs visual review.
+`compare-maps` uses the shared cache/context-map base layers, so benchmark images already include terrain, water, mapscene buildings, large object footprints, mapfunction icons, and place labels. It renders the selected fast ML2 route in cyan by default, with hazard/run segments in yellow. Add `--include-ml1-planner` only for explicit regression comparisons; that overlays ML1 in red. Read the compact `comparison-report.json` first; use the per-case sidecar JSON for marker labels/coordinates, compact `routeSteps`, and `runPlan` details, and open the PNG only when route geometry itself needs visual review.
 
 ## Visual Standards
 

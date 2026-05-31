@@ -7,10 +7,10 @@ Important local files:
 - `agent-navigation/tools/observe-slim.sh` and `agent-navigation/tools/rs-tool.sh`: full/fallback bridge wrappers for missing fields or debugging.
 - `agent-navigation/tools/runtime_doctor.py`: status, restart, claim, verify, and route recorder helper.
 - `agent-navigation/tools/capture-cardinal-screenshots.sh`: compact north/east/south/west client screenshots.
-- `agent-navigation/ml-routing/route_ml_XS.py`: preferred ML1 route-definition API for normal A-to-B routing.
+- `agent-navigation/ml2-routing/route_ml_XS.py`: preferred ML2 route-definition API for normal A-to-B routing.
 - `agent-navigation/tools/navdb_XS.py`: default compact route DB observations, validation, tests, and diagnostic queries.
 - `agent-navigation/tools/route_runner_XS.py`: compact legacy orientation/compatibility wrapper.
-- `agent-navigation/ml-routing/route_ml.py`, `agent-navigation/tools/navdb.py`, and `agent-navigation/tools/route_runner.py`: full/fallback tools for missing debug fields and compatibility checks.
+- `agent-navigation/ml2-routing/route_ml.py`, `agent-navigation/tools/navdb.py`, `agent-navigation/ml-routing/route_ml.py`, and `agent-navigation/tools/route_runner.py`: full/fallback tools for missing debug fields and compatibility checks.
 - `agent-navigation/tools/render_navigation_png.py`: surface route overview renderer for ignored analysis artifacts.
 - `agent-navigation/tools/cache_world_map.py`: cache-backed world-map renderer.
 - `agent-navigation/tools/render_agent_context_map_XS.py`: default compact bounded cache-backed tactical map wrapper for current-tile and segment checks.
