@@ -77,6 +77,8 @@ public class ConfigLoader {
             Constants.CYCLE_LOGGING = obj.getBoolean("cycle_logging");
         if (obj.has("cycle_logging_tick")) 
             Constants.CYCLE_LOGGING_TICK = obj.getInt("cycle_logging_tick");
+        if (obj.has("performance_logging"))
+            Constants.PERFORMANCE_LOGGING = obj.getBoolean("performance_logging");
     }
 
     private static void initialize() {

@@ -581,11 +581,12 @@ public class NpcHandler {
                     continue;
                 }
 
-                Player client = (Client) PlayerHandler.players[NpcData.getCloseRandomPlayer(i)];
+                int closePlayerId = NpcData.getCloseRandomPlayer(i);
+                Player client = (Client) PlayerHandler.players[closePlayerId];
                 if (client != null) {
                     boolean aggressive = (NpcAggressive.isAggressive(i) || getNpcListCombat(npcs[i].npcType) * 2 > client.combatLevel && getNpcListAggressive(npcs[i].npcType));
                     if (aggressive && !npcs[i].underAttack && !npcs[i].isDead && npcs[i].MaxHP > 0) {
-                        npcs[i].killerId = NpcData.getCloseRandomPlayer(i);
+                        npcs[i].killerId = closePlayerId;
                     }
                 }
 

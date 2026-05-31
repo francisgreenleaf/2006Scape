@@ -20,28 +20,28 @@ Use normal gameplay only.
 
 Do not use admin teleports, spawned items, direct player-state edits, raw bridge tokens, web access, or unrelated repo work.
 
-Use the repo bridge wrapper only:
+Use the repo bridge wrappers only. Prefer XXS for confirmation/status/survival checks, XS when the next decision needs compact inventory, nearby NPC/object, route, or skill context, and full wrappers only when a specific required field is missing:
 
 ```sh
-agent-navigation/tools/rs-tool.sh observe_state '{}'
-agent-navigation/tools/observe-slim.sh
-agent-navigation/tools/rs-tool.sh set_run '{"enabled":true}'
-agent-navigation/tools/rs-tool.sh walk_to_tile_until_arrived '{"x":3222,"y":3218,"height":0}'
-agent-navigation/tools/rs-tool.sh travel_to_landmark_until_arrived '{"landmark":"lumbridge_castle_courtyard"}'
-agent-navigation/tools/rs-tool.sh interact_object '{"objectId":12348,"x":3207,"y":3217,"height":0}'
-agent-navigation/tools/rs-tool.sh wait_until_idle '{"maxTicks":10}'
-agent-navigation/tools/rs-tool.sh eat_best_food '{}'
-agent-navigation/tools/rs-tool.sh cancel_current_action '{}'
+agent-navigation/tools/observe_XXS.sh
+agent-navigation/tools/observe_XS.sh
+agent-navigation/tools/rs-tool_XXS.sh set_run '{"enabled":true}'
+agent-navigation/tools/rs-tool_XXS.sh walk_to_tile_until_arrived '{"x":3222,"y":3218,"height":0,"maxTicks":60}'
+agent-navigation/tools/rs-tool_XXS.sh travel_to_landmark_until_arrived '{"landmark":"lumbridge_castle_courtyard","maxTicks":95}'
+agent-navigation/tools/rs-tool_XS.sh interact_object_XS '{"objectId":12348,"x":3207,"y":3217,"height":0}'
+agent-navigation/tools/rs-tool_XXS.sh wait_until_idle '{"maxTicks":10}'
+agent-navigation/tools/rs-tool_XXS.sh eat_best_food '{}'
+agent-navigation/tools/rs-tool_XXS.sh cancel_current_action '{}'
 ```
 
-Never print, copy, or inspect the bridge token. The wrapper reads the active profile session file under `agent-navigation/.local/`.
+Never print, copy, or inspect the bridge token. The wrappers read the selected profile session file under `agent-navigation/.local/`; set `RS_PROFILE=<name>` for non-default profiles.
 
 ## Operating mode
 
 Start by observing with:
 
 ```sh
-agent-navigation/tools/observe-slim.sh
+agent-navigation/tools/observe_XXS.sh
 ```
 
 If a movement or other long-running command returns a session id, keep polling it with `write_stdin` until it finishes. Do not end the turn with only `running` unless a higher-priority system heartbeat format absolutely forces it. In normal user-driven work, continue from the action result in the same turn.
@@ -90,8 +90,8 @@ If HP changes, combat starts, or an NPC targets the current player:
 
 1. Stop route learning.
 2. Handle survival first.
-3. Eat with `eat_best_food` if HP approaches danger.
-4. Retreat with `walk_to_tile_until_arrived` or `travel_to_landmark_until_arrived`.
+3. Eat with `eat_best_food_XXS` if HP approaches danger.
+4. Retreat with `walk_to_tile_until_arrived_XXS` or `travel_to_landmark_until_arrived_XXS`.
 5. Record the hazard with NPC name, combat level, observed `aggressive`, observed `underAttack`, observed distance/tile, and route context.
 
 Do not record observed damage as a max hit. Record only observed level and hostility/aggression state.
@@ -116,15 +116,14 @@ Do not spend a whole session bumping into walls or scenery.
 Use known route data and topology:
 
 ```sh
-python3 agent-navigation/ml-routing/route_ml.py define --from X,Y,H --to PLACE_OR_TILE --combat-level N --food N --run-energy N --run-enabled
-python3 agent-navigation/tools/navdb.py coverage
-python3 agent-navigation/tools/navdb.py routes --status needs-verification
-python3 agent-navigation/tools/navdb.py routes --status learned-partial
-python3 agent-navigation/tools/navdb.py next-step --from X,Y,H --to PLACE --combat-level N --food N --run-energy N --run-enabled true
-python3 agent-navigation/tools/navdb.py hazards --near X,Y,H --radius 40 --combat-level N --food N --run-energy N --run-enabled true
+python3 agent-navigation/ml-routing/route_ml_XS.py define --from X,Y,H --to PLACE_OR_TILE --combat-level N --food N --run-energy N --run-enabled
+python3 agent-navigation/tools/navdb_XS.py coverage
+python3 agent-navigation/tools/navdb_XS.py routes --status needs-verification
+python3 agent-navigation/tools/navdb_XS.py routes --status learned-partial
+python3 agent-navigation/tools/navdb_XS.py hazards --near X,Y,H --radius 40 --combat-level N --food N --run-energy N --run-enabled true
 ```
 
-ML1 `route_ml.py define` is preferred for route choice. Treat `next-step` as a legacy route DB diagnostic, and do not blindly obey it if the recent rollout proved the area is a blocked pocket. Use learned blockers and choose a larger detour.
+ML1 `route_ml_XS.py define` is preferred for route choice. Execute the returned `execution.command` or persisted route definition with `execute_route_definition.py`; it treats route steps as guide rails and uses bounded lookahead. Treat `navdb.py next-step` as a legacy route DB diagnostic, and do not blindly obey it if the recent rollout proved the area is a blocked pocket. Use learned blockers and choose a larger detour.
 
 Use run intelligently. Run on long safe crossings, hazard-adjacent crossings, and retreats. Walk/conserve run on short safe legs.
 

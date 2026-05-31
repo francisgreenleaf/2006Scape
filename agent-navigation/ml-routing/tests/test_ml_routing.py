@@ -13,14 +13,19 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+TOOLS = ROOT.parent / "tools"
+if str(TOOLS) not in sys.path:
+    sys.path.insert(0, str(TOOLS))
 
 from ml_routing.common import coordinate_layer, coordinate_layer_transition_block, parse_tile, tile_key  # noqa: E402
 from ml_routing.collision import CollisionGrid, FULL_TILE_BLOCK, cache_area_transition_block  # noqa: E402
 from ml_routing.feedback import record_outcome  # noqa: E402
 from ml_routing.fast_planner import fast_route  # noqa: E402
 from ml_routing.fast_planner import _route_hint_records  # noqa: E402
+from ml_routing.fast_planner import _route_hint_requirement_penalty  # noqa: E402
 from ml_routing.model import segment_prediction, train_model  # noqa: E402
 from ml_routing.planner import route_definition  # noqa: E402
+from execute_route_definition import choose_lookahead_target  # noqa: E402
 from route_ml import persist_route_definition  # noqa: E402
 
 
@@ -140,6 +145,7 @@ class ModelTests(unittest.TestCase):
             )
             self.assertEqual(prediction["source"], "edge")
             self.assertGreater(prediction["confidence"], 0.5)
+            self.assertIn("combatExposure", prediction)
 
     def test_train_uses_route_attempt_outcomes_for_risk(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -187,6 +193,104 @@ class ModelTests(unittest.TestCase):
             )
             self.assertEqual(prediction["source"], "edge")
             self.assertGreater(prediction["riskScore"], 0.2)
+            self.assertGreater(prediction["combatExposure"], 0.0)
+
+    def test_fast_route_prefers_low_combat_exposure_detour(self):
+        model = {
+            "modelId": "tiny",
+            "trainedAt": "test",
+            "datasetDir": "",
+            "weights": {
+                "combatExposurePenalty": 420.0,
+                "hpLossPenalty": 35.0,
+            },
+            "global": {
+                "averageTicks": 1.0,
+                "averageDistance": 1.0,
+                "riskScore": 0.0,
+                "combatExposure": 0.0,
+                "hpLossPerAttempt": 0.0,
+                "confidence": 0.8,
+            },
+            "regionStats": {},
+            "edgeStats": {
+                "3200,3210,0>3201,3210,0": {
+                    "successes": 3,
+                    "failures": 0,
+                    "averageTicks": 1.0,
+                    "averageDistance": 1.0,
+                    "riskScore": 0.0,
+                    "combatExposure": 1.0,
+                    "hpLossPerAttempt": 1.0,
+                    "confidence": 0.8,
+                    "objectInteractionRate": 0.0,
+                },
+                "3201,3210,0>3202,3210,0": {
+                    "successes": 3,
+                    "failures": 0,
+                    "averageTicks": 1.0,
+                    "averageDistance": 1.0,
+                    "riskScore": 0.0,
+                    "combatExposure": 1.0,
+                    "hpLossPerAttempt": 1.0,
+                    "confidence": 0.8,
+                    "objectInteractionRate": 0.0,
+                },
+                "3200,3210,0>3200,3211,0": {
+                    "successes": 3,
+                    "failures": 0,
+                    "averageTicks": 1.0,
+                    "averageDistance": 1.0,
+                    "riskScore": 0.0,
+                    "combatExposure": 0.0,
+                    "hpLossPerAttempt": 0.0,
+                    "confidence": 0.8,
+                    "objectInteractionRate": 0.0,
+                },
+                "3200,3211,0>3201,3211,0": {
+                    "successes": 3,
+                    "failures": 0,
+                    "averageTicks": 1.0,
+                    "averageDistance": 1.0,
+                    "riskScore": 0.0,
+                    "combatExposure": 0.0,
+                    "hpLossPerAttempt": 0.0,
+                    "confidence": 0.8,
+                    "objectInteractionRate": 0.0,
+                },
+                "3201,3211,0>3202,3210,0": {
+                    "successes": 3,
+                    "failures": 0,
+                    "averageTicks": 1.0,
+                    "averageDistance": 1.0,
+                    "riskScore": 0.0,
+                    "combatExposure": 0.0,
+                    "hpLossPerAttempt": 0.0,
+                    "confidence": 0.8,
+                    "objectInteractionRate": 0.0,
+                },
+            },
+        }
+        result = fast_route(SimpleNamespace(
+            from_tile="3200,3210,0",
+            to="3202,3210,0",
+            combat_level=3,
+            food=0,
+            coins=0,
+            run_energy=0,
+            run_enabled=False,
+            allow_lethal=False,
+            hazard_buffer=10,
+            graph_snap_distance=0,
+            max_batch_distance=24,
+            compress_gap=18,
+            max_suspects=5,
+            max_warnings=8,
+            no_cache_collision=True,
+            no_cache_direct=True,
+        ), model)
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["next"], {"x": 3201, "y": 3211, "height": 0})
 
     def test_fast_route_with_tiny_model(self):
         model = {
@@ -314,6 +418,69 @@ class ModelTests(unittest.TestCase):
         self.assertTrue(result["collision"]["gridStats"]["validTileBoundary"])
         self.assertGreater(result["routeStepCount"], 1)
 
+    def test_fast_route_cache_mesh_avoids_service_anchor_detour(self):
+        model = {
+            "modelId": "tiny",
+            "trainedAt": "test",
+            "datasetDir": "",
+            "weights": {},
+            "global": {
+                "averageTicks": 1.0,
+                "averageDistance": 1.0,
+                "riskScore": 0.0,
+                "confidence": 0.8,
+            },
+            "regionStats": {},
+            "edgeStats": {},
+        }
+        result = fast_route(SimpleNamespace(
+            from_tile="3254,3421,0",
+            to="ardougne_south_bank",
+            combat_level=61,
+            food=3,
+            coins=0,
+            run_energy=80,
+            run_enabled=True,
+            allow_lethal=False,
+            hazard_buffer=10,
+            direct_hazard_buffer=10,
+            direct_combat_margin=5,
+            runnable_hazard_cost_factor=0.15,
+            terminal_hazard_cost_factor=0.25,
+            graph_snap_distance=16,
+            max_batch_distance=24,
+            compress_gap=18,
+            max_suspects=5,
+            max_warnings=8,
+            no_cache_collision=False,
+            no_cache_direct=False,
+            no_cache_mesh=False,
+            collision_padding_tiles=64,
+            collision_max_expansions=250000,
+            waypoint_arrival_radius=1,
+            no_shortcut_optimize=False,
+            shortcut_max_span=128,
+            shortcut_min_savings=4,
+            shortcut_corridor_radius=18,
+            route_step_gap=10,
+            direct_candidate_min_detour=1.22,
+            direct_candidate_min_savings=24,
+            direct_max_expansions=350000,
+        ), model)
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["mode"], "cache_mesh")
+        self.assertLess(result["routeDistance"], 1000)
+        self.assertGreater(result["selectedOverLearned"]["savedTiles"], 400)
+        self.assertEqual(result["routesUsed"], {
+            "taverley_white_wolf_gate_west_to_east_transition_static_source": 2,
+        })
+        service_detours = {
+            (3185, 3436),
+            (2946, 3369),
+        }
+        route_step_xy = {(step["x"], step["y"]) for step in result.get("routeSteps", [])}
+        self.assertFalse(service_detours & route_step_xy)
+
     def test_fast_route_rejects_underground_collision_failures(self):
         model = {
             "modelId": "tiny",
@@ -405,6 +572,16 @@ class ModelTests(unittest.TestCase):
             with patch("ml_routing.dataset.route_hint_edges", return_value=[current]):
                 records = _route_hint_records({"datasetDir": str(dataset)})
             self.assertEqual(records, [current])
+
+    def test_route_hint_requirement_penalty_counts_safety_warnings(self):
+        self.assertEqual(_route_hint_requirement_penalty([]), 0.0)
+        self.assertGreater(
+            _route_hint_requirement_penalty([
+                "route wants combat 3 < required 20",
+                "route wants food 0 < required 3",
+            ]),
+            _route_hint_requirement_penalty(["route wants food 0 < required 3"]),
+        )
 
 
 class ApiTests(unittest.TestCase):
@@ -542,6 +719,42 @@ class ApiTests(unittest.TestCase):
             records = [json.loads(line) for line in output.read_text(encoding="utf-8").splitlines()]
             self.assertEqual(records[0]["event"], "route_outcome")
             self.assertEqual(records[0]["enemy"]["name"], "Highwayman")
+
+
+class ExecutorTests(unittest.TestCase):
+    def test_choose_lookahead_target_advances_multiple_route_steps(self):
+        steps = [
+            {"x": 0, "y": 0, "height": 0},
+            {"x": 10, "y": 0, "height": 0},
+            {"x": 20, "y": 0, "height": 0},
+            {"x": 30, "y": 0, "height": 0},
+            {"x": 40, "y": 0, "height": 0},
+        ]
+        index, target, planned = choose_lookahead_target(
+            steps,
+            0,
+            {"x": 0, "y": 0, "height": 0},
+            lookahead_distance=30,
+            step_limit=4,
+        )
+        self.assertEqual(index, 3)
+        self.assertEqual(target, {"x": 30, "y": 0, "height": 0})
+        self.assertEqual(planned, 30)
+
+    def test_choose_lookahead_target_can_preserve_single_step_mode(self):
+        steps = [
+            {"x": 0, "y": 0, "height": 0},
+            {"x": 10, "y": 0, "height": 0},
+        ]
+        index, target, _planned = choose_lookahead_target(
+            steps,
+            0,
+            {"x": 0, "y": 0, "height": 0},
+            lookahead_distance=0,
+            step_limit=4,
+        )
+        self.assertEqual(index, 0)
+        self.assertEqual(target, {"x": 0, "y": 0, "height": 0})
 
 
 if __name__ == "__main__":

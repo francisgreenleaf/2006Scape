@@ -6511,6 +6511,398 @@
       ]
     },
     {
+      "id": "taverley_white_wolf_gate_west_to_catherby_bank_north_low_level_proven",
+      "name": "Taverley White Wolf Gate West Side to Catherby Bank North Low-Level Route",
+      "from": "taverley_white_wolf_gate_west_side",
+      "to": "catherby_bank",
+      "status": "verified",
+      "confidence": 0.88,
+      "bidirectional": false,
+      "preserveShape": true,
+      "source": "passive-player-trace-2026-05-31",
+      "summary": "Low-level White Wolf Mountain crossing from the west side of the Taverley gate to Catherby bank. MrFish crossed this north-side route at combat level 3 with no food, run enabled, HP 10 -> 7 during brief wolf contact, and reached Catherby alive.",
+      "tags": [
+        "taverley",
+        "white-wolf",
+        "catherby",
+        "bank",
+        "low-level",
+        "north-route",
+        "run-required",
+        "proven",
+        "ml1"
+      ],
+      "runPolicy": {
+        "preferRun": true,
+        "requiresRun": true,
+        "minEnergy": 70,
+        "notes": "Use this route for level-3/10-HP characters only with run enabled and enough run energy. It is safer than the shorter lower wolf route, but still has a brief wolf-contact band."
+      },
+      "requirements": {
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "minRunEnergy": 70,
+        "requiresRun": true,
+        "items": [],
+        "coins": 0
+      },
+      "safety": {
+        "risk": "low-level-run-contact",
+        "avoidHazards": [
+          "taverley_white_wolf_gate_west",
+          "white_wolf_north_low_level_run_band"
+        ],
+        "notes": "This route is preferred for MrWood-class accounts over the shorter MrFlame-class proven route when run energy is high. If run energy is low, wait/recover before attempting the crossing."
+      },
+      "steps": [
+        {
+          "order": 1,
+          "type": "walk",
+          "to": {
+            "x": 2934,
+            "y": 3451,
+            "height": 0
+          },
+          "instruction": "Start west of the Taverley/White Wolf gate after the gate transition is already complete."
+        },
+        {
+          "order": 2,
+          "type": "walk",
+          "to": {
+            "x": 2922,
+            "y": 3452,
+            "height": 0
+          },
+          "instruction": "Follow the low-level north-side White Wolf route toward Catherby."
+        },
+        {
+          "order": 3,
+          "type": "walk",
+          "to": {
+            "x": 2906,
+            "y": 3453,
+            "height": 0
+          },
+          "instruction": "Follow the low-level north-side White Wolf route toward Catherby."
+        },
+        {
+          "order": 4,
+          "type": "walk",
+          "to": {
+            "x": 2894,
+            "y": 3452,
+            "height": 0
+          },
+          "instruction": "Follow the low-level north-side White Wolf route toward Catherby."
+        },
+        {
+          "order": 5,
+          "type": "walk",
+          "to": {
+            "x": 2888,
+            "y": 3450,
+            "height": 0
+          },
+          "instruction": "Follow the low-level north-side White Wolf route toward Catherby."
+        },
+        {
+          "order": 6,
+          "type": "walk",
+          "to": {
+            "x": 2888,
+            "y": 3438,
+            "height": 0
+          },
+          "instruction": "Follow the low-level north-side White Wolf route toward Catherby."
+        },
+        {
+          "order": 7,
+          "type": "walk",
+          "to": {
+            "x": 2881,
+            "y": 3429,
+            "height": 0
+          },
+          "instruction": "Follow the low-level north-side White Wolf route toward Catherby."
+        },
+        {
+          "order": 8,
+          "type": "walk",
+          "to": {
+            "x": 2874,
+            "y": 3430,
+            "height": 0
+          },
+          "instruction": "Enter the wolf-contact approach only with run enabled."
+        },
+        {
+          "order": 9,
+          "type": "walk",
+          "to": {
+            "x": 2873,
+            "y": 3440,
+            "height": 0
+          },
+          "instruction": "Keep moving through the low-level run band."
+        },
+        {
+          "order": 10,
+          "type": "walk",
+          "to": {
+            "x": 2873,
+            "y": 3450,
+            "height": 0
+          },
+          "instruction": "Keep moving through the low-level run band."
+        },
+        {
+          "order": 11,
+          "type": "walk",
+          "to": {
+            "x": 2874,
+            "y": 3456,
+            "height": 0
+          },
+          "instruction": "Keep moving through the low-level run band."
+        },
+        {
+          "order": 12,
+          "type": "walk",
+          "to": {
+            "x": 2873,
+            "y": 3466,
+            "height": 0
+          },
+          "instruction": "Leave the main contact band and continue north."
+        },
+        {
+          "order": 13,
+          "type": "walk",
+          "to": {
+            "x": 2868,
+            "y": 3482,
+            "height": 0
+          },
+          "instruction": "Continue north toward the safer ridge path."
+        },
+        {
+          "order": 14,
+          "type": "walk",
+          "to": {
+            "x": 2877,
+            "y": 3500,
+            "height": 0
+          },
+          "instruction": "Continue north toward the safer ridge path."
+        },
+        {
+          "order": 15,
+          "type": "walk",
+          "to": {
+            "x": 2876,
+            "y": 3512,
+            "height": 0
+          },
+          "instruction": "Continue north toward the safer ridge path."
+        },
+        {
+          "order": 16,
+          "type": "walk",
+          "to": {
+            "x": 2868,
+            "y": 3524,
+            "height": 0
+          },
+          "instruction": "Turn west across the north-side mountain route."
+        },
+        {
+          "order": 17,
+          "type": "walk",
+          "to": {
+            "x": 2856,
+            "y": 3524,
+            "height": 0
+          },
+          "instruction": "Cross the north-side mountain route toward Catherby."
+        },
+        {
+          "order": 18,
+          "type": "walk",
+          "to": {
+            "x": 2844,
+            "y": 3524,
+            "height": 0
+          },
+          "instruction": "Cross the north-side mountain route toward Catherby."
+        },
+        {
+          "order": 19,
+          "type": "walk",
+          "to": {
+            "x": 2828,
+            "y": 3527,
+            "height": 0
+          },
+          "instruction": "Cross the north-side mountain route toward Catherby."
+        },
+        {
+          "order": 20,
+          "type": "walk",
+          "to": {
+            "x": 2818,
+            "y": 3524,
+            "height": 0
+          },
+          "instruction": "Start descending the west side toward Catherby."
+        },
+        {
+          "order": 21,
+          "type": "walk",
+          "to": {
+            "x": 2805,
+            "y": 3518,
+            "height": 0
+          },
+          "instruction": "Descend toward Catherby."
+        },
+        {
+          "order": 22,
+          "type": "walk",
+          "to": {
+            "x": 2797,
+            "y": 3505,
+            "height": 0
+          },
+          "instruction": "Descend toward Catherby."
+        },
+        {
+          "order": 23,
+          "type": "walk",
+          "to": {
+            "x": 2799,
+            "y": 3497,
+            "height": 0
+          },
+          "instruction": "Descend toward Catherby."
+        },
+        {
+          "order": 24,
+          "type": "walk",
+          "to": {
+            "x": 2813,
+            "y": 3498,
+            "height": 0
+          },
+          "instruction": "Follow the Catherby approach around the mountain."
+        },
+        {
+          "order": 25,
+          "type": "walk",
+          "to": {
+            "x": 2821,
+            "y": 3498,
+            "height": 0
+          },
+          "instruction": "Follow the Catherby approach around the mountain."
+        },
+        {
+          "order": 26,
+          "type": "walk",
+          "to": {
+            "x": 2832,
+            "y": 3486,
+            "height": 0
+          },
+          "instruction": "Follow the Catherby approach around the mountain."
+        },
+        {
+          "order": 27,
+          "type": "walk",
+          "to": {
+            "x": 2838,
+            "y": 3470,
+            "height": 0
+          },
+          "instruction": "Follow the Catherby approach around the mountain."
+        },
+        {
+          "order": 28,
+          "type": "walk",
+          "to": {
+            "x": 2846,
+            "y": 3457,
+            "height": 0
+          },
+          "instruction": "Follow the Catherby approach around the mountain."
+        },
+        {
+          "order": 29,
+          "type": "walk",
+          "to": {
+            "x": 2848,
+            "y": 3447,
+            "height": 0
+          },
+          "instruction": "Follow the Catherby approach around the mountain."
+        },
+        {
+          "order": 30,
+          "type": "walk",
+          "to": {
+            "x": 2853,
+            "y": 3437,
+            "height": 0
+          },
+          "instruction": "Follow the Catherby approach around the mountain."
+        },
+        {
+          "order": 31,
+          "type": "walk",
+          "to": {
+            "x": 2848,
+            "y": 3436,
+            "height": 0
+          },
+          "instruction": "Enter the Catherby road edge."
+        },
+        {
+          "order": 32,
+          "type": "walk",
+          "to": {
+            "x": 2838,
+            "y": 3436,
+            "height": 0
+          },
+          "instruction": "Follow the Catherby road toward the bank."
+        },
+        {
+          "order": 33,
+          "type": "walk",
+          "to": {
+            "x": 2824,
+            "y": 3436,
+            "height": 0
+          },
+          "instruction": "Follow the Catherby road toward the bank."
+        },
+        {
+          "order": 34,
+          "type": "walk",
+          "to": {
+            "x": 2814,
+            "y": 3440,
+            "height": 0
+          },
+          "instruction": "Arrive at Catherby bank."
+        }
+      ],
+      "observations": [
+        "2026-05-31 mrfish passive trace: combat level 3, HP 10, no food, run 100 at the gate, brief wolf contact at 2873,3444/3446 with HP 10 -> 7, and reached Catherby alive.",
+        "2026-05-31 all-player White Wolf trace review: MrFish and MrAthlete evidence supports the north-side route as the safer low-level crossing compared with the shorter lower/middle White Wolf shortcut.",
+        "Use route requirements to avoid selecting the older taverley_white_wolf_gate_west_to_catherby_proven shortcut for level-3/no-food characters."
+      ]
+    },
+    {
       "id": "catherby_range_to_bank_passive_verified",
       "name": "Catherby Range to Bank",
       "from": "catherby_range",

@@ -4,7 +4,11 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.rs2.game.content.StaticObjectList;
 import com.rs2.game.objects.Objects;
+import com.rs2.game.players.Client;
 import com.rs2.game.players.Player;
+import org.apollo.cache.def.ItemDefinition;
+import org.apollo.util.security.IsaacRandom;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -12,6 +16,20 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class AgentToolServiceTest {
+
+    @BeforeClass
+    public static void initialiseItemDefinitions() {
+        if (ItemDefinition.getDefinitions() != null) {
+            return;
+        }
+        ItemDefinition[] definitions = new ItemDefinition[10000];
+        for (int id = 0; id < definitions.length; id++) {
+            definitions[id] = new ItemDefinition(id);
+            definitions[id].setName("item-" + id);
+        }
+        definitions[995].setStackable(true);
+        ItemDefinition.init(definitions);
+    }
 
     @Test
     public void prefersCombatWeaponsOverGatheringToolsOnTies() {
@@ -209,6 +227,35 @@ public class AgentToolServiceTest {
     }
 
     @Test
+    public void depositKeepingZeroFoodDepositsEveryNonStackableFoodItem() {
+        Player player = testPlayer(7, "Mrfish");
+        player.absX = 2814;
+        player.absY = 3439;
+        player.heightLevel = 0;
+        player.playerItems[0] = 996;
+        player.playerItemsN[0] = 33;
+        player.playerItems[1] = 304;
+        player.playerItemsN[1] = 1;
+        for (int slot = 2; slot < 17; slot++) {
+            player.playerItems[slot] = 316;
+            player.playerItemsN[slot] = 1;
+        }
+
+        JsonObject arguments = new JsonObject();
+        JsonArray itemIds = new JsonArray();
+        itemIds.add(315);
+        arguments.add("itemIds", itemIds);
+        arguments.addProperty("keepFoodCount", 0);
+
+        JsonObject result = AgentToolService.handle(player, "deposit_inventory_items", arguments);
+
+        assertTrue(result.get("success").getAsBoolean());
+        assertEquals(15, result.get("depositedAmount").getAsInt());
+        assertEquals(0, inventoryCount(player, 315));
+        assertEquals(15, bankCount(player, 315));
+    }
+
+    @Test
     public void travelRecognizesAlKharidGateCrossingSteps() {
         assertTrue(AgentToolService.isAlKharidGateCrossingStep(3268, 3227, 3252, 3236));
         assertTrue(AgentToolService.isAlKharidGateCrossingStep(3267, 3227, 3274, 3195));
@@ -398,12 +445,43 @@ public class AgentToolServiceTest {
     private static Player testPlayer(int playerId, String playerName) {
         Player player = new TestPlayer(playerId);
         player.playerName = playerName;
+        player.outStream.packetEncryption = new IsaacRandom(new int[] {0, 0, 0, 0});
         return player;
     }
 
-    private static class TestPlayer extends Player {
+    private static int inventoryCount(Player player, int itemId) {
+        int count = 0;
+        for (int slot = 0; slot < player.playerItems.length; slot++) {
+            if (player.playerItems[slot] == itemId + 1) {
+                count += player.playerItemsN[slot];
+            }
+        }
+        return count;
+    }
+
+    private static int bankCount(Player player, int itemId) {
+        int count = 0;
+        for (int slot = 0; slot < player.bankItems.length; slot++) {
+            if (player.bankItems[slot] == itemId + 1) {
+                count += player.bankItemsN[slot];
+            }
+        }
+        return count;
+    }
+
+    private static class TestPlayer extends Client {
         private TestPlayer(int playerId) {
-            super(playerId);
+            super(null, playerId);
+        }
+
+        @Override
+        public void stopMovement() {
+            // Keep bridge tool tests independent from Client-only movement internals.
+        }
+
+        @Override
+        public void flushOutStream() {
+            // Keep bridge tool tests independent from an attached network session.
         }
     }
 }

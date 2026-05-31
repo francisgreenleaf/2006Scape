@@ -178,10 +178,7 @@ def observe_state():
 
 def observe():
     result = observe_state()
-    player = result.get("player")
-    if not isinstance(player, dict):
-        raise RuntimeError("observe_state did not include player state")
-    return player
+    return bridge.player_from(result)
 
 
 def compact_player(player):
@@ -384,13 +381,16 @@ def primitive_fletch_until_empty(player, args, handle, reason):
             "buttonId": choice["makeAllButtonId"],
         })
         wait_ticks = max(1, min(250, args.fletch_ticks - total_ticks))
-        wait_result = call_tool("wait_until_idle", {
+        wait_result = call_tool("wait_until_idle_XS", {
             "maxTicks": wait_ticks,
             "movement": True,
             "skilling": True,
             "combat": False,
         })
-        player = wait_result.get("player") or button_result.get("player") or use_result.get("player") or player
+        player = bridge._player_from_or(
+            wait_result,
+            bridge._player_from_or(button_result, bridge._player_from_or(use_result, player)),
+        )
         total_ticks += int(wait_result.get("batchTicks", wait_ticks) or wait_ticks)
         last_result = wait_result
         last_result["player"] = player
@@ -481,13 +481,13 @@ def primitive_chop_until_inventory_full(tree, args, handle, reason):
             "option": "first",
         })
         wait_ticks = min(args.chop_round_ticks, max(1, args.chop_ticks - total_ticks))
-        wait_result = call_tool("wait_until_idle", {
+        wait_result = call_tool("wait_until_idle_XS", {
             "maxTicks": wait_ticks,
             "movement": True,
             "skilling": True,
             "combat": False,
         })
-        player = wait_result.get("player") or interact_result.get("player") or player
+        player = bridge._player_from_or(wait_result, bridge._player_from_or(interact_result, player))
         total_ticks += max(1, int(wait_result.get("batchTicks", wait_ticks) or wait_ticks))
         rounds += 1
         last_result = wait_result
@@ -611,7 +611,7 @@ def pickup_nearby_bird_nests(args, handle, reason):
             "itemIds": sorted(BIRD_NEST_IDS),
             "maxDistance": args.nest_pickup_distance,
         })
-        player = result.get("player") or player
+        player = bridge._player_from_or(result, player)
         moved = int(result.get("pickedUp", 0) or 0)
         after_count = bird_nest_count(player)
         write_event(handle, "bird_nest_pickup_attempt", {
@@ -627,7 +627,7 @@ def pickup_nearby_bird_nests(args, handle, reason):
         if int(player.get("freeInventorySlots", 0) or 0) <= 0:
             break
         if moved <= 0 and after_count <= before_count:
-            call_tool("wait_until_idle", {"maxTicks": 20, "movement": True, "skilling": False})
+            call_tool("wait_until_idle_XS", {"maxTicks": 20, "movement": True, "skilling": False})
     if picked > 0:
         log("picked up bird nest x{}".format(picked), args, force=True)
     return player
@@ -706,7 +706,7 @@ def route_to_seers_target(target, args, handle, reason):
         player = observe()
         if tile_distance(tile_from_player(player), tile) <= 1:
             continue
-        result = call_tool("walk_to_tile_until_arrived", {
+        result = call_tool("walk_to_tile_until_arrived_XS", {
             "x": int(tile["x"]),
             "y": int(tile["y"]),
             "height": int(tile.get("height", 0)),
@@ -714,7 +714,7 @@ def route_to_seers_target(target, args, handle, reason):
             "maxWalkDistance": args.local_route_distance,
             "stopOnStall": True,
         })
-        player = result.get("player") or player
+        player = bridge._player_from_or(result, player)
         write_event(handle, "hardcoded_route_step", {
             "reason": reason,
             "target": target,
@@ -836,7 +836,7 @@ def open_bank_interface(args, handle, reason):
         raise RuntimeError("bank target is required to open a bank interface")
     route_to(args.bank, args, handle, reason)
     result = call_tool("deposit_inventory_items", {"name": "__codex_open_bank_only__"})
-    player = result.get("player") or observe()
+    player = bridge._player_from_or(result, observe())
     write_event(handle, "open_bank_interface", {
         "reason": reason,
         "success": bool(result.get("success")),

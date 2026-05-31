@@ -14,7 +14,7 @@ Use the cache renderer as the source of static world context. Do not restart or 
 ## Main Files
 
 - `agent-navigation/tools/cache_world_map.py`: cache decoder and minimap-style world-map renderer.
-- `agent-navigation/tools/map_labels.py`: shared place/static label definitions used by cache-world exports and active topology maps. Add town/place display labels here instead of maintaining separate label lists.
+- `agent-navigation/tools/map_labels.py`: shared place/static label definitions and death-site label anchors used by cache-world exports and active topology maps. Add town/place display labels here instead of maintaining separate label lists. Keep white death labels dynamic: the active topology renderer clusters profile death events, deduplicates repeated deaths at the same named site, and formats labels such as `White Wolf Mountain 2 deaths`.
 - `agent-navigation/tools/map_grid.py`: level-0 cache-map reference grid API for converting world tiles to cells such as `AU21`, getting cell bounds, and listing cells in a bounded map.
 - `agent-navigation/tools/render_agent_context_map_XS.py`: default compact agent-facing bounded cache-map wrapper for current location and route-segment debugging, including all cache mapfunction icons in bounds and machine-readable marker labels.
 - `agent-navigation/tools/render_agent_context_map.py`: full context-map output for debugging when XS omits needed marker/detail fields.
@@ -30,9 +30,9 @@ Use the cache renderer as the source of static world context. Do not restart or 
 - `agent-navigation/.local/context-maps/<date>/*.json`: matching context-map summaries with bounds, center, mapfunction markers, and place markers.
 - `agent-navigation/topology/cache-world-map-full.png`: reusable full cache-bounds base map export with labels, 4 px/tile, no movement overlays.
 - `agent-navigation/topology/cache-world-map-level0.png`: reusable level-0 surface base map export with labels, 4 px/tile, cropped to the main surface region.
-- `agent-navigation/topology/movement-topology-v4.png`: legacy-default active profile movement map; nondefault profiles append `-<profile>` before `-v4`.
-- `agent-navigation/topology/movement-topology-v5-heatmap.png`: legacy-default active `Heat Map` with run tinting and transparent coverage density; nondefault profiles append `-<profile>` before `-v5-heatmap`.
-- `agent-navigation/topology/movement-topology-v6.png`: legacy-default active profile fog map with unvisited map areas dimmed; nondefault profiles append `-<profile>` before `-v6`.
+- `agent-navigation/topology/<profile>-map.png`: active profile movement map, such as `mrflame-map.png`.
+- `agent-navigation/topology/<profile>-heatmap.png`: active `Heat Map` with run tinting and transparent coverage density.
+- `agent-navigation/topology/<profile>-fog-map.png`: active profile fog map with unvisited map areas dimmed.
 - `agent-navigation/.local/map-summaries/*.json`: ignored metadata summaries for active maps, cache-map renders, and route overview renders.
 - `agent-navigation/cache-world-map.md`: repo-facing documentation, if present.
 
@@ -96,7 +96,7 @@ Render the active profile fog map:
 agent-navigation/tools/render_fog_map.py
 ```
 
-Use the profile movement map for the main human-facing movement view, `Heat Map` for trace-coverage density, and the profile fog map for fog-of-war coverage. Agents should not run these full topology renders during live routing unless explicitly asked. All active movement maps read the latest unified movement traces at render time, and the plain-name wrappers backfill historical agent-batch traces recorded before passive player tracing began so early exploration/deaths are not lost while newer duplicated batches stay omitted. They draw cache `mapfunction` icons in bounds, cluster death events into death sites, and filter non-local respawn/teleport edges so they do not appear as route or combat lines. The fog map hides cache POI icons outside the explored POI radius, which should stay close to the visible fog reveal.
+Use the profile movement map for the main human-facing movement view, `Heat Map` for trace-coverage density, and the profile fog map for fog-of-war coverage. Agents should not run these full topology renders during live routing unless explicitly asked. All active movement maps read the latest unified movement traces at render time, and the plain-name wrappers backfill historical agent-batch traces recorded before passive player tracing began so early exploration/deaths are not lost while newer duplicated batches stay omitted. They draw cache `mapfunction` icons in bounds, cluster death events into counted death sites, render white outlined death labels from those per-profile clusters, and filter non-local respawn/teleport edges so they do not appear as route or combat lines. The fog map hides cache POI icons outside the explored POI radius, which should stay close to the visible fog reveal.
 
 The active movement maps use a title-bar stats panel instead of explanatory paragraph text. The visible top-bar title should stay the selected profile name, even for Heat Map and fog variants whose filenames/metadata still identify their map type. Center the profile title horizontally and vertically in the left title-block before the skill tiles. The panel reads the selected profile's saved skills, renders cache-backed skill icons, and displays skill levels, total level, and movement-trace-derived playtime. The skill tiles intentionally emulate the game client's stats tab interface `3917`: `miscgraphics,4/5` tile backing, `staticons`/`staticons2` skill icons, OSRS yellow text, and combat-first menu-style skill order. Each tile uses the built-in slash divider with same-size current/base level text above-left of the slash and `99` below-right of it. The active map presentation uses those tiles in a wider two-row strip rather than the exact in-client 3x7 shape.
 

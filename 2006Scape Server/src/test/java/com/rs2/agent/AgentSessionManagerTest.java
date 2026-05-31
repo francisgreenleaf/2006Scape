@@ -23,6 +23,7 @@ public class AgentSessionManagerTest {
 
     private Player previousZero;
     private Player previousOne;
+    private Player previousTwo;
     private Player previousSeven;
     private String token;
 
@@ -32,6 +33,7 @@ public class AgentSessionManagerTest {
         AgentSessionLog.INSTANCE.setLogDirectoryForTests(logDirectory);
         previousZero = PlayerHandler.players[0];
         previousOne = PlayerHandler.players[1];
+        previousTwo = PlayerHandler.players[2];
         previousSeven = PlayerHandler.players[7];
     }
 
@@ -43,6 +45,7 @@ public class AgentSessionManagerTest {
         }
         PlayerHandler.players[0] = previousZero;
         PlayerHandler.players[1] = previousOne;
+        PlayerHandler.players[2] = previousTwo;
         PlayerHandler.players[7] = previousSeven;
         AgentSessionLog.INSTANCE.resetLogDirectoryForTests();
     }
@@ -99,8 +102,74 @@ public class AgentSessionManagerTest {
 
         PlayerHandler.players[0] = gem;
 
-        assertNull(manager.getSession(flameToken));
+        assertNotNull(manager.getSession(flameToken));
+        assertNull(manager.getSession(flameToken).getPlayer());
         assertNotNull(manager.getSession(gemToken));
+    }
+
+    @Test
+    public void sessionRebindsToSamePlayerAfterReconnect() {
+        Player original = new TestPlayer(0);
+        original.playerName = "MrFlame";
+        original.disconnected = false;
+        PlayerHandler.players[0] = original;
+
+        AgentSessionManager manager = new AgentSessionManager();
+        String flameToken = manager.registerClaim(original, "claim-flame");
+        assertTrue(manager.consumeClaim("claim-flame").isSuccess());
+
+        original.disconnected = true;
+        PlayerHandler.players[0] = null;
+        Player replacement = new TestPlayer(2);
+        replacement.playerName = "MrFlame";
+        replacement.disconnected = false;
+        PlayerHandler.players[2] = replacement;
+
+        AgentSession session = manager.getSession(flameToken);
+
+        assertNotNull(session);
+        assertEquals(2, session.getPlayerId());
+        assertEquals(replacement, session.getPlayer());
+    }
+
+    @Test
+    public void repeatedSameNonceClaimRegistersOnlyOneSession() {
+        Player player = new TestPlayer(0);
+        player.playerName = "Mrwood";
+        player.disconnected = false;
+        PlayerHandler.players[0] = player;
+
+        AgentSessionManager manager = new AgentSessionManager();
+        String firstToken = manager.registerClaim(player, "same-nonce");
+        String secondToken = manager.registerClaim(player, "same-nonce");
+
+        assertEquals(firstToken, secondToken);
+        assertEquals(1, manager.getSessionCount());
+        assertTrue(manager.consumeClaim("same-nonce").isSuccess());
+
+        String thirdToken = manager.registerClaim(player, "same-nonce");
+
+        assertEquals(firstToken, thirdToken);
+        assertEquals(1, manager.getSessionCount());
+    }
+
+    @Test
+    public void newClaimForSamePlayerReplacesOlderClaimedSession() {
+        Player player = new TestPlayer(0);
+        player.playerName = "Mrfish";
+        player.disconnected = false;
+        PlayerHandler.players[0] = player;
+
+        AgentSessionManager manager = new AgentSessionManager();
+        String oldToken = manager.registerClaim(player, "old-claim");
+        assertTrue(manager.consumeClaim("old-claim").isSuccess());
+        String newToken = manager.registerClaim(player, "new-claim");
+        assertTrue(manager.consumeClaim("new-claim").isSuccess());
+
+        assertFalse(oldToken.equals(newToken));
+        assertNull(manager.getSession(oldToken));
+        assertNotNull(manager.getSession(newToken));
+        assertEquals(1, manager.getSessionCount());
     }
 
     private static class TestPlayer extends Player {

@@ -443,6 +443,25 @@ def verify_runtime(args):
     return 0
 
 
+def existing_session_usable(args):
+    session_file = resolve_session_file(args)
+    if not session_file.exists():
+        return False
+    env = os.environ.copy()
+    env["RS_PROFILE"] = getattr(args, "user", default_user())
+    env["RSBRIDGE_SESSION_FILE"] = str(session_file)
+    proc = run_cmd([str(OBSERVE_XS)], check=False, capture=True, env=env)
+    return proc.returncode == 0
+
+
+def print_existing_session_ready(args):
+    summary = read_session_summary(resolve_session_file(args))
+    print("session_ready existing player={} sessionId={}".format(
+        summary.get("playerName", ""),
+        summary.get("sessionId", ""),
+    ))
+
+
 def cmd_restart(args):
     if args.build and (port_open(SERVER_PORT) or port_open(BRIDGE_PORT)) and not args.replace_runtime:
         raise SystemExit("build requested while runtime appears live; use --replace-runtime or stop it first")
@@ -470,9 +489,20 @@ def cmd_restart(args):
 
 def cmd_claim(args):
     wait_for_port(BRIDGE_PORT, args.server_timeout, "agent bridge")
+    if not args.replace_client and existing_session_usable(args):
+        print_existing_session_ready(args)
+        if args.verify:
+            verify_runtime(argparse.Namespace(observe=True, navdb=False, recorder_status=False,
+                                              user=args.user, session_file=str(resolve_session_file(args))))
+        return 0
+    client_pid_file = resolve_client_pid_file(args)
+    client_pid = read_pid(client_pid_file)
+    if not args.replace_client and process_exists(client_pid):
+        raise SystemExit("existing profile client appears alive but no valid bridge session; "
+                         "rerun with --replace-client to relaunch this profile")
     if args.replace_client:
         stop_runtime(include_server=False, include_client=True, session_file=resolve_session_file(args),
-                     client_pid_file=resolve_client_pid_file(args), broad_client=False)
+                     client_pid_file=client_pid_file, broad_client=False)
     nonce = secrets.token_urlsafe(32)
     launch_client(args, nonce)
     claim_session(nonce, args.claim_timeout, resolve_session_file(args))
@@ -537,7 +567,7 @@ def add_claim_args(parser):
     parser.add_argument("--replace-client", dest="replace_client", action="store_true")
     parser.add_argument("--keep-client", dest="replace_client", action="store_false")
     parser.add_argument("--verify", action="store_true")
-    parser.set_defaults(replace_client=True)
+    parser.set_defaults(replace_client=False)
 
 
 def main(argv=None):
@@ -562,7 +592,7 @@ def main(argv=None):
     restart.add_argument("--start-recorder", action="store_true", help="Start route_recorder.py after the bridge claim.")
     restart.add_argument("--recorder-interval", type=float, default=1.2)
     restart.add_argument("--recorder-idle-every", type=float, default=0.0)
-    restart.set_defaults(func=cmd_restart)
+    restart.set_defaults(func=cmd_restart, replace_client=True)
 
     claim = sub.add_parser("claim", help="Launch/relaunch the client and claim a bridge session against an existing server.")
     add_claim_args(claim)

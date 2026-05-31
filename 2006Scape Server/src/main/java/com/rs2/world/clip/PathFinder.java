@@ -1,7 +1,6 @@
 package com.rs2.world.clip;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import com.rs2.game.players.Player;
 import com.rs2.util.Misc;
@@ -9,6 +8,9 @@ import com.rs2.util.Misc;
 public class PathFinder {
 
 	private static final PathFinder pathFinder = new PathFinder();
+	private static final int LOCAL_MAP_SIZE = 104;
+	private static final int MAX_PATH_QUEUE_SIZE = 4000;
+	private static final int PATH_QUEUE_OVERFLOW_ROOM = 8;
 
 	public static PathFinder getPathFinder() {
 		return pathFinder;
@@ -22,115 +24,52 @@ public class PathFinder {
 		}
 		destX = destX - 8 * player.getMapRegionX();
 		destY = destY - 8 * player.getMapRegionY();
-		int[][] via = new int[104][104];
-		int[][] cost = new int[104][104];
-		LinkedList<Integer> tileQueueX = new LinkedList<Integer>();
-		LinkedList<Integer> tileQueueY = new LinkedList<Integer>();
-		for (int xx = 0; xx < 104; xx++) {
-			for (int yy = 0; yy < 104; yy++) {
+		int[][] via = new int[LOCAL_MAP_SIZE][LOCAL_MAP_SIZE];
+		int[][] cost = new int[LOCAL_MAP_SIZE][LOCAL_MAP_SIZE];
+		int[] tileQueueX = new int[MAX_PATH_QUEUE_SIZE + PATH_QUEUE_OVERFLOW_ROOM];
+		int[] tileQueueY = new int[MAX_PATH_QUEUE_SIZE + PATH_QUEUE_OVERFLOW_ROOM];
+		for (int xx = 0; xx < LOCAL_MAP_SIZE; xx++) {
+			for (int yy = 0; yy < LOCAL_MAP_SIZE; yy++) {
 				cost[xx][yy] = 99999999;
 			}
 		}
 		int curX = player.getLocalX();
 		int curY = player.getLocalY();
+		if (curX < 0 || curY < 0 || curX >= LOCAL_MAP_SIZE || curY >= LOCAL_MAP_SIZE) {
+			return;
+		}
 		via[curX][curY] = 99;
 		cost[curX][curY] = 0;
 		int tail = 0;
-		tileQueueX.add(curX);
-		tileQueueY.add(curY);
+		int queueSize = enqueue(tileQueueX, tileQueueY, 0, curX, curY);
 		boolean foundPath = false;
-		int pathLength = 4000;
-		while (tail != tileQueueX.size() && tileQueueX.size() < pathLength) {
-			curX = tileQueueX.get(tail);
-			curY = tileQueueY.get(tail);
+		while (tail != queueSize && queueSize < MAX_PATH_QUEUE_SIZE) {
+			curX = tileQueueX[tail];
+			curY = tileQueueY[tail];
 			int curAbsX = player.getMapRegionX() * 8 + curX;
 			int curAbsY = player.getMapRegionY() * 8 + curY;
 			if (curX == destX && curY == destY) {
 				foundPath = true;
 				break;
 			}
-			tail = (tail + 1) % pathLength;
+			tail++;
 			int thisCost = cost[curX][curY] + 1;
-			if (curY > 0
-					&& via[curX][curY - 1] == 0
-					&& (Region.getClipping(curAbsX, curAbsY - 1, player.heightLevel) & 0x1280102) == 0) {
-				tileQueueX.add(curX);
-				tileQueueY.add(curY - 1);
-				via[curX][curY - 1] = 1;
-				cost[curX][curY - 1] = thisCost;
-			}
-			if (curX > 0
-					&& via[curX - 1][curY] == 0
-					&& (Region.getClipping(curAbsX - 1, curAbsY, player.heightLevel) & 0x1280108) == 0) {
-				tileQueueX.add(curX - 1);
-				tileQueueY.add(curY);
-				via[curX - 1][curY] = 2;
-				cost[curX - 1][curY] = thisCost;
-			}
-			if (curY < 104 - 1
-					&& via[curX][curY + 1] == 0
-					&& (Region.getClipping(curAbsX, curAbsY + 1, player.heightLevel) & 0x1280120) == 0) {
-				tileQueueX.add(curX);
-				tileQueueY.add(curY + 1);
-				via[curX][curY + 1] = 4;
-				cost[curX][curY + 1] = thisCost;
-			}
-			if (curX < 104 - 1
-					&& via[curX + 1][curY] == 0
-					&& (Region.getClipping(curAbsX + 1, curAbsY, player.heightLevel) & 0x1280180) == 0) {
-				tileQueueX.add(curX + 1);
-				tileQueueY.add(curY);
-				via[curX + 1][curY] = 8;
-				cost[curX + 1][curY] = thisCost;
-			}
-			if (curX > 0
-					&& curY > 0
-					&& via[curX - 1][curY - 1] == 0
-					&& (Region.getClipping(curAbsX - 1, curAbsY - 1,
-							player.heightLevel) & 0x128010e) == 0
-					&& (Region.getClipping(curAbsX - 1, curAbsY, player.heightLevel) & 0x1280108) == 0
-					&& (Region.getClipping(curAbsX, curAbsY - 1, player.heightLevel) & 0x1280102) == 0) {
-				tileQueueX.add(curX - 1);
-				tileQueueY.add(curY - 1);
-				via[curX - 1][curY - 1] = 3;
-				cost[curX - 1][curY - 1] = thisCost;
-			}
-			if (curX > 0
-					&& curY < 104 - 1
-					&& via[curX - 1][curY + 1] == 0
-					&& (Region.getClipping(curAbsX - 1, curAbsY + 1,
-							player.heightLevel) & 0x1280138) == 0
-					&& (Region.getClipping(curAbsX - 1, curAbsY, player.heightLevel) & 0x1280108) == 0
-					&& (Region.getClipping(curAbsX, curAbsY + 1, player.heightLevel) & 0x1280120) == 0) {
-				tileQueueX.add(curX - 1);
-				tileQueueY.add(curY + 1);
-				via[curX - 1][curY + 1] = 6;
-				cost[curX - 1][curY + 1] = thisCost;
-			}
-			if (curX < 104 - 1
-					&& curY > 0
-					&& via[curX + 1][curY - 1] == 0
-					&& (Region.getClipping(curAbsX + 1, curAbsY - 1,
-							player.heightLevel) & 0x1280183) == 0
-					&& (Region.getClipping(curAbsX + 1, curAbsY, player.heightLevel) & 0x1280180) == 0
-					&& (Region.getClipping(curAbsX, curAbsY - 1, player.heightLevel) & 0x1280102) == 0) {
-				tileQueueX.add(curX + 1);
-				tileQueueY.add(curY - 1);
-				via[curX + 1][curY - 1] = 9;
-				cost[curX + 1][curY - 1] = thisCost;
-			}
-			if (curX < 104 - 1
-					&& curY < 104 - 1
-					&& via[curX + 1][curY + 1] == 0
-					&& (Region.getClipping(curAbsX + 1, curAbsY + 1,
-							player.heightLevel) & 0x12801e0) == 0
-					&& (Region.getClipping(curAbsX + 1, curAbsY, player.heightLevel) & 0x1280180) == 0
-					&& (Region.getClipping(curAbsX, curAbsY + 1, player.heightLevel) & 0x1280120) == 0) {
-				tileQueueX.add(curX + 1);
-				tileQueueY.add(curY + 1);
-				via[curX + 1][curY + 1] = 12;
-				cost[curX + 1][curY + 1] = thisCost;
-			}
+			queueSize = addRouteStep(player, via, cost, tileQueueX, tileQueueY, queueSize,
+					curX, curY, curAbsX, curAbsY, 0, -1, 1, thisCost);
+			queueSize = addRouteStep(player, via, cost, tileQueueX, tileQueueY, queueSize,
+					curX, curY, curAbsX, curAbsY, -1, 0, 2, thisCost);
+			queueSize = addRouteStep(player, via, cost, tileQueueX, tileQueueY, queueSize,
+					curX, curY, curAbsX, curAbsY, 0, 1, 4, thisCost);
+			queueSize = addRouteStep(player, via, cost, tileQueueX, tileQueueY, queueSize,
+					curX, curY, curAbsX, curAbsY, 1, 0, 8, thisCost);
+			queueSize = addRouteStep(player, via, cost, tileQueueX, tileQueueY, queueSize,
+					curX, curY, curAbsX, curAbsY, -1, -1, 3, thisCost);
+			queueSize = addRouteStep(player, via, cost, tileQueueX, tileQueueY, queueSize,
+					curX, curY, curAbsX, curAbsY, -1, 1, 6, thisCost);
+			queueSize = addRouteStep(player, via, cost, tileQueueX, tileQueueY, queueSize,
+					curX, curY, curAbsX, curAbsY, 1, -1, 9, thisCost);
+			queueSize = addRouteStep(player, via, cost, tileQueueX, tileQueueY, queueSize,
+					curX, curY, curAbsX, curAbsY, 1, 1, 12, thisCost);
 		}
 		if (!foundPath) {
 			if (moveNear) {
@@ -172,15 +111,15 @@ public class PathFinder {
 			}
 		}
 		tail = 0;
-		tileQueueX.set(tail, curX);
-		tileQueueY.set(tail++, curY);
+		tileQueueX[tail] = curX;
+		tileQueueY[tail++] = curY;
 		int l5;
 		for (int j5 = l5 = via[curX][curY]; curX != player.getLocalX()
 				|| curY != player.getLocalY(); j5 = via[curX][curY]) {
 			if (j5 != l5) {
 				l5 = j5;
-				tileQueueX.set(tail, curX);
-				tileQueueY.set(tail++, curY);
+				tileQueueX[tail] = curX;
+				tileQueueY[tail++] = curY;
 			}
 			if ((j5 & 2) != 0) {
 				curX++;
@@ -195,18 +134,18 @@ public class PathFinder {
 		}
 		player.resetWalkingQueue();
 		int size = tail--;
-		int pathX = player.getMapRegionX() * 8 + tileQueueX.get(tail);
-		int pathY = player.getMapRegionY() * 8 + tileQueueY.get(tail);
+		int pathX = player.getMapRegionX() * 8 + tileQueueX[tail];
+		int pathY = player.getMapRegionY() * 8 + tileQueueY[tail];
 		player.addToWalkingQueue(localize(pathX, player.getMapRegionX()),
 				localize(pathY, player.getMapRegionY()));
 		for (int i = 1; i < size; i++) {
 			tail--;
-			pathX = player.getMapRegionX() * 8 + tileQueueX.get(tail);
-			pathY = player.getMapRegionY() * 8 + tileQueueY.get(tail);
+			pathX = player.getMapRegionX() * 8 + tileQueueX[tail];
+			pathY = player.getMapRegionY() * 8 + tileQueueY[tail];
 			player.addToWalkingQueue(localize(pathX, player.getMapRegionX()),
 					localize(pathY, player.getMapRegionY()));
-			}
 		}
+	}
 
 	public List<int[]> findRouteTiles(Player player, int destX, int destY, boolean moveNear,
 			int xLength, int yLength) {
@@ -222,54 +161,52 @@ public class PathFinder {
 		if (destX == player.getLocalX() && destY == player.getLocalY() && !moveNear) {
 			return route;
 		}
-		int[][] via = new int[104][104];
-		int[][] cost = new int[104][104];
-		LinkedList<Integer> tileQueueX = new LinkedList<Integer>();
-		LinkedList<Integer> tileQueueY = new LinkedList<Integer>();
-		for (int xx = 0; xx < 104; xx++) {
-			for (int yy = 0; yy < 104; yy++) {
+		int[][] via = new int[LOCAL_MAP_SIZE][LOCAL_MAP_SIZE];
+		int[][] cost = new int[LOCAL_MAP_SIZE][LOCAL_MAP_SIZE];
+		int[] tileQueueX = new int[MAX_PATH_QUEUE_SIZE + PATH_QUEUE_OVERFLOW_ROOM];
+		int[] tileQueueY = new int[MAX_PATH_QUEUE_SIZE + PATH_QUEUE_OVERFLOW_ROOM];
+		for (int xx = 0; xx < LOCAL_MAP_SIZE; xx++) {
+			for (int yy = 0; yy < LOCAL_MAP_SIZE; yy++) {
 				cost[xx][yy] = 99999999;
 			}
 		}
 		int curX = player.getLocalX();
 		int curY = player.getLocalY();
-		if (curX < 0 || curY < 0 || curX >= 104 || curY >= 104) {
+		if (curX < 0 || curY < 0 || curX >= LOCAL_MAP_SIZE || curY >= LOCAL_MAP_SIZE) {
 			return route;
 		}
 		via[curX][curY] = 99;
 		cost[curX][curY] = 0;
 		int tail = 0;
-		tileQueueX.add(curX);
-		tileQueueY.add(curY);
+		int queueSize = enqueue(tileQueueX, tileQueueY, 0, curX, curY);
 		boolean foundPath = false;
-		int pathLength = 4000;
-		while (tail != tileQueueX.size() && tileQueueX.size() < pathLength) {
-			curX = tileQueueX.get(tail);
-			curY = tileQueueY.get(tail);
+		while (tail != queueSize && queueSize < MAX_PATH_QUEUE_SIZE) {
+			curX = tileQueueX[tail];
+			curY = tileQueueY[tail];
 			int curAbsX = player.getMapRegionX() * 8 + curX;
 			int curAbsY = player.getMapRegionY() * 8 + curY;
 			if (curX == destX && curY == destY) {
 				foundPath = true;
 				break;
 			}
-			tail = (tail + 1) % pathLength;
+			tail++;
 			int thisCost = cost[curX][curY] + 1;
-			addRouteStep(player, via, cost, tileQueueX, tileQueueY, curX, curY, curAbsX, curAbsY,
-					0, -1, 1, thisCost);
-			addRouteStep(player, via, cost, tileQueueX, tileQueueY, curX, curY, curAbsX, curAbsY,
-					-1, 0, 2, thisCost);
-			addRouteStep(player, via, cost, tileQueueX, tileQueueY, curX, curY, curAbsX, curAbsY,
-					0, 1, 4, thisCost);
-			addRouteStep(player, via, cost, tileQueueX, tileQueueY, curX, curY, curAbsX, curAbsY,
-					1, 0, 8, thisCost);
-			addRouteStep(player, via, cost, tileQueueX, tileQueueY, curX, curY, curAbsX, curAbsY,
-					-1, -1, 3, thisCost);
-			addRouteStep(player, via, cost, tileQueueX, tileQueueY, curX, curY, curAbsX, curAbsY,
-					-1, 1, 6, thisCost);
-			addRouteStep(player, via, cost, tileQueueX, tileQueueY, curX, curY, curAbsX, curAbsY,
-					1, -1, 9, thisCost);
-			addRouteStep(player, via, cost, tileQueueX, tileQueueY, curX, curY, curAbsX, curAbsY,
-					1, 1, 12, thisCost);
+			queueSize = addRouteStep(player, via, cost, tileQueueX, tileQueueY, queueSize,
+					curX, curY, curAbsX, curAbsY, 0, -1, 1, thisCost);
+			queueSize = addRouteStep(player, via, cost, tileQueueX, tileQueueY, queueSize,
+					curX, curY, curAbsX, curAbsY, -1, 0, 2, thisCost);
+			queueSize = addRouteStep(player, via, cost, tileQueueX, tileQueueY, queueSize,
+					curX, curY, curAbsX, curAbsY, 0, 1, 4, thisCost);
+			queueSize = addRouteStep(player, via, cost, tileQueueX, tileQueueY, queueSize,
+					curX, curY, curAbsX, curAbsY, 1, 0, 8, thisCost);
+			queueSize = addRouteStep(player, via, cost, tileQueueX, tileQueueY, queueSize,
+					curX, curY, curAbsX, curAbsY, -1, -1, 3, thisCost);
+			queueSize = addRouteStep(player, via, cost, tileQueueX, tileQueueY, queueSize,
+					curX, curY, curAbsX, curAbsY, -1, 1, 6, thisCost);
+			queueSize = addRouteStep(player, via, cost, tileQueueX, tileQueueY, queueSize,
+					curX, curY, curAbsX, curAbsY, 1, -1, 9, thisCost);
+			queueSize = addRouteStep(player, via, cost, tileQueueX, tileQueueY, queueSize,
+					curX, curY, curAbsX, curAbsY, 1, 1, 12, thisCost);
 		}
 		if (!foundPath) {
 			if (!moveNear) {
@@ -308,15 +245,15 @@ public class PathFinder {
 			}
 		}
 		tail = 0;
-		tileQueueX.set(tail, curX);
-		tileQueueY.set(tail++, curY);
+		tileQueueX[tail] = curX;
+		tileQueueY[tail++] = curY;
 		int previousDirection;
 		for (int direction = previousDirection = via[curX][curY]; curX != player.getLocalX()
 				|| curY != player.getLocalY(); direction = via[curX][curY]) {
 			if (direction != previousDirection) {
 				previousDirection = direction;
-				tileQueueX.set(tail, curX);
-				tileQueueY.set(tail++, curY);
+				tileQueueX[tail] = curX;
+				tileQueueY[tail++] = curY;
 			}
 			if ((direction & 2) != 0) {
 				curX++;
@@ -331,29 +268,30 @@ public class PathFinder {
 		}
 		int size = tail--;
 		for (int i = 0; i < size; i++) {
-			int pathX = player.getMapRegionX() * 8 + tileQueueX.get(tail);
-			int pathY = player.getMapRegionY() * 8 + tileQueueY.get(tail);
+			int pathX = player.getMapRegionX() * 8 + tileQueueX[tail];
+			int pathY = player.getMapRegionY() * 8 + tileQueueY[tail];
 			route.add(new int[] { pathX, pathY, player.heightLevel });
 			tail--;
 		}
 		return route;
 	}
 
-	private void addRouteStep(Player player, int[][] via, int[][] cost, LinkedList<Integer> tileQueueX,
-			LinkedList<Integer> tileQueueY, int curX, int curY, int curAbsX, int curAbsY,
+	private int addRouteStep(Player player, int[][] via, int[][] cost, int[] tileQueueX,
+			int[] tileQueueY, int queueSize, int curX, int curY, int curAbsX, int curAbsY,
 			int dx, int dy, int viaFlag, int thisCost) {
 		int nextX = curX + dx;
 		int nextY = curY + dy;
-		if (nextX < 0 || nextY < 0 || nextX >= 104 || nextY >= 104 || via[nextX][nextY] != 0) {
-			return;
+		if (nextX < 0 || nextY < 0 || nextX >= LOCAL_MAP_SIZE || nextY >= LOCAL_MAP_SIZE
+				|| via[nextX][nextY] != 0) {
+			return queueSize;
 		}
 		if (!canStep(curAbsX, curAbsY, player.heightLevel, dx, dy)) {
-			return;
+			return queueSize;
 		}
-		tileQueueX.add(nextX);
-		tileQueueY.add(nextY);
+		queueSize = enqueue(tileQueueX, tileQueueY, queueSize, nextX, nextY);
 		via[nextX][nextY] = viaFlag;
 		cost[nextX][nextY] = thisCost;
+		return queueSize;
 	}
 
 	private boolean canStep(int curAbsX, int curAbsY, int height, int dx, int dy) {
@@ -401,119 +339,88 @@ public class PathFinder {
 	}
 
 	public boolean accessible(int x, int y, int heightLevel, int destX, int destY) {
-		destX = destX - 8 * getRegionCoordinate(x);
-		destY = destY - 8 * getRegionCoordinate(y);
-		int[][] via = new int[104][104];
-		int[][] cost = new int[104][104];
-		LinkedList<Integer> tileQueueX = new LinkedList<Integer>();
-		LinkedList<Integer> tileQueueY = new LinkedList<Integer>();
-		for (int xx = 0; xx < 104; xx++) {
-			for (int yy = 0; yy < 104; yy++) {
+		int baseRegionX = getRegionCoordinate(x);
+		int baseRegionY = getRegionCoordinate(y);
+		destX = destX - 8 * baseRegionX;
+		destY = destY - 8 * baseRegionY;
+		if (destX < 0 || destY < 0 || destX >= LOCAL_MAP_SIZE || destY >= LOCAL_MAP_SIZE) {
+			return false;
+		}
+		int[][] via = new int[LOCAL_MAP_SIZE][LOCAL_MAP_SIZE];
+		int[][] cost = new int[LOCAL_MAP_SIZE][LOCAL_MAP_SIZE];
+		int[] tileQueueX = new int[MAX_PATH_QUEUE_SIZE + PATH_QUEUE_OVERFLOW_ROOM];
+		int[] tileQueueY = new int[MAX_PATH_QUEUE_SIZE + PATH_QUEUE_OVERFLOW_ROOM];
+		for (int xx = 0; xx < LOCAL_MAP_SIZE; xx++) {
+			for (int yy = 0; yy < LOCAL_MAP_SIZE; yy++) {
 				cost[xx][yy] = 99999999;
 			}
 		}
 		int curX = getLocalCoordinate(x);
 		int curY = getLocalCoordinate(y);
+		if (curX < 0 || curY < 0 || curX >= LOCAL_MAP_SIZE || curY >= LOCAL_MAP_SIZE) {
+			return false;
+		}
 		via[curX][curY] = 99;
 		cost[curX][curY] = 0;
 		int tail = 0;
-		tileQueueX.add(curX);
-		tileQueueY.add(curY);
+		int queueSize = enqueue(tileQueueX, tileQueueY, 0, curX, curY);
 		boolean foundPath = false;
-		int pathLength = 4000;
-		while (tail != tileQueueX.size() && tileQueueX.size() < pathLength) {
-			curX = tileQueueX.get(tail);
-			curY = tileQueueY.get(tail);
-			int curAbsX = getRegionCoordinate(x) * 8 + curX;
-			int curAbsY = getRegionCoordinate(y) * 8 + curY;
+		while (tail != queueSize && queueSize < MAX_PATH_QUEUE_SIZE) {
+			curX = tileQueueX[tail];
+			curY = tileQueueY[tail];
+			int curAbsX = baseRegionX * 8 + curX;
+			int curAbsY = baseRegionY * 8 + curY;
 			if (curX == destX && curY == destY) {
 				foundPath = true;
 				break;
 			}
-			tail = (tail + 1) % pathLength;
+			tail++;
 			int thisCost = cost[curX][curY] + 1;
-			if (curY > 0
-					&& via[curX][curY - 1] == 0
-					&& (Region.getClipping(curAbsX, curAbsY - 1, heightLevel) & 0x1280102) == 0) {
-				tileQueueX.add(curX);
-				tileQueueY.add(curY - 1);
-				via[curX][curY - 1] = 1;
-				cost[curX][curY - 1] = thisCost;
-			}
-			if (curX > 0
-					&& via[curX - 1][curY] == 0
-					&& (Region.getClipping(curAbsX - 1, curAbsY, heightLevel) & 0x1280108) == 0) {
-				tileQueueX.add(curX - 1);
-				tileQueueY.add(curY);
-				via[curX - 1][curY] = 2;
-				cost[curX - 1][curY] = thisCost;
-			}
-			if (curY < 104 - 1
-					&& via[curX][curY + 1] == 0
-					&& (Region.getClipping(curAbsX, curAbsY + 1, heightLevel) & 0x1280120) == 0) {
-				tileQueueX.add(curX);
-				tileQueueY.add(curY + 1);
-				via[curX][curY + 1] = 4;
-				cost[curX][curY + 1] = thisCost;
-			}
-			if (curX < 104 - 1
-					&& via[curX + 1][curY] == 0
-					&& (Region.getClipping(curAbsX + 1, curAbsY, heightLevel) & 0x1280180) == 0) {
-				tileQueueX.add(curX + 1);
-				tileQueueY.add(curY);
-				via[curX + 1][curY] = 8;
-				cost[curX + 1][curY] = thisCost;
-			}
-			if (curX > 0
-					&& curY > 0
-					&& via[curX - 1][curY - 1] == 0
-					&& (Region.getClipping(curAbsX - 1, curAbsY - 1,
-					heightLevel) & 0x128010e) == 0
-					&& (Region.getClipping(curAbsX - 1, curAbsY, heightLevel) & 0x1280108) == 0
-					&& (Region.getClipping(curAbsX, curAbsY - 1, heightLevel) & 0x1280102) == 0) {
-				tileQueueX.add(curX - 1);
-				tileQueueY.add(curY - 1);
-				via[curX - 1][curY - 1] = 3;
-				cost[curX - 1][curY - 1] = thisCost;
-			}
-			if (curX > 0
-					&& curY < 104 - 1
-					&& via[curX - 1][curY + 1] == 0
-					&& (Region.getClipping(curAbsX - 1, curAbsY + 1,
-					heightLevel) & 0x1280138) == 0
-					&& (Region.getClipping(curAbsX - 1, curAbsY, heightLevel) & 0x1280108) == 0
-					&& (Region.getClipping(curAbsX, curAbsY + 1, heightLevel) & 0x1280120) == 0) {
-				tileQueueX.add(curX - 1);
-				tileQueueY.add(curY + 1);
-				via[curX - 1][curY + 1] = 6;
-				cost[curX - 1][curY + 1] = thisCost;
-			}
-			if (curX < 104 - 1
-					&& curY > 0
-					&& via[curX + 1][curY - 1] == 0
-					&& (Region.getClipping(curAbsX + 1, curAbsY - 1,
-					heightLevel) & 0x1280183) == 0
-					&& (Region.getClipping(curAbsX + 1, curAbsY, heightLevel) & 0x1280180) == 0
-					&& (Region.getClipping(curAbsX, curAbsY - 1, heightLevel) & 0x1280102) == 0) {
-				tileQueueX.add(curX + 1);
-				tileQueueY.add(curY - 1);
-				via[curX + 1][curY - 1] = 9;
-				cost[curX + 1][curY - 1] = thisCost;
-			}
-			if (curX < 104 - 1
-					&& curY < 104 - 1
-					&& via[curX + 1][curY + 1] == 0
-					&& (Region.getClipping(curAbsX + 1, curAbsY + 1,
-					heightLevel) & 0x12801e0) == 0
-					&& (Region.getClipping(curAbsX + 1, curAbsY, heightLevel) & 0x1280180) == 0
-					&& (Region.getClipping(curAbsX, curAbsY + 1, heightLevel) & 0x1280120) == 0) {
-				tileQueueX.add(curX + 1);
-				tileQueueY.add(curY + 1);
-				via[curX + 1][curY + 1] = 12;
-				cost[curX + 1][curY + 1] = thisCost;
-			}
+			queueSize = addAccessibleStep(via, cost, tileQueueX, tileQueueY, queueSize,
+					curX, curY, curAbsX, curAbsY, heightLevel, 0, -1, 1, thisCost);
+			queueSize = addAccessibleStep(via, cost, tileQueueX, tileQueueY, queueSize,
+					curX, curY, curAbsX, curAbsY, heightLevel, -1, 0, 2, thisCost);
+			queueSize = addAccessibleStep(via, cost, tileQueueX, tileQueueY, queueSize,
+					curX, curY, curAbsX, curAbsY, heightLevel, 0, 1, 4, thisCost);
+			queueSize = addAccessibleStep(via, cost, tileQueueX, tileQueueY, queueSize,
+					curX, curY, curAbsX, curAbsY, heightLevel, 1, 0, 8, thisCost);
+			queueSize = addAccessibleStep(via, cost, tileQueueX, tileQueueY, queueSize,
+					curX, curY, curAbsX, curAbsY, heightLevel, -1, -1, 3, thisCost);
+			queueSize = addAccessibleStep(via, cost, tileQueueX, tileQueueY, queueSize,
+					curX, curY, curAbsX, curAbsY, heightLevel, -1, 1, 6, thisCost);
+			queueSize = addAccessibleStep(via, cost, tileQueueX, tileQueueY, queueSize,
+					curX, curY, curAbsX, curAbsY, heightLevel, 1, -1, 9, thisCost);
+			queueSize = addAccessibleStep(via, cost, tileQueueX, tileQueueY, queueSize,
+					curX, curY, curAbsX, curAbsY, heightLevel, 1, 1, 12, thisCost);
 		}
 		return foundPath;
+	}
+
+	private int addAccessibleStep(int[][] via, int[][] cost, int[] tileQueueX,
+			int[] tileQueueY, int queueSize, int curX, int curY, int curAbsX, int curAbsY,
+			int heightLevel, int dx, int dy, int viaFlag, int thisCost) {
+		int nextX = curX + dx;
+		int nextY = curY + dy;
+		if (nextX < 0 || nextY < 0 || nextX >= LOCAL_MAP_SIZE || nextY >= LOCAL_MAP_SIZE
+				|| via[nextX][nextY] != 0) {
+			return queueSize;
+		}
+		if (!canStep(curAbsX, curAbsY, heightLevel, dx, dy)) {
+			return queueSize;
+		}
+		queueSize = enqueue(tileQueueX, tileQueueY, queueSize, nextX, nextY);
+		via[nextX][nextY] = viaFlag;
+		cost[nextX][nextY] = thisCost;
+		return queueSize;
+	}
+
+	private int enqueue(int[] tileQueueX, int[] tileQueueY, int queueSize, int x, int y) {
+		if (queueSize >= tileQueueX.length) {
+			return queueSize;
+		}
+		tileQueueX[queueSize] = x;
+		tileQueueY[queueSize] = y;
+		return queueSize + 1;
 	}
 
 	public static boolean isProjectilePathClear(int x0, int y0, int z, int x1, int y1) {

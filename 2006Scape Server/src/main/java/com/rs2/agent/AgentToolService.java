@@ -81,6 +81,8 @@ public class AgentToolService {
     private static final int DEFAULT_WALK_CHUNK_DISTANCE = 48;
     private static final int MAX_WALK_CHUNK_DISTANCE = MAP_REGION_SIZE - 2 * MAP_REGION_MARGIN - 1;
     private static final int MAX_AGENT_WALK_PATH_STEPS = 8;
+    private static final long OBSERVATION_REACHABILITY_CACHE_TTL_MS = 2000L;
+    private static final int OBSERVATION_REACHABILITY_CACHE_MAX_SIZE = 4096;
     private static final long MINING_RECLICK_COOLDOWN_MS = 1800L;
     private static final int COINS = AgentCombatPlanner.coinsItemId();
     private static final int HAMMER = 2347;
@@ -88,6 +90,8 @@ public class AgentToolService {
     private static final String SMITHING_BANK_LANDMARK = "varrock west bank";
     private static final String SMITHING_FURNACE_LANDMARK = "al kharid furnace";
     private static final String SMITHING_ANVIL_LANDMARK = "varrock west anvils";
+    private static final ConcurrentMap<String, ReachabilityCacheEntry> OBSERVATION_REACHABILITY_CACHE =
+            new ConcurrentHashMap<String, ReachabilityCacheEntry>();
     private static final String SMITHING_SHOP_LANDMARK = "varrock general store";
     private static final int SMITHING_TRAVEL_COINS = 20;
     private static final int AL_KHARID_GATE_WEST_X = 3267;
@@ -417,6 +421,45 @@ public class AgentToolService {
         result.add("nearbyNpcs", nearbyNpcs(player, DEFAULT_SCAN_DISTANCE, 12));
         result.add("nearbyObjects", nearbyObjects(player, 20, 16));
         result.add("nearbyGroundItems", nearbyGroundItems(player, 20, 16));
+        return result;
+    }
+
+    public static JsonObject observePlayerState(Player player) {
+        JsonObject result = success("Observed current player state.");
+        addPlayerState(result, player);
+        return result;
+    }
+
+    public static JsonObject observeStateXs(Player player) {
+        JsonObject result = success("Observed compact game state.");
+        result.addProperty("compact", true);
+        result.addProperty("tool", "observe_state_XS");
+        result.add("player", compactPlayerState(player));
+        result.add("inventory", compactInventorySummary(inventory(player), 10));
+        result.add("bank", compactBankSummary(bank(player), 10));
+        result.add("equipment", compactItemArray(equipment(player), 10));
+        result.add("combat", compactCombatReadiness(combatReadiness(player)));
+        result.add("nearbyNpcs", compactNpcArray(nearbyNpcs(player, DEFAULT_SCAN_DISTANCE, 8), 8));
+        result.add("nearbyObjects", compactObjectArray(nearbyObjects(player, 20, 8), 8));
+        result.add("nearbyGroundItems", compactGroundItemArray(nearbyGroundItems(player, 20, 8), 8));
+        JsonArray recent = recentXp(player);
+        if (recent.size() > 0) {
+            result.add("xpRecent", recent);
+        }
+        removeEmptyArrays(result, "inventory", "bank", "equipment", "nearbyNpcs", "nearbyObjects",
+                "nearbyGroundItems");
+        return result;
+    }
+
+    public static JsonObject observeStateXxs(Player player) {
+        JsonObject result = success("Observed critical game state.");
+        result.addProperty("xxs", true);
+        result.addProperty("tool", "observe_state_XXS");
+        result.add("player", criticalPlayerState(player));
+        JsonArray recent = recentXp(player);
+        if (recent.size() > 0) {
+            result.add("xp", recent);
+        }
         return result;
     }
 
@@ -3182,6 +3225,7 @@ public class AgentToolService {
             if (player.getItemAssistant().bankItem(itemId, i, amount)) {
                 deposited++;
                 depositedAmount += amount;
+                i = player.playerItems.length;
             }
         }
         JsonObject result = success("Deposited " + deposited + " inventory item" + (deposited == 1 ? "." : "s."));
@@ -4824,7 +4868,7 @@ public class AgentToolService {
             return json;
         }
         boolean inRange = isWithinObjectInteractionRange(player.absX, player.absY, object);
-        int[] walkTarget = inRange ? null : objectInteractionWalkTarget(player, object);
+        int[] walkTarget = inRange ? null : cachedObservationWalkTarget(player, object);
         boolean reachable = inRange || walkTarget != null;
         json.addProperty("reachable", reachable);
         json.addProperty("interactionInRange", inRange);
@@ -4837,6 +4881,45 @@ public class AgentToolService {
             json.add("nearestInteractionTile", tile(unsafeTarget[0], unsafeTarget[1], player.heightLevel));
         }
         return json;
+    }
+
+    private static int[] cachedObservationWalkTarget(Player player, Objects object) {
+        if (player == null || object == null) {
+            return null;
+        }
+        long now = System.currentTimeMillis();
+        String key = reachabilityCacheKey(player, object);
+        ReachabilityCacheEntry cached = OBSERVATION_REACHABILITY_CACHE.get(key);
+        if (cached != null && now - cached.createdAtMs <= OBSERVATION_REACHABILITY_CACHE_TTL_MS) {
+            return cached.copyTarget();
+        }
+        if (OBSERVATION_REACHABILITY_CACHE.size() > OBSERVATION_REACHABILITY_CACHE_MAX_SIZE) {
+            OBSERVATION_REACHABILITY_CACHE.clear();
+        }
+        int[] target = objectInteractionWalkTarget(player, object);
+        OBSERVATION_REACHABILITY_CACHE.put(key, new ReachabilityCacheEntry(now, target));
+        return target;
+    }
+
+    private static String reachabilityCacheKey(Player player, Objects object) {
+        return player.absX + "," + player.absY + "," + player.heightLevel + "|"
+                + player.getMapRegionX() + "," + player.getMapRegionY() + "|"
+                + object.objectId + "," + object.objectX + "," + object.objectY + ","
+                + object.objectHeight + "," + object.objectType + "," + object.objectFace;
+    }
+
+    private static final class ReachabilityCacheEntry {
+        private final long createdAtMs;
+        private final int[] target;
+
+        private ReachabilityCacheEntry(long createdAtMs, int[] target) {
+            this.createdAtMs = createdAtMs;
+            this.target = target == null ? null : new int[] {target[0], target[1]};
+        }
+
+        private int[] copyTarget() {
+            return target == null ? null : new int[] {target[0], target[1]};
+        }
     }
 
     private static JsonObject groundItemJson(GroundItem item, int distance) {
@@ -4881,7 +4964,12 @@ public class AgentToolService {
         }
         state.addProperty("playerId", player.playerId);
         state.addProperty("name", player.playerName);
+        state.addProperty("x", player.absX);
+        state.addProperty("y", player.absY);
+        state.addProperty("height", player.heightLevel);
         state.addProperty("tile", player.absX + "," + player.absY + "," + player.heightLevel);
+        state.addProperty("hitpoints", player.playerLevel[Constants.HITPOINTS]);
+        state.addProperty("maxHitpoints", baseLevel(player, Constants.HITPOINTS));
         state.addProperty("hp", player.playerLevel[Constants.HITPOINTS]);
         state.addProperty("maxHp", baseLevel(player, Constants.HITPOINTS));
         state.addProperty("runEnergy", (int) Math.ceil(player.playerEnergy));
@@ -4889,6 +4977,11 @@ public class AgentToolService {
         state.addProperty("isInCombat", isInCombat(player));
         state.addProperty("isPoisoned", isPoisoned(player));
         state.addProperty("isDead", player.isDead);
+        state.addProperty("isMoving", player.isMoving);
+        state.addProperty("npcIndex", player.npcIndex);
+        state.addProperty("killingNpcIndex", player.killingNpcIndex);
+        state.addProperty("underAttackBy", player.underAttackBy);
+        state.addProperty("underAttackBy2", player.underAttackBy2);
         state.addProperty("freeInventorySlots", player.getItemAssistant().freeSlots());
         state.addProperty("food", countInventoryFood(player));
         return state;
@@ -4941,7 +5034,12 @@ public class AgentToolService {
         JsonObject playerJson = new JsonObject();
         playerJson.addProperty("playerId", player.playerId);
         playerJson.addProperty("name", player.playerName);
+        playerJson.addProperty("x", player.absX);
+        playerJson.addProperty("y", player.absY);
+        playerJson.addProperty("height", player.heightLevel);
         playerJson.addProperty("tile", player.absX + "," + player.absY + "," + player.heightLevel);
+        playerJson.addProperty("hitpoints", player.playerLevel[Constants.HITPOINTS]);
+        playerJson.addProperty("maxHitpoints", player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.HITPOINTS]));
         playerJson.addProperty("hp", player.playerLevel[Constants.HITPOINTS]);
         playerJson.addProperty("maxHp", player.getPlayerAssistant().getLevelForXP(player.playerXP[Constants.HITPOINTS]));
         playerJson.addProperty("combatLevel", player.combatLevel);
@@ -4949,6 +5047,9 @@ public class AgentToolService {
         playerJson.addProperty("runEnabled", player.isRunning2);
         playerJson.addProperty("freeInventorySlots", player.getItemAssistant().freeSlots());
         playerJson.addProperty("inBankArea", Boundary.isIn(player, Boundary.BANK_AREA));
+        playerJson.addProperty("isDead", player.isDead);
+        playerJson.addProperty("isMoving", player.isMoving);
+        playerJson.addProperty("isInCombat", isInCombat(player));
         playerJson.addProperty("isPoisoned", isPoisoned(player));
         JsonArray flags = playerFlags(player);
         if (flags.size() > 0) {
@@ -4962,14 +5063,31 @@ public class AgentToolService {
         JsonObject playerJson = new JsonObject();
         copyIfPresent(player, playerJson, "playerId");
         copyIfPresent(player, playerJson, "name");
-        playerJson.addProperty("tile", tileText(player));
+        copyIfPresent(player, playerJson, "x");
+        copyIfPresent(player, playerJson, "y");
+        copyIfPresent(player, playerJson, "height");
+        String tile = tileText(player);
+        if (tile.length() > 0) {
+            playerJson.addProperty("tile", tile);
+        } else {
+            copyIfPresent(player, playerJson, "tile");
+        }
         copyAs(player, playerJson, "hitpoints", "hp");
+        if (!playerJson.has("hp")) {
+            copyIfPresent(player, playerJson, "hp");
+        }
         copyAs(player, playerJson, "maxHitpoints", "maxHp");
+        if (!playerJson.has("maxHp")) {
+            copyIfPresent(player, playerJson, "maxHp");
+        }
         copyIfPresent(player, playerJson, "combatLevel");
         copyIfPresent(player, playerJson, "runEnergy");
         copyIfPresent(player, playerJson, "runEnabled");
         copyIfPresent(player, playerJson, "freeInventorySlots");
         copyIfPresent(player, playerJson, "inBankArea");
+        copyIfPresent(player, playerJson, "isDead");
+        copyIfPresent(player, playerJson, "isMoving");
+        copyIfPresent(player, playerJson, "isInCombat");
         copyIfPresent(player, playerJson, "isPoisoned");
         JsonArray flags = playerFlags(player);
         if (flags.size() > 0) {

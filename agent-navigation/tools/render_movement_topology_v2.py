@@ -27,6 +27,7 @@ from cache_world_map import (
     load_cache_world_map,
 )
 from map_labels import (
+    DEATH_LABEL_ANCHORS,
     MAP_LABELS_PATH,
     PLACES_PATH,
     in_bounds,
@@ -61,8 +62,10 @@ FOG_REVEAL_CACHE_VERSION = 1
 HEAT_MASK_CACHE_VERSION = 3
 CANVAS_LAYER_CACHE_VERSION = 4
 POI_CACHE_VERSION = 4
-TOPOLOGY_CACHE_VERSION = 1
+TOPOLOGY_CACHE_VERSION = 2
 ADVENTURE_STATS_CACHE_VERSION = 1
+DEATH_INCIDENT_GAP_SECONDS = 45.0
+DEATH_INCIDENT_DISTANCE_TILES = 12
 PLAYER_TRACE_PART = "player-movement-traces"
 AGENT_TRACE_PART = "agent-movement-traces"
 _RADIAL_HEAT_KERNELS = {}
@@ -1791,6 +1794,10 @@ def filter_implausible_topology(topology, min_coord):
     filtered["edges"] = edges
     filtered["failureTiles"] = [tile for tile in topology["failureTiles"] if plausible_world_tile(tile, min_coord)]
     filtered["deathTiles"] = [tile for tile in topology["deathTiles"] if plausible_world_tile(tile, min_coord)]
+    filtered["deathIncidents"] = [
+        event for event in topology.get("deathIncidents", [])
+        if plausible_world_tile(event.get("tile"), min_coord)
+    ]
     filtered["filteredImplausibleNodes"] = len(topology["nodes"]) - len(nodes)
     filtered["filteredImplausibleEdges"] = len(topology["edges"]) - len(edges)
     return filtered
@@ -1921,12 +1928,49 @@ def empty_cached_topology():
         "edges": {},
         "failureTiles": [],
         "deathTiles": [],
+        "deathIncidents": [],
+        "_lastDeathIncident": None,
         "traceIds": set(),
         "sourcePaths": set(),
         "totalRecords": 0,
         "includedRecords": 0,
         "skippedRecords": 0,
     }
+
+
+def timestamp_gap_seconds(previous_timestamp, current_timestamp):
+    previous = parse_iso_timestamp(previous_timestamp)
+    current = parse_iso_timestamp(current_timestamp)
+    if previous is None or current is None:
+        return None
+    return abs((current - previous).total_seconds())
+
+
+def death_incident_from_record(tile, record):
+    return {
+        "tile": normalize_trace_tile(tile),
+        "timestamp": str(record.get("timestamp") or ""),
+        "sourcePath": str(record.get("_sourcePath") or ""),
+        "sourceLine": int(record.get("_sourceLine") or 0),
+    }
+
+
+def is_new_death_incident(topology, tile, record):
+    last = topology.get("_lastDeathIncident")
+    if not last:
+        return True
+    distance = tile_distance(last.get("tile"), tile)
+    if distance > DEATH_INCIDENT_DISTANCE_TILES:
+        return True
+    gap = timestamp_gap_seconds(last.get("timestamp"), record.get("timestamp"))
+    return gap is not None and gap > DEATH_INCIDENT_GAP_SECONDS
+
+
+def record_death_incident(topology, tile, record):
+    incident = death_incident_from_record(tile, record)
+    if is_new_death_incident(topology, tile, record):
+        topology.setdefault("deathIncidents", []).append(incident)
+    topology["_lastDeathIncident"] = incident
 
 
 def process_topology_record(topology, record, surface_only):
@@ -1958,6 +2002,7 @@ def process_topology_record(topology, record, surface_only):
     if died:
         node["deaths"] += 1
         topology["deathTiles"].append(current)
+        record_death_incident(topology, current, record)
     timestamp = str(record.get("timestamp") or "")
     if timestamp:
         if not node["firstSeen"]:
@@ -2011,6 +2056,8 @@ def serialize_topology(topology):
         ],
         "failureTiles": topology["failureTiles"],
         "deathTiles": topology["deathTiles"],
+        "deathIncidents": topology.get("deathIncidents", []),
+        "lastDeathIncident": topology.get("_lastDeathIncident"),
         "traceIds": sorted(topology["traceIds"]),
         "sourcePaths": sorted(topology["sourcePaths"]),
         "totalRecords": topology["totalRecords"],
@@ -2025,6 +2072,8 @@ def deserialize_topology(data):
         "edges": {},
         "failureTiles": data.get("failureTiles", []),
         "deathTiles": data.get("deathTiles", []),
+        "deathIncidents": data.get("deathIncidents", []),
+        "_lastDeathIncident": data.get("lastDeathIncident"),
         "traceIds": set(data.get("traceIds", [])),
         "sourcePaths": set(data.get("sourcePaths", [])),
         "totalRecords": int(data.get("totalRecords", 0)),
@@ -2306,11 +2355,148 @@ def load_topology_with_cache(extra_paths, surface_only, args):
 
 
 def dedup_death_sites(tiles):
-    sites = []
-    for tile in tiles:
-        if not any(tile_distance(site, tile) <= 8 for site in sites):
-            sites.append(tile)
-    return unique_tiles(sites)
+    return [cluster["tile"] for cluster in death_site_clusters(tiles)]
+
+
+def normalize_trace_tile(tile):
+    return {
+        "x": int(tile["x"]),
+        "y": int(tile["y"]),
+        "height": int(tile.get("height", 0)),
+    }
+
+
+def death_event_tile(event):
+    if isinstance(event, dict) and isinstance(event.get("tile"), dict):
+        return event.get("tile")
+    return event
+
+
+def nearest_death_anchor(tile):
+    best = None
+    best_distance = None
+    for anchor in DEATH_LABEL_ANCHORS:
+        anchor_tile = anchor.get("tile")
+        distance = tile_distance(tile, anchor_tile)
+        if distance > int(anchor.get("radius", 48)):
+            continue
+        if best is None or distance < best_distance:
+            best = anchor
+            best_distance = distance
+    return best, best_distance
+
+
+def cluster_label_from_anchor(anchor):
+    if not anchor:
+        return "Unknown Site"
+    return str(anchor.get("text") or "Unknown Site")
+
+
+def death_cluster_key(tile, clusters, cluster_radius=10):
+    anchor, _distance = nearest_death_anchor(tile)
+    if anchor:
+        return "anchor:%s" % cluster_label_from_anchor(anchor), anchor
+    for cluster in clusters:
+        if cluster.get("anchor") is not None:
+            continue
+        if tile_distance(cluster["tile"], tile) <= cluster_radius:
+            return cluster["key"], None
+    return "tile:%d,%d,%d" % (tile["x"], tile["y"], tile.get("height", 0)), None
+
+
+def update_death_cluster_tile(cluster):
+    count = max(1, int(cluster["count"]))
+    cluster["tile"] = {
+        "x": int(round(float(cluster["sumX"]) / count)),
+        "y": int(round(float(cluster["sumY"]) / count)),
+        "height": int(cluster["height"]),
+    }
+
+
+def death_site_clusters(tiles):
+    clusters = []
+    by_key = {}
+    for event in tiles:
+        raw_tile = death_event_tile(event)
+        if raw_tile is None:
+            continue
+        tile = normalize_trace_tile(raw_tile)
+        key, anchor = death_cluster_key(tile, clusters)
+        cluster = by_key.get(key)
+        if cluster is None:
+            cluster = {
+                "key": key,
+                "name": cluster_label_from_anchor(anchor),
+                "anchor": anchor,
+                "count": 0,
+                "sumX": 0,
+                "sumY": 0,
+                "height": int(tile.get("height", 0)),
+                "tiles": [],
+                "tile": tile,
+            }
+            by_key[key] = cluster
+            clusters.append(cluster)
+        cluster["count"] += 1
+        cluster["sumX"] += int(tile["x"])
+        cluster["sumY"] += int(tile["y"])
+        cluster["tiles"].append(tile)
+        update_death_cluster_tile(cluster)
+    return clusters
+
+
+def death_label_text(cluster):
+    name = str(cluster.get("name") or "Unknown Site")
+    count = int(cluster.get("count", 1))
+    if count <= 1:
+        return "%s death" % name
+    return "%s %d deaths" % (name, count)
+
+
+def death_labels_for_clusters(clusters, bounds, plane=0):
+    labels = []
+    for cluster in clusters:
+        tile = cluster.get("tile")
+        if not in_bounds(tile, bounds, plane=plane):
+            continue
+        anchor = cluster.get("anchor") or {}
+        labels.append({
+            "kind": "death",
+            "text": death_label_text(cluster),
+            "tile": tile,
+            "dx": int(anchor.get("dx", -54)),
+            "dy": int(anchor.get("dy", -18)),
+            "color": "white",
+            "outline": True,
+            "deathCount": int(cluster.get("count", 1)),
+            "site": str(cluster.get("name") or "Unknown Site"),
+        })
+    return labels
+
+
+def death_site_summary(clusters, bounds=None, plane=0):
+    labels = death_labels_for_clusters(clusters, bounds, plane=plane) if bounds else []
+    labels_by_site = {label["site"]: label for label in labels}
+    result = []
+    for cluster in clusters:
+        site = str(cluster.get("name") or "Unknown Site")
+        row = {
+            "site": site,
+            "text": death_label_text(cluster),
+            "count": int(cluster.get("count", 1)),
+            "tile": cluster.get("tile"),
+        }
+        if site in labels_by_site:
+            row["label"] = labels_by_site[site]
+        result.append(row)
+    return result
+
+
+def topology_death_incidents(topology):
+    incidents = topology.get("deathIncidents") or []
+    if incidents:
+        return incidents
+    return [{"tile": tile, "timestamp": "", "sourcePath": "", "sourceLine": 0} for tile in dedup_death_sites(topology.get("deathTiles", []))]
 
 
 def nearest_map_function(place_tile, objects, max_distance=8):
@@ -3092,7 +3278,9 @@ def write_summary(path, topology, render_info, png_path, args):
     bounds = render_info["bounds"]
     movement_span = render_info.get("movementSpanTiles", {"x": 0, "y": 0})
     movement_distance = movement_distance_tiles(edges)
-    death_sites = dedup_death_sites(topology["deathTiles"])
+    death_incidents = topology_death_incidents(topology)
+    death_clusters = death_site_clusters(death_incidents)
+    death_sites = [cluster["tile"] for cluster in death_clusters]
     summary = {
         "schemaVersion": 2,
         "source": "unified-movement-traces",
@@ -3108,9 +3296,11 @@ def write_summary(path, topology, render_info, png_path, args):
         "edges": len(edges),
         "failures": len(topology["failureTiles"]),
         "uniqueFailureSites": len(unique_tiles(topology["failureTiles"])),
-        "deathEvents": len(topology["deathTiles"]),
-        "deaths": len(death_sites),
+        "deathSamples": len(topology["deathTiles"]),
+        "deathEvents": len(death_incidents),
+        "deaths": len(death_incidents),
         "uniqueDeathSites": len(death_sites),
+        "deathLabels": death_site_summary(death_clusters, bounds, plane=args.plane),
         "filteredImplausibleNodes": topology.get("filteredImplausibleNodes", 0),
         "filteredImplausibleEdges": topology.get("filteredImplausibleEdges", 0),
         "filteredNonLocalEdges": topology.get("filteredNonLocalEdges", 0),
@@ -3452,10 +3642,13 @@ def render(topology, args):
         x, y = project(tile)
         blend_circle(canvas, x, y, marker_r, PALETTE["failure"], 0.96, outline=True, outline_width=max(2, ss + 1))
         draw_cross(canvas, x, y, marker_r - ss, PALETTE["failure"], 0.82, max(1, ss))
-    death_sites = dedup_death_sites(topology["deathTiles"])
+    death_incidents = topology_death_incidents(topology)
+    death_clusters = death_site_clusters(death_incidents)
+    death_sites = [cluster["tile"] for cluster in death_clusters]
     death_r = marker_r + 5 * ss
 
     pois, poi_labels, poi_cache_status, world_map = load_or_build_pois(world_map, bounds, args, cache_source)
+    death_labels = death_labels_for_clusters(death_clusters, bounds, plane=args.plane)
     pois, hidden_poi_count, poi_seen_radius = filter_fogged_pois(pois, nodes, args)
     map_functions = {}
     if pois:
@@ -3479,7 +3672,7 @@ def render(topology, args):
             blend_circle(canvas, x, y, max(2 * ss, radius // 2), PALETTE["poi_outline"], 0.92)
 
     rendered_poi_labels = []
-    for label in poi_labels:
+    for label in poi_labels + death_labels:
         x, y = project(label["tile"])
         rendered_poi_labels.append({
             "text": label["text"],
@@ -3487,6 +3680,7 @@ def render(topology, args):
             "y": int(round(y / ss + int(label.get("dy", -18)))),
             "color": label.get("color", "yellow"),
             "outline": bool(label.get("outline", False)),
+            "kind": label.get("kind", "label"),
         })
 
     for tile in death_sites:
@@ -3518,8 +3712,11 @@ def render(topology, args):
         "nodes": len(nodes),
         "edges": len(edges),
         "failures": len(topology["failureTiles"]),
-        "deathEvents": len(topology["deathTiles"]),
-        "deaths": len(death_sites),
+        "deathSamples": len(topology["deathTiles"]),
+        "deathEvents": len(death_incidents),
+        "deaths": len(death_incidents),
+        "deathLabels": death_site_summary(death_clusters, bounds, plane=args.plane),
+        "uniqueDeathSites": len(death_sites),
         "uniqueFailureSites": len(unique_tiles(topology["failureTiles"])),
         "traceSessions": len(topology["traceIds"]),
         "combatEdges": sum(1 for edge in edges.values() if edge["combatTicks"] > 0 or edge["hitpointsLost"] > 0),
@@ -3577,6 +3774,8 @@ def render(topology, args):
         "coverageFogPoiExtraTiles": args.coverage_fog_poi_extra_tiles if getattr(args, "hide_fogged_pois", False) else 0.0,
         "coverageFogPoiSeenRadiusTiles": poi_seen_radius,
         "poiLabelCount": len(rendered_poi_labels),
+        "deathLabelCount": len(death_labels),
+        "deathLabels": death_site_summary(death_clusters, bounds, plane=args.plane),
         "pois": pois,
         "profileStats": {
             "profile": profile_stats.get("profile"),

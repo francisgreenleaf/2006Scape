@@ -1,17 +1,17 @@
 {
   "counts": {
-    "edgeExamples": 30089,
-    "objectTransitions": 1281,
-    "routeAttempts": 3164,
-    "routeHintEdges": 777
+    "edgeExamples": 41304,
+    "objectTransitions": 4271,
+    "routeAttempts": 7956,
+    "routeHintEdges": 810
   },
-  "generatedAt": "2026-05-27T07:27:07Z",
+  "generatedAt": "2026-05-31T04:54:39Z",
   "graph": {
     "blockers": 0,
-    "edges": 30089,
-    "nodes": 11595,
-    "traceRecords": 68083,
-    "traceSessions": 1247
+    "edges": 41304,
+    "nodes": 15163,
+    "traceRecords": 143921,
+    "traceSessions": 4208
   },
   "inputs": {
     "includeAgentBatchTraces": false,
@@ -19,22 +19,23 @@
     "includeUnscopedTraces": false,
     "traceFile": []
   },
-  "outputDir": "artifacts/datasets/20260527T072707Z",
+  "outputDir": "artifacts/datasets/20260531T045439Z",
   "pipelineVersion": "0.1.0",
   "profile": "",
   "routeAttemptRunWarnings": {
-    "": 3164
+    "": 7956
   },
   "routeAttemptStatuses": {
-    "arrived": 2820,
+    "arrived": 7134,
     "bad_route": 4,
-    "blocked": 4,
+    "blocked": 5,
+    "max_ticks_reached": 10,
     "ok": 27,
-    "oscillation": 18,
-    "partial": 17,
-    "success": 245,
+    "oscillation": 21,
+    "partial": 46,
+    "success": 680,
     "unknown": 29
   },
-  "runId": "20260527T072707Z",
+  "runId": "20260531T045439Z",
   "schemaVersion": 1
 }

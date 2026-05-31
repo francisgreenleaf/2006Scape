@@ -129,21 +129,21 @@ def route_definition_dir(profile: str | None = "") -> Path:
 def canonical_map_paths(profile: str | None, variant: str) -> tuple[Path, Path]:
     topology = NAV_ROOT / "topology"
     summaries = LOCAL_ROOT / "map-summaries"
-    selected = resolve_profile(profile, trace=True, default="")
-    suffix = profile_suffix(selected)
+    selected = resolve_profile(profile, trace=True, default=DEFAULT_PROFILE)
+    prefix = safe_profile(selected)
     if variant == "profile":
         return (
-            topology / ("movement-topology{}-v4.png".format(suffix)),
-            summaries / ("movement-topology{}-v4.json".format(suffix)),
+            topology / ("{}-map.png".format(prefix)),
+            summaries / ("{}-map.json".format(prefix)),
         )
     if variant == "heat":
         return (
-            topology / ("movement-topology{}-v5-heatmap.png".format(suffix)),
-            summaries / ("movement-topology{}-v5-heatmap.json".format(suffix)),
+            topology / ("{}-heatmap.png".format(prefix)),
+            summaries / ("{}-heatmap.json".format(prefix)),
         )
     if variant == "fog":
         return (
-            topology / ("movement-topology{}-v6.png".format(suffix)),
-            summaries / ("movement-topology{}-v6.json".format(suffix)),
+            topology / ("{}-fog-map.png".format(prefix)),
+            summaries / ("{}-fog-map.json".format(prefix)),
         )
     raise ValueError("unknown map variant: {}".format(variant))

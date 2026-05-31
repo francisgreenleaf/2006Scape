@@ -233,3 +233,10 @@ These notes are repo-specific operational memory from actual agent experience. A
 - **Cause:** In this Codex shell environment, long gameplay runners did not survive reliably when detached through plain shell job control.
 - **Use instead:** Launch detached gameplay runners through a small Python wrapper that uses `subprocess.Popen(..., start_new_session=True)` and writes pid/log files, following the same pattern as `runtime_doctor.py`.
 - **Validation:** `agent-navigation/tools/launch_detached_runner.py` successfully kept the relaunched metals runner alive, and MrFlame resumed moving out of Al Kharid instead of staying idle at the bank.
+
+### XS wrapper names must hit server aliases, not client-side full observes
+
+- **Observed:** `observe_XS.sh` and `rs-tool_XS.sh observe_state ...` looked compact, but still called full `observe_state` and compacted the large result locally.
+- **Cause:** The XS wrappers passed base tool names through `rs-tool.sh` instead of mapping known compact-capable names to server-side `_XS` aliases.
+- **Use instead:** Keep `rs-tool_XS.py` mapping known aliases such as `observe_state`, `wait_until_idle`, and `walk_to_tile_until_arrived` to their `_XS` bridge tools; use full tool names only when compact output lacks a specific field.
+- **Validation:** `python3 -m py_compile agent-navigation/tools/rs-tool_XS.py agent-navigation/tools/observe_XS.py agent-navigation/tools/xs_common.py` passes, and `xs_tool_name('observe_state')` returns `observe_state_XS`.

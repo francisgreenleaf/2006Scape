@@ -25,5 +25,6 @@
   "max_players": 200,
   "website_integration": false,
   "cycle_logging": true,
-  "cycle_logging_tick": 10
+  "cycle_logging_tick": 10,
+  "performance_logging": false
 }

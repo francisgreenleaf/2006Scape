@@ -7,10 +7,11 @@ public class AgentSession {
 
     private final String token;
     private final String sessionId;
-    private final int playerId;
+    private volatile int playerId;
     private final String playerName;
     private final long createdAt;
     private volatile long lastUsedAt;
+    private volatile long playerMissingSinceAt = -1L;
 
     AgentSession(String token, String sessionId, int playerId, String playerName, long createdAt) {
         this.token = token;
@@ -49,14 +50,63 @@ public class AgentSession {
         lastUsedAt = now;
     }
 
+    void bindTo(Player player) {
+        if (player != null && player.playerName != null && player.playerName.equalsIgnoreCase(playerName)) {
+            playerId = player.playerId;
+            playerMissingSinceAt = -1L;
+        }
+    }
+
+    long notePlayerMissing(long now) {
+        if (getPlayer() != null) {
+            return -1L;
+        }
+        if (playerMissingSinceAt < 0L) {
+            playerMissingSinceAt = now;
+        }
+        return playerMissingSinceAt;
+    }
+
     public Player getPlayer() {
-        if (playerId < 0 || playerId >= PlayerHandler.players.length) {
+        Player player = playerAt(playerId);
+        if (isMatchingLivePlayer(player)) {
+            playerMissingSinceAt = -1L;
+            return player;
+        }
+        Player rebound = findUniqueLivePlayerByName();
+        if (rebound != null) {
+            bindTo(rebound);
+            return rebound;
+        }
+        return null;
+    }
+
+    private Player playerAt(int id) {
+        if (id < 0 || id >= PlayerHandler.players.length) {
             return null;
         }
-        Player player = PlayerHandler.players[playerId];
-        if (player == null || player.disconnected || !player.playerName.equalsIgnoreCase(playerName)) {
-            return null;
+        return PlayerHandler.players[id];
+    }
+
+    private boolean isMatchingLivePlayer(Player player) {
+        return player != null
+                && !player.disconnected
+                && player.playerName != null
+                && player.playerName.equalsIgnoreCase(playerName);
+    }
+
+    private Player findUniqueLivePlayerByName() {
+        Player match = null;
+        for (int i = 0; i < PlayerHandler.players.length; i++) {
+            Player candidate = PlayerHandler.players[i];
+            if (!isMatchingLivePlayer(candidate)) {
+                continue;
+            }
+            if (match != null) {
+                return null;
+            }
+            match = candidate;
         }
-        return player;
+        return match;
     }
 }

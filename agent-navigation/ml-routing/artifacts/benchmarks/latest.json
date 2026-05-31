@@ -1,9 +1,9 @@
 {
   "actionableCount": 30,
-  "caseCount": 30,
-  "generatedAt": "2026-05-25T23:42:11Z",
+  "caseCount": 31,
+  "generatedAt": "2026-05-31T03:38:04Z",
   "okCount": 30,
-  "outputDir": "artifacts/benchmarks/20260525T234211Z",
+  "outputDir": "artifacts/benchmarks/20260531T033804Z",
   "results": [
     {
       "actionable": true,
@@ -15,14 +15,17 @@
       "estimatedTicks": 272.0,
       "from": "lumbridge_castle_courtyard",
       "mlScore": {
-        "confidence": 0.677918,
-        "predictedTicks": 262.48,
-        "riskScore": 0.05,
-        "score": 535.471,
+        "combatExposure": 0.000649,
+        "confidence": 0.682714,
+        "hpLossPerAttempt": 0.00052,
+        "maxCombatExposure": 0.048461,
+        "predictedTicks": 253.23,
+        "riskScore": 0.047726,
+        "score": 523.681,
         "sourceMix": {
-          "edge": 23,
+          "edge": 24,
           "global": 2,
-          "region": 13
+          "region": 12
         }
       },
       "mode": "cache_direct",
@@ -34,22 +37,17 @@
       },
       "quality": "watch",
       "routeDistance": 272,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "varrock_square",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
-        "--allow-frontier",
-        "--direct-if-preview",
-        "--probe-toward-target"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 39,
       "routeSteps": [
@@ -277,7 +275,7 @@
           }
         }
       ],
-      "score": 535.471,
+      "score": 523.681,
       "selectedOverLearned": {
         "previousQuality": "suspicious",
         "previousRouteDistance": 311,
@@ -299,12 +297,16 @@
       "estimatedTicks": 322.0,
       "from": "lumbridge_castle_courtyard",
       "mlScore": {
-        "confidence": 0.931871,
-        "predictedTicks": 258.47,
-        "riskScore": 0.025,
-        "score": 542.318,
+        "combatExposure": 0.0,
+        "confidence": 0.679018,
+        "hpLossPerAttempt": 0.0,
+        "maxCombatExposure": 0.0,
+        "predictedTicks": 336.1,
+        "riskScore": 0.047726,
+        "score": 676.937,
         "sourceMix": {
-          "region": 43
+          "edge": 31,
+          "region": 12
         }
       },
       "mode": "cache_direct",
@@ -316,22 +318,17 @@
       },
       "quality": "watch",
       "routeDistance": 322,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "falador_shield_shop",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
-        "--allow-frontier",
-        "--direct-if-preview",
-        "--probe-toward-target"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 44,
       "routeSteps": [
@@ -564,7 +561,7 @@
         "walkTileDistance": 322
       },
       "runSegments": null,
-      "score": 542.318,
+      "score": 676.937,
       "selectedOverLearned": {
         "previousQuality": "suspicious",
         "previousRouteDistance": 384,
@@ -586,13 +583,15 @@
       "estimatedTicks": 264.0,
       "from": "falador_shield_shop",
       "mlScore": {
-        "confidence": 0.921787,
-        "predictedTicks": 213.69,
-        "riskScore": 0.314394,
-        "score": 761.534,
+        "combatExposure": 0.038813,
+        "confidence": 0.917093,
+        "hpLossPerAttempt": 0.0,
+        "maxCombatExposure": 0.277778,
+        "predictedTicks": 196.75,
+        "riskScore": 0.312812,
+        "score": 760.05,
         "sourceMix": {
-          "global": 1,
-          "region": 10
+          "region": 11
         }
       },
       "mode": null,
@@ -604,19 +603,17 @@
       },
       "quality": "watch",
       "routeDistance": 206,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "port_sarim_dock",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 28,
       "routeSteps": [
@@ -789,7 +786,7 @@
           }
         }
       ],
-      "score": 761.534,
+      "score": 760.05,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 1,
@@ -834,10 +831,13 @@
       "estimatedTicks": 135.0,
       "from": "port_sarim_dock",
       "mlScore": {
+        "combatExposure": 0.0,
         "confidence": 0.935416,
+        "hpLossPerAttempt": 0.0,
+        "maxCombatExposure": 0.0,
         "predictedTicks": 70.78,
-        "riskScore": 0.011905,
-        "score": 2410.592,
+        "riskScore": 0.011771,
+        "score": 2410.464,
         "sourceMix": {
           "region": 5
         }
@@ -851,22 +851,17 @@
       },
       "quality": "bad",
       "routeDistance": 143,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "draynor_bank",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
-        "--allow-frontier",
-        "--direct-if-preview",
-        "--probe-toward-target"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 22,
       "routeSteps": [
@@ -1030,7 +1025,7 @@
           }
         }
       ],
-      "score": 2410.592,
+      "score": 2410.464,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 6,
@@ -1046,10 +1041,13 @@
       "estimatedTicks": 81.0,
       "from": "rimmington_center",
       "mlScore": {
+        "combatExposure": 0.0,
         "confidence": 0.879738,
+        "hpLossPerAttempt": 0.0,
+        "maxCombatExposure": 0.0,
         "predictedTicks": 60.72,
-        "riskScore": 0.025,
-        "score": 203.467,
+        "riskScore": 0.024418,
+        "score": 202.914,
         "sourceMix": {
           "region": 7
         }
@@ -1063,19 +1061,17 @@
       },
       "quality": "watch",
       "routeDistance": 111,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "port_sarim_south_coast_frontier",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 18,
       "routeSteps": [
@@ -1178,7 +1174,7 @@
         "walkTileDistance": 111
       },
       "runSegments": null,
-      "score": 203.467,
+      "score": 202.914,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 1,
@@ -1194,10 +1190,13 @@
       "estimatedTicks": 168.0,
       "from": "varrock_east_bank",
       "mlScore": {
-        "confidence": 0.976862,
-        "predictedTicks": 115.29,
-        "riskScore": 0.006579,
-        "score": 344.079,
+        "combatExposure": 0.0,
+        "confidence": 0.982584,
+        "hpLossPerAttempt": 0.0,
+        "maxCombatExposure": 0.0,
+        "predictedTicks": 99.7,
+        "riskScore": 0.004609,
+        "score": 325.817,
         "sourceMix": {
           "region": 6
         }
@@ -1211,19 +1210,17 @@
       },
       "quality": "watch",
       "routeDistance": 179,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "barbarian_village",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 23,
       "routeSteps": [
@@ -1371,7 +1368,7 @@
           }
         }
       ],
-      "score": 344.079,
+      "score": 325.817,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 1,
@@ -1416,10 +1413,13 @@
       "estimatedTicks": 32.0,
       "from": "varrock_west_bank",
       "mlScore": {
-        "confidence": 0.983764,
-        "predictedTicks": 17.47,
-        "riskScore": 0.002778,
-        "score": 337.522,
+        "combatExposure": 0.0,
+        "confidence": 0.987308,
+        "hpLossPerAttempt": 0.0,
+        "maxCombatExposure": 0.0,
+        "predictedTicks": 15.72,
+        "riskScore": 0.001905,
+        "score": 334.447,
         "sourceMix": {
           "region": 2
         }
@@ -1433,22 +1433,17 @@
       },
       "quality": "watch",
       "routeDistance": 43,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "varrock_general_store",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
-        "--allow-frontier",
-        "--direct-if-preview",
-        "--probe-toward-target"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 8,
       "routeSteps": [
@@ -1501,7 +1496,7 @@
         "walkTileDistance": 43
       },
       "runSegments": null,
-      "score": 337.522,
+      "score": 334.447,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 2,
@@ -1517,10 +1512,13 @@
       "estimatedTicks": 17.0,
       "from": "lumbridge_general_store",
       "mlScore": {
+        "combatExposure": 0.0,
         "confidence": 0.99,
-        "predictedTicks": 5.07,
-        "riskScore": 0.000903,
-        "score": 1971.708,
+        "hpLossPerAttempt": 0.0,
+        "maxCombatExposure": 0.0,
+        "predictedTicks": 5.47,
+        "riskScore": 0.000838,
+        "score": 1972.046,
         "sourceMix": {
           "region": 3
         }
@@ -1534,22 +1532,17 @@
       },
       "quality": "bad",
       "routeDistance": 17,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "lumbridge_tree_stand",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
-        "--allow-frontier",
-        "--direct-if-preview",
-        "--probe-toward-target"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 4,
       "routeSteps": [
@@ -1582,7 +1575,7 @@
         "walkTileDistance": 17
       },
       "runSegments": null,
-      "score": 1971.708,
+      "score": 1972.046,
       "selectedOverLearned": {
         "previousQuality": "bad",
         "previousRouteDistance": 22,
@@ -1604,13 +1597,15 @@
       "estimatedTicks": 290.0,
       "from": "varrock_square",
       "mlScore": {
-        "confidence": 0.929643,
-        "predictedTicks": 151.55,
-        "riskScore": 0.025,
-        "score": 333.97,
+        "combatExposure": 0.0,
+        "confidence": 0.969271,
+        "hpLossPerAttempt": 0.0,
+        "maxCombatExposure": 0.0,
+        "predictedTicks": 126.53,
+        "riskScore": 0.017558,
+        "score": 296.332,
         "sourceMix": {
-          "global": 1,
-          "region": 10
+          "region": 11
         }
       },
       "mode": null,
@@ -1622,19 +1617,17 @@
       },
       "quality": "ok",
       "routeDistance": 267,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "falador_shield_shop",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 34,
       "routeSteps": [
@@ -1837,7 +1830,7 @@
           }
         }
       ],
-      "score": 333.97,
+      "score": 296.332,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 0,
@@ -1882,10 +1875,13 @@
       "estimatedTicks": 182.0,
       "from": "lumbridge_castle_courtyard",
       "mlScore": {
+        "combatExposure": 0.008167,
         "confidence": 0.973508,
-        "predictedTicks": 85.03,
-        "riskScore": 0.011905,
-        "score": 385.929,
+        "hpLossPerAttempt": 0.00052,
+        "maxCombatExposure": 0.048461,
+        "predictedTicks": 73.89,
+        "riskScore": 0.029227,
+        "score": 394.693,
         "sourceMix": {
           "global": 3,
           "region": 4
@@ -1900,19 +1896,17 @@
       },
       "quality": "watch",
       "routeDistance": 163,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "draynor_bank",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 23,
       "routeSteps": [
@@ -2062,7 +2056,7 @@
           }
         }
       ],
-      "score": 385.929,
+      "score": 394.693,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 2,
@@ -2107,14 +2101,17 @@
       "estimatedTicks": 418.0,
       "from": "port_sarim_dock",
       "mlScore": {
-        "confidence": 0.949774,
-        "predictedTicks": 208.57,
-        "riskScore": 0.041667,
-        "score": 1080.265,
+        "combatExposure": 0.005899,
+        "confidence": 0.961537,
+        "hpLossPerAttempt": 0.00052,
+        "maxCombatExposure": 0.048461,
+        "predictedTicks": 181.26,
+        "riskScore": 0.034539,
+        "score": 1047.033,
         "sourceMix": {
           "edge": 1,
-          "global": 6,
-          "region": 9
+          "global": 5,
+          "region": 10
         }
       },
       "mode": null,
@@ -2126,22 +2123,17 @@
       },
       "quality": "suspicious",
       "routeDistance": 355,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "varrock_square",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
-        "--allow-frontier",
-        "--direct-if-preview",
-        "--probe-toward-target"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 47,
       "routeSteps": [
@@ -2429,7 +2421,7 @@
           }
         }
       ],
-      "score": 1080.265,
+      "score": 1047.033,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 6,
@@ -2445,14 +2437,17 @@
       "estimatedTicks": 362.0,
       "from": "rimmington_center",
       "mlScore": {
-        "confidence": 0.937777,
-        "predictedTicks": 226.95,
-        "riskScore": 0.041667,
-        "score": 1040.065,
+        "combatExposure": 0.004917,
+        "confidence": 0.846606,
+        "hpLossPerAttempt": 0.00052,
+        "maxCombatExposure": 0.048461,
+        "predictedTicks": 240.41,
+        "riskScore": 0.047726,
+        "score": 1074.128,
         "sourceMix": {
-          "edge": 1,
-          "global": 18,
-          "region": 31
+          "edge": 14,
+          "global": 16,
+          "region": 20
         }
       },
       "mode": "cache_direct",
@@ -2464,22 +2459,17 @@
       },
       "quality": "suspicious",
       "routeDistance": 362,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "varrock_square",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
-        "--allow-frontier",
-        "--direct-if-preview",
-        "--probe-toward-target"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 51,
       "routeSteps": [
@@ -2786,7 +2776,7 @@
           }
         }
       ],
-      "score": 1040.065,
+      "score": 1074.128,
       "selectedOverLearned": {
         "previousQuality": "suspicious",
         "previousRouteDistance": 441,
@@ -2837,10 +2827,13 @@
       "estimatedTicks": 214.0,
       "from": "falador_shield_shop",
       "mlScore": {
-        "confidence": 0.951127,
-        "predictedTicks": 151.48,
-        "riskScore": 0.0125,
-        "score": 1041.317,
+        "combatExposure": 0.0,
+        "confidence": 0.961119,
+        "hpLossPerAttempt": 0.0,
+        "maxCombatExposure": 0.0,
+        "predictedTicks": 134.16,
+        "riskScore": 0.011771,
+        "score": 1021.906,
         "sourceMix": {
           "region": 9
         }
@@ -2854,22 +2847,17 @@
       },
       "quality": "suspicious",
       "routeDistance": 225,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "draynor_bank",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
-        "--allow-frontier",
-        "--direct-if-preview",
-        "--probe-toward-target"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 36,
       "routeSteps": [
@@ -3083,7 +3071,7 @@
           }
         }
       ],
-      "score": 1041.317,
+      "score": 1021.906,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 8,
@@ -3128,10 +3116,13 @@
       "estimatedTicks": 289.0,
       "from": "draynor_bank",
       "mlScore": {
-        "confidence": 0.91855,
-        "predictedTicks": 159.33,
-        "riskScore": 0.041667,
-        "score": 1060.617,
+        "combatExposure": 0.009244,
+        "confidence": 0.957967,
+        "hpLossPerAttempt": 0.00052,
+        "maxCombatExposure": 0.048461,
+        "predictedTicks": 123.69,
+        "riskScore": 0.034539,
+        "score": 1016.587,
         "sourceMix": {
           "edge": 1,
           "global": 5,
@@ -3147,22 +3138,17 @@
       },
       "quality": "suspicious",
       "routeDistance": 294,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "varrock_square",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
-        "--allow-frontier",
-        "--direct-if-preview",
-        "--probe-toward-target"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 40,
       "routeSteps": [
@@ -3416,7 +3402,7 @@
           }
         }
       ],
-      "score": 1060.617,
+      "score": 1016.587,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 7,
@@ -3432,14 +3418,17 @@
       "estimatedTicks": 248.0,
       "from": "barbarian_village",
       "mlScore": {
-        "confidence": 0.895916,
-        "predictedTicks": 167.93,
-        "riskScore": 0.05,
-        "score": 366.842,
+        "combatExposure": 0.002871,
+        "confidence": 0.912518,
+        "hpLossPerAttempt": 0.00052,
+        "maxCombatExposure": 0.048461,
+        "predictedTicks": 160.49,
+        "riskScore": 0.047726,
+        "score": 356.141,
         "sourceMix": {
           "edge": 2,
-          "global": 7,
-          "region": 23
+          "global": 5,
+          "region": 25
         }
       },
       "mode": "cache_direct",
@@ -3451,22 +3440,17 @@
       },
       "quality": "watch",
       "routeDistance": 248,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "port_sarim_dock",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
-        "--allow-frontier",
-        "--direct-if-preview",
-        "--probe-toward-target"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 33,
       "routeSteps": [
@@ -3684,7 +3668,7 @@
           }
         }
       ],
-      "score": 366.842,
+      "score": 356.141,
       "selectedOverLearned": {
         "previousQuality": "suspicious",
         "previousRouteDistance": 336,
@@ -3706,13 +3690,17 @@
       "estimatedTicks": 257.0,
       "from": "lumbridge_castle_courtyard",
       "mlScore": {
-        "confidence": 0.954246,
-        "predictedTicks": 137.02,
-        "riskScore": 0.027778,
-        "score": 358.055,
+        "combatExposure": 0.010326,
+        "confidence": 0.95326,
+        "hpLossPerAttempt": 0.00052,
+        "maxCombatExposure": 0.048461,
+        "predictedTicks": 114.53,
+        "riskScore": 0.040076,
+        "score": 351.741,
         "sourceMix": {
-          "global": 19,
-          "region": 21
+          "edge": 1,
+          "global": 16,
+          "region": 23
         }
       },
       "mode": "cache_direct",
@@ -3724,22 +3712,17 @@
       },
       "quality": "watch",
       "routeDistance": 257,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "barbarian_village",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
-        "--allow-frontier",
-        "--direct-if-preview",
-        "--probe-toward-target"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 41,
       "routeSteps": [
@@ -3977,7 +3960,7 @@
           }
         }
       ],
-      "score": 358.055,
+      "score": 351.741,
       "selectedOverLearned": {
         "previousQuality": "bad",
         "previousRouteDistance": 436,
@@ -3999,10 +3982,13 @@
       "estimatedTicks": 21.0,
       "from": "al_kharid_bank",
       "mlScore": {
+        "combatExposure": 0.0,
         "confidence": 0.5,
+        "hpLossPerAttempt": 0.0,
+        "maxCombatExposure": 0.0,
         "predictedTicks": 23.0,
-        "riskScore": 0.05,
-        "score": 290.42,
+        "riskScore": 0.047726,
+        "score": 288.26,
         "sourceMix": {
           "edge": 1
         }
@@ -4016,19 +4002,17 @@
       },
       "quality": "ok",
       "routeDistance": 25,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "al_kharid_scimitar_shop",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 6,
       "routeSteps": [
@@ -4071,7 +4055,7 @@
         "walkTileDistance": 25
       },
       "runSegments": null,
-      "score": 290.42,
+      "score": 288.26,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 0,
@@ -4087,13 +4071,15 @@
       "estimatedTicks": 280.0,
       "from": "al_kharid_bank",
       "mlScore": {
-        "confidence": 0.976238,
-        "predictedTicks": 135.02,
-        "riskScore": 0.013158,
-        "score": 4019.127,
+        "combatExposure": 0.0,
+        "confidence": 0.964113,
+        "hpLossPerAttempt": 0.0,
+        "maxCombatExposure": 0.0,
+        "predictedTicks": 170.97,
+        "riskScore": 0.017558,
+        "score": 4060.954,
         "sourceMix": {
-          "global": 5,
-          "region": 7
+          "region": 12
         }
       },
       "mode": null,
@@ -4105,19 +4091,17 @@
       },
       "quality": "watch",
       "routeDistance": 297,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "varrock_east_bank",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 39,
       "routeSteps": [
@@ -4325,7 +4309,7 @@
         "walkTileDistance": 297
       },
       "runSegments": null,
-      "score": 4019.127,
+      "score": 4060.954,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 2,
@@ -4341,13 +4325,15 @@
       "estimatedTicks": 42.0,
       "from": "varrock_west_bank",
       "mlScore": {
-        "confidence": 0.923571,
-        "predictedTicks": 20.53,
-        "riskScore": 0.016667,
-        "score": 299.584,
+        "combatExposure": 0.0,
+        "confidence": 0.97358,
+        "hpLossPerAttempt": 0.0,
+        "maxCombatExposure": 0.0,
+        "predictedTicks": 23.98,
+        "riskScore": 0.003664,
+        "score": 283.68,
         "sourceMix": {
-          "global": 1,
-          "region": 1
+          "region": 2
         }
       },
       "mode": null,
@@ -4359,19 +4345,17 @@
       },
       "quality": "watch",
       "routeDistance": 45,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "varrock_sword_shop",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 8,
       "routeSteps": [
@@ -4444,7 +4428,7 @@
           }
         }
       ],
-      "score": 299.584,
+      "score": 283.68,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 1,
@@ -4460,13 +4444,15 @@
       "estimatedTicks": 248.0,
       "from": "varrock_west_bank",
       "mlScore": {
-        "confidence": 0.922866,
-        "predictedTicks": 146.89,
-        "riskScore": 0.025,
-        "score": 320.799,
+        "combatExposure": 0.0,
+        "confidence": 0.967285,
+        "hpLossPerAttempt": 0.0,
+        "maxCombatExposure": 0.0,
+        "predictedTicks": 120.89,
+        "riskScore": 0.017558,
+        "score": 281.51,
         "sourceMix": {
-          "global": 1,
-          "region": 9
+          "region": 10
         }
       },
       "mode": null,
@@ -4478,19 +4464,17 @@
       },
       "quality": "ok",
       "routeDistance": 259,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "falador_west_bank",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 32,
       "routeSteps": [
@@ -4683,7 +4667,7 @@
           }
         }
       ],
-      "score": 320.799,
+      "score": 281.51,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 0,
@@ -4699,10 +4683,13 @@
       "estimatedTicks": 28.0,
       "from": "falador_west_bank",
       "mlScore": {
-        "confidence": 0.95046,
-        "predictedTicks": 21.84,
-        "riskScore": 0.01,
-        "score": 275.836,
+        "combatExposure": 0.0,
+        "confidence": 0.985556,
+        "hpLossPerAttempt": 0.0,
+        "maxCombatExposure": 0.0,
+        "predictedTicks": 16.38,
+        "riskScore": 0.002227,
+        "score": 258.078,
         "sourceMix": {
           "region": 2
         }
@@ -4716,19 +4703,17 @@
       },
       "quality": "watch",
       "routeDistance": 31,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "falador_shield_shop",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 6,
       "routeSteps": [
@@ -4771,7 +4756,7 @@
         "walkTileDistance": 31
       },
       "runSegments": null,
-      "score": 275.836,
+      "score": 258.078,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 1,
@@ -4787,10 +4772,13 @@
       "estimatedTicks": 173.0,
       "from": "falador_east_bank",
       "mlScore": {
-        "confidence": 0.899014,
-        "predictedTicks": 141.76,
-        "riskScore": 0.314394,
-        "score": 748.952,
+        "combatExposure": 0.055726,
+        "confidence": 0.899066,
+        "hpLossPerAttempt": 0.0,
+        "maxCombatExposure": 0.277778,
+        "predictedTicks": 137.04,
+        "riskScore": 0.312812,
+        "score": 766.127,
         "sourceMix": {
           "region": 7
         }
@@ -4804,22 +4792,17 @@
       },
       "quality": "watch",
       "routeDistance": 178,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "port_sarim_dock",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
-        "--allow-frontier",
-        "--direct-if-preview",
-        "--probe-toward-target"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 22,
       "routeSteps": [
@@ -4962,7 +4945,7 @@
           }
         }
       ],
-      "score": 748.952,
+      "score": 766.127,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 3,
@@ -5007,10 +4990,13 @@
       "estimatedTicks": 191.0,
       "from": "falador_west_bank",
       "mlScore": {
-        "confidence": 0.944134,
-        "predictedTicks": 134.12,
-        "riskScore": 0.017857,
-        "score": 509.305,
+        "combatExposure": 0.005641,
+        "confidence": 0.962973,
+        "hpLossPerAttempt": 0.00052,
+        "maxCombatExposure": 0.048461,
+        "predictedTicks": 114.47,
+        "riskScore": 0.029227,
+        "score": 500.207,
         "sourceMix": {
           "global": 3,
           "region": 6
@@ -5025,22 +5011,17 @@
       },
       "quality": "watch",
       "routeDistance": 198,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "rimmington_center",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
-        "--allow-frontier",
-        "--direct-if-preview",
-        "--probe-toward-target"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 28,
       "routeSteps": [
@@ -5193,7 +5174,7 @@
         "walkTileDistance": 198
       },
       "runSegments": null,
-      "score": 509.305,
+      "score": 500.207,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 4,
@@ -5238,10 +5219,13 @@
       "estimatedTicks": 164.0,
       "from": "draynor_bank",
       "mlScore": {
+        "combatExposure": 0.0,
         "confidence": 0.951263,
+        "hpLossPerAttempt": 0.0,
+        "maxCombatExposure": 0.0,
         "predictedTicks": 105.99,
-        "riskScore": 0.016667,
-        "score": 2543.267,
+        "riskScore": 0.016406,
+        "score": 2543.019,
         "sourceMix": {
           "region": 7
         }
@@ -5255,22 +5239,17 @@
       },
       "quality": "bad",
       "routeDistance": 142,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "port_sarim_dock",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
-        "--allow-frontier",
-        "--direct-if-preview",
-        "--probe-toward-target"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 23,
       "routeSteps": [
@@ -5419,7 +5398,7 @@
           }
         }
       ],
-      "score": 2543.267,
+      "score": 2543.019,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 10,
@@ -5435,10 +5414,13 @@
       "estimatedTicks": 134.0,
       "from": "draynor_bank",
       "mlScore": {
+        "combatExposure": 0.014247,
         "confidence": 0.979321,
-        "predictedTicks": 59.69,
-        "riskScore": 0.008929,
-        "score": 224.068,
+        "hpLossPerAttempt": 0.00052,
+        "maxCombatExposure": 0.048461,
+        "predictedTicks": 47.56,
+        "riskScore": 0.029227,
+        "score": 237.223,
         "sourceMix": {
           "global": 3,
           "region": 3
@@ -5453,19 +5435,17 @@
       },
       "quality": "ok",
       "routeDistance": 138,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "lumbridge_general_store",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 22,
       "routeSteps": [
@@ -5610,7 +5590,7 @@
           }
         }
       ],
-      "score": 224.068,
+      "score": 237.223,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 0,
@@ -5655,14 +5635,16 @@
       "estimatedTicks": 159.0,
       "from": "edgeville_bank",
       "mlScore": {
-        "confidence": 0.861004,
-        "predictedTicks": 103.15,
-        "riskScore": 0.05,
-        "score": 2251.229,
+        "combatExposure": 0.0,
+        "confidence": 0.973723,
+        "hpLossPerAttempt": 0.0,
+        "maxCombatExposure": 0.0,
+        "predictedTicks": 92.22,
+        "riskScore": 0.005526,
+        "score": 2182.268,
         "sourceMix": {
           "edge": 1,
-          "global": 1,
-          "region": 5
+          "region": 6
         }
       },
       "mode": null,
@@ -5674,22 +5656,17 @@
       },
       "quality": "bad",
       "routeDistance": 168,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "varrock_west_bank",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
-        "--allow-frontier",
-        "--direct-if-preview",
-        "--probe-toward-target"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 23,
       "routeSteps": [
@@ -5837,7 +5814,7 @@
           }
         }
       ],
-      "score": 2251.229,
+      "score": 2182.268,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 7,
@@ -5853,13 +5830,15 @@
       "estimatedTicks": 65.0,
       "from": "edgeville_bank",
       "mlScore": {
-        "confidence": 0.904575,
-        "predictedTicks": 33.89,
-        "riskScore": 0.025,
-        "score": 197.379,
+        "combatExposure": 0.0,
+        "confidence": 0.904909,
+        "hpLossPerAttempt": 0.0,
+        "maxCombatExposure": 0.0,
+        "predictedTicks": 43.56,
+        "riskScore": 0.024418,
+        "score": 206.45,
         "sourceMix": {
-          "global": 1,
-          "region": 2
+          "region": 3
         }
       },
       "mode": null,
@@ -5871,19 +5850,17 @@
       },
       "quality": "ok",
       "routeDistance": 71,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "barbarian_village",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 11,
       "routeSteps": [
@@ -5971,7 +5948,7 @@
           }
         }
       ],
-      "score": 197.379,
+      "score": 206.45,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 0,
@@ -5979,7 +5956,7 @@
     },
     {
       "actionable": true,
-      "detourRatio": 2.789,
+      "detourRatio": 2.782,
       "directCandidate": {
         "error": "no cache-clipped direct path",
         "mode": "cache_direct",
@@ -5987,46 +5964,46 @@
         "status": "error"
       },
       "edgeSources": {
-        "route_hint": 40
+        "cache_mesh": 368,
+        "object_transition": 2
       },
-      "estimatedTicks": 355.0,
+      "estimatedTicks": 370.0,
       "from": "catherby_bank",
       "mlScore": {
-        "confidence": 0.959889,
-        "predictedTicks": 208.43,
-        "riskScore": 0.137879,
-        "score": 3308.611,
+        "combatExposure": 0.078552,
+        "confidence": 0.923783,
+        "hpLossPerAttempt": 0.17647,
+        "maxCombatExposure": 0.633333,
+        "predictedTicks": 202.84,
+        "riskScore": 0.382653,
+        "score": 3358.239,
         "sourceMix": {
-          "region": 16
+          "edge": 7,
+          "region": 46
         }
       },
-      "mode": null,
+      "mode": "cache_mesh",
       "name": "catherby_bank_to_falador_west_bank",
       "next": {
         "height": 0,
-        "x": 2835,
-        "y": 3435
+        "x": 2836,
+        "y": 3436
       },
       "quality": "bad",
-      "routeDistance": 371,
-      "routeRunnerCommand": [
+      "routeDistance": 370,
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "falador_west_bank",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
-        "--allow-frontier",
-        "--direct-if-preview",
-        "--probe-toward-target"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
-      "routeStepCount": 55,
+      "routeStepCount": 54,
       "routeSteps": [
         {
           "height": 0,
@@ -6035,23 +6012,18 @@
         },
         {
           "height": 0,
-          "x": 2815,
-          "y": 3436
+          "x": 2821,
+          "y": 3438
         },
         {
           "height": 0,
-          "x": 2825,
-          "y": 3436
+          "x": 2831,
+          "y": 3438
         },
         {
           "height": 0,
-          "x": 2832,
+          "x": 2841,
           "y": 3436
-        },
-        {
-          "height": 0,
-          "x": 2842,
-          "y": 3435
         },
         {
           "height": 0,
@@ -6061,17 +6033,22 @@
         {
           "height": 0,
           "x": 2855,
-          "y": 3444
+          "y": 3442
+        },
+        {
+          "height": 0,
+          "x": 2852,
+          "y": 3446
         },
         {
           "height": 0,
           "x": 2848,
-          "y": 3447
+          "y": 3450
         },
         {
           "height": 0,
-          "x": 2846,
-          "y": 3453
+          "x": 2849,
+          "y": 3455
         },
         {
           "height": 0,
@@ -6080,52 +6057,52 @@
         },
         {
           "height": 0,
-          "x": 2843,
-          "y": 3467
-        },
-        {
-          "height": 0,
-          "x": 2845,
-          "y": 3471
-        },
-        {
-          "height": 0,
-          "x": 2847,
-          "y": 3477
-        },
-        {
-          "height": 0,
-          "x": 2847,
-          "y": 3482
-        },
-        {
-          "height": 0,
-          "x": 2850,
-          "y": 3487
-        },
-        {
-          "height": 0,
-          "x": 2851,
-          "y": 3492
+          "x": 2844,
+          "y": 3469
         },
         {
           "height": 0,
           "x": 2848,
-          "y": 3495
+          "y": 3473
+        },
+        {
+          "height": 0,
+          "x": 2848,
+          "y": 3478
+        },
+        {
+          "height": 0,
+          "x": 2852,
+          "y": 3483
+        },
+        {
+          "height": 0,
+          "x": 2851,
+          "y": 3488
+        },
+        {
+          "height": 0,
+          "x": 2852,
+          "y": 3493
+        },
+        {
+          "height": 0,
+          "x": 2846,
+          "y": 3497
         },
         {
           "height": 0,
           "x": 2842,
-          "y": 3499
+          "y": 3503
         },
         {
           "height": 0,
-          "x": 2844,
-          "y": 3505
+          "x": 2846,
+          "y": 3508
         },
         {
           "height": 0,
-          "x": 2853,
+          "x": 2856,
           "y": 3508
         },
         {
@@ -6135,12 +6112,17 @@
         },
         {
           "height": 0,
-          "x": 2861,
-          "y": 3493
+          "x": 2863,
+          "y": 3498
         },
         {
           "height": 0,
-          "x": 2857,
+          "x": 2862,
+          "y": 3492
+        },
+        {
+          "height": 0,
+          "x": 2859,
           "y": 3486
         },
         {
@@ -6150,42 +6132,42 @@
         },
         {
           "height": 0,
-          "x": 2854,
-          "y": 3472
-        },
-        {
-          "height": 0,
           "x": 2856,
-          "y": 3466
+          "y": 3474
         },
         {
           "height": 0,
           "x": 2861,
-          "y": 3460
-        },
-        {
-          "height": 0,
-          "x": 2863,
-          "y": 3451
-        },
-        {
-          "height": 0,
-          "x": 2866,
-          "y": 3441
+          "y": 3465
         },
         {
           "height": 0,
           "x": 2868,
-          "y": 3435
+          "y": 3457
+        },
+        {
+          "height": 0,
+          "x": 2866,
+          "y": 3450
+        },
+        {
+          "height": 0,
+          "x": 2866,
+          "y": 3444
+        },
+        {
+          "height": 0,
+          "x": 2868,
+          "y": 3439
         },
         {
           "height": 0,
           "x": 2874,
-          "y": 3429
+          "y": 3433
         },
         {
           "height": 0,
-          "x": 2882,
+          "x": 2880,
           "y": 3429
         },
         {
@@ -6195,28 +6177,23 @@
         },
         {
           "height": 0,
-          "x": 2889,
-          "y": 3433
+          "x": 2896,
+          "y": 3438
         },
         {
           "height": 0,
           "x": 2898,
-          "y": 3442
+          "y": 3443
         },
         {
           "height": 0,
-          "x": 2902,
-          "y": 3446
+          "x": 2903,
+          "y": 3444
         },
         {
           "height": 0,
-          "x": 2912,
-          "y": 3446
-        },
-        {
-          "height": 0,
-          "x": 2917,
-          "y": 3446
+          "x": 2913,
+          "y": 3445
         },
         {
           "height": 0,
@@ -6226,7 +6203,7 @@
         {
           "height": 0,
           "x": 2931,
-          "y": 3451
+          "y": 3452
         },
         {
           "height": 0,
@@ -6245,52 +6222,47 @@
         },
         {
           "height": 0,
-          "x": 2952,
+          "x": 2946,
           "y": 3435
         },
         {
           "height": 0,
-          "x": 2953,
-          "y": 3429
+          "x": 2948,
+          "y": 3425
         },
         {
           "height": 0,
-          "x": 2958,
-          "y": 3423
+          "x": 2956,
+          "y": 3415
         },
         {
           "height": 0,
-          "x": 2958,
-          "y": 3414
+          "x": 2959,
+          "y": 3409
         },
         {
           "height": 0,
           "x": 2960,
-          "y": 3408
+          "y": 3400
         },
         {
           "height": 0,
           "x": 2964,
-          "y": 3398
+          "y": 3395
         },
         {
           "height": 0,
           "x": 2964,
-          "y": 3391
+          "y": 3387
         },
         {
           "height": 0,
-          "x": 2961,
-          "y": 3384
+          "x": 2956,
+          "y": 3379
         },
         {
           "height": 0,
-          "x": 2951,
-          "y": 3378
-        },
-        {
-          "height": 0,
-          "x": 2946,
+          "x": 2949,
           "y": 3374
         },
         {
@@ -6306,16 +6278,22 @@
       ],
       "runPlan": {
         "policy": "conserve_run_until_hazard_segments",
-        "routeDistance": 371,
+        "routeDistance": 370,
         "runTileDistance": 0,
         "segmentCount": 0,
-        "walkTileDistance": 371
+        "walkTileDistance": 370
       },
       "runSegments": null,
-      "score": 3308.611,
-      "selectedOverLearned": null,
+      "score": 3358.239,
+      "selectedOverLearned": {
+        "previousQuality": "bad",
+        "previousRouteDistance": 371,
+        "previousStatus": "ok",
+        "reason": "cache mesh rebuilt walkable legs from cache collision and kept only required object transitions from the learned path",
+        "savedTiles": 1
+      },
       "status": "ok",
-      "targetDistanceIncreases": 34,
+      "targetDistanceIncreases": 30,
       "to": "falador_west_bank"
     },
     {
@@ -6357,10 +6335,13 @@
       "estimatedTicks": 59.0,
       "from": "ardougne_south_bank",
       "mlScore": {
+        "combatExposure": 0.0,
         "confidence": 0.897557,
+        "hpLossPerAttempt": 0.0,
+        "maxCombatExposure": 0.0,
         "predictedTicks": 44.5,
-        "riskScore": 0.025,
-        "score": 336.872,
+        "riskScore": 0.024418,
+        "score": 336.319,
         "sourceMix": {
           "region": 3
         }
@@ -6374,19 +6355,17 @@
       },
       "quality": "watch",
       "routeDistance": 60,
-      "routeRunnerCommand": [
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "ardougne_north_bank",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
       "routeStepCount": 11,
       "routeSteps": [
@@ -6454,7 +6433,7 @@
         "walkTileDistance": 60
       },
       "runSegments": null,
-      "score": 336.872,
+      "score": 336.319,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 1,
@@ -6462,7 +6441,7 @@
     },
     {
       "actionable": true,
-      "detourRatio": 2.5,
+      "detourRatio": 1.722,
       "directCandidate": {
         "error": "no cache-clipped direct path",
         "mode": "cache_direct",
@@ -6470,46 +6449,47 @@
         "status": "error"
       },
       "edgeSources": {
-        "route_hint": 37
+        "cache_mesh": 245,
+        "object_transition": 2
       },
-      "estimatedTicks": 340.0,
+      "estimatedTicks": 248.0,
       "from": "ardougne_north_bank",
       "mlScore": {
-        "confidence": 0.915845,
-        "predictedTicks": 208.39,
-        "riskScore": 0.017857,
-        "score": 2737.136,
+        "combatExposure": 0.003929,
+        "confidence": 0.776161,
+        "hpLossPerAttempt": 0.00052,
+        "maxCombatExposure": 0.048461,
+        "predictedTicks": 185.91,
+        "riskScore": 0.047726,
+        "score": 1043.096,
         "sourceMix": {
-          "region": 13
+          "edge": 13,
+          "global": 8,
+          "region": 11
         }
       },
-      "mode": null,
+      "mode": "cache_mesh",
       "name": "ardougne_north_bank_to_gnome_agility",
       "next": {
         "height": 0,
-        "x": 2608,
-        "y": 3326
+        "x": 2610,
+        "y": 3356
       },
-      "quality": "bad",
-      "routeDistance": 360,
-      "routeRunnerCommand": [
+      "quality": "suspicious",
+      "routeDistance": 248,
+      "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/route_runner.py",
+        "agent-navigation/tools/execute_route_definition.py",
         "--to",
         "gnome_agility_course",
-        "--run-reserve",
+        "--run-mode",
         "auto",
-        "--max-batches",
-        "8",
-        "--max-batch-distance",
-        "24",
+        "--eat-at",
+        "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-runner.routes.jsonl",
-        "--allow-frontier",
-        "--direct-if-preview",
-        "--probe-toward-target"
+        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
       ],
-      "routeStepCount": 50,
+      "routeStepCount": 33,
       "routeSteps": [
         {
           "height": 0,
@@ -6519,265 +6499,389 @@
         {
           "height": 0,
           "x": 2616,
-          "y": 3336
+          "y": 3337
+        },
+        {
+          "height": 0,
+          "x": 2612,
+          "y": 3342
+        },
+        {
+          "height": 0,
+          "x": 2613,
+          "y": 3352
         },
         {
           "height": 0,
           "x": 2610,
-          "y": 3339
+          "y": 3362
         },
         {
           "height": 0,
-          "x": 2608,
-          "y": 3329
-        },
-        {
-          "height": 0,
-          "x": 2608,
-          "y": 3319
-        },
-        {
-          "height": 0,
-          "x": 2608,
-          "y": 3309
-        },
-        {
-          "height": 0,
-          "x": 2608,
-          "y": 3299
-        },
-        {
-          "height": 0,
-          "x": 2598,
-          "y": 3297
-        },
-        {
-          "height": 0,
-          "x": 2593,
-          "y": 3298
-        },
-        {
-          "height": 0,
-          "x": 2593,
-          "y": 3306
-        },
-        {
-          "height": 0,
-          "x": 2587,
-          "y": 3313
-        },
-        {
-          "height": 0,
-          "x": 2585,
-          "y": 3318
-        },
-        {
-          "height": 0,
-          "x": 2589,
-          "y": 3320
-        },
-        {
-          "height": 0,
-          "x": 2593,
-          "y": 3324
-        },
-        {
-          "height": 0,
-          "x": 2586,
-          "y": 3334
-        },
-        {
-          "height": 0,
-          "x": 2586,
-          "y": 3339
-        },
-        {
-          "height": 0,
-          "x": 2580,
-          "y": 3342
-        },
-        {
-          "height": 0,
-          "x": 2573,
-          "y": 3342
-        },
-        {
-          "height": 0,
-          "x": 2568,
-          "y": 3345
-        },
-        {
-          "height": 0,
-          "x": 2560,
-          "y": 3347
-        },
-        {
-          "height": 0,
-          "x": 2555,
-          "y": 3350
-        },
-        {
-          "height": 0,
-          "x": 2555,
-          "y": 3358
-        },
-        {
-          "height": 0,
-          "x": 2549,
-          "y": 3363
-        },
-        {
-          "height": 0,
-          "x": 2545,
-          "y": 3364
-        },
-        {
-          "height": 0,
-          "x": 2542,
-          "y": 3367
-        },
-        {
-          "height": 0,
-          "x": 2541,
-          "y": 3372
-        },
-        {
-          "height": 0,
-          "x": 2537,
-          "y": 3381
-        },
-        {
-          "height": 0,
-          "x": 2532,
-          "y": 3387
-        },
-        {
-          "height": 0,
-          "x": 2532,
-          "y": 3397
-        },
-        {
-          "height": 0,
-          "x": 2523,
-          "y": 3392
-        },
-        {
-          "height": 0,
-          "x": 2513,
-          "y": 3392
-        },
-        {
-          "height": 0,
-          "x": 2503,
-          "y": 3384
-        },
-        {
-          "height": 0,
-          "x": 2498,
-          "y": 3381
-        },
-        {
-          "height": 0,
-          "x": 2495,
-          "y": 3372
-        },
-        {
-          "height": 0,
-          "x": 2488,
-          "y": 3368
-        },
-        {
-          "height": 0,
-          "x": 2484,
+          "x": 2603,
           "y": 3365
         },
         {
           "height": 0,
-          "x": 2481,
-          "y": 3361
+          "x": 2593,
+          "y": 3372
         },
         {
           "height": 0,
-          "x": 2471,
-          "y": 3360
+          "x": 2583,
+          "y": 3376
         },
         {
           "height": 0,
-          "x": 2468,
-          "y": 3364
+          "x": 2574,
+          "y": 3381
         },
         {
           "height": 0,
-          "x": 2463,
-          "y": 3369
+          "x": 2568,
+          "y": 3381
         },
         {
           "height": 0,
-          "x": 2463,
-          "y": 3375
+          "x": 2561,
+          "y": 3382
         },
         {
           "height": 0,
-          "x": 2462,
-          "y": 3380
+          "x": 2551,
+          "y": 3392
         },
         {
           "height": 0,
-          "x": 2459,
+          "x": 2546,
+          "y": 3395
+        },
+        {
+          "height": 0,
+          "x": 2541,
+          "y": 3397
+        },
+        {
+          "height": 0,
+          "x": 2531,
+          "y": 3400
+        },
+        {
+          "height": 0,
+          "x": 2521,
+          "y": 3401
+        },
+        {
+          "height": 0,
+          "x": 2511,
+          "y": 3395
+        },
+        {
+          "height": 0,
+          "x": 2506,
+          "y": 3390
+        },
+        {
+          "height": 0,
+          "x": 2496,
           "y": 3389
         },
         {
           "height": 0,
-          "x": 2459,
-          "y": 3399
+          "x": 2489,
+          "y": 3389
+        },
+        {
+          "height": 0,
+          "x": 2479,
+          "y": 3388
+        },
+        {
+          "height": 0,
+          "x": 2475,
+          "y": 3387
+        },
+        {
+          "height": 0,
+          "x": 2470,
+          "y": 3387
+        },
+        {
+          "height": 0,
+          "x": 2466,
+          "y": 3382
         },
         {
           "height": 0,
           "x": 2459,
-          "y": 3409
+          "y": 3382
         },
         {
           "height": 0,
           "x": 2459,
-          "y": 3419
+          "y": 3392
         },
         {
           "height": 0,
           "x": 2459,
-          "y": 3424
+          "y": 3402
+        },
+        {
+          "height": 0,
+          "x": 2459,
+          "y": 3412
+        },
+        {
+          "height": 0,
+          "x": 2459,
+          "y": 3421
         },
         {
           "height": 0,
           "x": 2464,
-          "y": 3429
+          "y": 3426
         },
         {
           "height": 0,
           "x": 2464,
+          "y": 3431
+        },
+        {
+          "height": 0,
+          "x": 2467,
           "y": 3434
         },
         {
           "height": 0,
-          "x": 2469,
-          "y": 3435
+          "x": 2474,
+          "y": 3436
         }
       ],
       "runPlan": {
         "policy": "conserve_run_until_hazard_segments",
-        "routeDistance": 360,
+        "routeDistance": 248,
         "runTileDistance": 0,
         "segmentCount": 0,
-        "walkTileDistance": 360
+        "walkTileDistance": 248
       },
       "runSegments": null,
-      "score": 2737.136,
-      "selectedOverLearned": null,
+      "score": 1043.096,
+      "selectedOverLearned": {
+        "previousQuality": "bad",
+        "previousRouteDistance": 360,
+        "previousStatus": "ok",
+        "reason": "cache mesh rebuilt walkable legs from cache collision and kept only required object transitions from the learned path",
+        "savedTiles": 112
+      },
       "status": "ok",
-      "targetDistanceIncreases": 18,
+      "targetDistanceIncreases": 8,
       "to": "gnome_agility_course"
+    },
+    {
+      "actionable": false,
+      "detourRatio": 2.823,
+      "directCandidate": {
+        "error": "no cache-clipped direct path",
+        "mode": "cache_direct",
+        "quality": "bad",
+        "status": "error"
+      },
+      "edgeSources": {
+        "model_trace": 119
+      },
+      "estimatedTicks": 119.0,
+      "from": "varrock_sewer_entry_ladder",
+      "mlScore": {
+        "combatExposure": 0.08567,
+        "confidence": 0.989893,
+        "hpLossPerAttempt": 0.00442,
+        "maxCombatExposure": 0.706796,
+        "predictedTicks": 136.1,
+        "riskScore": 0.424559,
+        "score": 7678.042,
+        "sourceMix": {
+          "region": 11
+        }
+      },
+      "mode": null,
+      "name": "varrock_sewer_ladder_to_moss_giants",
+      "next": {
+        "height": 0,
+        "x": 3243,
+        "y": 9882
+      },
+      "quality": "bad",
+      "routeDistance": 223,
+      "routeExecutionCommand": null,
+      "routeStepCount": 30,
+      "routeSteps": [
+        {
+          "height": 0,
+          "x": 3238,
+          "y": 9858
+        },
+        {
+          "height": 0,
+          "x": 3237,
+          "y": 9865
+        },
+        {
+          "height": 0,
+          "x": 3243,
+          "y": 9870
+        },
+        {
+          "height": 0,
+          "x": 3243,
+          "y": 9880
+        },
+        {
+          "height": 0,
+          "x": 3243,
+          "y": 9889
+        },
+        {
+          "height": 0,
+          "x": 3253,
+          "y": 9892
+        },
+        {
+          "height": 0,
+          "x": 3262,
+          "y": 9892
+        },
+        {
+          "height": 0,
+          "x": 3272,
+          "y": 9893
+        },
+        {
+          "height": 0,
+          "x": 3279,
+          "y": 9897
+        },
+        {
+          "height": 0,
+          "x": 3280,
+          "y": 9905
+        },
+        {
+          "height": 0,
+          "x": 3274,
+          "y": 9914
+        },
+        {
+          "height": 0,
+          "x": 3264,
+          "y": 9915
+        },
+        {
+          "height": 0,
+          "x": 3255,
+          "y": 9915
+        },
+        {
+          "height": 0,
+          "x": 3246,
+          "y": 9916
+        },
+        {
+          "height": 0,
+          "x": 3241,
+          "y": 9907
+        },
+        {
+          "height": 0,
+          "x": 3236,
+          "y": 9907
+        },
+        {
+          "height": 0,
+          "x": 3226,
+          "y": 9908
+        },
+        {
+          "height": 0,
+          "x": 3216,
+          "y": 9908
+        },
+        {
+          "height": 0,
+          "x": 3211,
+          "y": 9908
+        },
+        {
+          "height": 0,
+          "x": 3210,
+          "y": 9899
+        },
+        {
+          "height": 0,
+          "x": 3210,
+          "y": 9893
+        },
+        {
+          "height": 0,
+          "x": 3201,
+          "y": 9890
+        },
+        {
+          "height": 0,
+          "x": 3191,
+          "y": 9890
+        },
+        {
+          "height": 0,
+          "x": 3186,
+          "y": 9890
+        },
+        {
+          "height": 0,
+          "x": 3181,
+          "y": 9895
+        },
+        {
+          "height": 0,
+          "x": 3175,
+          "y": 9895
+        },
+        {
+          "height": 0,
+          "x": 3170,
+          "y": 9892
+        },
+        {
+          "height": 0,
+          "x": 3164,
+          "y": 9893
+        },
+        {
+          "height": 0,
+          "x": 3159,
+          "y": 9894
+        },
+        {
+          "height": 0,
+          "x": 3158,
+          "y": 9896
+        }
+      ],
+      "runPlan": {
+        "policy": "conserve_run_until_hazard_segments",
+        "routeDistance": 226,
+        "runTileDistance": 0,
+        "segmentCount": 0,
+        "walkTileDistance": 226
+      },
+      "runSegments": null,
+      "score": 7678.042,
+      "selectedOverLearned": null,
+      "status": "error",
+      "targetDistanceIncreases": 24,
+      "to": "varrock_sewer_moss_giants"
     }
   ],
-  "runId": "20260525T234211Z",
+  "runId": "20260531T033804Z",
   "schemaVersion": 1,
-  "suspiciousOrBadCount": 10
+  "suspiciousOrBadCount": 11
 }

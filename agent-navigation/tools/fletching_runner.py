@@ -99,10 +99,7 @@ def observe_state():
 
 def observe():
     result = observe_state()
-    player = result.get("player")
-    if not isinstance(player, dict):
-        raise RuntimeError("observe_state did not include player state")
-    return player
+    return bridge.player_from(result)
 
 
 def compact_player(player):
@@ -260,6 +257,7 @@ def legacy_fletch_until_empty(args, target_level=True):
 def primitive_fletch_until_empty(player, args, handle, reason):
     total_ticks = 0
     rounds = 0
+    no_progress_rounds = 0
     last_result = {"success": True, "player": player, "batchStatus": "not_started", "batchTicks": 0}
     while rounds < 8 and total_ticks < args.fletch_ticks:
         rounds += 1
@@ -279,6 +277,9 @@ def primitive_fletch_until_empty(player, args, handle, reason):
                 "batchStatus": "blocked",
             }
             break
+        before_logs = fletchable_log_count(player)
+        before_products = product_count(player)
+        before_xp = compact_player(player)["fletchingXp"]
         use_result = call_tool("use_item_on_item", {
             "itemId": KNIFE_ID,
             "targetItemId": choice["logId"],
@@ -287,14 +288,25 @@ def primitive_fletch_until_empty(player, args, handle, reason):
             "buttonId": choice["makeAllButtonId"],
         })
         wait_ticks = max(1, min(250, args.fletch_ticks - total_ticks))
-        wait_result = call_tool("wait_until_idle", {
+        wait_result = call_tool("wait_until_idle_XS", {
             "maxTicks": wait_ticks,
             "movement": True,
             "skilling": True,
             "combat": False,
         })
-        player = wait_result.get("player") or button_result.get("player") or use_result.get("player") or player
+        player = bridge._player_from_or(
+            wait_result,
+            bridge._player_from_or(button_result, bridge._player_from_or(use_result, player)),
+        )
         total_ticks += int(wait_result.get("batchTicks", wait_ticks) or wait_ticks)
+        after_logs = fletchable_log_count(player)
+        after_products = product_count(player)
+        after_xp = compact_player(player)["fletchingXp"]
+        made_progress = (
+            after_logs < before_logs
+            or after_products > before_products
+            or after_xp > before_xp
+        )
         last_result = wait_result
         last_result["player"] = player
         last_result["fletchingMode"] = "primitive_script"
@@ -306,10 +318,33 @@ def primitive_fletch_until_empty(player, args, handle, reason):
             "useSuccess": bool(use_result.get("success")),
             "buttonSuccess": bool(button_result.get("success")),
             "waitStatus": wait_result.get("batchStatus"),
+            "madeProgress": made_progress,
             "player": compact_player(player),
             "logs": fletchable_log_count(player),
             "products": product_count(player),
         })
+        if not made_progress:
+            no_progress_rounds += 1
+            close_result = call_tool("close_interfaces", {})
+            player = bridge._player_from_or(close_result, player)
+            wait_refresh = call_tool("wait_ticks_XS", {"ticks": 1})
+            player = bridge._player_from_or(wait_refresh, player)
+            write_event(handle, "fletch_retry_refresh", {
+                "reason": reason,
+                "round": rounds,
+                "noProgressRounds": no_progress_rounds,
+                "closeSuccess": bool(close_result.get("success")),
+                "waitSuccess": bool(wait_refresh.get("success")),
+                "player": compact_player(player),
+                "logs": fletchable_log_count(player),
+                "products": product_count(player),
+            })
+            if no_progress_rounds >= 2:
+                last_result["success"] = False
+                last_result["batchStatus"] = "no_progress"
+                break
+            continue
+        no_progress_rounds = 0
         if not wait_result.get("success", False):
             last_result["batchStatus"] = wait_result.get("batchStatus", "blocked")
             break
@@ -384,13 +419,13 @@ def primitive_chop_until_inventory_full(tree, args, handle, reason):
             "option": "first",
         })
         wait_ticks = min(40, max(1, args.chop_ticks - total_ticks))
-        wait_result = call_tool("wait_until_idle", {
+        wait_result = call_tool("wait_until_idle_XS", {
             "maxTicks": wait_ticks,
             "movement": True,
             "skilling": True,
             "combat": False,
         })
-        player = wait_result.get("player") or interact_result.get("player") or player
+        player = bridge._player_from_or(wait_result, bridge._player_from_or(interact_result, player))
         total_ticks += max(1, int(wait_result.get("batchTicks", wait_ticks) or wait_ticks))
         rounds += 1
         last_result = wait_result
@@ -513,7 +548,7 @@ def pickup_nearby_bird_nests(args, handle, reason):
             "itemIds": sorted(BIRD_NEST_IDS),
             "maxDistance": args.nest_pickup_distance,
         })
-        player = result.get("player") or player
+        player = bridge._player_from_or(result, player)
         moved = int(result.get("pickedUp", 0) or 0)
         after_count = bird_nest_count(player)
         write_event(handle, "bird_nest_pickup_attempt", {
@@ -529,7 +564,7 @@ def pickup_nearby_bird_nests(args, handle, reason):
         if int(player.get("freeInventorySlots", 0) or 0) <= 0:
             break
         if moved <= 0 and after_count <= before_count:
-            call_tool("wait_until_idle", {"maxTicks": 20, "movement": True, "skilling": False})
+            call_tool("wait_until_idle_XS", {"maxTicks": 20, "movement": True, "skilling": False})
     if picked > 0:
         log("picked up bird nest x{}".format(picked), args, force=True)
     return player

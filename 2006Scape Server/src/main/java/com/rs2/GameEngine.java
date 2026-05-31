@@ -48,6 +48,7 @@ import com.rs2.integrations.RegisteredAccsWebsite;
 import com.rs2.integrations.discord.DiscordActivity;
 import com.rs2.integrations.discord.JavaCord;
 import com.rs2.util.HostBlacklist;
+import com.rs2.util.PerformanceLogger;
 import com.rs2.world.GlobalDropsHandler;
 import com.rs2.world.ItemHandler;
 import com.rs2.world.ObjectHandler;
@@ -249,122 +250,131 @@ public class GameEngine {
 		 *
 		 * scheduleAtFixedRate() does not invoke concurrent Runnables.
 		 */
-		scheduler.scheduleAtFixedRate(new Runnable() {
-			int gameTicksIncrementor;
-			final int printInfoTick = Constants.CYCLE_LOGGING_TICK;
-			public void run() {
-				Stopwatch stopwatch = Stopwatch.createStarted();
-				/**
-				 * Main Server Tick
-				 */
-				try {
-					if (GameEngine.shutdownServer) {
-						scheduler.shutdown();
-					}
+			scheduler.scheduleAtFixedRate(new Runnable() {
+				int gameTicksIncrementor;
+				final int printInfoTick = Constants.CYCLE_LOGGING_TICK;
+				public void run() {
+					Stopwatch stopwatch = Stopwatch.createStarted();
+					AgentActionService.TickStats agentStats = null;
+					long durationAgentActions = 0L;
+					/**
+					 * Main Server Tick
+					 */
 					try {
-						AgentActionService.INSTANCE.processPendingActions();
-					} catch (Throwable agentEx) {
-						System.err.println("AgentActionService failed during tick; continuing server loop.");
-						agentEx.printStackTrace();
-					}
-					long startItemHandler = System.currentTimeMillis();
-					itemHandler.process();
-					long durationItemHandler = System.currentTimeMillis() - startItemHandler;
-					checkAndLogDuration("ItemHandler", durationItemHandler);
-					long startPlayerHandler = System.currentTimeMillis();
-					playerHandler.process();
-					long durationPlayerHandler = System.currentTimeMillis() - startPlayerHandler;
-					checkAndLogDuration("PlayerHandler", durationPlayerHandler);
-					long startNpcHandler = System.currentTimeMillis();
-					npcHandler.process();
-					long durationNpcHandler = System.currentTimeMillis() - startNpcHandler;
-					checkAndLogDuration("NpcHandler", durationNpcHandler);
-					long startShopHandler = System.currentTimeMillis();
-					shopHandler.process();
-					long durationShopHandler = System.currentTimeMillis() - startShopHandler;
-					checkAndLogDuration("ShopHandler", durationShopHandler);
-					long startObjectManager = System.currentTimeMillis();
-					objectManager.process();
-					long durationObjectManager = System.currentTimeMillis() - startObjectManager;
-					checkAndLogDuration("ObjectManager", durationObjectManager);
-					long startCastleWars = System.currentTimeMillis();
-					CastleWars.process();
-					long durationCastleWars = System.currentTimeMillis() - startCastleWars;
-					checkAndLogDuration("CastleWars", durationCastleWars);
-					long startFightPits = System.currentTimeMillis();
-					FightPits.process();
-					long durationFightPits = System.currentTimeMillis() - startFightPits;
-					checkAndLogDuration("FightPits", durationFightPits);
-					long startPestControl = System.currentTimeMillis();
-					pestControl.process();
-					long durationPestControl = System.currentTimeMillis() - startPestControl;
-					checkAndLogDuration("PestControl", durationPestControl);
-					long startObjectHandler = System.currentTimeMillis();
-					objectHandler.process();
-					long durationObjectHandler = System.currentTimeMillis() - startObjectHandler;
-					checkAndLogDuration("CastleWars", durationObjectHandler);
-					long startMageTrainingArena = System.currentTimeMillis();
-					MageTrainingArena.process();
-					long durationMageTrainingArena = System.currentTimeMillis() - startMageTrainingArena;
-					checkAndLogDuration("MageTrainingArena", durationMageTrainingArena);
-					long startCycleEventHandler = System.currentTimeMillis();
-					CycleEventHandler.getSingleton().process();
-					long durationCycleEventHandler = System.currentTimeMillis() - startCycleEventHandler;
-					checkAndLogDuration("CycleEventHandler", durationCycleEventHandler);
-					long startIntegrationEvents = System.currentTimeMillis();
-					if (Constants.WEBSITE_INTEGRATION) {
-						PlayersOnlineWebsite.addUpdatePlayersOnlineTask();
-						RegisteredAccsWebsite.addUpdateRegisteredUsersTask();
-					}
-					if (DiscordActivity.playerCount) {
-						DiscordActivity.updateActivity();
-					}
-					long durationIntegrationEvents = System.currentTimeMillis() - startIntegrationEvents;
-					checkAndLogDuration("IntegrationEvents", durationIntegrationEvents);
-					long startSaveEvents = System.currentTimeMillis();
-					if (System.currentTimeMillis() - lastMassSave > 300000) {
-						for (Player p : PlayerHandler.players) {
-							if (p == null) {
-								continue;
+						if (GameEngine.shutdownServer) {
+							scheduler.shutdown();
+						}
+						try {
+							long startAgentActions = System.currentTimeMillis();
+							agentStats = AgentActionService.INSTANCE.processPendingActions();
+							durationAgentActions = System.currentTimeMillis() - startAgentActions;
+						} catch (Throwable agentEx) {
+							System.err.println("AgentActionService failed during tick; continuing server loop.");
+							agentEx.printStackTrace();
+						}
+							long startItemHandler = System.currentTimeMillis();
+							itemHandler.process();
+							long durationItemHandler = System.currentTimeMillis() - startItemHandler;
+							checkAndLogDuration("ItemHandler", durationItemHandler);
+							long startPlayerHandler = System.currentTimeMillis();
+							playerHandler.process();
+							long durationPlayerHandler = System.currentTimeMillis() - startPlayerHandler;
+							checkAndLogDuration("PlayerHandler", durationPlayerHandler);
+							long startNpcHandler = System.currentTimeMillis();
+							npcHandler.process();
+							long durationNpcHandler = System.currentTimeMillis() - startNpcHandler;
+							checkAndLogDuration("NpcHandler", durationNpcHandler);
+							long startShopHandler = System.currentTimeMillis();
+							shopHandler.process();
+							long durationShopHandler = System.currentTimeMillis() - startShopHandler;
+							checkAndLogDuration("ShopHandler", durationShopHandler);
+							long startObjectManager = System.currentTimeMillis();
+							objectManager.process();
+							long durationObjectManager = System.currentTimeMillis() - startObjectManager;
+							checkAndLogDuration("ObjectManager", durationObjectManager);
+							long startCastleWars = System.currentTimeMillis();
+							CastleWars.process();
+							long durationCastleWars = System.currentTimeMillis() - startCastleWars;
+							checkAndLogDuration("CastleWars", durationCastleWars);
+							long startFightPits = System.currentTimeMillis();
+							FightPits.process();
+							long durationFightPits = System.currentTimeMillis() - startFightPits;
+							checkAndLogDuration("FightPits", durationFightPits);
+							long startPestControl = System.currentTimeMillis();
+							pestControl.process();
+							long durationPestControl = System.currentTimeMillis() - startPestControl;
+							checkAndLogDuration("PestControl", durationPestControl);
+								long startObjectHandler = System.currentTimeMillis();
+								objectHandler.process();
+								long durationObjectHandler = System.currentTimeMillis() - startObjectHandler;
+								checkAndLogDuration("ObjectHandler", durationObjectHandler);
+							long startMageTrainingArena = System.currentTimeMillis();
+							MageTrainingArena.process();
+							long durationMageTrainingArena = System.currentTimeMillis() - startMageTrainingArena;
+							checkAndLogDuration("MageTrainingArena", durationMageTrainingArena);
+							long startCycleEventHandler = System.currentTimeMillis();
+							CycleEventHandler.getSingleton().process();
+							long durationCycleEventHandler = System.currentTimeMillis() - startCycleEventHandler;
+							checkAndLogDuration("CycleEventHandler", durationCycleEventHandler);
+							long startIntegrationEvents = System.currentTimeMillis();
+							if (Constants.WEBSITE_INTEGRATION) {
+								PlayersOnlineWebsite.addUpdatePlayersOnlineTask();
+								RegisteredAccsWebsite.addUpdateRegisteredUsersTask();
 							}
-							PlayerSave.saveGame((Client) p);
-							System.out.println("Saved game for " + p.playerName + ".");
-							lastMassSave = System.currentTimeMillis();
-						}
-					}
-					long durationSaveEvents = System.currentTimeMillis() - startSaveEvents;
-					checkAndLogDuration("SaveEvents", durationSaveEvents);
-					long totalCycleDuration = stopwatch.elapsed(TimeUnit.MILLISECONDS);
-					//Technically, we could add commands to test both client lag (creating many tile objects) and server lag (creating a BCrypt hash on game thread)
-					if (totalCycleDuration > 500) {
-						System.err.println("ERROR: Cycle duration exceeded 500 ms!");
-					} else if (totalCycleDuration > 250) {
-						System.err.println("WARNING: Cycle duration exceeded 250 ms!");
-					} else if (totalCycleDuration > 100) {
-						System.out.println("NOTICE: Cycle duration exceeded 100 ms.");
-					}
-					gameTicksIncrementor++;
-					if (Constants.CYCLE_LOGGING && gameTicksIncrementor > 1 && gameTicksIncrementor % printInfoTick == 0) {
-						long totalMem = Runtime.getRuntime().totalMemory();
-						long freeMem = Runtime.getRuntime().freeMemory();
-						long maxMem = Runtime.getRuntime().maxMemory();
-						int playerCount = 0;
-						for (Player p : PlayerHandler.players) {
-							if (p != null) {
-								playerCount++;
+							if (DiscordActivity.playerCount) {
+								DiscordActivity.updateActivity();
 							}
-						}
-						int npcCount = 0;
-						for (Npc npc : NpcHandler.npcs) {
-							if (npc != null) {
-								npcCount++;
+							long durationIntegrationEvents = System.currentTimeMillis() - startIntegrationEvents;
+							checkAndLogDuration("IntegrationEvents", durationIntegrationEvents);
+							long startSaveEvents = System.currentTimeMillis();
+							if (System.currentTimeMillis() - lastMassSave > 300000) {
+								for (Player p : PlayerHandler.players) {
+									if (p == null) {
+										continue;
+									}
+									PlayerSave.saveGame((Client) p);
+									System.out.println("Saved game for " + p.playerName + ".");
+									lastMassSave = System.currentTimeMillis();
+								}
 							}
-						}
-						System.out.println("Cycle #" + gameTicksIncrementor + " took " + totalCycleDuration + " ms. Players: " + playerCount + ", NPCs: " + npcCount +
-								", [Durations: i: " + durationItemHandler + " ms, p: " + durationPlayerHandler + " ms, n: " + durationNpcHandler + " ms, s: " + durationShopHandler +
-								" ms, oh: " + durationObjectHandler + " ms, om: " + durationObjectManager + " ms], Memory: " + (totalMem - freeMem) / 1024 / 1024 + "MB/" +
-								totalMem / 1024 / 1024 + "MB. Max: " + maxMem / 1024 / 1024 + "MB, Threads: " + Thread.activeCount() + ".");
-						}
+							long durationSaveEvents = System.currentTimeMillis() - startSaveEvents;
+							checkAndLogDuration("SaveEvents", durationSaveEvents);
+							long totalCycleDuration = stopwatch.elapsed(TimeUnit.MILLISECONDS);
+							gameTicksIncrementor++;
+							boolean shouldLogInfo = Constants.CYCLE_LOGGING && gameTicksIncrementor > 1
+									&& gameTicksIncrementor % printInfoTick == 0;
+							if (Constants.PERFORMANCE_LOGGING && (totalCycleDuration > 100 || shouldLogInfo)) {
+								long totalMem = Runtime.getRuntime().totalMemory();
+								long freeMem = Runtime.getRuntime().freeMemory();
+								long maxMem = Runtime.getRuntime().maxMemory();
+								int playerCount = activePlayerCount();
+								int npcCount = activeNpcCount();
+								PerformanceLogger.logTick(new PerformanceLogger.TickSample(gameTicksIncrementor, agentStats,
+										totalCycleDuration, durationAgentActions, durationItemHandler, durationPlayerHandler,
+										durationNpcHandler, durationShopHandler, durationObjectHandler, durationObjectManager,
+										durationCycleEventHandler, durationSaveEvents, playerCount, npcCount,
+										(totalMem - freeMem) / 1024 / 1024, totalMem / 1024 / 1024, maxMem / 1024 / 1024,
+										Thread.activeCount()));
+							}
+							//Technically, we could add commands to test both client lag (creating many tile objects) and server lag (creating a BCrypt hash on game thread)
+							if (totalCycleDuration > 500) {
+								System.err.println("ERROR: Cycle duration exceeded 500 ms!");
+							} else if (totalCycleDuration > 250) {
+								System.err.println("WARNING: Cycle duration exceeded 250 ms!");
+							} else if (totalCycleDuration > 100) {
+								System.out.println("NOTICE: Cycle duration exceeded 100 ms.");
+							}
+							if (shouldLogInfo) {
+								long totalMem = Runtime.getRuntime().totalMemory();
+								long freeMem = Runtime.getRuntime().freeMemory();
+								long maxMem = Runtime.getRuntime().maxMemory();
+								int playerCount = activePlayerCount();
+								int npcCount = activeNpcCount();
+								System.out.println("Cycle #" + gameTicksIncrementor + " took " + totalCycleDuration + " ms. Players: " + playerCount + ", NPCs: " + npcCount +
+										", [Durations: a: " + durationAgentActions + " ms, i: " + durationItemHandler + " ms, p: " + durationPlayerHandler + " ms, n: " + durationNpcHandler + " ms, s: " + durationShopHandler +
+										" ms, oh: " + durationObjectHandler + " ms, om: " + durationObjectManager + " ms], Memory: " + (totalMem - freeMem) / 1024 / 1024 + "MB/" +
+										totalMem / 1024 / 1024 + "MB. Max: " + maxMem / 1024 / 1024 + "MB, Threads: " + Thread.activeCount() + ".");
+							}
 					} catch (Throwable ex) {
 						ex.printStackTrace();
 						System.err.println("A fatal exception has been thrown in the GameEngine cycle! Saving all players.");
@@ -412,6 +422,26 @@ public class GameEngine {
 		} else if (duration > 100) {
 			System.out.println("NOTICE: " + processName + " duration exceeded 100 ms. Duration: " + duration + " ms.");
 		}
+	}
+
+	private static int activePlayerCount() {
+		int playerCount = 0;
+		for (Player p : PlayerHandler.players) {
+			if (p != null) {
+				playerCount++;
+			}
+		}
+		return playerCount;
+	}
+
+	private static int activeNpcCount() {
+		int npcCount = 0;
+		for (Npc npc : NpcHandler.npcs) {
+			if (npc != null) {
+				npcCount++;
+			}
+		}
+		return npcCount;
 	}
 
 	public static boolean playerExecuted = false;

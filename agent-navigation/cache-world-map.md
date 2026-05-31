@@ -11,16 +11,16 @@ Canonical generated files:
 ```sh
 agent-navigation/topology/cache-world-map-full.png
 agent-navigation/topology/cache-world-map-level0.png
-agent-navigation/topology/movement-topology-v4.png
-agent-navigation/topology/movement-topology-v5-heatmap.png
-agent-navigation/topology/movement-topology-v6.png
+agent-navigation/topology/<profile>-map.png
+agent-navigation/topology/<profile>-heatmap.png
+agent-navigation/topology/<profile>-fog-map.png
 ```
 
 `cache-world-map-full.png` is the labeled full cache-bounds base export. `cache-world-map-level0.png` is the labeled level-0 surface export cropped to the main surface region. Both are 4 px/tile, north-up, generated without resizing, and contain no movement overlays. Other local scripts that need a static base map should use one of these files instead of sampling the Java client or generating their own ad hoc export.
 
-Place labels for these base exports and the active topology maps come from the shared `agent-navigation/tools/map_labels.py` helper. It combines important town/hub labels from `agent-navigation/data/places.json` with curated static labels such as Port Sarim, Ice Mountain, and Edgeville, so Varrock and Barbarian Village stay consistent across the cache-world, profile, and heat-map renders.
+Place labels for these base exports and the active topology maps come from the shared `agent-navigation/tools/map_labels.py` helper. It combines important town/hub labels from `agent-navigation/data/places.json` with curated static labels such as Port Sarim, Edgeville, and Nardah, so Varrock and Barbarian Village stay consistent across the cache-world, profile, and heat-map renders. White outlined death labels are not static base-map labels; active topology maps derive them from profile death events, deduplicate nearby deaths into named sites, and include the death count in the label.
 
-`movement-topology-v4.png` is the legacy-default active main movement map. `movement-topology-v5-heatmap.png` is the legacy-default active `Heat Map`. `movement-topology-v6.png` is the legacy-default active fog-of-war map. Nondefault profiles append the safe profile key before the version suffix, such as `movement-topology-mrgem-v4.png`. The movement PNG filenames are retained for compatibility; new code should use the plain-name scripts above instead of versioned renderer names. JSON summaries and route overview renders default to ignored paths under `agent-navigation/.local/map-summaries/` so `agent-navigation/topology/` stays limited to the reusable base-map exports and the profile-scoped user-facing movement PNGs.
+Active movement PNGs are profile-first simple names: `<profile>-map.png`, `<profile>-heatmap.png`, and `<profile>-fog-map.png`, such as `mrflame-map.png` or `mrfish-heatmap.png`. The old `movement-topology-v*.png` filenames are legacy exports only; new code should use the plain-name scripts above and the profile-scoped canonical paths. JSON summaries and route overview renders default to ignored paths under `agent-navigation/.local/map-summaries/` so `agent-navigation/topology/` stays limited to the reusable base-map exports and the profile-scoped user-facing movement PNGs.
 
 The active movement wrappers use passive player traces as the main evidence stream and backfill agent-batch traces only for the historical period before passive player tracing began. That keeps early exploration and death sites visible without reintroducing duplicate newer batch telemetry.
 
@@ -102,11 +102,11 @@ agent-navigation/tools/active_map_refresher.py logs --lines 40
 agent-navigation/tools/active_map_refresher.py stop
 ```
 
-`active_map_refresher.py` is the small background controller for the lower-level `refresh_active_maps.py` worker. By default it refreshes these canonical files in parallel worker loops:
+`active_map_refresher.py` is the small background controller for the lower-level `refresh_active_maps.py` worker. By default it refreshes these canonical files in parallel worker loops for the selected profile:
 
-- `agent-navigation/topology/movement-topology-v4.png`
-- `agent-navigation/topology/movement-topology-v5-heatmap.png`
-- `agent-navigation/topology/movement-topology-v6.png`
+- `agent-navigation/topology/<profile>-map.png`
+- `agent-navigation/topology/<profile>-heatmap.png`
+- `agent-navigation/topology/<profile>-fog-map.png`
 
 All three active map workers target a five-minute cadence. If a render takes longer than five minutes, that map starts its next pass immediately after the previous pass finishes; it never overlaps two renders for the same map. Auxiliary cache-map and route-overview renders are ignored `.local` artifacts, not topology exports.
 

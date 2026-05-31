@@ -194,6 +194,38 @@ def execution_steps(definition: Dict[str, Any], current: Dict[str, int]) -> List
     return steps[start_index:]
 
 
+def choose_lookahead_target(
+    steps: List[Dict[str, int]],
+    start_index: int,
+    current: Dict[str, int],
+    lookahead_distance: int,
+    step_limit: int,
+) -> tuple[int, Dict[str, int], int]:
+    """Pick the farthest upcoming route step that remains a bounded route batch."""
+    if start_index >= len(steps):
+        return len(steps) - 1, steps[-1], 0
+    if lookahead_distance <= 0 or step_limit <= 1:
+        return start_index, steps[start_index], distance(current, steps[start_index])
+
+    max_index = min(len(steps) - 1, start_index + max(1, step_limit) - 1)
+    target_index = start_index
+    travelled = distance(current, steps[start_index])
+    if travelled > lookahead_distance:
+        return target_index, steps[target_index], travelled
+    for index in range(start_index + 1, max_index + 1):
+        travelled += distance(steps[index - 1], steps[index])
+        if travelled > lookahead_distance:
+            break
+        target_index = index
+    return target_index, steps[target_index], travelled
+
+
+def distance_to_route_steps(steps: List[Dict[str, int]], current: Dict[str, int]) -> int:
+    if not steps:
+        return 100000
+    return min(distance(current, step) for step in steps)
+
+
 def outcome_status(player: Dict[str, Any], target_tile: Optional[Dict[str, int]], arrival_radius: int) -> str:
     if player_dead(player):
         return "death"
@@ -230,14 +262,27 @@ def run(args: argparse.Namespace) -> int:
         "remainingSteps": len(steps),
         "runMode": args.run_mode,
         "eatAt": args.eat_at,
+        "lookaheadDistance": 0 if args.no_lookahead else args.lookahead_distance,
+        "lookaheadStepLimit": args.lookahead_step_limit,
     }, sort_keys=True), flush=True)
 
-    for batch, target in enumerate(steps, start=1):
+    step_index = 0
+    batch = 0
+    lookahead_distance = 0 if args.no_lookahead else int(args.lookahead_distance)
+    while step_index < len(steps):
+        batch += 1
+        target_index, target, planned_batch_distance = choose_lookahead_target(
+            steps,
+            step_index,
+            player_tile(player),
+            lookahead_distance,
+            int(args.lookahead_step_limit),
+        )
         before = dict(player)
         player = maybe_eat(player, args.eat_at, profile)
         before_hp = player_hp(player)
         before_run = int(player.get("runEnergy", 0) or 0)
-        result = bridge.call_tool("walk_to_tile_until_arrived", {
+        result = bridge.call_tool("walk_to_tile_until_arrived_XS", {
             "x": target["x"],
             "y": target["y"],
             "height": target.get("height", 0),
@@ -275,6 +320,10 @@ def run(args: argparse.Namespace) -> int:
             "targetPlaceTile": target_tile,
             "batch": batch,
             "mode": "route-definition-steps",
+            "routeStepIndex": step_index,
+            "targetRouteStepIndex": target_index,
+            "lookaheadRouteSteps": target_index - step_index + 1,
+            "plannedBatchDistance": planned_batch_distance,
             "currentTile": player_tile(before),
             "targetTile": target,
             "finalTile": player_tile(player),
@@ -297,6 +346,9 @@ def run(args: argparse.Namespace) -> int:
                 "event": "route_step",
                 "routeId": route_id,
                 "batch": batch,
+                "routeStepIndex": step_index,
+                "targetRouteStepIndex": target_index,
+                "lookaheadRouteSteps": target_index - step_index + 1,
                 "target": target,
                 "tile": player_tile(player),
                 "status": record["batchStatus"],
@@ -308,8 +360,39 @@ def run(args: argparse.Namespace) -> int:
             }, sort_keys=True), flush=True)
         if not result.get("success") or player_dead(player):
             break
+        off_route_distance = distance_to_route_steps(steps[target_index:], player_tile(player))
+        if args.off_route_distance >= 0 and off_route_distance > args.off_route_distance:
+            record = {
+                "schemaVersion": 1,
+                "event": "route_batch",
+                "timestamp": utcnow(),
+                "tool": "execute_route_definition",
+                "profile": profile,
+                "routeId": route_id,
+                "batch": batch,
+                "mode": "route-definition-steps",
+                "batchStatus": "off_route",
+                "success": False,
+                "currentTile": player_tile(before),
+                "targetTile": target,
+                "finalTile": player_tile(player),
+                "offRouteDistance": off_route_distance,
+                "playerAfter": compact_player(player),
+            }
+            append_jsonl(args.evidence_jsonl, record)
+            print(json.dumps({
+                "event": "route_step",
+                "routeId": route_id,
+                "batch": batch,
+                "target": target,
+                "tile": player_tile(player),
+                "status": "off_route",
+                "offRouteDistance": off_route_distance,
+            }, sort_keys=True), flush=True)
+            break
         if target_tile and distance(player_tile(player), target_tile) <= arrival_radius:
             break
+        step_index = target_index + 1
 
     status = outcome_status(player, target_tile, arrival_radius)
     outcome = {
@@ -366,6 +449,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-ticks", type=int, default=95)
     parser.add_argument("--max-walk-distance", type=int, default=36)
     parser.add_argument("--stop-distance", type=int, default=0)
+    parser.add_argument("--lookahead-distance", type=int, default=30,
+                        help="Route-step distance budget per walk batch. Use 0 to execute one routeStep at a time.")
+    parser.add_argument("--lookahead-step-limit", type=int, default=4,
+                        help="Maximum routeSteps to fold into one optimistic walk batch.")
+    parser.add_argument("--no-lookahead", action="store_true",
+                        help="Preserve the old executor behavior: one walk batch per routeStep.")
+    parser.add_argument("--off-route-distance", type=int, default=12,
+                        help="Stop after a successful batch if the player is this far from the remaining routeSteps; use -1 to disable.")
     parser.add_argument("--stop-on-combat", action="store_true")
     parser.add_argument("--observe-on-contact", action="store_true", default=True)
     parser.add_argument("--no-observe-on-contact", dest="observe_on_contact", action="store_false")

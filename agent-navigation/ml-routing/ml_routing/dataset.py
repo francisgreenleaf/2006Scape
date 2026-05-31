@@ -183,6 +183,9 @@ def route_hint_edges(generated_at: Optional[str] = None) -> List[Dict[str, Any]]
                 "distance": dist,
                 "bidirectional": bool(route.get("bidirectional")),
                 "objectStepCount": sum(1 for step in route.get("steps", []) if navdb.is_object_step(step)),
+                "requirements": route.get("requirements", {}) or {},
+                "runPolicy": route.get("runPolicy", {}) or {},
+                "preserveShape": bool(route.get("preserveShape")),
                 "statusPenalty": _status_penalty(route.get("status", "unknown")),
                 "hintCost": max(1.0, dist) + _status_penalty(route.get("status", "unknown")),
             })

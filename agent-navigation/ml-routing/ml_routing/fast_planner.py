@@ -24,6 +24,8 @@ TRACE_SOURCE = "model_trace"
 ROUTE_HINT_SOURCE = "route_hint"
 SNAP_SOURCE = "snap"
 CACHE_DIRECT_SOURCE = "cache_direct"
+CACHE_MESH_SOURCE = "cache_mesh"
+OBJECT_TRANSITION_SOURCE = "object_transition"
 
 
 def _load_nav_modules():
@@ -70,6 +72,37 @@ def _hazard_penalty(db: Dict[str, Any], navdb: Any, tile: Dict[str, int], args: 
             "warnings": risk_warnings,
         })
     return penalty, warnings
+
+
+def _route_hint_requirement_warnings(navdb: Any, record: Dict[str, Any],
+                                     args: SimpleNamespace) -> List[str]:
+    route_like = {
+        "requirements": record.get("requirements") or {},
+        "runPolicy": record.get("runPolicy") or {},
+    }
+    return navdb.route_requirement_warnings(
+        route_like,
+        args.combat_level,
+        args.food,
+        coins=args.coins,
+        run_energy=args.run_energy,
+        run_enabled=args.run_enabled,
+    )
+
+
+def _route_hint_requirement_penalty(warnings: List[str]) -> float:
+    penalty = 0.0
+    for warning in warnings:
+        lowered = str(warning).lower()
+        if "combat" in lowered:
+            penalty += 900.0
+        elif "food" in lowered:
+            penalty += 700.0
+        elif "run energy" in lowered or "run disabled" in lowered:
+            penalty += 800.0
+        else:
+            penalty += 500.0
+    return penalty
 
 
 def _direct_hazard_base_cost(hazard: Dict[str, Any], warnings: List[str], args: SimpleNamespace) -> float:
@@ -173,9 +206,63 @@ def _hazard_influence_records(db: Dict[str, Any], navdb: Any, args: SimpleNamesp
     return records
 
 
-def _direct_tile_penalty(records: List[Dict[str, Any]]):
+def _learned_exposure_tile_penalty(model: Dict[str, Any], plane: int):
+    weights = model.get("weights", {}) if isinstance(model, dict) else {}
+    region_stats = model.get("regionStats", {}) if isinstance(model, dict) else {}
+    combat_weight = float(weights.get("combatExposureTilePenalty", 18.0))
+    hp_weight = float(weights.get("hpLossTilePenalty", 1.5))
+    failure_weight = float(weights.get("failureTilePenalty", 8.0))
+
     def penalty(x: int, y: int) -> float:
-        total = 0.0
+        stats = region_stats.get("{},{},{}".format(x // 8, y // 8, plane)) or {}
+        combat_exposure = float(stats.get("combatExposure") or stats.get("combatRate") or 0.0)
+        hp_loss = float(stats.get("hpLossPerAttempt") or 0.0)
+        if combat_exposure <= 0.0 and hp_loss <= 0.0:
+            return 0.0
+        failure_rate = float(stats.get("failureRate") or 0.0)
+        confidence = max(0.15, min(1.0, float(stats.get("confidence") or 0.0)))
+        return confidence * (
+            combat_exposure * combat_weight
+            + hp_loss * hp_weight
+            + failure_rate * failure_weight
+        )
+
+    return penalty
+
+
+def _path_learned_exposure(model: Dict[str, Any], tiles: List[Dict[str, int]]) -> Dict[str, Any]:
+    if not isinstance(model, dict) or not tiles:
+        return {}
+    region_stats = model.get("regionStats", {}) or {}
+    if not region_stats:
+        return {}
+    stride = max(1, int(len(tiles) / 120))
+    samples = []
+    for tile in tiles[::stride]:
+        key = "{},{},{}".format(int(tile["x"]) // 8, int(tile["y"]) // 8, int(tile.get("height", 0)))
+        stats = region_stats.get(key)
+        if not stats:
+            continue
+        exposure = float(stats.get("combatExposure") or stats.get("combatRate") or 0.0)
+        hp_loss = float(stats.get("hpLossPerAttempt") or 0.0)
+        if exposure <= 0.0 and hp_loss <= 0.0:
+            continue
+        samples.append((exposure, hp_loss, float(stats.get("confidence") or 0.0)))
+    if not samples:
+        return {}
+    return {
+        "source": "model_region",
+        "sampledRegions": len(samples),
+        "maxCombatExposure": round(max(item[0] for item in samples), 6),
+        "avgCombatExposure": round(sum(item[0] for item in samples) / len(samples), 6),
+        "maxHpLossPerAttempt": round(max(item[1] for item in samples), 4),
+        "avgConfidence": round(sum(item[2] for item in samples) / len(samples), 6),
+    }
+
+
+def _direct_tile_penalty(records: List[Dict[str, Any]], learned_penalty=None):
+    def penalty(x: int, y: int) -> float:
+        total = learned_penalty(x, y) if learned_penalty is not None else 0.0
         for record in records:
             radius = int(record["influenceRadius"])
             if radius <= 0:
@@ -357,6 +444,8 @@ def _edge_cost_from_stats(model: Dict[str, Any], stats: Dict[str, Any], left: Di
     weights = model.get("weights", {})
     cost = prediction["predictedTicks"]
     cost += prediction["riskScore"] * float(weights.get("riskPenalty", 950.0))
+    cost += prediction.get("combatExposure", 0.0) * float(weights.get("combatExposurePenalty", 420.0))
+    cost += prediction.get("hpLossPerAttempt", 0.0) * float(weights.get("hpLossPenalty", 35.0))
     cost += (1.0 - min(1.0, prediction["confidence"])) * float(weights.get("lowConfidencePenalty", 140.0))
     cost += float(stats.get("objectInteractionRate") or 0.0) * float(weights.get("objectInteractionPenalty", 25.0))
     return cost, prediction
@@ -425,16 +514,27 @@ def _build_graph(model: Dict[str, Any], db: Dict[str, Any], navdb: Any, args: Si
         nodes[right_key] = right
         dist = float(record.get("distance") or distance(left, right) or 1.0)
         hazard_cost, warnings = _hazard_penalty(db, navdb, right, args)
+        route_warnings = _route_hint_requirement_warnings(navdb, record, args)
         if hazard_cost >= 8000.0 and not args.allow_lethal:
             continue
         if warnings:
             hazard_warnings.setdefault(right_key, []).extend(warnings)
-        cost = max(1.0, dist) + float(record.get("statusPenalty") or 0.0) + hazard_cost
+        if route_warnings:
+            hazard_warnings.setdefault(right_key, []).append({
+                "id": "route:{}".format(record.get("routeId")),
+                "risk": "route-requirement",
+                "distance": 0,
+                "warnings": route_warnings,
+            })
+        requirement_cost = _route_hint_requirement_penalty(route_warnings)
+        cost = max(1.0, dist) + float(record.get("statusPenalty") or 0.0) + hazard_cost + requirement_cost
         _add_edge(adjacency, left_key, right_key, cost, ROUTE_HINT_SOURCE, {
             "route": record.get("routeId"),
             "status": status,
             "distance": dist,
             "objectStepCount": int(record.get("objectStepCount") or 0),
+            "routeRequirementWarnings": route_warnings,
+            "preserveShape": bool(record.get("preserveShape")),
         })
         if record.get("bidirectional") is True:
             _add_edge(adjacency, right_key, left_key, cost, ROUTE_HINT_SOURCE, {
@@ -442,6 +542,8 @@ def _build_graph(model: Dict[str, Any], db: Dict[str, Any], navdb: Any, args: Si
                 "status": status,
                 "distance": dist,
                 "objectStepCount": int(record.get("objectStepCount") or 0),
+                "routeRequirementWarnings": route_warnings,
+                "preserveShape": bool(record.get("preserveShape")),
             })
     return {"nodes": nodes, "adjacency": adjacency, "hazardWarningsByKey": hazard_warnings}
 
@@ -536,6 +638,83 @@ def _source_summary(edges: List[Tuple[str, str, Dict[str, Any]]]) -> Tuple[Dict[
         if route_id:
             routes[route_id] = routes.get(route_id, 0) + 1
     return sources, routes
+
+
+def _edge_meta(edge: Dict[str, Any]) -> Dict[str, Any]:
+    meta = edge.get("meta") if isinstance(edge.get("meta"), dict) else {}
+    return meta
+
+
+def _is_short_object_transition(left: Dict[str, int], right: Dict[str, int], edge: Dict[str, Any]) -> bool:
+    meta = _edge_meta(edge)
+    if bool(meta.get("objectTransition")):
+        return True
+    try:
+        object_steps = int(meta.get("objectStepCount") or 0)
+    except (TypeError, ValueError):
+        object_steps = 0
+    if object_steps <= 0:
+        return False
+    dist = distance(left, right)
+    if dist <= 2:
+        return True
+    route_id = str(meta.get("route") or "").lower()
+    return "transition" in route_id and dist <= 4
+
+
+def _transition_edges_from_learned_path(edges: List[Tuple[str, str, Dict[str, Any]]]) -> List[Tuple[Dict[str, int], Dict[str, int], Dict[str, Any]]]:
+    transitions: List[Tuple[Dict[str, int], Dict[str, int], Dict[str, Any]]] = []
+    seen = set()
+    for left_key, right_key, edge in edges:
+        left = parse_tile(left_key)
+        right = parse_tile(right_key)
+        if not left or not right:
+            continue
+        if left.get("height", 0) != right.get("height", 0):
+            continue
+        if not _is_short_object_transition(left, right, edge):
+            continue
+        signature = (tile_key(left), tile_key(right), _edge_meta(edge).get("route"))
+        if signature in seen:
+            continue
+        seen.add(signature)
+        transitions.append((left, right, edge))
+    return transitions
+
+
+def _object_transition_payload(edge: Dict[str, Any]) -> Dict[str, Any]:
+    meta = dict(_edge_meta(edge))
+    meta["objectTransition"] = True
+    return {
+        "source": OBJECT_TRANSITION_SOURCE,
+        "cost": float(edge.get("cost") or 1.0),
+        "meta": meta,
+    }
+
+
+def _cache_mesh_payload() -> Dict[str, Any]:
+    return {
+        "source": CACHE_MESH_SOURCE,
+        "cost": 1.0,
+        "meta": {},
+    }
+
+
+def _cache_mesh_waypoints(start_tile: Dict[str, int], target_tile: Dict[str, int],
+                          transitions: List[Tuple[Dict[str, int], Dict[str, int], Dict[str, Any]]]) -> Tuple[List[Dict[str, int]], List[Dict[str, Any]]]:
+    waypoints = [dict(start_tile)]
+    edges: List[Dict[str, Any]] = []
+    for left, right, edge in transitions:
+        if tile_key(waypoints[-1]) != tile_key(left):
+            waypoints.append(dict(left))
+            edges.append(_cache_mesh_payload())
+        if tile_key(waypoints[-1]) != tile_key(right):
+            waypoints.append(dict(right))
+            edges.append(_object_transition_payload(edge))
+    if tile_key(waypoints[-1]) != tile_key(target_tile):
+        waypoints.append(dict(target_tile))
+        edges.append(_cache_mesh_payload())
+    return waypoints, edges
 
 
 def _tick_estimate(edges: List[Tuple[str, str, Dict[str, Any]]]) -> float:
@@ -664,6 +843,14 @@ def _route_steps(tiles: List[Dict[str, int]], max_gap: int) -> List[Dict[str, in
     return kept
 
 
+def _edges_preserve_route_shape(edges: List[Tuple[str, str, Dict[str, Any]]]) -> bool:
+    for _left, _right, edge in edges:
+        meta = edge.get("meta", {}) if isinstance(edge, dict) else {}
+        if bool(meta.get("preserveShape")):
+            return True
+    return False
+
+
 def _apply_cache_collision(base: Dict[str, Any], route_eval: Any, tiles: List[Dict[str, int]],
                            edges: List[Tuple[str, str, Dict[str, Any]]], target_tile: Dict[str, int],
                            args: SimpleNamespace, arrival_radius: int = 0) -> None:
@@ -678,7 +865,10 @@ def _apply_cache_collision(base: Dict[str, Any], route_eval: Any, tiles: List[Di
         max_expansions_per_segment=int(getattr(args, "collision_max_expansions", 250000)),
         final_arrival_radius=arrival_radius,
         waypoint_arrival_radius=int(getattr(args, "waypoint_arrival_radius", 1)),
-        optimize_shortcuts=not bool(getattr(args, "no_shortcut_optimize", False)),
+        optimize_shortcuts=(
+            not bool(getattr(args, "no_shortcut_optimize", False))
+            and not _edges_preserve_route_shape(edges)
+        ),
         shortcut_max_span=int(getattr(args, "shortcut_max_span", 128)),
         shortcut_min_savings=int(getattr(args, "shortcut_min_savings", 4)),
         shortcut_corridor_radius=int(getattr(args, "shortcut_corridor_radius", 18)),
@@ -743,7 +933,7 @@ def _apply_cache_collision(base: Dict[str, Any], route_eval: Any, tiles: List[Di
     base["quality"] = route_eval.quality_level(base["detourRatio"], target_distance_increases, len(wrong_way))
 
 
-def _cache_direct_candidate(db: Dict[str, Any], navdb: Any, route_eval: Any,
+def _cache_direct_candidate(model: Dict[str, Any], db: Dict[str, Any], navdb: Any, route_eval: Any,
                             start_tile: Dict[str, int], start_label: str, target: Dict[str, Any],
                             args: SimpleNamespace) -> Optional[Dict[str, Any]]:
     if bool(getattr(args, "no_cache_collision", False)) or bool(getattr(args, "no_cache_direct", False)):
@@ -764,7 +954,10 @@ def _cache_direct_candidate(db: Dict[str, Any], navdb: Any, route_eval: Any,
         target_tile,
         max_expansions=int(getattr(args, "direct_max_expansions", getattr(args, "collision_max_expansions", 250000))),
         arrival_radius=target_radius,
-        tile_penalty=_direct_tile_penalty(hazard_records),
+        tile_penalty=_direct_tile_penalty(
+            hazard_records,
+            learned_penalty=_learned_exposure_tile_penalty(model, int(start_tile.get("height", 0))),
+        ),
     )
     if not path:
         return {
@@ -790,6 +983,7 @@ def _cache_direct_candidate(db: Dict[str, Any], navdb: Any, route_eval: Any,
         max_segments=int(getattr(args, "max_suspects", 5)),
     )
     hazard_warnings = _path_hazard_warnings(db, navdb, path, args)
+    learned_exposure = _path_learned_exposure(model, path)
     route_steps = _route_steps(path, int(getattr(args, "route_step_gap", 10)))
     arrived = distance(path[-1], target_tile) <= target_radius
     candidate = {
@@ -833,6 +1027,130 @@ def _cache_direct_candidate(db: Dict[str, Any], navdb: Any, route_eval: Any,
         "edgeSources": {CACHE_DIRECT_SOURCE: max(0, len(path) - 1)},
         "hazardWarnings": hazard_warnings[:int(getattr(args, "max_warnings", 8))],
     }
+    if learned_exposure:
+        candidate["learnedExposure"] = learned_exposure
+    attach_run_plan(candidate, db, navdb, args)
+    return candidate
+
+
+def _cache_mesh_candidate(model: Dict[str, Any], db: Dict[str, Any], navdb: Any, route_eval: Any,
+                          start_tile: Dict[str, int], start_label: str, target: Dict[str, Any],
+                          learned_edges: List[Tuple[str, str, Dict[str, Any]]],
+                          args: SimpleNamespace) -> Optional[Dict[str, Any]]:
+    if bool(getattr(args, "no_cache_collision", False)) or bool(getattr(args, "no_cache_mesh", False)):
+        return None
+    target_tile = target["tile"]
+    if start_tile.get("height", 0) != target_tile.get("height", 0):
+        return None
+    transitions = _transition_edges_from_learned_path(learned_edges)
+    if not transitions:
+        return None
+    waypoints, waypoint_edges = _cache_mesh_waypoints(start_tile, target_tile, transitions)
+    expanded = expand_route_path(
+        waypoints,
+        edges=waypoint_edges,
+        padding=int(getattr(args, "collision_padding_tiles", 64)),
+        max_expansions_per_segment=int(getattr(args, "collision_max_expansions", 250000)),
+        final_arrival_radius=int(target.get("arrivalRadius", 1)),
+        waypoint_arrival_radius=0,
+        optimize_shortcuts=not bool(getattr(args, "no_shortcut_optimize", False)),
+        shortcut_max_span=int(getattr(args, "shortcut_max_span", 128)),
+        shortcut_min_savings=int(getattr(args, "shortcut_min_savings", 4)),
+        shortcut_corridor_radius=int(getattr(args, "shortcut_corridor_radius", 18)),
+    )
+    path = expanded.get("tiles") or []
+    transition_count = int(expanded.get("skippedObjectTransitions") or 0)
+    if not path:
+        return {
+            "planner": "fast",
+            "mode": "cache_mesh",
+            "status": "error",
+            "quality": "bad",
+            "error": "cache mesh did not produce a path",
+            "transitionCount": len(transitions),
+        }
+    if not expanded.get("success"):
+        return {
+            "planner": "fast",
+            "mode": "cache_mesh",
+            "status": "error",
+            "quality": "bad",
+            "error": "cache mesh could not expand every walkable segment",
+            "collisionFailures": expanded.get("failures") or [],
+            "transitionCount": len(transitions),
+        }
+    target_radius = int(target.get("arrivalRadius", 1))
+    route_distance = _path_distance(path)
+    direct_distance = distance(start_tile, target_tile)
+    analysis_path = _turn_waypoints(path)
+    target_distance_increases = _target_distance_increases(analysis_path, target_tile)
+    wrong_way = route_eval.wrong_way_flags(analysis_path, target_tile)
+    detours = route_eval.detour_segments(
+        analysis_path,
+        target_tile,
+        max_segments=int(getattr(args, "max_suspects", 5)),
+    )
+    hazard_warnings = _path_hazard_warnings(db, navdb, path, args)
+    learned_exposure = _path_learned_exposure(model, path)
+    route_steps = _route_steps(path, int(getattr(args, "route_step_gap", 10)))
+    transition_routes: Dict[str, int] = {}
+    for _left, _right, edge in transitions:
+        route_id = _edge_meta(edge).get("route")
+        if route_id:
+            transition_routes[str(route_id)] = transition_routes.get(str(route_id), 0) + 1
+    candidate = {
+        "planner": "fast",
+        "mode": "cache_mesh",
+        "status": "ok" if distance(path[-1], target_tile) <= target_radius else "no-learned-route",
+        "quality": route_eval.quality_level(
+            float(route_distance) / max(1.0, float(direct_distance)),
+            target_distance_increases,
+            len(wrong_way),
+        ),
+        "from": start_label,
+        "to": target["id"],
+        "targetTile": target_tile,
+        "arrivalRadius": target_radius,
+        "endTile": path[-1],
+        "next": _first_path_batch_target(path, int(getattr(args, "max_batch_distance", 24))),
+        "waypoints": route_steps,
+        "routeSteps": route_steps,
+        "routeStepCount": len(route_steps),
+        "directDistance": direct_distance,
+        "routeDistance": route_distance,
+        "collisionPathDistance": route_distance,
+        "collisionPath": path,
+        "collisionExpanded": True,
+        "collision": {
+            "enabled": True,
+            "success": True,
+            "pathTiles": len(path),
+            "distance": route_distance,
+            "preShortcutDistance": expanded.get("preShortcutDistance"),
+            "shortcutSavings": expanded.get("shortcutSavings"),
+            "shortcutCount": expanded.get("shortcutCount"),
+            "segmentsExpanded": expanded.get("segmentsExpanded"),
+            "skippedObjectTransitions": transition_count,
+            "gridStats": (expanded.get("grid") or {}).get("stats", {}),
+            "bounds": (expanded.get("grid") or {}).get("bounds"),
+        },
+        "estimatedTicks": round(float(route_distance), 1),
+        "detourRatio": round(float(route_distance) / max(1.0, float(direct_distance)), 3),
+        "targetDistanceIncreases": target_distance_increases,
+        "wrongWayFlags": wrong_way,
+        "detourSegments": detours,
+        "edgeSources": {
+            CACHE_MESH_SOURCE: max(0, len(path) - 1 - transition_count),
+            OBJECT_TRANSITION_SOURCE: transition_count,
+        },
+        "routesUsed": transition_routes,
+        "hazardWarnings": hazard_warnings[:int(getattr(args, "max_warnings", 8))],
+        "transitionCount": transition_count,
+    }
+    if learned_exposure:
+        candidate["learnedExposure"] = learned_exposure
+    if expanded.get("warnings"):
+        candidate["collisionWarnings"] = expanded["warnings"][:int(getattr(args, "max_warnings", 8))]
     attach_run_plan(candidate, db, navdb, args)
     return candidate
 
@@ -850,13 +1168,47 @@ def _compact_direct_candidate(candidate: Dict[str, Any]) -> Dict[str, Any]:
     keep = [
         "mode", "status", "quality", "routeDistance", "directDistance", "detourRatio",
         "targetDistanceIncreases", "edgeSources", "hazardWarnings", "error",
-        "routeStepCount", "endTile", "next", "runPlan",
+        "routeStepCount", "endTile", "next", "runPlan", "transitionCount", "routesUsed",
+        "learnedExposure",
     ]
     return {key: candidate[key] for key in keep if key in candidate and candidate[key] not in (None, [], {})}
 
 
+def _maybe_select_cache_mesh(base: Dict[str, Any], mesh: Optional[Dict[str, Any]],
+                             args: SimpleNamespace) -> Dict[str, Any]:
+    if not mesh:
+        return base
+    base["cacheMeshCandidate"] = _compact_direct_candidate(mesh)
+    if mesh.get("status") != "ok":
+        return base
+    if mesh.get("hazardWarnings") and not base.get("hazardWarnings") and not bool(getattr(args, "allow_lethal", False)):
+        return base
+    base_distance = float(base.get("routeDistance") or math.inf)
+    mesh_distance = float(mesh.get("routeDistance") or math.inf)
+    savings = base_distance - mesh_distance
+    min_savings = float(getattr(args, "direct_candidate_min_savings", 24))
+    mesh_rank = _quality_rank(mesh.get("quality"))
+    base_rank = _quality_rank(base.get("quality"))
+    large_detour = float(base.get("detourRatio") or 1.0) >= float(getattr(args, "direct_candidate_min_detour", 1.22))
+    safe_enough = mesh_rank <= base_rank + 1
+    if safe_enough and (savings >= min_savings or (large_detour and savings > 0)):
+        selected = dict(mesh)
+        selected["selectedOverLearned"] = {
+            "previousStatus": base.get("status"),
+            "previousQuality": base.get("quality"),
+            "previousRouteDistance": base.get("routeDistance"),
+            "savedTiles": int(savings) if math.isfinite(savings) else None,
+            "reason": "cache mesh rebuilt walkable legs from cache collision and kept only required object transitions from the learned path",
+        }
+        selected["learnedCandidate"] = _compact_direct_candidate(base)
+        return selected
+    return base
+
+
 def _should_try_cache_direct(base: Dict[str, Any], args: SimpleNamespace) -> bool:
     if bool(getattr(args, "no_cache_direct", False)):
+        return False
+    if base.get("preserveShape") and base.get("status") == "ok":
         return False
     if base.get("status") != "ok":
         return True
@@ -876,6 +1228,8 @@ def _maybe_select_cache_direct(base: Dict[str, Any], direct: Optional[Dict[str, 
         return base
     base["directCandidate"] = _compact_direct_candidate(direct)
     if direct.get("status") != "ok":
+        return base
+    if base.get("preserveShape") and base.get("status") == "ok":
         return base
     base_distance = float(base.get("routeDistance") or math.inf)
     direct_distance = float(direct.get("routeDistance") or math.inf)
@@ -1004,7 +1358,7 @@ def fast_route(args: SimpleNamespace, model: Dict[str, Any]) -> Dict[str, Any]:
                 arrival_radius=int(target.get("arrivalRadius", 1)),
             )
         if _should_try_cache_direct(base, args):
-            direct = _cache_direct_candidate(db, navdb, route_eval, start_tile, start_label, target, args)
+            direct = _cache_direct_candidate(model, db, navdb, route_eval, start_tile, start_label, target, args)
             base = _maybe_select_cache_direct(base, direct, args)
         attach_run_plan(base, db, navdb, args)
         return base
@@ -1012,6 +1366,7 @@ def fast_route(args: SimpleNamespace, model: Dict[str, Any]) -> Dict[str, Any]:
     keys, edges = _reconstruct(previous, end_key)
     tiles = [graph["nodes"][key] for key in keys]
     source_counts, route_counts = _source_summary(edges)
+    preserve_shape = _edges_preserve_route_shape(edges)
     tick_estimate = _tick_estimate(edges)
     direct_distance = navdb.distance(start_tile, target["tile"])
     route_distance = _path_distance(tiles)
@@ -1044,14 +1399,17 @@ def fast_route(args: SimpleNamespace, model: Dict[str, Any]) -> Dict[str, Any]:
         "detourSegments": detours,
         "edgeSources": source_counts,
         "routesUsed": route_counts,
+        "preserveShape": preserve_shape,
         "hazardWarnings": warnings[:args.max_warnings],
     })
     _apply_cache_collision(
         base, route_eval, tiles, edges, target["tile"], args,
         arrival_radius=int(target.get("arrivalRadius", 1)),
     )
+    mesh = _cache_mesh_candidate(model, db, navdb, route_eval, start_tile, start_label, target, edges, args)
+    base = _maybe_select_cache_mesh(base, mesh, args)
     if _should_try_cache_direct(base, args):
-        direct = _cache_direct_candidate(db, navdb, route_eval, start_tile, start_label, target, args)
+        direct = _cache_direct_candidate(model, db, navdb, route_eval, start_tile, start_label, target, args)
         base = _maybe_select_cache_direct(base, direct, args)
     attach_run_plan(base, db, navdb, args)
     return base

@@ -107,10 +107,7 @@ def call_tool(tool, arguments=None):
 
 
 def player_from(result):
-    player = result.get("player")
-    if not isinstance(player, dict):
-        raise RuntimeError("bridge response did not include player state")
-    return player
+    return bridge.player_from(result)
 
 
 def observe():
@@ -282,7 +279,7 @@ def nearby_object_override(player, variant):
 
 
 def walk_to(tile, args):
-    return call_tool("walk_to_tile_until_arrived", {
+    return call_tool("walk_to_tile_until_arrived_XS", {
         "x": int(tile["x"]),
         "y": int(tile["y"]),
         "height": int(tile.get("height", 0)),
@@ -295,7 +292,7 @@ def walk_to(tile, args):
 
 
 def wait_idle(max_ticks):
-    return call_tool("wait_until_idle", {
+    return call_tool("wait_until_idle_XS", {
         "maxTicks": int(max_ticks),
         "movement": True,
         "skilling": True,

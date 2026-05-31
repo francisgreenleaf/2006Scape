@@ -47,12 +47,11 @@ public class Region {
 	 */
 	public static Region getRegion(int x, int y) {
 	    int regionId = getRegionId(x,y);
-	    for (Region region : RegionFactory.getRegions()) {
-	        if (region.id() == regionId) {
-	            return region;
-	        }
-	    }
-	    return null;
+	    return getRegionById(regionId);
+	}
+
+	private static Region getRegionById(int regionId) {
+	    return RegionFactory.getRegion(regionId);
 	}
 	
 	/**
@@ -102,19 +101,30 @@ public class Region {
 		if (RegionFactory.getRegions() == null) {
 			return objects;
 		}
-		for (Region region : RegionFactory.getRegions()) {
-			if (region == null) {
-				continue;
-			}
-			for (Objects object : region.realObjects) {
-				if (object.objectHeight == z
-						&& Math.abs(object.objectX - x) <= radius
-						&& Math.abs(object.objectY - y) <= radius) {
-					objects.add(object);
-				}
+		int minRegionX = (x - radius) >> 6;
+		int maxRegionX = (x + radius) >> 6;
+		int minRegionY = (y - radius) >> 6;
+		int maxRegionY = (y + radius) >> 6;
+		for (int regionX = minRegionX; regionX <= maxRegionX; regionX++) {
+			for (int regionY = minRegionY; regionY <= maxRegionY; regionY++) {
+				Region region = getRegionById((regionX << 8) + regionY);
+				addObjectsInRadius(objects, region, x, y, z, radius);
 			}
 		}
 		return objects;
+	}
+
+	private static void addObjectsInRadius(List<Objects> objects, Region region, int x, int y, int z, int radius) {
+		if (region == null) {
+			return;
+		}
+		for (Objects object : region.realObjects) {
+			if (object.objectHeight == z
+					&& Math.abs(object.objectX - x) <= radius
+					&& Math.abs(object.objectY - y) <= radius) {
+				objects.add(object);
+			}
+		}
 	}
 
 	private void addClip(int x, int y, int height, int shift) {
@@ -143,11 +153,9 @@ public class Region {
 	 * @param height
 	 */
 	public void removeClipping(int x, int y, int height) {
-		for (Region r : RegionFactory.getRegions()) {
-			if (r.id() == getRegionId(x,y)) {
-				r.removeClip(x, y, height);
-				break;
-			}
+		Region r = getRegion(x, y);
+		if (r != null) {
+			r.removeClip(x, y, height);
 		}
 	}
 
@@ -366,20 +374,16 @@ public class Region {
 	 * @param shift uuuuh shift?
 	 */
 	public static void addClipping(int x, int y, int height, int shift) {
-		for (Region r : RegionFactory.getRegions()) {
-			if (r.id() == getRegionId(x, y)) {
-				r.addClip(x, y, height, shift);
-				break;
-			}
+		Region r = getRegion(x, y);
+		if (r != null) {
+			r.addClip(x, y, height, shift);
 		}
 	}
 
 	private static void addProjectileClipping(int x, int y, int height, int shift) {
-		for (Region r : RegionFactory.getRegions()) {
-			if (r.id() == getRegionId(x,y)) {
-				r.addProjectileClip(x, y, height, shift);
-				break;
-			}
+		Region r = getRegion(x, y);
+		if (r != null) {
+			r.addProjectileClip(x, y, height, shift);
 		}
 	}
 
@@ -674,24 +678,16 @@ public class Region {
 		if (height > 3) {
 			height = 0; //this doesn't seem good
 		}
-		for (Region r : RegionFactory.getRegions()) {
-			if (r.id() == getRegionId(x,y)) {
-				return r.getClip(x, y, height);
-			}
-		}
-		return 0;
+		Region r = getRegion(x, y);
+		return r == null ? 0 : r.getClip(x, y, height);
 	}
 
 	public static int getProjectileClipping(int x, int y, int height) {
 		if (height > 3) {
 			height = 0;
 		}
-		for (Region r : RegionFactory.getRegions()) {
-			if (r.id() == getRegionId(x,y)) {
-				return r.getProjectileClip(x, y, height);
-			}
-		}
-		return 0;
+		Region r = getRegion(x, y);
+		return r == null ? 0 : r.getProjectileClip(x, y, height);
 	}
 
 	public static boolean getClipping(int x, int y, int height, int moveTypeX,

@@ -159,7 +159,7 @@ def object_interaction_tile(obj):
 def walk_to_tile(profile, tile, max_ticks):
     if not tile:
         return None
-    return bridge.call_tool("walk_to_tile_until_arrived", {
+    return bridge.call_tool("walk_to_tile_until_arrived_XS", {
         "x": int(tile["x"]),
         "y": int(tile["y"]),
         "height": int(tile.get("height", 0) or 0),
@@ -231,7 +231,7 @@ def smelt_round(profile, args, handle):
         "buttonId": int(button_id),
     }, profile=profile)
     player = bridge._player_from_or(button, bridge._player_from_or(use, player))
-    wait = bridge.call_tool("wait_until_idle", {
+    wait = bridge.call_tool("wait_until_idle_XS", {
         "maxTicks": args.max_ticks,
         "movement": True,
         "skilling": True,
@@ -283,7 +283,7 @@ def smith_round(profile, args, handle):
         "itemId": item["itemId"],
         "amount": args.amount,
     }, profile=profile)
-    wait = bridge.call_tool("wait_until_idle", {
+    wait = bridge.call_tool("wait_until_idle_XS", {
         "maxTicks": args.max_ticks,
         "movement": True,
         "skilling": True,

@@ -9,9 +9,9 @@ Use this skill for how map outputs should look and be reviewed. Use `2006scape-c
 
 ## Canonical Outputs
 
-- `agent-navigation/topology/movement-topology-v4.png`: active profile movement map.
-- `agent-navigation/topology/movement-topology-v5-heatmap.png`: active `Heat Map` with transparent coverage density for route-learning/ML inspection.
-- `agent-navigation/topology/movement-topology-v6.png`: active profile fog topology with route/icon overlays and dimmed unvisited map context.
+- `agent-navigation/topology/<profile>-map.png`: active profile movement map, such as `mrflame-map.png`.
+- `agent-navigation/topology/<profile>-heatmap.png`: active `Heat Map` with transparent coverage density for route-learning/ML inspection.
+- `agent-navigation/topology/<profile>-fog-map.png`: active profile fog topology with route/icon overlays and dimmed unvisited map context.
 - `agent-navigation/topology/cache-world-map-full.png`: reusable full cache-bounds base map export with labels and no movement overlays.
 - `agent-navigation/topology/cache-world-map-level0.png`: reusable labeled level-0 surface base map export for scripts that need a static base map.
 - `agent-navigation/.local/map-summaries/*.json`: ignored summaries for active map renders and auxiliary map outputs.
@@ -21,7 +21,7 @@ Use this skill for how map outputs should look and be reviewed. Use `2006scape-c
 - `agent-navigation/ml-routing/artifacts/comparisons/<runId>/*.json`: per-case marker/metric sidecars; the aggregate `comparison-report.json` is compact and points to these details.
 - `agent-navigation/analysis/movement-topology-<date>.png`: dated analysis renders when comparison is useful.
 
-`agent-navigation/topology/` should stay uncluttered: keep only the three active user-facing movement PNGs plus the two reusable cache-world-map base exports there. Avoid timestamp clutter, JSON sidecars, surface-route renders, and one-off proof/shortcut/context exports in `topology/`; those belong under ignored `.local/` paths unless the user explicitly asks for a shareable artifact.
+`agent-navigation/topology/` should stay uncluttered: keep only the profile-scoped active user-facing movement PNGs plus the two reusable cache-world-map base exports there. Avoid timestamp clutter, JSON sidecars, surface-route renders, and one-off proof/shortcut/context exports in `topology/`; those belong under ignored `.local/` paths unless the user explicitly asks for a shareable artifact.
 
 ## Render Commands
 
@@ -105,7 +105,8 @@ Maps should be useful at a glance:
 - preserve north-up world coordinates and explain bounds/pixels-per-tile when sharing analysis.
 - use integer pixel scales for bounded context maps so the result stays lossless and pixel-perfect without resampling.
 - use `cache-world-map-full.png` or `cache-world-map-level0.png` when another script needs a static labeled base map instead of re-rendering or sampling the client.
-- keep user-facing place labels centralized in `agent-navigation/tools/map_labels.py` so cache-world exports, the profile map, `Heat Map`, and profile fog agree on Varrock, Barbarian Village, Edgeville, Ice Mountain, and other named places.
+- keep user-facing place labels centralized in `agent-navigation/tools/map_labels.py` so cache-world exports, the profile map, `Heat Map`, and profile fog agree on Varrock, Barbarian Village, Edgeville, Nardah, and other named places.
+- keep white outlined death labels dynamic on active movement maps: derive them from profile death tiles, cluster repeated deaths at the same death-site anchor, and include the count in labels such as `Highwaymen 2 deaths`.
 - keep agent context maps bounded, compact, and archived under `.local/context-maps`; use `render_agent_context_map_XS.py` rather than full topology or heatmap renderers for tactical routing.
 - keep nearby route geometry visible in agent segment maps, including docks, ports, bridges, and useful POI surroundings; use padding/max-span options rather than a full-world render when the default crop is too tight.
 - include all cache mapfunction icons in agent context maps, and rely on JSON marker labels before opening images when visual labels are too dense.
@@ -122,7 +123,7 @@ Maps should be useful at a glance:
 When the user asks to see an image, render or reference it with an absolute path:
 
 ```markdown
-![Profile movement map](/Users/kevin/Documents/2006Scape/agent-navigation/topology/movement-topology-v4.png)
+![Profile movement map](/Users/kevin/Documents/2006Scape/agent-navigation/topology/mrflame-map.png)
 ```
 
 ## Review Workflow
