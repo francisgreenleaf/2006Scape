@@ -18,6 +18,13 @@ These notes are repo-specific operational memory from actual agent experience. A
 - **Use instead:** Inspect the root `pom.xml` module names before using `-pl`; this repo's server module selector is `-pl '2006Scape Server'`. Running focused Maven commands from the module directory is also valid.
 - **Validation:** The focused command should reach test execution rather than failing during Maven project selection.
 
+### Check interaction tiles before treating a gate click as proof
+
+- **Observed:** The Barbarian Outpost gate and pipe could be clicked, but the player would sometimes remain in place because the handler only recognized a narrow set of exact coordinates.
+- **Cause:** The server-side transition logic was keyed to the object id and old hard-coded player tiles instead of the actual adjacent interaction tiles reported by live object search.
+- **Use instead:** When debugging or adding gate-style transitions, verify the object id, the nearby `nearestInteractionTile`/`interactionWalkTarget`, and the expected post-tile before assuming a successful click means the transition worked.
+- **Validation:** `mvn -q -pl "2006Scape Server" -Dtest=DoubleGatesTest test` covers the Agility 35 gate crossing and the unsupported-side fallback.
+
 ## Codex Agent Bridge
 
 ### Runtime bridge changes need a restart before tool calls can prove them
@@ -170,6 +177,13 @@ These notes are repo-specific operational memory from actual agent experience. A
 - **Cause:** The script assumed each loop iteration started from an empty inventory and bank-ready interface instead of handling already-carried materials first.
 - **Use instead:** For bank-side conversion/cleanup loops, first detect carried work items, close interfaces, process them, re-observe with XS or a focused helper such as `food_bank_XS`, then reopen or resume banking. Use full state only if compact output lacks a specific required field.
 - **Validation:** The patched herb-cleaning flow can restart mid-trip with a full carried inventory and continue depositing cleaned output instead of failing on the next withdrawal.
+
+### Keep full observe out of runner hot loops
+
+- **Observed:** Mining and Seers woodcutting runners repeatedly did `wait_until_idle_XS -> observe_state -> find_nearest_rock/tree`, creating large raw logs even though the script only needed free slots, tile, skills, and compact inventory.
+- **Cause:** Local runner helpers and `bridge_script.observe()` treated full `observe_state` as the easy default, so narrow helper calls inherited a full-state refresh before every resource interaction.
+- **Use instead:** Add explicit `observe_xs()`/`observe_xxs()` helpers, carry forward compact `player` results from wait/action tools, and reserve `observe_full()`/legacy `observe()` for complete bank/equipment/evidence fields.
+- **Validation:** `python3 -m py_compile agent-navigation/tools/bridge_script.py agent-navigation/tools/mining_runner.py agent-navigation/tools/seers_fletching_runner.py agent-navigation/tools/fletching_runner.py agent-navigation/tools/catherby_food_runner.py agent-navigation/tools/rs-tool_XS.py` and `git diff --check` pass after migrating hot loops.
 
 ### Refresh leather-crafting state after dead clicks instead of stopping the trip
 
