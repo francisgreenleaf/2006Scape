@@ -4,6 +4,8 @@ import com.google.gson.JsonObject;
 import com.rs2.Constants;
 import com.rs2.game.content.quests.QuestAssistant;
 import com.rs2.game.players.Player;
+import org.apollo.cache.def.ItemDefinition;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.concurrent.Callable;
@@ -15,6 +17,24 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class AgentActionServiceTest {
+
+    @BeforeClass
+    public static void seedGearMoneyItemDefinitionValuesWhenDefinitionsExist() {
+        if (ItemDefinition.getDefinitions() == null) {
+            return;
+        }
+        setItemValueForTests(1137, 84); // Iron med helm sells to a general store for 64 coins.
+        setItemValueForTests(1101, 44); // Iron chainbody fallback is 33 coins for three iron bars.
+        setItemValueForTests(1293, 140); // Iron longsword sells to a general store for 107 coins.
+        setItemValueForTests(1422, 7); // Bronze mace sells to a general store for 5 coins.
+    }
+
+    private static void setItemValueForTests(int itemId, int value) {
+        if (itemId >= 0 && itemId < ItemDefinition.getDefinitions().length
+                && ItemDefinition.lookup(itemId) != null) {
+            ItemDefinition.lookup(itemId).setValue(value);
+        }
+    }
 
     @Test
     public void queuedActionRunsWhenServiceIsProcessed() throws Exception {
