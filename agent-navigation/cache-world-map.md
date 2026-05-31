@@ -20,7 +20,7 @@ agent-navigation/topology/movement-topology-v6.png
 
 Place labels for these base exports and the active topology maps come from the shared `agent-navigation/tools/map_labels.py` helper. It combines important town/hub labels from `agent-navigation/data/places.json` with curated static labels such as Port Sarim, Ice Mountain, and Edgeville, so Varrock and Barbarian Village stay consistent across the cache-world, profile, and heat-map renders.
 
-`movement-topology-v4.png` is the active main movement map. `movement-topology-v5-heatmap.png` is the active `Heat Map`. `movement-topology-v6.png` is the active fog-of-war map. The movement PNG filenames are retained for compatibility; new code should use the plain-name scripts above instead of versioned renderer names. JSON summaries and route overview renders default to ignored paths under `agent-navigation/.local/map-summaries/` so `agent-navigation/topology/` stays limited to the reusable base-map exports and the three user-facing movement PNGs.
+`movement-topology-v4.png` is the legacy-default active main movement map. `movement-topology-v5-heatmap.png` is the legacy-default active `Heat Map`. `movement-topology-v6.png` is the legacy-default active fog-of-war map. Nondefault profiles append the safe profile key before the version suffix, such as `movement-topology-mrgem-v4.png`. The movement PNG filenames are retained for compatibility; new code should use the plain-name scripts above instead of versioned renderer names. JSON summaries and route overview renders default to ignored paths under `agent-navigation/.local/map-summaries/` so `agent-navigation/topology/` stays limited to the reusable base-map exports and the profile-scoped user-facing movement PNGs.
 
 The active movement wrappers use passive player traces as the main evidence stream and backfill agent-batch traces only for the historical period before passive player tracing began. That keeps early exploration and death sites visible without reintroducing duplicate newer batch telemetry.
 
@@ -117,10 +117,10 @@ Movement map workers honor the same trace-profile filtering as the topology rend
 Useful options:
 
 ```sh
-agent-navigation/tools/active_map_refresher.py restart --only mr-flame --interval-seconds 300
+agent-navigation/tools/active_map_refresher.py restart --only profile-map --profile PROFILE --interval-seconds 300
 agent-navigation/tools/active_map_refresher.py restart --serial
 agent-navigation/tools/active_map_refresher.py restart --refresh-world-map
-agent-navigation/tools/active_map_refresher.py restart --trace-profile mrflame
+agent-navigation/tools/active_map_refresher.py restart --trace-profile PROFILE
 agent-navigation/tools/refresh_active_maps.py --once
 ```
 

@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.rs2.game.content.StaticObjectList;
 import com.rs2.game.objects.Objects;
+import com.rs2.game.players.Player;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -166,6 +167,16 @@ public class AgentToolServiceTest {
     }
 
     @Test
+    public void miningCooldownKeysAreScopedPerPlayer() {
+        Player flame = testPlayer(4, "MrFlame");
+        Player gem = testPlayer(4, "MrGem");
+
+        assertEquals("mrflame:4", AgentToolService.miningCooldownKey(flame));
+        assertEquals("mrgem:4", AgentToolService.miningCooldownKey(gem));
+        assertFalse(AgentToolService.miningCooldownKey(flame).equals(AgentToolService.miningCooldownKey(gem)));
+    }
+
+    @Test
     public void miningToolWaitsLocallyInsteadOfSwitchingDistantClusters() {
         assertTrue(AgentToolService.shouldWaitLocallyForMiningRespawn(true, false));
         assertFalse(AgentToolService.shouldWaitLocallyForMiningRespawn(true, true));
@@ -216,6 +227,21 @@ public class AgentToolServiceTest {
         assertEquals("observe_state", AgentToolService.baseToolName("observe_state_XXS"));
         assertEquals("bury_bones", AgentToolService.baseToolName("bury_bones_XXS"));
         assertEquals("deposit_inventory_items", AgentToolService.baseToolName("deposit_inventory_items"));
+    }
+
+    @Test
+    public void explicitObserveStateKeysAreScopedPerPlayer() {
+        Player flame = testPlayer(0, "MrFlame");
+        Player gem = testPlayer(1, "MrGem");
+        JsonObject arguments = new JsonObject();
+        arguments.addProperty("key", "agent-loop");
+
+        String flameKey = AgentToolService.observeStateHashKey(flame, arguments);
+        String gemKey = AgentToolService.observeStateHashKey(gem, arguments);
+
+        assertFalse(flameKey.equals(gemKey));
+        assertEquals("mrflame:0:agent-loop", flameKey);
+        assertEquals("mrgem:1:agent-loop", gemKey);
     }
 
     @Test
@@ -367,5 +393,17 @@ public class AgentToolServiceTest {
         assertFalse(compact.has("inventory"));
         assertFalse(compact.has("skills"));
         assertFalse(compact.getAsJsonObject("player").has("inventory"));
+    }
+
+    private static Player testPlayer(int playerId, String playerName) {
+        Player player = new TestPlayer(playerId);
+        player.playerName = playerName;
+        return player;
+    }
+
+    private static class TestPlayer extends Player {
+        private TestPlayer(int playerId) {
+            super(playerId);
+        }
     }
 }

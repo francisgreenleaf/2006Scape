@@ -8,6 +8,7 @@ import sys
 import uuid
 
 import bridge_script as bridge
+from profile_utils import resolve_profile
 
 
 RUNS_DIR = bridge.ROOT / "data" / "smithing" / "runs"
@@ -301,7 +302,7 @@ def run(args):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Train Mining and Smithing toward target levels using primitive runners.")
-    parser.add_argument("--profile", default="")
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     parser.add_argument("--target-mining-level", type=int, default=30)
     parser.add_argument("--target-smithing-level", type=int, default=30)
     parser.add_argument("--coin-float", type=int, default=20)

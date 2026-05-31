@@ -7,6 +7,7 @@ import sys
 
 import bridge_script as bridge
 from agility_course_runner_common import course_defined, current_agility_level
+from profile_utils import resolve_profile
 
 
 GNOME_RUNNER = bridge.SCRIPT_DIR / "agility_gnome_course_runner.py"
@@ -25,7 +26,7 @@ def choose_runner(profile, target_level):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Run the current agility progression phase.")
-    parser.add_argument("--profile", default="")
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     parser.add_argument("--target-agility-level", type=int, default=50)
     parser.add_argument("--laps", type=int, default=500)
     parser.add_argument("--min-run-energy", type=int, default=8)

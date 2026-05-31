@@ -10,6 +10,11 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from profile_utils import (
+    normalize_player_name,
+    session_file_for_profile,
+)
+
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT = SCRIPT_DIR.parents[0]
@@ -19,26 +24,6 @@ ROUTE_ML = ROOT / "ml-routing" / "route_ml.py"
 ROUTE_EXECUTOR = SCRIPT_DIR / "execute_route_definition.py"
 COINS = 995
 DEFAULT_BRIDGE_TOOL_URL = "http://127.0.0.1:43610/agent/tool"
-DEFAULT_PROFILE = "MrFlame"
-
-
-def safe_profile(value):
-    text = "".join(ch for ch in str(value or "").strip().lower() if ch.isalnum() or ch in ("-", "_"))
-    return text or "default"
-
-
-def normalized_player_name(value):
-    return " ".join(str(value or "").strip().lower().replace("_", " ").split())
-
-
-def session_file_for_profile(profile=""):
-    override = os.environ.get("RSBRIDGE_SESSION_FILE")
-    if override:
-        return Path(override).expanduser()
-    selected = profile or os.environ.get("RS_PROFILE") or os.environ.get("RSBRIDGE_PROFILE") or ""
-    if not selected or safe_profile(selected) == safe_profile(DEFAULT_PROFILE):
-        return ROOT / ".local" / "rsbridge-session.json"
-    return ROOT / ".local" / "rsbridge-session-{}.json".format(safe_profile(selected))
 
 
 def expected_player_for_profile(profile=""):
@@ -50,8 +35,8 @@ def read_session(profile=""):
     if not path.exists():
         raise RuntimeError("bridge session file not found: {}".format(path))
     data = json.loads(path.read_text(encoding="utf-8"))
-    expected = normalized_player_name(expected_player_for_profile(profile))
-    actual = normalized_player_name(data.get("playerName"))
+    expected = normalize_player_name(expected_player_for_profile(profile))
+    actual = normalize_player_name(data.get("playerName"))
     if expected and actual and expected != actual:
         raise RuntimeError("session player mismatch: expected {} but session is {}".format(expected, actual))
     session_key = data.get("token")
@@ -411,6 +396,8 @@ def chebyshev(a, b):
 
 def compact_player(player, skills=()):
     data = {
+        "playerId": player.get("playerId", player.get("id")),
+        "name": player.get("name", player.get("playerName")),
         "tile": tile_from_player(player),
         "hitpoints": int(player.get("hitpoints", player.get("hp", 0)) or 0),
         "maxHitpoints": int(player.get("maxHitpoints", player.get("maxHp", 0)) or 0),

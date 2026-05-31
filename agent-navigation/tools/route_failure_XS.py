@@ -5,6 +5,7 @@ import argparse
 import json
 from pathlib import Path
 
+from profile_utils import compact_profile_key, resolve_profile, run_evidence_path
 from usage_log import log_usage
 from xs_common import ROOT, dump, tile
 
@@ -12,12 +13,34 @@ from xs_common import ROOT, dump, tile
 DEFAULT_EVIDENCE = ROOT / "agent-navigation" / ".local" / "run-evidence" / "ml-route-executor.routes.jsonl"
 
 
-def latest_evidence_path():
+def latest_evidence_path(profile=""):
+    scoped = run_evidence_path(profile)
+    if profile and scoped.exists():
+        return scoped
     root = ROOT / "agent-navigation" / ".local" / "run-evidence"
     if not root.exists():
-        return DEFAULT_EVIDENCE
-    paths = sorted(root.glob("*.jsonl"), key=lambda path: path.stat().st_mtime, reverse=True)
+        return scoped if profile else DEFAULT_EVIDENCE
+    paths = sorted(root.rglob("*.jsonl"), key=lambda path: path.stat().st_mtime, reverse=True)
+    if profile:
+        wanted = compact_profile_key(profile)
+        for path in paths:
+            if compact_profile_key(path.parent.name) == wanted or compact_profile_key(path.stem) == wanted:
+                return path
+        return scoped
     return paths[0] if paths else DEFAULT_EVIDENCE
+
+
+def record_matches_profile(record, profile):
+    wanted = compact_profile_key(profile)
+    if not wanted:
+        return True
+    values = [
+        record.get("profile"),
+        record.get("playerName"),
+        (record.get("player") or {}).get("name") if isinstance(record.get("player"), dict) else "",
+    ]
+    keys = [compact_profile_key(value) for value in values if compact_profile_key(value)]
+    return not keys or wanted in keys
 
 
 def compact_player(value):
@@ -36,7 +59,7 @@ def compact_player(value):
     }
 
 
-def summarize(path, route_id="", limit=8):
+def summarize(path, route_id="", limit=8, profile=""):
     batches = []
     outcomes = []
     with path.open(encoding="utf-8") as handle:
@@ -44,6 +67,8 @@ def summarize(path, route_id="", limit=8):
             try:
                 record = json.loads(line)
             except json.JSONDecodeError:
+                continue
+            if not record_matches_profile(record, profile):
                 continue
             if route_id and record.get("routeId") != route_id:
                 continue
@@ -106,17 +131,20 @@ def compact_batch(item):
 def main():
     parser = argparse.ArgumentParser(description="Summarize route executor evidence in compact form.")
     parser.add_argument("--evidence-jsonl", default="")
+    parser.add_argument("--profile", default=resolve_profile(default=""),
+                        help="Only summarize records for this profile. Defaults to RS_PROFILE/RSBRIDGE_PROFILE when set.")
     parser.add_argument("--route-id", default="")
     parser.add_argument("--limit", type=int, default=8)
     args = parser.parse_args()
     log_usage("route_failure_XS", surface="xs", argv=vars(args))
-    path = Path(args.evidence_jsonl) if args.evidence_jsonl else latest_evidence_path()
+    profile = resolve_profile(args.profile, default="")
+    path = Path(args.evidence_jsonl) if args.evidence_jsonl else latest_evidence_path(profile)
     if not path.is_absolute():
         path = ROOT / path
     if not path.exists():
         dump({"ok": False, "error": "route evidence JSONL not found", "path": str(path)})
         return 1
-    dump(summarize(path, route_id=args.route_id, limit=max(1, args.limit)))
+    dump(summarize(path, route_id=args.route_id, limit=max(1, args.limit), profile=profile))
     return 0
 
 

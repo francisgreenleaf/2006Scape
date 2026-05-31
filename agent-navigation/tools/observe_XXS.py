@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Minimal wrapper around rs.observe_state_XXS."""
 
+import argparse
 import os
 from pathlib import Path
 
 from xs_common import ROOT, dump, run_command
+from profile_utils import resolve_profile
 from usage_log import log_usage
 
 
@@ -12,8 +14,13 @@ RS_TOOL_XXS = Path(__file__).resolve().parent / "rs-tool_XXS.sh"
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Observe the selected profile with minimal XXS output.")
+    parser.add_argument("--profile", default=resolve_profile(default=""))
+    args = parser.parse_args()
     log_usage("observe_XXS", surface="xxs")
     env = os.environ.copy()
+    if args.profile:
+        env["RS_PROFILE"] = args.profile
     env["AGENT_NAV_XS_PARENT"] = "xxs"
     proc = run_command([str(RS_TOOL_XXS), "observe_state", "{}"], cwd=ROOT, env=env)
     if proc.returncode != 0:

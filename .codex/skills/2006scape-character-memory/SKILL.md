@@ -15,15 +15,14 @@ The helper stores ignored local files under:
 agent-navigation/.local/character-memory/<profile-slug>/
 ```
 
-Each profile has separate `memories.jsonl`, `goals.jsonl`, and `summary.md` files. Always pass `--profile PROFILE` or set `RS_PROFILE=PROFILE`; the default is `MrFlame`. Known display variants such as `Mr. Flame` normalize to `MrFlame`, and `Mr. Gem` normalizes to `MrGem`.
+Each profile has separate `memories.jsonl`, `goals.jsonl`, and `summary.md` files. Always pass `--profile PROFILE` or set `RS_PROFILE=PROFILE`; the legacy default profile is used only when no profile is supplied. Known display variants such as `Mr. Flame` normalize to `MrFlame`, and `Mr. Gem` normalizes to `MrGem`.
 
 ## Read First
 
 For long autonomous gameplay, progression, routing, or recovery work, read the selected character's compact memory before making strategic choices:
 
 ```sh
-python3 agent-navigation/tools/character_memory.py show --profile MrFlame --json
-python3 agent-navigation/tools/character_memory.py show --profile MrGem --json
+python3 agent-navigation/tools/character_memory.py show --profile PROFILE --json
 ```
 
 Use the JSON for context. Do not load raw JSONL files unless debugging the helper.
@@ -44,16 +43,16 @@ Do not write routine progress, every level, every inventory batch, every route l
 
 ```sh
 # Show compact current memory.
-python3 agent-navigation/tools/character_memory.py show --profile MrFlame --json
+python3 agent-navigation/tools/character_memory.py show --profile PROFILE --json
 
 # Add a durable memory.
-python3 agent-navigation/tools/character_memory.py remember --profile MrFlame --kind resource --priority high --tags equipment,woodcutting --text "A better axe is a useful near-term upgrade before long woodcutting or fletching sessions."
+python3 agent-navigation/tools/character_memory.py remember --profile PROFILE --kind resource --priority high --tags equipment,woodcutting --text "A better axe is a useful near-term upgrade before long woodcutting or fletching sessions."
 
 # Add a long-term goal.
-python3 agent-navigation/tools/character_memory.py goal --profile MrFlame --priority normal --tags gear,woodcutting --text "Upgrade from a bronze axe when the character has the coins and access to a suitable shop."
+python3 agent-navigation/tools/character_memory.py goal --profile PROFILE --priority normal --tags gear,woodcutting --text "Upgrade from a bronze axe when the character has the coins and access to a suitable shop."
 
 # Mark a goal complete, dropped, or blocked.
-python3 agent-navigation/tools/character_memory.py complete-goal GOAL_ID --profile MrFlame --status done --note "Bought the upgraded axe and confirmed it is equipped."
+python3 agent-navigation/tools/character_memory.py complete-goal GOAL_ID --profile PROFILE --status done --note "Bought the upgraded axe and confirmed it is equipped."
 ```
 
 Good entries are short, actionable, and evidence-backed when useful. Use one sentence unless the context genuinely needs more.
@@ -61,4 +60,3 @@ Good entries are short, actionable, and evidence-backed when useful. Use one sen
 ## Boundaries
 
 Route facts, object-transition proof, and hazards belong in `agent-navigation/data/` through the route skills. Session summaries and personality drift belong in the agent-session logging system. Character memory is for intentional notes and goals that a future agent can use before deciding what to do.
-

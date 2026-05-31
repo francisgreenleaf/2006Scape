@@ -9,6 +9,8 @@ import sys
 import time
 from pathlib import Path
 
+from profile_utils import is_default_profile, resolve_profile, safe_profile
+
 
 ROOT = Path(__file__).resolve().parents[2]
 XP_RECENT_SECONDS = 300
@@ -211,6 +213,9 @@ def xp_state_path():
         if override.lower() in ("off", "none", "disabled"):
             return None
         return Path(override)
+    profile = resolve_profile(default="")
+    if profile and not is_default_profile(profile):
+        return XP_STATE_DEFAULT.with_name("xs-skill-xp-state-{}.json".format(safe_profile(profile)))
     return XP_STATE_DEFAULT
 
 

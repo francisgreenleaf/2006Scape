@@ -11,6 +11,7 @@ import uuid
 from pathlib import Path
 
 import bridge_script as bridge
+from profile_utils import resolve_profile
 
 
 ROOT = bridge.ROOT
@@ -555,7 +556,7 @@ def in_varrock_sewer_entry(player):
 
 
 def runner_label(plan, args):
-    profile = (args.profile or os.environ.get("RS_PROFILE", "")).strip() or "default"
+    profile = resolve_profile(args.profile, default="").strip() or "default"
     slug = "".join(ch.lower() if ch.isalnum() else "-" for ch in profile).strip("-") or "default"
     return "{}-{}".format(plan["runnerId"], slug)
 
@@ -573,7 +574,7 @@ def write_status(plan, args, status, reason, run_path=None, player=None, extra=N
     payload = {
         "runner": plan["runnerId"],
         "enemy": plan["npcName"],
-        "profile": args.profile or os.environ.get("RS_PROFILE", "") or "default",
+        "profile": resolve_profile(args.profile, default="") or "default",
         "status": status,
         "reason": reason,
         "pid": os.getpid(),
@@ -640,7 +641,7 @@ def request_stop(plan, args):
     payload = {
         "runner": plan["runnerId"],
         "enemy": plan["npcName"],
-        "profile": args.profile or os.environ.get("RS_PROFILE", "") or "default",
+        "profile": resolve_profile(args.profile, default="") or "default",
         "requestedAt": utc_now(),
         "pid": os.getpid(),
         "handoff": bool(getattr(args, "handoff_stop", False)),
@@ -2721,7 +2722,7 @@ def wait_after_combat_end(player, args, handle, reason, event):
 
 
 def format_fallback_command(command, args):
-    profile = args.profile or os.environ.get("RS_PROFILE", "")
+    profile = resolve_profile(args.profile, default="")
     replacements = {
         "profile": profile,
         "target_attack": str(args.target_attack),
@@ -3520,7 +3521,7 @@ def bounds_arg(value):
 
 
 def add_common_arguments(parser, plan):
-    parser.add_argument("--profile", default=os.environ.get("RS_PROFILE", ""))
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     parser.add_argument("--status", action="store_true")
     parser.add_argument("--request-stop", action="store_true")
     parser.add_argument("--handoff-stop", action="store_true")

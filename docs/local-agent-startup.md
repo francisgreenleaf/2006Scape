@@ -56,11 +56,11 @@ Do not use the fallback recorder during normal passive telemetry sessions. `Agen
 Useful focused commands:
 
 ```sh
-python3 agent-navigation/tools/runtime_doctor.py claim --profile MrFlame --verify
-python3 agent-navigation/tools/runtime_doctor.py verify --profile MrFlame --navdb --recorder-status
-python3 agent-navigation/tools/runtime_doctor.py recorder --profile MrFlame status
-python3 agent-navigation/tools/runtime_doctor.py recorder --profile MrFlame start
-python3 agent-navigation/tools/runtime_doctor.py recorder --profile MrFlame stop
+python3 agent-navigation/tools/runtime_doctor.py claim --profile PROFILE --verify
+python3 agent-navigation/tools/runtime_doctor.py verify --profile PROFILE --navdb --recorder-status
+python3 agent-navigation/tools/runtime_doctor.py recorder --profile PROFILE status
+python3 agent-navigation/tools/runtime_doctor.py recorder --profile PROFILE start
+python3 agent-navigation/tools/runtime_doctor.py recorder --profile PROFILE stop
 ```
 
 `runtime_doctor.py` launches the server/client with Python `subprocess.Popen(..., start_new_session=True)`, writes logs under `/tmp/`, writes pid files under `agent-navigation/.local/`, claims the bridge, and writes only ignored session token files. It never prints bridge tokens.
@@ -74,7 +74,7 @@ Use this only if the helper needs debugging.
    ```sh
    pkill -f 'codex app-server --listen stdio://' 2>/dev/null || true
    rm -f agent-navigation/.local/rsbridge-session.json
-   rm -f agent-navigation/.local/rsbridge-session-mrgem.json
+   rm -f agent-navigation/.local/rsbridge-session-<profile>.json
    mkdir -p agent-navigation/.local
    ```
 

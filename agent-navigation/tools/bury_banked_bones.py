@@ -5,6 +5,7 @@ import argparse
 import json
 
 import bridge_script as bridge
+from profile_utils import resolve_profile
 
 
 KEEP_FOOD_COUNT = 1
@@ -106,7 +107,7 @@ def first_inventory_bone(player):
 
 def main():
     parser = argparse.ArgumentParser(description="Bury all banked bones while preserving one food.")
-    parser.add_argument("--profile", default="")
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     parser.add_argument("--bank-target", default="falador_west_bank")
     args = parser.parse_args()
 

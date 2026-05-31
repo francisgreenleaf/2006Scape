@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Compact food, inventory, equipment, and bank summary for gameplay decisions."""
 
+import argparse
 import json
 import os
 from pathlib import Path
 
+from profile_utils import resolve_profile
 from usage_log import log_usage
 from xs_common import ROOT, compact_food_bank, dump, run_command
 
@@ -13,8 +15,13 @@ RS_TOOL = Path(__file__).resolve().parent / "rs-tool.sh"
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Compact food, inventory, equipment, and bank summary for one selected profile.")
+    parser.add_argument("--profile", default=resolve_profile(default=""))
+    args = parser.parse_args()
     env = os.environ.copy()
-    log_usage("food_bank_XS", surface="xs")
+    if args.profile:
+        env["RS_PROFILE"] = args.profile
+    log_usage("food_bank_XS", surface="xs", argv=vars(args))
     proc = run_command([str(RS_TOOL), "observe_state", "{}"], cwd=ROOT, env=env)
     try:
         data = json.loads(proc.stdout)

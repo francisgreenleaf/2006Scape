@@ -16,6 +16,8 @@ import sys
 import time
 from pathlib import Path
 
+from profile_utils import profile_from_environment, profile_scoped_dir, resolve_profile
+
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 NAV_ROOT = SCRIPT_DIR.parent
@@ -23,8 +25,25 @@ REPO_ROOT = NAV_ROOT.parent
 LOCAL = NAV_ROOT / ".local" / "map-refresh"
 REFRESHER = SCRIPT_DIR / "refresh_active_maps.py"
 PID_FILE = LOCAL / "refresh.pid"
-LOG_FILE = LOCAL / "refresh.log"
-STATUS_FILE = LOCAL / "status.json"
+
+
+def controller_profile(args) -> str:
+    return (
+        getattr(args, "profile", "")
+        or getattr(args, "trace_profile", "")
+        or profile_from_environment(trace=True, default="")
+        or ""
+    )
+
+
+def control_paths(profile: str = "") -> dict[str, Path]:
+    root = profile_scoped_dir(LOCAL, profile)
+    return {
+        "root": root,
+        "pid": root / "refresh.pid",
+        "log": root / "refresh.log",
+        "status": root / "status.json",
+    }
 
 
 def read_pid(path=PID_FILE):
@@ -46,18 +65,20 @@ def process_exists(pid):
         return False
 
 
-def status_payload(pid=None):
-    pid = pid if pid is not None else read_pid()
+def status_payload(profile="", pid=None):
+    paths = control_paths(profile)
+    pid = pid if pid is not None else read_pid(paths["pid"])
     payload = {
-        "pidFile": str(PID_FILE),
+        "profile": profile,
+        "pidFile": str(paths["pid"]),
         "pid": pid,
         "alive": process_exists(pid),
-        "log": str(LOG_FILE),
-        "statusFile": str(STATUS_FILE),
+        "log": str(paths["log"]),
+        "statusFile": str(paths["status"]),
     }
-    if STATUS_FILE.exists():
+    if paths["status"].exists():
         try:
-            data = json.loads(STATUS_FILE.read_text(encoding="utf-8"))
+            data = json.loads(paths["status"].read_text(encoding="utf-8"))
             payload["refresherStartedAt"] = data.get("startedAt")
             payload["updatedAt"] = data.get("updatedAt")
             payload["jobs"] = {
@@ -82,11 +103,12 @@ def print_json(data):
 
 
 def build_refresh_command(args):
+    paths = control_paths(controller_profile(args))
     command = [
         sys.executable,
         str(REFRESHER),
         "--status-file",
-        str(STATUS_FILE),
+        str(paths["status"]),
     ]
     for job_id in args.only or []:
         command.extend(["--only", job_id])
@@ -111,9 +133,9 @@ def build_refresh_command(args):
     return command
 
 
-def launch_detached(command, env):
-    LOCAL.mkdir(parents=True, exist_ok=True)
-    with LOG_FILE.open("ab", buffering=0) as log:
+def launch_detached(command, env, paths):
+    paths["root"].mkdir(parents=True, exist_ok=True)
+    with paths["log"].open("ab", buffering=0) as log:
         proc = subprocess.Popen(
             command,
             cwd=str(REPO_ROOT),
@@ -123,20 +145,22 @@ def launch_detached(command, env):
             start_new_session=True,
             env=env,
         )
-    PID_FILE.write_text(str(proc.pid) + "\n", encoding="utf-8")
+    paths["pid"].write_text(str(proc.pid) + "\n", encoding="utf-8")
     return proc.pid
 
 
 def cmd_start(args):
-    existing = read_pid()
+    profile = controller_profile(args)
+    paths = control_paths(profile)
+    existing = read_pid(paths["pid"])
     if existing and process_exists(existing):
         if not args.replace:
-            payload = status_payload(existing)
+            payload = status_payload(profile, existing)
             payload["started"] = False
             payload["reason"] = "already-running"
             print_json(payload)
             return 0
-        stop_existing(args.stop_timeout, args.force)
+        stop_existing(paths, args.stop_timeout, args.force)
 
     command = build_refresh_command(args)
     env = os.environ.copy()
@@ -145,39 +169,40 @@ def cmd_start(args):
     if args.trace_profile:
         env["RS_TRACE_PROFILE"] = args.trace_profile
 
-    pid = launch_detached(command, env)
+    pid = launch_detached(command, env, paths)
     time.sleep(args.startup_grace_seconds)
     print_json({
         "started": True,
+        "profile": profile,
         "pid": pid,
         "alive": process_exists(pid),
-        "log": str(LOG_FILE),
-        "statusFile": str(STATUS_FILE),
+        "log": str(paths["log"]),
+        "statusFile": str(paths["status"]),
         "command": command,
     })
     return 0
 
 
-def stop_existing(timeout, force):
-    pid = read_pid()
+def stop_existing(paths, timeout, force):
+    pid = read_pid(paths["pid"])
     if not pid:
-        PID_FILE.unlink(missing_ok=True)
+        paths["pid"].unlink(missing_ok=True)
         return False
     if not process_exists(pid):
-        PID_FILE.unlink(missing_ok=True)
+        paths["pid"].unlink(missing_ok=True)
         return False
     try:
         os.kill(pid, signal.SIGTERM)
     except PermissionError:
         raise SystemExit("permission denied stopping active map refresher pid={}".format(pid))
     except ProcessLookupError:
-        PID_FILE.unlink(missing_ok=True)
+        paths["pid"].unlink(missing_ok=True)
         return False
 
     deadline = time.time() + timeout
     while time.time() < deadline:
         if not process_exists(pid):
-            PID_FILE.unlink(missing_ok=True)
+            paths["pid"].unlink(missing_ok=True)
             return True
         time.sleep(0.25)
 
@@ -188,47 +213,53 @@ def stop_existing(timeout, force):
             raise SystemExit("permission denied force-stopping active map refresher pid={}".format(pid))
         except ProcessLookupError:
             pass
-        PID_FILE.unlink(missing_ok=True)
+        paths["pid"].unlink(missing_ok=True)
         return True
 
     raise SystemExit("active map refresher pid={} did not stop within {:.1f}s".format(pid, timeout))
 
 
 def cmd_stop(args):
-    stopped = stop_existing(args.stop_timeout, args.force)
-    print_json({"stopped": stopped, "pidFile": str(PID_FILE)})
+    profile = controller_profile(args)
+    paths = control_paths(profile)
+    stopped = stop_existing(paths, args.stop_timeout, args.force)
+    print_json({"stopped": stopped, "profile": profile, "pidFile": str(paths["pid"])})
     return 0
 
 
 def cmd_restart(args):
-    pid = read_pid()
+    profile = controller_profile(args)
+    paths = control_paths(profile)
+    pid = read_pid(paths["pid"])
     if pid and process_exists(pid):
-        stop_existing(args.stop_timeout, args.force)
+        stop_existing(paths, args.stop_timeout, args.force)
     return cmd_start(args)
 
 
-def cmd_status(_args):
-    print_json(status_payload())
+def cmd_status(args):
+    print_json(status_payload(controller_profile(args)))
     return 0
 
 
 def cmd_logs(args):
-    if not LOG_FILE.exists():
-        raise SystemExit("log file does not exist: {}".format(LOG_FILE))
-    lines = LOG_FILE.read_text(encoding="utf-8", errors="replace").splitlines()
+    paths = control_paths(controller_profile(args))
+    if not paths["log"].exists():
+        raise SystemExit("log file does not exist: {}".format(paths["log"]))
+    lines = paths["log"].read_text(encoding="utf-8", errors="replace").splitlines()
     for line in lines[-args.lines:]:
         print(line)
     return 0
 
 
 def add_start_options(parser):
-    parser.add_argument("--profile", default=os.environ.get("RS_PROFILE") or os.environ.get("RSBRIDGE_PROFILE") or "")
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     parser.add_argument("--trace-profile",
-                        default=os.environ.get("RS_TRACE_PROFILE") or os.environ.get("RS_PROFILE") or os.environ.get("RSBRIDGE_PROFILE") or "")
+                        default=resolve_profile(trace=True, default=""))
     parser.add_argument("--include-unscoped-traces", action="store_true")
     parser.add_argument("--interval-seconds", type=float, default=300.0)
     parser.add_argument("--stagger-seconds", type=float, default=8.0)
-    parser.add_argument("--only", action="append", choices=("mr-flame", "heat-map", "mr-flame-fog"))
+    parser.add_argument("--only", action="append",
+                        choices=("profile-map", "heat-map", "profile-fog", "mr-flame", "mr-flame-fog"))
     parser.add_argument("--serial", action="store_true")
     parser.add_argument("--refresh-world-map", action="store_true")
     parser.add_argument("--no-world-map-check", action="store_true")
@@ -237,6 +268,12 @@ def add_start_options(parser):
     parser.add_argument("--force", action="store_true", help="Use SIGKILL if graceful stop times out during replace/restart.")
     parser.add_argument("--stop-timeout", type=float, default=15.0)
     parser.add_argument("--startup-grace-seconds", type=float, default=0.5)
+
+
+def add_control_options(parser):
+    parser.add_argument("--profile", default=resolve_profile(default=""))
+    parser.add_argument("--trace-profile",
+                        default=resolve_profile(trace=True, default=""))
 
 
 def main(argv=None):
@@ -252,13 +289,16 @@ def main(argv=None):
     restart.set_defaults(replace=True, func=cmd_restart)
 
     status = sub.add_parser("status", help="Print pid/log/status details for the background refresher.")
+    add_control_options(status)
     status.set_defaults(func=cmd_status)
 
     logs = sub.add_parser("logs", help="Print the end of the background refresher log.")
+    add_control_options(logs)
     logs.add_argument("--lines", type=int, default=80)
     logs.set_defaults(func=cmd_logs)
 
     stop = sub.add_parser("stop", help="Stop the background active-map refresher.")
+    add_control_options(stop)
     stop.add_argument("--stop-timeout", type=float, default=15.0)
     stop.add_argument("--force", action="store_true", help="Use SIGKILL if graceful stop times out.")
     stop.set_defaults(func=cmd_stop)

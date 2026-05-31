@@ -34,6 +34,7 @@ if str(SCRIPT_DIR) not in sys.path:
 
 import navdb  # noqa: E402
 import bridge_script as bridge  # noqa: E402
+from profile_utils import resolve_profile  # noqa: E402
 
 
 def utc_now():
@@ -729,7 +730,7 @@ def run(args):
 def main(argv=None):
     global RUN_PROFILE
     parser = argparse.ArgumentParser(description="Run adaptive 2006Scape agility-course laps.")
-    parser.add_argument("--profile", default=os.environ.get("RS_PROFILE") or os.environ.get("RSBRIDGE_PROFILE") or "")
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     parser.add_argument("--course", default="gnome_agility_course")
     parser.add_argument("--laps", type=int, default=10)
     parser.add_argument("--target-agility-level", type=int)

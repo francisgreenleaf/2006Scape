@@ -30,6 +30,7 @@ if str(SCRIPT_DIR) not in sys.path:
 import navdb  # noqa: E402
 import router  # noqa: E402
 import route_eval  # noqa: E402
+from profile_utils import resolve_profile  # noqa: E402
 from usage_log import log_usage  # noqa: E402
 
 
@@ -70,7 +71,12 @@ def write_evidence(args, event, data):
         "event": event,
         "timestamp": utc_now(),
     }
-    profile = getattr(args, "profile", "") or getattr(args, "trace_profile", "") or os.environ.get("RS_PROFILE", "")
+    profile = (
+        getattr(args, "profile", "")
+        or getattr(args, "trace_profile", "")
+        or os.environ.get("RS_PROFILE")
+        or os.environ.get("RSBRIDGE_PROFILE", "")
+    )
     if profile:
         record["profile"] = profile
     record.update(data)
@@ -1034,7 +1040,7 @@ def main(argv=None):
     global RUN_PROFILE
     argv_list = list(sys.argv[1:] if argv is None else argv)
     parser = argparse.ArgumentParser(description="Run learned routes with local server-path preview.")
-    parser.add_argument("--profile", default=os.environ.get("RS_PROFILE") or os.environ.get("RSBRIDGE_PROFILE") or "",
+    parser.add_argument("--profile", default=resolve_profile(default=""),
                         help="Use this profile's bridge session and matching trace profile.")
     parser.add_argument("--to", required=True, help="Target place id/name or x,y,h tile.")
     parser.add_argument("--orient", action="store_true",
@@ -1093,7 +1099,7 @@ def main(argv=None):
     parser.add_argument("--include-unverified", action="store_true")
     parser.add_argument("--trace-file", action="append")
     parser.add_argument("--trace-profile",
-                        default=os.environ.get("RS_TRACE_PROFILE") or os.environ.get("RS_PROFILE") or os.environ.get("RSBRIDGE_PROFILE") or "",
+                        default=resolve_profile(trace=True, default=""),
                         help="Only use traces recorded by this player/profile.")
     parser.add_argument("--include-unscoped-traces", action="store_true",
                         help="When filtering by profile, also include legacy traces with no player name.")

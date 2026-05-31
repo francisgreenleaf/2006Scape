@@ -2,10 +2,13 @@
 """Compact wrapper around rs.observe_state for routine navigation decisions."""
 
 import json
+import argparse
+import os
 import subprocess
 from pathlib import Path
 
 from usage_log import log_usage
+from profile_utils import resolve_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 RSTOOL = ROOT / "tools" / "rs-tool.sh"
@@ -58,8 +61,14 @@ def compact_object(obj):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Compact observe_state wrapper for one selected profile.")
+    parser.add_argument("--profile", default=resolve_profile(default=""))
+    args = parser.parse_args()
     log_usage("observe-slim", surface="legacy")
-    raw = subprocess.check_output([str(RSTOOL), "observe_state", "{}"], cwd=str(ROOT.parent), text=True)
+    env = os.environ.copy()
+    if args.profile:
+        env["RS_PROFILE"] = args.profile
+    raw = subprocess.check_output([str(RSTOOL), "observe_state", "{}"], cwd=str(ROOT.parent), text=True, env=env)
     data = json.loads(raw)
     if not data.get("success"):
         print(json.dumps({"success": False, "message": data.get("message", "observe_state failed")}, sort_keys=True))

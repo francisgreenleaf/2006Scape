@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Normal-gameplay adamant armour upgrade trip for MrFlame."""
+"""Normal-gameplay adamant armour upgrade trip for the selected profile."""
 
 import argparse
 import datetime as dt
 import json
-import os
 import time
 import uuid
 from pathlib import Path
 
 import bridge_script as bridge
+from profile_utils import resolve_profile
 
 
 ROOT = bridge.ROOT
@@ -470,7 +470,7 @@ def run(args):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Sell surplus gear and buy adamant armour upgrades.")
-    parser.add_argument("--profile", default=os.environ.get("RS_PROFILE", "MrFlame"))
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     parser.add_argument("--food", type=int, default=2)
     parser.add_argument("--shop-max-distance", type=int, default=12)
     parser.add_argument("--route-max-batches", type=int, default=24)

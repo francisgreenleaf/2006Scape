@@ -12,10 +12,11 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
 import bridge_script as bridge
+from profile_utils import resolve_profile, run_evidence_path
 from usage_log import log_usage
 
 
-DEFAULT_EVIDENCE_JSONL = "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+DEFAULT_EVIDENCE_JSONL = ""
 SUCCESS_STATUSES = {"arrived", "ok", "success", "complete"}
 
 
@@ -78,8 +79,16 @@ def append_jsonl(path_text: str, record: Dict[str, Any]) -> None:
         handle.write(json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n")
 
 
+def resolve_evidence_jsonl(path_text: str, profile: str) -> str:
+    if path_text:
+        return path_text
+    return str(run_evidence_path(profile))
+
+
 def compact_player(player: Dict[str, Any]) -> Dict[str, Any]:
     return {
+        "playerId": player.get("playerId", player.get("id")),
+        "name": player.get("name", player.get("playerName")),
         "tile": player_tile(player),
         "hitpoints": player_hp(player),
         "maxHitpoints": int(player.get("maxHitpoints", player.get("maxHp", 0)) or 0),
@@ -199,7 +208,8 @@ def run(args: argparse.Namespace) -> int:
     if definition.get("api") != "2006scape.route-definition":
         raise RuntimeError("not a 2006scape route definition: {}".format(definition_path))
 
-    profile = args.profile or os.environ.get("RS_PROFILE", "")
+    profile = resolve_profile(args.profile, default="")
+    args.evidence_jsonl = resolve_evidence_jsonl(args.evidence_jsonl, profile)
     player = bridge.observe(profile)
     player = set_run_for_mode(player, args.run_mode, profile)
     start_player = dict(player)
@@ -256,6 +266,8 @@ def run(args: argparse.Namespace) -> int:
             "timestamp": utcnow(),
             "tool": "execute_route_definition",
             "profile": profile,
+            "playerName": player.get("name", player.get("playerName", profile)),
+            "playerId": player.get("playerId", player.get("id")),
             "routeId": route_id,
             "routeMode": definition.get("mode"),
             "routeQuality": definition.get("quality"),
@@ -306,6 +318,8 @@ def run(args: argparse.Namespace) -> int:
         "timestamp": utcnow(),
         "source": "execute_route_definition",
         "profile": profile,
+        "playerName": start_player.get("name", start_player.get("playerName", profile)),
+        "playerId": start_player.get("playerId", start_player.get("id")),
         "routeId": route_id,
         "status": status,
         "success": status == "success",
@@ -343,7 +357,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Execute a persisted ML1 route definition with bridge primitives.")
     parser.add_argument("--route-definition", required=True)
     parser.add_argument("--to", default="", help="Optional human-readable target label; the route definition remains authoritative.")
-    parser.add_argument("--profile", default=os.environ.get("RS_PROFILE", ""))
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     parser.add_argument("--run-mode", choices=["auto", "always", "never", "preserve"], default="auto",
                         help="auto currently preserves normal walking unless the caller explicitly chooses always/never.")
     parser.add_argument("--eat-at", type=int, default=10,
@@ -355,7 +369,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--stop-on-combat", action="store_true")
     parser.add_argument("--observe-on-contact", action="store_true", default=True)
     parser.add_argument("--no-observe-on-contact", dest="observe_on_contact", action="store_false")
-    parser.add_argument("--evidence-jsonl", default=DEFAULT_EVIDENCE_JSONL)
+    parser.add_argument("--evidence-jsonl", default=DEFAULT_EVIDENCE_JSONL,
+                        help="Route evidence JSONL. Defaults to a profile-scoped path under .local/run-evidence.")
     parser.add_argument("--report-every", type=int, default=6)
     return parser
 

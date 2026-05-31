@@ -7,6 +7,7 @@ import re
 import uuid
 
 import bridge_script as bridge
+from profile_utils import resolve_profile
 
 
 RUNS_DIR = bridge.ROOT / "data" / "smithing" / "runs"
@@ -346,7 +347,7 @@ def run(args):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Run primitive-backed smelting or smithing.")
-    parser.add_argument("--profile", default="")
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     parser.add_argument("--mode", choices=["smelt", "smith"], default="smith")
     parser.add_argument("--bar", default="bronze")
     parser.add_argument("--item", default="", help="SmithingData enum/name substring, e.g. sword, scim, plate.")

@@ -7,6 +7,7 @@ import uuid
 from pathlib import Path
 
 import bridge_script as bridge
+from profile_utils import resolve_profile
 
 
 RUNS_DIR = bridge.ROOT / "data" / "woodcutting" / "runs"
@@ -160,7 +161,7 @@ def run(args):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Run primitive-backed woodcutting loops.")
-    parser.add_argument("--profile", default="")
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     parser.add_argument("--tree", default="tree", help="tree, oak, willow, maple, yew, or magic.")
     parser.add_argument("--target-woodcutting-level", type=int, default=0)
     parser.add_argument("--max-rounds", type=int, default=100)

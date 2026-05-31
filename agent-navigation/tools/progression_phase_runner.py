@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sequential MrFlame progression wrapper.
+"""Sequential selected-profile progression wrapper.
 
 This keeps phase selection out of the heartbeat prompt. It reuses the
 individual primitive-backed phase runners and only runs the phases that still
@@ -11,6 +11,7 @@ import subprocess
 import sys
 
 import bridge_script as bridge
+from profile_utils import resolve_profile
 
 
 SCRIPT_DIR = bridge.SCRIPT_DIR
@@ -82,8 +83,8 @@ def phase_enabled(name, start_at, stop_after):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Run the prepared MrFlame progression phases in order.")
-    parser.add_argument("--profile", default="")
+    parser = argparse.ArgumentParser(description="Run prepared progression phases for one selected profile.")
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     parser.add_argument("--preserve-boots", type=int, default=1)
     parser.add_argument("--target-smithing-level", type=int, default=15)
     parser.add_argument("--target-mining-level", type=int, default=20)

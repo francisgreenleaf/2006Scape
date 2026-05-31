@@ -15,6 +15,7 @@ import uuid
 from pathlib import Path
 
 import bridge_script as bridge
+from profile_utils import is_default_profile, run_evidence_path, safe_profile, resolve_profile
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -29,8 +30,6 @@ SEERS_OAK = "seers_oak_trees"
 SEERS_WILLOW = "seers_willow_trees"
 CATHERBY_BANK = "catherby_bank"
 CATHERBY_ARHEIN_STORE = "catherby_arhein_store"
-STATUS_PATH = ROOT / ".local" / "runners" / "seers-fletching.status.json"
-STOP_PATH = ROOT / ".local" / "runners" / "seers-fletching.stop"
 SEERS_TILES = {
     SEERS_BANK: {"x": 2727, "y": 3493, "height": 0},
     SEERS_OAK: {"x": 2731, "y": 3492, "height": 0},
@@ -88,8 +87,24 @@ def write_event(handle, event_type, data):
     handle.flush()
 
 
+def runner_stem():
+    if is_default_profile(RUN_PROFILE):
+        return "seers-fletching"
+    return "seers-fletching-{}".format(safe_profile(RUN_PROFILE))
+
+
+def status_path():
+    return ROOT / ".local" / "runners" / "{}.status.json".format(runner_stem())
+
+
+def stop_path():
+    return ROOT / ".local" / "runners" / "{}.stop".format(runner_stem())
+
+
 def write_status(args, phase, player, extra=None):
-    STATUS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    path = status_path()
+    stop = stop_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
     compact = compact_player(player)
     payload = {
         "ok": True,
@@ -98,7 +113,7 @@ def write_status(args, phase, player, extra=None):
         "phase": phase,
         "profile": RUN_PROFILE or "default",
         "pid": os.getpid(),
-        "stopRequested": STOP_PATH.exists(),
+        "stopRequested": stop.exists(),
         "player": compact,
         "logs": fletchable_log_count(player),
         "products": product_count(player),
@@ -110,7 +125,7 @@ def write_status(args, phase, player, extra=None):
     }
     if extra:
         payload.update(extra)
-    STATUS_PATH.write_text(json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
+    path.write_text(json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n", encoding="utf-8")
 
 
 def jsonable(value):
@@ -953,26 +968,28 @@ def should_stop(player, args):
 
 
 def print_status():
-    if STATUS_PATH.exists():
-        print(STATUS_PATH.read_text(encoding="utf-8").strip())
+    path = status_path()
+    if path.exists():
+        print(path.read_text(encoding="utf-8").strip())
         return 0
     print(json.dumps({
         "ok": False,
         "runner": "seers_fletching_runner",
         "error": "no_status",
-        "statusPath": str(STATUS_PATH),
+        "statusPath": str(path),
     }, sort_keys=True, separators=(",", ":")))
     return 1
 
 
 def request_stop():
-    STOP_PATH.parent.mkdir(parents=True, exist_ok=True)
-    STOP_PATH.write_text(utc_now() + "\n", encoding="utf-8")
+    path = stop_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(utc_now() + "\n", encoding="utf-8")
     print(json.dumps({
         "ok": True,
         "runner": "seers_fletching_runner",
         "stopRequested": True,
-        "stopPath": str(STOP_PATH),
+        "stopPath": str(path),
     }, sort_keys=True, separators=(",", ":")))
     return 0
 
@@ -1045,7 +1062,7 @@ def main(argv=None):
     parser.add_argument("--no-final-sell", dest="no_final_sell", action="store_true")
     parser.set_defaults(no_final_sell=True)
     parser.add_argument("--route-evidence-jsonl")
-    parser.add_argument("--profile", default="")
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     args = parser.parse_args(argv)
 
     global RUN_PROFILE
@@ -1054,15 +1071,14 @@ def main(argv=None):
         return print_status()
     if args.request_stop:
         return request_stop()
-    if STOP_PATH.exists():
-        STOP_PATH.unlink()
+    if stop_path().exists():
+        stop_path().unlink()
 
     RUNS_DIR.mkdir(parents=True, exist_ok=True)
     run_path = RUNS_DIR / "{}-{}.jsonl".format(dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ"), uuid.uuid4().hex[:8])
     if args.route_evidence_jsonl is None:
-        evidence_dir = ROOT / ".local" / "run-evidence"
-        evidence_dir.mkdir(parents=True, exist_ok=True)
-        args.route_evidence_jsonl = evidence_dir / "fletching-runner.routes.jsonl"
+        args.route_evidence_jsonl = run_evidence_path(args.profile, "fletching-runner")
+        args.route_evidence_jsonl.parent.mkdir(parents=True, exist_ok=True)
     else:
         args.route_evidence_jsonl = Path(args.route_evidence_jsonl)
 
@@ -1123,7 +1139,7 @@ def main(argv=None):
                 write_event(handle, "target_reached", {"reason": stopped_reason, "player": compact})
                 write_status(args, "target_reached", player, {"reason": stopped_reason, "runLog": str(run_path)})
                 break
-            if STOP_PATH.exists():
+            if stop_path().exists():
                 stopped_reason = "stop_requested"
                 write_event(handle, "stop_requested", {"player": compact})
                 write_status(args, "stopping", player, {"reason": stopped_reason, "runLog": str(run_path)})

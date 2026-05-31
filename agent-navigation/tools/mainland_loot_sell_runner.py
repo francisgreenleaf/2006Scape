@@ -8,6 +8,7 @@ import uuid
 from pathlib import Path
 
 import bridge_script as bridge
+from profile_utils import resolve_profile
 
 
 ROOT = bridge.ROOT
@@ -242,7 +243,7 @@ def sell_item(args, handle, player, item_id, amount, label, shop_name):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Sell mainland-friendly loot to specialist shops where practical.")
-    parser.add_argument("--profile", default="")
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     parser.add_argument("--shop-max-distance", type=int, default=14)
     parser.add_argument("--route-max-batches", type=int, default=90)
     parser.add_argument("--max-batch-distance", type=int, default=48)

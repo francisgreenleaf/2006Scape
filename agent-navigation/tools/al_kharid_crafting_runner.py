@@ -7,6 +7,7 @@ import time
 import uuid
 
 import bridge_script as bridge
+from profile_utils import resolve_profile
 
 
 RUNS_DIR = bridge.ROOT / "data" / "crafting" / "runs"
@@ -969,7 +970,7 @@ def run(args):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Run Al Kharid leather crafting with normal bridge primitives.")
-    parser.add_argument("--profile", default="")
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     parser.add_argument("--bank-target", default="al kharid bank")
     parser.add_argument("--coin-float", type=int, default=120)
     parser.add_argument("--thread-floor", type=int, default=25)

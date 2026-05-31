@@ -75,7 +75,18 @@ def outcome_record(args: SimpleNamespace) -> Dict[str, Any]:
 
 
 def record_outcome(args: SimpleNamespace) -> Dict[str, Any]:
-    path = Path(args.evidence_jsonl or DEFAULT_ROUTE_EVIDENCE_JSONL)
+    evidence_jsonl = args.evidence_jsonl or ""
+    if getattr(args, "profile", "") and (not evidence_jsonl or evidence_jsonl == DEFAULT_ROUTE_EVIDENCE_JSONL):
+        try:
+            from .paths import ensure_tool_imports
+
+            ensure_tool_imports()
+            from profile_utils import run_evidence_path  # type: ignore
+
+            evidence_jsonl = str(run_evidence_path(args.profile))
+        except Exception:
+            evidence_jsonl = DEFAULT_ROUTE_EVIDENCE_JSONL
+    path = Path(evidence_jsonl or DEFAULT_ROUTE_EVIDENCE_JSONL)
     path.parent.mkdir(parents=True, exist_ok=True)
     record = outcome_record(args)
     with path.open("a", encoding="utf-8") as handle:

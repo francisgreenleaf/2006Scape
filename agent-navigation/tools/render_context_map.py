@@ -10,13 +10,13 @@ import argparse
 import datetime as dt
 import json
 import math
-import os
 import uuid
 from pathlib import Path
 
 import cache_world_map
 import map_grid
 import navdb
+from profile_utils import compact_profile_key, profile_scoped_dir, resolve_profile
 from render_navigation_png import Canvas
 
 
@@ -76,8 +76,11 @@ def trace_timestamp(record):
 def player_matches(record, player):
     if not player:
         return True
-    name = str(record.get("playerName") or record.get("player") or "").strip().lower()
-    return not name or name == player.strip().lower()
+    player_value = record.get("player")
+    if isinstance(player_value, dict):
+        player_value = player_value.get("name") or player_value.get("playerName")
+    name = str(record.get("playerName") or player_value or record.get("profile") or "").strip()
+    return not name or compact_profile_key(name) == compact_profile_key(player)
 
 
 def sorted_trace_records(extra_paths, player):
@@ -571,7 +574,8 @@ def resolve_output_paths(args, center, segment_info):
         int(args.pixels_per_tile),
         uuid.uuid4().hex[:8],
     )
-    archive_root = Path(getattr(args, "artifact_dir", None) or CONTEXT_MAP_ARCHIVE)
+    configured_archive = getattr(args, "artifact_dir", None)
+    archive_root = Path(configured_archive) if configured_archive else profile_scoped_dir(CONTEXT_MAP_ARCHIVE, getattr(args, "player", ""))
     archive_dir = archive_root / date_dir
     return archive_dir / "{}.png".format(artifact_id), archive_dir / "{}.json".format(artifact_id), {
         "id": artifact_id,
@@ -877,6 +881,7 @@ def render(args):
         "summary": str(summary_path),
         "artifact": artifact,
         "source": "2006Scape Server/data/cache",
+        "profile": args.player,
         "totalTraceRecords": len(all_records),
         "traceRecordsConsidered": len(records),
         "maxTraceRecords": max_trace_records,
@@ -937,7 +942,7 @@ def main():
     parser.add_argument("--segment-to")
     parser.add_argument("--fit-segment", action="store_true", default=True)
     parser.add_argument("--no-fit-segment", dest="fit_segment", action="store_false")
-    parser.add_argument("--player", default=os.environ.get("RS_TRACE_PROFILE") or os.environ.get("RS_PROFILE") or "mrflame")
+    parser.add_argument("--player", default=resolve_profile(trace=True, default=""))
     parser.add_argument("--trace-file", action="append")
     parser.add_argument("--max-trace-records", type=nonnegative_int, default=0,
                         help="Use only the newest N trace records after sorting. 0 considers all records.")
@@ -966,7 +971,7 @@ def main():
     parser.add_argument("--reference-grid-major-every", type=positive_int, default=4)
     parser.add_argument("--reference-grid-cell-labels", choices=("none", "major", "all"), default="all")
     parser.add_argument("--reference-grid-label-scale", type=positive_int, default=2)
-    parser.add_argument("--artifact-dir", default=str(CONTEXT_MAP_ARCHIVE),
+    parser.add_argument("--artifact-dir", default="",
                         help="Default archive root for unique context-map artifacts.")
     parser.add_argument("--output",
                         help="Exact PNG output path. If omitted, a unique ignored artifact path is used.")

@@ -4,10 +4,11 @@
 import argparse
 import datetime as dt
 import json
-import os
 import re
 import uuid
 from pathlib import Path
+
+from profile_utils import resolve_profile
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -32,13 +33,7 @@ def normalize_profile_name(profile):
 
 
 def profile_from_args(args):
-    return normalize_profile_name(
-        args.profile
-        or os.environ.get("RS_PROFILE")
-        or os.environ.get("RSBRIDGE_PROFILE")
-        or os.environ.get("RS_TRACE_PROFILE")
-        or "MrFlame"
-    )
+    return normalize_profile_name(args.profile or resolve_profile(trace=True, default=""))
 
 
 def profile_slug(profile):
@@ -251,7 +246,8 @@ def command_list(args):
 
 
 def add_common(parser):
-    parser.add_argument("--profile", default="", help="Character/profile name. Defaults to RS_PROFILE or MrFlame.")
+    parser.add_argument("--profile", default=resolve_profile(trace=True, default=""),
+                        help="Character/profile name. Defaults to RS_PROFILE/RS_TRACE_PROFILE or the legacy default profile.")
     parser.add_argument("--memory-root", default="", help="Override memory root, mainly for tests.")
     return parser
 

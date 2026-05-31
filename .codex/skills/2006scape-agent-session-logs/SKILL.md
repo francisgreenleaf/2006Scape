@@ -35,7 +35,7 @@ Do not mutate live gameplay or restart the runtime while inspecting logs. Other 
 Prefer targeted reads. Logs can contain very large `observe_state` payloads, bank contents, nearby objects, and profile memory.
 
 ```sh
-python3 agent-navigation/tools/agent_session_XS.py --profile MrFlame --latest
+python3 agent-navigation/tools/agent_session_XS.py --profile PROFILE --latest
 find "2006Scape Server/data/logs/agent-sessions" -type f | sort
 sed -n '1,220p' "2006Scape Server/data/logs/agent-sessions/<date>/<session>.md"
 ```

@@ -10,6 +10,7 @@ Capture the running 2006Scape Java client to a PNG and print JSON metadata.
 Options:
   --prefix NAME       Filename prefix, default: client
   --output PATH       Exact PNG output path
+  --profile NAME      Select profile-specific client pid file; non-default profiles do not use process fallback
   --pid PID           Java client process id to capture
   --native-size       Downsample to the classic 765x503 client size
   --max-size WxH      Downsample to fit inside WxH, preserving aspect ratio
@@ -26,7 +27,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PREFIX="client"
 OUTPUT=""
+PROFILE="${RS_PROFILE:-${RSBRIDGE_PROFILE:-}}"
 CLIENT_PID=""
+PROFILE_PID_REQUIRED=0
 FULL_SCREEN=0
 FOCUS=1
 NATIVE_SIZE=0
@@ -40,6 +43,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --output)
       OUTPUT="${2:?missing value for --output}"
+      shift 2
+      ;;
+    --profile)
+      PROFILE="${2:?missing value for --profile}"
       shift 2
       ;;
     --pid)
@@ -85,7 +92,26 @@ else
 fi
 
 client_pid="$CLIENT_PID"
-if [[ -z "$client_pid" ]]; then
+if [[ -z "$client_pid" && -n "$PROFILE" ]]; then
+  safe_profile="$(python3 - "$PROFILE" <<'PY'
+import sys
+print("".join(ch for ch in sys.argv[1].strip().lower() if ch.isalnum() or ch in ("-", "_")) or "default")
+PY
+)"
+  if [[ "$safe_profile" == "mrflame" ]]; then
+    pid_file="$ROOT/.local/client.pid"
+  else
+    pid_file="$ROOT/.local/client-$safe_profile.pid"
+    PROFILE_PID_REQUIRED=1
+  fi
+  if [[ -f "$pid_file" ]]; then
+    maybe_pid="$(tr -d '[:space:]' < "$pid_file")"
+    if [[ "$maybe_pid" =~ ^[0-9]+$ ]]; then
+      client_pid="$maybe_pid"
+    fi
+  fi
+fi
+if [[ -z "$client_pid" && "$PROFILE_PID_REQUIRED" -eq 0 ]]; then
   client_pid="$(ps ax -o pid= -o command= | awk '
     /client-1\.0-jar-with-dependencies\.jar/ {
       cmd = $0
@@ -96,6 +122,10 @@ if [[ -z "$client_pid" ]]; then
     }
     END {print pid}
   ')"
+fi
+if [[ -z "${client_pid:-}" && "$PROFILE_PID_REQUIRED" -eq 1 ]]; then
+  echo "no profile-specific client pid found for $PROFILE; try --pid or start that profile's local runtime" >&2
+  exit 1
 fi
 if [[ -z "${client_pid:-}" ]]; then
   echo "no running 2006Scape client jar process found" >&2
@@ -161,15 +191,16 @@ fi
 
 captured_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 dimensions="$(sips -g pixelWidth -g pixelHeight "$OUTPUT" 2>/dev/null | awk '''/pixelWidth:/ {w=$2} /pixelHeight:/ {h=$2} END {if (w && h) print w "x" h}''')"
-python3 - "$OUTPUT" "$client_pid" "$mode" "$rect" "$captured_at" "$warning" "$dimensions" <<'PY'
+python3 - "$OUTPUT" "$client_pid" "$mode" "$rect" "$captured_at" "$warning" "$dimensions" "$PROFILE" <<'PY'
 import json
 import sys
 
-path, pid, mode, rect, captured_at, warning, dimensions = sys.argv[1:]
+path, pid, mode, rect, captured_at, warning, dimensions, profile = sys.argv[1:]
 payload = {
     "success": True,
     "screenshot": path,
     "clientPid": int(pid),
+    "profile": profile,
     "mode": mode,
     "rect": rect or None,
     "capturedAt": captured_at,

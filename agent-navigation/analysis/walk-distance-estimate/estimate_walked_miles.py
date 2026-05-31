@@ -1,14 +1,22 @@
 #!/usr/bin/env python3
-"""Estimate MrFlame's walked distance from recorded movement telemetry."""
+"""Estimate a selected profile's walked distance from recorded movement telemetry."""
 
 from __future__ import annotations
 
 import argparse
 import json
+import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
+
+
+TOOLS_DIR = Path(__file__).resolve().parents[2] / "tools"
+if str(TOOLS_DIR) not in sys.path:
+    sys.path.insert(0, str(TOOLS_DIR))
+
+from profile_utils import compact_profile_key, is_default_profile, resolve_profile, safe_profile  # noqa: E402
 
 
 METERS_PER_MILE = 1609.344
@@ -52,7 +60,7 @@ def repo_root_from_script() -> Path:
     return Path(__file__).resolve().parents[3]
 
 
-def default_inputs(repo_root: Path) -> list[Path]:
+def default_inputs(repo_root: Path, profile: str) -> list[Path]:
     paths: list[Path] = []
     patterns = [
         repo_root / "2006Scape Server" / "data" / "logs" / "player-movement-traces",
@@ -62,7 +70,10 @@ def default_inputs(repo_root: Path) -> list[Path]:
         if directory.exists():
             paths.extend(sorted(directory.glob("**/*.jsonl")))
 
-    legacy_trace = repo_root / "agent-navigation" / "data" / "movement_traces.jsonl"
+    if is_default_profile(profile):
+        legacy_trace = repo_root / "agent-navigation" / "data" / "movement_traces.jsonl"
+    else:
+        legacy_trace = repo_root / "agent-navigation" / "data" / ("movement_traces-{}.jsonl".format(safe_profile(profile)))
     if legacy_trace.exists():
         paths.append(legacy_trace)
     return paths
@@ -130,9 +141,23 @@ def iter_records(path: Path) -> Iterable[tuple[int, dict[str, Any]]]:
                 yield line_number, record
 
 
-def collect(paths: list[Path]) -> tuple[dict[str, SourceSummary], list[Segment]]:
+def record_profile_key(record: dict[str, Any], path: Path) -> str:
+    nested_player = record.get("player") if isinstance(record.get("player"), dict) else {}
+    value = (
+        record.get("playerName")
+        or record.get("profile")
+        or nested_player.get("name")
+        or ""
+    )
+    if not value and "player-movement-traces" in set(path.parts):
+        value = path.stem
+    return compact_profile_key(value)
+
+
+def collect(paths: list[Path], profile: str) -> tuple[dict[str, SourceSummary], list[Segment]]:
     summaries: dict[str, SourceSummary] = {}
     segments: list[Segment] = []
+    expected_profile = compact_profile_key(profile)
 
     for path in paths:
         source = source_for(path)
@@ -140,6 +165,8 @@ def collect(paths: list[Path]) -> tuple[dict[str, SourceSummary], list[Segment]]
         summary.files.add(str(path))
 
         for line_number, record in iter_records(path):
+            if expected_profile and record_profile_key(record, path) != expected_profile:
+                continue
             summary.records += 1
             ts_ms = timestamp_ms(record)
             summary.note_timestamp(ts_ms)
@@ -236,8 +263,9 @@ def combine_estimate(segments: list[Segment]) -> dict[str, Any]:
     }
 
 
-def as_report(summaries: dict[str, SourceSummary], combined: dict[str, Any]) -> dict[str, Any]:
+def as_report(profile: str, summaries: dict[str, SourceSummary], combined: dict[str, Any]) -> dict[str, Any]:
     return {
+        "profile": profile,
         "assumption": "One walked tile-step is counted as one meter; diagonal tile-steps count as one tile-step.",
         "method": (
             "Use Chebyshev grid distance max(abs(dx), abs(dy)) between previousTile and tile, "
@@ -267,7 +295,7 @@ def as_report(summaries: dict[str, SourceSummary], combined: dict[str, Any]) -> 
 
 def print_report(report: dict[str, Any]) -> None:
     combined = report["combined"]
-    print("Walk distance estimate for MrFlame")
+    print("Walk distance estimate for {}".format(report.get("profile") or "selected profile"))
     print("Assumption: 1 tile-step = 1 meter; diagonal steps count as one tile-step.")
     print()
     print("Combined estimate avoiding known overlap:")
@@ -296,12 +324,15 @@ def print_report(report: dict[str, Any]) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo-root", type=Path, default=repo_root_from_script())
+    parser.add_argument("--profile", default=resolve_profile(trace=True, default=""),
+                        help="Profile/player to estimate. Defaults to RS_TRACE_PROFILE/RS_PROFILE or the legacy default profile.")
     parser.add_argument("--write-json", type=Path, help="Optional path to write the structured report.")
     args = parser.parse_args()
 
     repo_root = args.repo_root.resolve()
-    summaries, segments = collect(default_inputs(repo_root))
-    report = as_report(summaries, combine_estimate(segments))
+    profile = resolve_profile(args.profile, trace=True, default="")
+    summaries, segments = collect(default_inputs(repo_root, profile), profile)
+    report = as_report(profile, summaries, combine_estimate(segments))
     print_report(report)
 
     if args.write_json:

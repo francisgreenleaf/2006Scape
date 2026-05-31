@@ -12,6 +12,7 @@ import sys
 import uuid
 
 import bridge_script as bridge
+from profile_utils import resolve_profile
 
 
 RUNS_DIR = bridge.ROOT / "data" / "smithing" / "runs"
@@ -264,7 +265,7 @@ def run(args):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Run the Al Kharid bronze-smelting then iron-mining phase.")
-    parser.add_argument("--profile", default="")
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     parser.add_argument("--target-smithing-level", type=int, default=15)
     parser.add_argument("--bronze-pairs-per-batch", type=int, default=14)
     parser.add_argument("--coin-float", type=int, default=20)

@@ -6,6 +6,7 @@ import datetime as dt
 import uuid
 
 import bridge_script as bridge
+from profile_utils import resolve_profile
 
 
 RUNS_DIR = bridge.ROOT / "data" / "thieving" / "runs"
@@ -271,7 +272,7 @@ def run(args):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Run low-level pickpocket thieving with food and bank recovery.")
-    parser.add_argument("--profile", default="")
+    parser.add_argument("--profile", default=resolve_profile(default=""))
     parser.add_argument("--target-thieving-level", type=int, default=20)
     parser.add_argument("--food-count", type=int, default=8)
     parser.add_argument("--eat-at-hp", type=int, default=42)

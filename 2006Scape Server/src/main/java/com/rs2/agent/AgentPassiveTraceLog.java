@@ -34,9 +34,9 @@ public class AgentPassiveTraceLog {
     private static final int IDLE_HEARTBEAT_TICKS = 25;
 
     private final Object lock = new Object();
-    private final Map<Integer, Snapshot> snapshots = new HashMap<Integer, Snapshot>();
-    private final Map<Integer, PendingMovement> pendingMovements = new HashMap<Integer, PendingMovement>();
-    private final Map<Integer, ObjectInteraction> pendingObjectInteractions = new HashMap<Integer, ObjectInteraction>();
+    private final Map<String, Snapshot> snapshots = new HashMap<String, Snapshot>();
+    private final Map<String, PendingMovement> pendingMovements = new HashMap<String, PendingMovement>();
+    private final Map<String, ObjectInteraction> pendingObjectInteractions = new HashMap<String, ObjectInteraction>();
     private File logDirectoryForTests;
 
     public void captureBeforeMovement(Player player, long serverTick) {
@@ -44,7 +44,7 @@ public class AgentPassiveTraceLog {
             return;
         }
         synchronized (lock) {
-            pendingMovements.put(player.playerId, new PendingMovement(serverTick, player.absX, player.absY,
+            pendingMovements.put(playerKey(player), new PendingMovement(serverTick, player.absX, player.absY,
                     player.heightLevel, safeHitpoints(player), safeRunEnergy(player)));
         }
     }
@@ -55,7 +55,7 @@ public class AgentPassiveTraceLog {
         }
         PendingMovement pending;
         synchronized (lock) {
-            pending = pendingMovements.remove(player.playerId);
+            pending = pendingMovements.remove(playerKey(player));
         }
         if (pending == null) {
             recordTick(player, serverTick, player.absX, player.absY, player.heightLevel, safeHitpoints(player),
@@ -80,10 +80,11 @@ public class AgentPassiveTraceLog {
         String activityHash = activityHash(player, moved, inCombat);
 
         synchronized (lock) {
-            Snapshot previous = snapshots.get(player.playerId);
+            String key = playerKey(player);
+            Snapshot previous = snapshots.get(key);
             boolean shouldWrite = shouldWrite(previous, serverTick, moved, teleported, hitpoints, runEnergy, inCombat,
                     activityHash, player.isDead);
-            snapshots.put(player.playerId, new Snapshot(player.absX, player.absY, player.heightLevel, hitpoints,
+            snapshots.put(key, new Snapshot(player.absX, player.absY, player.heightLevel, hitpoints,
                     runEnergy, inCombat, activityHash, player.isDead, shouldWrite ? serverTick
                             : previous == null ? serverTick : previous.lastWrittenTick));
             if (!shouldWrite) {
@@ -128,7 +129,7 @@ public class AgentPassiveTraceLog {
         }
         ObjectInteraction interaction = newObjectInteraction(player, objectOption, packetOpcode, object);
         synchronized (lock) {
-            pendingObjectInteractions.put(player.playerId, interaction);
+            pendingObjectInteractions.put(playerKey(player), interaction);
             JsonObject event = buildObjectEvent(player, interaction, "queued", player.absX, player.absY,
                     player.heightLevel);
             write(player, System.currentTimeMillis(), event);
@@ -141,7 +142,7 @@ public class AgentPassiveTraceLog {
             return;
         }
         synchronized (lock) {
-            ObjectInteraction interaction = pendingObjectInteractions.remove(player.playerId);
+            ObjectInteraction interaction = pendingObjectInteractions.remove(playerKey(player));
             if (interaction == null || !interaction.matches(objectId, objectX, objectY, objectHeight, objectOption)) {
                 interaction = new ObjectInteraction(UUID.randomUUID().toString(), objectId, objectX, objectY,
                         objectHeight, objectOption, -1, object);
@@ -501,6 +502,10 @@ public class AgentPassiveTraceLog {
                 ? "player-" + player.playerId
                 : player.playerName.trim().toLowerCase(Locale.ENGLISH);
         return name.replaceAll("[^a-z0-9._-]+", "_");
+    }
+
+    private String playerKey(Player player) {
+        return player == null ? "unknown:-1" : safeFileStem(player) + ":" + player.playerId;
     }
 
     private String timestamp(long now) {

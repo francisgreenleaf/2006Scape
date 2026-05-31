@@ -15,7 +15,7 @@ Run the cardinal capture helper from the repo root:
 agent-navigation/tools/capture-cardinal-screenshots.sh --prefix route-debug
 ```
 
-It uses the current local client pid when available, faces north, captures `north`, `east`, `south`, and `west`, then restores north. It writes PNGs under `agent-navigation/screenshots/captures/<date>/` and prints one JSON summary with file paths.
+It uses the selected profile's local client pid when available, faces north, captures `north`, `east`, `south`, and `west`, then restores north. Pass `--profile PROFILE` or set `RS_PROFILE` when capturing a non-default client. It writes PNGs under `agent-navigation/screenshots/captures/<date>/` and prints one JSON summary with file paths.
 
 The default output size is `765x503` via `capture-client-screenshot.sh --native-size`. Do not request full-screen or high-resolution captures unless the user explicitly asks.
 
@@ -31,7 +31,7 @@ The default output size is `765x503` via `capture-client-screenshot.sh --native-
 
 macOS may block process inspection, window focus, keyboard events, or `screencapture` inside the Codex sandbox. If the helper fails with `Operation not permitted`, rerun the same helper with a narrow escalation for the screenshot command.
 
-Prefer the four-angle helper because it reads `agent-navigation/.local/client.pid` first and avoids `/bin/ps` when the runtime helper started the client.
+Prefer the four-angle helper because it reads the profile-specific pid file first and avoids broad `/bin/ps` scanning when the runtime helper started the selected client.
 
 ## Review
 

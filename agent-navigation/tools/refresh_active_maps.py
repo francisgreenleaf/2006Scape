@@ -19,11 +19,12 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+from profile_utils import canonical_map_paths, profile_display_name, resolve_profile, safe_profile
+
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = ROOT.parent
 TOOLS = ROOT / "tools"
-TOPOLOGY = ROOT / "topology"
 LOCAL = ROOT / ".local" / "map-refresh"
 MAP_SUMMARIES = ROOT / ".local" / "map-summaries"
 DEFAULT_STATUS = LOCAL / "status.json"
@@ -52,37 +53,49 @@ WORLD_MAP = MapJob(
     args=("--output", "{output}", "--summary", "{summary}"),
 )
 
-ACTIVE_JOBS = (
-    MapJob(
-        job_id="mr-flame",
-        label="Mr. Flame",
-        output=TOPOLOGY / "movement-topology-v4.png",
-        summary=MAP_SUMMARIES / "movement-topology-v4.json",
-        command_name="render_profile_map.py",
-        args=("--output", "{output}", "--summary", "{summary}", "--coverage-cache-dir", "{render_cache_dir}"),
-        render_cache_namespace="mr-flame",
-    ),
-    MapJob(
-        job_id="heat-map",
-        label="Heat Map",
-        output=TOPOLOGY / "movement-topology-v5-heatmap.png",
-        summary=MAP_SUMMARIES / "movement-topology-v5-heatmap.json",
-        command_name="render_heat_map.py",
-        args=("--output", "{output}", "--summary", "{summary}", "--coverage-cache-dir", "{render_cache_dir}"),
-        render_cache_namespace="heat-map",
-    ),
-    MapJob(
-        job_id="mr-flame-fog",
-        label="Mr. Flame Fog",
-        output=TOPOLOGY / "movement-topology-v6.png",
-        summary=MAP_SUMMARIES / "movement-topology-v6.json",
-        command_name="render_fog_map.py",
-        args=("--output", "{output}", "--summary", "{summary}", "--coverage-cache-dir", "{render_cache_dir}"),
-        render_cache_namespace="mr-flame-fog",
-    ),
-)
+def active_jobs_for_profile(profile: str = "") -> tuple[MapJob, ...]:
+    display = profile_display_name(profile, default_text="Mrflame")
+    profile_output, profile_summary = canonical_map_paths(profile, "profile")
+    heat_output, heat_summary = canonical_map_paths(profile, "heat")
+    fog_output, fog_summary = canonical_map_paths(profile, "fog")
+    return (
+        MapJob(
+            job_id="profile-map",
+            label=display,
+            output=profile_output,
+            summary=profile_summary,
+            command_name="render_profile_map.py",
+            args=("--output", "{output}", "--summary", "{summary}", "--coverage-cache-dir", "{render_cache_dir}"),
+            render_cache_namespace="profile-map",
+        ),
+        MapJob(
+            job_id="heat-map",
+            label=display + " Heat Map",
+            output=heat_output,
+            summary=heat_summary,
+            command_name="render_heat_map.py",
+            args=("--output", "{output}", "--summary", "{summary}", "--coverage-cache-dir", "{render_cache_dir}"),
+            render_cache_namespace="heat-map",
+        ),
+        MapJob(
+            job_id="profile-fog",
+            label=display + " Fog",
+            output=fog_output,
+            summary=fog_summary,
+            command_name="render_fog_map.py",
+            args=("--output", "{output}", "--summary", "{summary}", "--coverage-cache-dir", "{render_cache_dir}"),
+            render_cache_namespace="profile-fog",
+        ),
+    )
 
+
+ACTIVE_JOBS = active_jobs_for_profile("")
 ALL_ACTIVE_BY_ID = {job.job_id: job for job in ACTIVE_JOBS}
+ACTIVE_MAP_ID_ALIASES = {
+    "mr-flame": "profile-map",
+    "mr-flame-fog": "profile-fog",
+}
+ALL_ACTIVE_IDS = sorted(set(ALL_ACTIVE_BY_ID) | set(ACTIVE_MAP_ID_ALIASES))
 
 status_lock = threading.Lock()
 process_lock = threading.Lock()
@@ -117,10 +130,6 @@ def nonnegative_float(value: str) -> float:
     if parsed < 0:
         raise argparse.ArgumentTypeError("value must be nonnegative")
     return parsed
-
-
-def safe_profile(value: str) -> str:
-    return "".join(ch for ch in str(value or "").strip().lower() if ch.isalnum() or ch in ("-", "_"))
 
 
 def build_command(job: MapJob, output: Path, summary: Path | None, args) -> list[str]:
@@ -161,13 +170,15 @@ def write_status(status_file: Path) -> None:
     os.replace(tmp, status_file)
 
 
-def update_status(status_file: Path, job: MapJob, **fields) -> None:
+def update_status(status_file: Path, job: MapJob, profile: str = "", trace_profile: str = "", **fields) -> None:
     with status_lock:
         if not status_doc:
             status_doc.update({
                 "schemaVersion": 1,
                 "startedAt": utc_now(),
                 "repo": str(REPO_ROOT),
+                "profile": profile or "",
+                "traceProfile": trace_profile or "",
                 "jobs": {},
             })
         status_doc["updatedAt"] = utc_now()
@@ -256,7 +267,8 @@ def run_job(job: MapJob, args, reason: str = "scheduled") -> bool:
         return True
 
     started_at = utc_now()
-    update_status(args.status_file, job, state="running", reason=reason, lastStartedAt=started_at)
+    update_status(args.status_file, job, args.profile, args.trace_profile,
+                  state="running", reason=reason, lastStartedAt=started_at)
     log(f"start {job.label}: {reason} -> {job.output}")
     start = time.monotonic()
     env = os.environ.copy()
@@ -292,6 +304,8 @@ def run_job(job: MapJob, args, reason: str = "scheduled") -> bool:
         update_status(
             args.status_file,
             job,
+            args.profile,
+            args.trace_profile,
             state="failed",
             lastFinishedAt=utc_now(),
             lastDurationSeconds=round(duration, 3),
@@ -320,6 +334,8 @@ def run_job(job: MapJob, args, reason: str = "scheduled") -> bool:
     update_status(
         args.status_file,
         job,
+        args.profile,
+        args.trace_profile,
         state="idle",
         lastFinishedAt=utc_now(),
         lastDurationSeconds=round(duration, 3),
@@ -437,10 +453,10 @@ def handle_signal(signum, _frame) -> None:
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Continuously refresh active 2006Scape map exports.")
-    parser.add_argument("--profile", default=os.environ.get("RS_PROFILE") or os.environ.get("RSBRIDGE_PROFILE") or "",
+    parser.add_argument("--profile", default=resolve_profile(default=""),
                         help="Profile label to pass through to child renderers.")
     parser.add_argument("--trace-profile",
-                        default=os.environ.get("RS_TRACE_PROFILE") or os.environ.get("RS_PROFILE") or os.environ.get("RSBRIDGE_PROFILE") or "",
+                        default=resolve_profile(trace=True, default=""),
                         help="Only render movement traces for this profile.")
     parser.add_argument("--include-unscoped-traces", action="store_true",
                         help="When filtering by profile, also include legacy traces with no player name.")
@@ -448,7 +464,7 @@ def parse_args():
                         help="Target cadence per map. If a render exceeds this, its next pass starts immediately.")
     parser.add_argument("--stagger-seconds", type=nonnegative_float, default=8.0,
                         help="Initial delay between parallel workers.")
-    parser.add_argument("--only", action="append", choices=sorted(ALL_ACTIVE_BY_ID),
+    parser.add_argument("--only", action="append", choices=ALL_ACTIVE_IDS,
                         help="Refresh only this active map id. May be repeated.")
     parser.add_argument("--serial", action="store_true",
                         help="Run selected maps one after another instead of one worker per map.")
@@ -477,15 +493,18 @@ def main() -> int:
     args = parse_args()
     if args.profile and not args.trace_profile:
         args.trace_profile = args.profile
+    active_jobs = active_jobs_for_profile(args.trace_profile or args.profile)
+    active_by_id = {job.job_id: job for job in active_jobs}
     if args.list_maps:
-        for job in ACTIVE_JOBS:
+        for job in active_jobs:
             print(f"{job.job_id}\t{job.label}\t{job.output}")
         return 0
 
     args.status_file = args.status_file.resolve()
     args.tmp_dir = args.tmp_dir.resolve()
     args.render_cache_dir = args.render_cache_dir.resolve()
-    selected = [ALL_ACTIVE_BY_ID[job_id] for job_id in args.only] if args.only else list(ACTIVE_JOBS)
+    selected_ids = [ACTIVE_MAP_ID_ALIASES.get(job_id, job_id) for job_id in args.only] if args.only else []
+    selected = [active_by_id[job_id] for job_id in selected_ids] if selected_ids else list(active_jobs)
 
     signal.signal(signal.SIGINT, handle_signal)
     signal.signal(signal.SIGTERM, handle_signal)
