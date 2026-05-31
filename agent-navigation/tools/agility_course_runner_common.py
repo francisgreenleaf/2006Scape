@@ -24,18 +24,18 @@ COURSE_SPECS = {
     "pyramid": {
         "courseId": "agility_pyramid_course",
         "name": "Agility Pyramid",
-        "minLevel": 30,
-        "defaultTargetLevel": 40,
-        "preferredUntilLevel": 39,
-        "safety": "higher-value mid-level course once the local route and full obstacle sequence are defined",
+        "minLevel": 66,
+        "defaultTargetLevel": 99,
+        "preferredUntilLevel": 99,
+        "safety": "preferred 66-99 course once the local route and full obstacle sequence are defined",
     },
     "barbarian": {
         "courseId": "barbarian_outpost_agility_course",
         "name": "Barbarian Outpost Agility Course",
         "minLevel": 35,
-        "defaultTargetLevel": 50,
-        "preferredUntilLevel": 50,
-        "safety": "preferred sub-50 course once the player can route to the outpost safely",
+        "defaultTargetLevel": 65,
+        "preferredUntilLevel": 65,
+        "safety": "preferred 35-65 course once the player can route to the outpost safely",
     },
 }
 
@@ -85,6 +85,4 @@ def launch_course(key, args):
         "--min-run-energy", str(args.min_run_energy),
         "--route-max-batches", str(args.route_max_batches),
     ]
-    if args.quiet:
-        command.append("--quiet")
     return subprocess.call(command, cwd=str(bridge.REPO_ROOT), env=os.environ.copy())

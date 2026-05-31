@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the Agility Pyramid phase when its course definition is available."""
+"""Run the Barbarian Outpost Agility Course for the 35-65 phase."""
 
 import argparse
 
@@ -8,14 +8,16 @@ from profile_utils import resolve_profile
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Run the Agility Pyramid phase.")
+    parser = argparse.ArgumentParser(
+        description="Run the Barbarian Outpost Agility Course phase."
+    )
     parser.add_argument("--profile", default=resolve_profile(default=""))
-    parser.add_argument("--target-agility-level", type=int, default=99)
-    parser.add_argument("--laps", type=int, default=20000)
+    parser.add_argument("--target-agility-level", type=int, default=65)
+    parser.add_argument("--laps", type=int, default=2000)
     parser.add_argument("--min-run-energy", type=int, default=8)
     parser.add_argument("--route-max-batches", type=int, default=80)
     parser.add_argument("--quiet", action="store_true")
-    return launch_course("pyramid", parser.parse_args(argv))
+    return launch_course("barbarian", parser.parse_args(argv))
 
 
 if __name__ == "__main__":
