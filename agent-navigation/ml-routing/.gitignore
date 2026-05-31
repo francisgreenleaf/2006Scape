@@ -4,9 +4,9 @@ artifacts/*
 !artifacts/models/
 artifacts/models/*
 !artifacts/models/latest.json
-!artifacts/models/route-pack-20260525T174700Z/
-artifacts/models/route-pack-20260525T174700Z/*
-!artifacts/models/route-pack-20260525T174700Z/model.json
+!artifacts/models/20260531T045449Z/
+artifacts/models/20260531T045449Z/*
+!artifacts/models/20260531T045449Z/model.json
 !artifacts/datasets/
 artifacts/datasets/*
 !artifacts/datasets/latest.json

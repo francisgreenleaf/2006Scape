@@ -193,7 +193,7 @@ Generated files live under `agent-navigation/ml-routing/artifacts/`. Most histor
 - `comparisons/<runId>/*.png`
 - `comparisons/<runId>/*.json`
 
-The committed seed pack is `route-pack-20260525T174700Z` under `datasets/`, `models/`, and `benchmarks/`, with portable `latest.json` manifests. Generated comparison PNGs/JSON and older model/dataset runs remain local unless intentionally promoted.
+The committed portable model is `models/20260531T045449Z/model.json`, and `models/latest.json` is the authoritative pointer agents should load. Matching dataset and benchmark manifests remain under `datasets/latest.json` and `benchmarks/latest.json`. Generated comparison PNGs/JSON and older model runs remain local unless intentionally promoted.
 
 Ignored local feedback from live route execution and manual outcome records lives under
 `agent-navigation/.local/run-evidence/*.jsonl` and is pulled into `route_attempts.jsonl`
