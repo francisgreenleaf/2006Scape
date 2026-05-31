@@ -189,24 +189,7 @@ def compact_player(player):
 
 
 def call_tool(tool_name, arguments=None):
-    args_json = json.dumps(arguments or {}, separators=(",", ":"))
-    env = os.environ.copy()
-    if RUN_PROFILE:
-        env["RS_PROFILE"] = RUN_PROFILE
-    proc = subprocess.run(
-        [str(RS_TOOL), tool_name, args_json],
-        cwd=str(REPO_ROOT),
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        env=env,
-    )
-    if proc.returncode != 0:
-        raise RuntimeError("{} failed: {}".format(tool_name, proc.stderr.strip() or proc.stdout.strip()))
-    try:
-        return json.loads(proc.stdout)
-    except json.JSONDecodeError as exc:
-        raise RuntimeError("{} returned invalid JSON: {}".format(tool_name, exc))
+    return bridge.call_tool(tool_name, arguments or {}, profile=RUN_PROFILE)
 
 
 def player_from(result):
@@ -274,6 +257,22 @@ def ensure_run(player, args, handle=None, reason="general"):
         "minRunEnergy": int(args.min_run_energy),
         "before": before,
     }
+    if bool(getattr(args, "run_only_when_empty", False)) and int(player.get("freeInventorySlots", 0) or 0) < 28:
+        if bool(player.get("runEnabled", False)):
+            result = call_tool("set_run_XXS", {"enabled": False})
+            updated = dict(player)
+            updated.update(player_from(result))
+            event["decision"] = "disable_loaded"
+            event["success"] = bool(result.get("success"))
+            event["message"] = result.get("message")
+            event["after"] = compact_player(updated)
+            event["runDelta"] = run_delta(before, event["after"])
+            write_event(handle, "run_policy", event)
+            return updated
+        event["decision"] = "loaded_no_run"
+        event["after"] = before
+        write_event(handle, "run_policy", event)
+        return player
     if args.no_enable_run:
         event["decision"] = "disabled"
         write_event(handle, "run_policy", event)
@@ -719,6 +718,19 @@ def route_to_bank(site, args, handle):
 
 
 def ensure_pickaxe(player, site, args, handle):
+    started = time.monotonic()
+    before = compact_player(player)
+
+    def finish(updated_player, decision, **extra):
+        write_event(handle, "ensure_pickaxe_timing", {
+            "decision": decision,
+            "elapsedSeconds": round(time.monotonic() - started, 3),
+            "before": before,
+            "after": compact_player(updated_player),
+            **extra,
+        })
+        return updated_player
+
     if args.auto_upgrade_pickaxe:
         upgraded = maybe_upgrade_pickaxe(player, site, args, handle)
         if upgraded is not None:
@@ -753,7 +765,7 @@ def ensure_pickaxe(player, site, args, handle):
             "pickaxe": active,
             "player": compact_player(player),
         })
-        return player
+        return finish(player, "active_carried_or_equipped", pickaxe=active)
     if banked:
         if not player.get("inBankArea"):
             if not route_to_bank(site, args, handle):
@@ -766,9 +778,16 @@ def ensure_pickaxe(player, site, args, handle):
             "result": compact_player(player),
         })
         player = manage_pickaxe_loadout(player, banked, handle, "withdraw_pickaxe")
-        return player
+        return finish(player, "withdraw_banked", pickaxe=banked)
     if args.auto_buy_bronze_pickaxe:
-        return buy_bronze_pickaxe(player, args, handle)
+        player = buy_bronze_pickaxe(player, args, handle)
+        return finish(player, "buy_bronze")
+    write_event(handle, "ensure_pickaxe_timing", {
+        "decision": "missing_pickaxe",
+        "elapsedSeconds": round(time.monotonic() - started, 3),
+        "before": before,
+        "after": compact_player(player),
+    })
     raise RuntimeError("no usable pickaxe is carried or banked; rerun with --auto-buy-bronze-pickaxe if a seller is reachable")
 
 
@@ -913,9 +932,18 @@ def choose_live_ore(player, site, ores, args, handle):
         preferred = "copper" if copper <= tin else "tin"
     live = []
     for ore in candidates:
+        probe_started = time.monotonic()
         result = call_tool("find_nearest_rock_XS", {
             "resource": ore,
             "maxDistance": int(site["rockScanDistance"]),
+        })
+        probe_elapsed = round(time.monotonic() - probe_started, 3)
+        write_event(handle, "ore_choice_probe", {
+            "ore": ore,
+            "elapsedSeconds": probe_elapsed,
+            "success": bool(result.get("success")),
+            "message": result.get("message"),
+            "object": result.get("object"),
         })
         if not result.get("success"):
             continue
@@ -984,21 +1012,119 @@ def legacy_mine_batch(ore, site, args, handle, start_player=None):
     return result
 
 
+def site_rock_tile(rock):
+    value = rock.get("tile") if isinstance(rock, dict) else None
+    if isinstance(value, dict):
+        return tile(value.get("x", 0), value.get("y", 0), value.get("height", 0))
+    if isinstance(value, str):
+        return parse_tile(value)
+    return None
+
+
+def known_rock_key(rock):
+    t = site_rock_tile(rock)
+    if not t:
+        return ""
+    return tile_string(t)
+
+
+def choose_known_rock(player, ore, site, cooldowns):
+    now = time.monotonic()
+    player_tile = tile_from_player(player)
+    candidates = []
+    for rock in site.get("rocks") or []:
+        if rock.get("ore") != ore:
+            continue
+        rock_tile = site_rock_tile(rock)
+        if not rock_tile:
+            continue
+        if int(rock_tile.get("height", 0)) != int(player_tile.get("height", 0)):
+            continue
+        key = tile_string(rock_tile)
+        if cooldowns.get(key, 0.0) > now:
+            continue
+        distance = chebyshev(player_tile, rock_tile)
+        if distance > int(site["rockScanDistance"]):
+            continue
+        candidates.append((distance, manhattan(player_tile, rock_tile), key, rock, rock_tile))
+    if not candidates:
+        return None
+    candidates.sort(key=lambda item: (item[0], item[1], item[2]))
+    distance, _manhattan_distance, key, rock, rock_tile = candidates[0]
+    object_id = int(rock.get("objectId", rock.get("id", 0)) or 0)
+    return {
+        "distance": int(distance),
+        "key": key,
+        "name": "Rocks",
+        "objectId": object_id,
+        "requiredLevel": ORE_DEFS[ore]["level"],
+        "resource": ore,
+        "tile": tile_string(rock_tile),
+    }
+
+
+def cooldown_known_rock(cooldowns, ore, obj, multiplier=0.6):
+    key = obj.get("key")
+    if not key:
+        tile_value = obj.get("tile")
+        key = tile_string(parse_tile(tile_value)) if isinstance(tile_value, str) else ""
+    if key:
+        cooldowns[key] = time.monotonic() + ORE_DEFS[ore]["respawnTicks"] * float(multiplier)
+
+
 def primitive_mine_batch(ore, site, args, handle, start_player=None):
     player = start_player or observe_xs()
     started = time.monotonic()
     total_ticks = 0
     rounds = 0
+    last_round_end = None
+    known_cooldowns = {}
+    start_free_slots = int(player.get("freeInventorySlots", 0) or 0)
+    prefer_known_rocks = (
+        bool(getattr(args, "prefer_known_rocks", False))
+        and bool(site.get("rocks"))
+        and start_free_slots >= 28
+    )
+    known_skip_count = 0
     single_round_only = args.strategy == "bronze-balanced" and ore in ("copper", "tin")
     last_result = {"success": True, "player": player, "batchStatus": "not_started", "batchTicks": 0}
     while total_ticks < int(args.mine_max_ticks):
+        round_started = time.monotonic()
+        gap_since_previous = None
+        if last_round_end is not None:
+            gap_since_previous = round(round_started - last_round_end, 3)
         if int(player.get("freeInventorySlots", 0) or 0) < 1:
             last_result = {"success": True, "player": player, "batchStatus": "inventory_full"}
             break
-        find_result = call_tool("find_nearest_rock_XS", {
-            "resource": ore,
-            "maxDistance": int(site["rockScanDistance"]),
-            "reachable": True,
+        used_known_rock = False
+        obj = choose_known_rock(player, ore, site, known_cooldowns) if prefer_known_rocks else None
+        find_started = time.monotonic()
+        if obj:
+            find_result = {
+                "success": True,
+                "message": "Selected cached site rock.",
+                "object": obj,
+            }
+            find_elapsed = 0.0
+            used_known_rock = True
+        else:
+            find_result = call_tool("find_nearest_rock_XS", {
+                "resource": ore,
+                "maxDistance": int(site["rockScanDistance"]),
+                "reachable": True,
+            })
+            find_elapsed = round(time.monotonic() - find_started, 3)
+        write_event(handle, "primitive_mine_find_rock", {
+            "ore": ore,
+            "siteId": site["id"],
+            "round": rounds + 1,
+            "elapsedSeconds": find_elapsed,
+            "success": bool(find_result.get("success")),
+            "source": "known_site_rock" if used_known_rock else "find_nearest_rock_XS",
+            "message": find_result.get("message"),
+            "object": find_result.get("object"),
+            "gapSincePreviousRoundSeconds": gap_since_previous,
+            "player": compact_player(player),
         })
         if not find_result.get("success"):
             if not args.wait_for_local_respawn:
@@ -1014,6 +1140,7 @@ def primitive_mine_batch(ore, site, args, handle, start_player=None):
                 "ore": ore,
                 "siteId": site["id"],
                 "ticks": wait_ticks,
+                "findSeconds": find_elapsed,
                 "message": find_result.get("message"),
                 "player": compact_player(player),
             })
@@ -1032,20 +1159,78 @@ def primitive_mine_batch(ore, site, args, handle, start_player=None):
             )
         else:
             obj_tile = tile(obj.get("x", 0), obj.get("y", 0), obj.get("height", 0))
-        interact_result = call_tool("interact_object_XS", {
-            "objectId": obj.get("objectId"),
-            "x": obj_tile["x"],
-            "y": obj_tile["y"],
-            "height": obj_tile.get("height", 0),
-            "action": "Mine",
+        free_slots_before_interact = int(player.get("freeInventorySlots", 0) or 0)
+        write_event(handle, "primitive_mine_click", {
+            "ore": ore,
+            "siteId": site["id"],
+            "round": rounds + 1,
+            "object": obj,
+            "findSeconds": find_elapsed,
+            "gapSincePreviousRoundSeconds": gap_since_previous,
+            "source": "known_site_rock" if used_known_rock else "find_nearest_rock_XS",
+            "player": compact_player(player),
         })
+        interact_started = time.monotonic()
+        try:
+            interact_result = call_tool("interact_object_XS", {
+                "objectId": obj.get("objectId"),
+                "x": obj_tile["x"],
+                "y": obj_tile["y"],
+                "height": obj_tile.get("height", 0),
+                "action": "Mine",
+            })
+        except RuntimeError as exc:
+            if not used_known_rock:
+                raise
+            interact_result = {
+                "success": False,
+                "message": str(exc),
+            }
+        interact_elapsed = round(time.monotonic() - interact_started, 3)
+        write_event(handle, "primitive_mine_interact", {
+            "ore": ore,
+            "siteId": site["id"],
+            "round": rounds + 1,
+            "object": obj,
+            "elapsedSeconds": interact_elapsed,
+            "success": bool(interact_result.get("success")),
+            "message": interact_result.get("message"),
+            "source": "known_site_rock" if used_known_rock else "find_nearest_rock_XS",
+            "player": compact_player(player_from(interact_result)) if interact_result.get("player") else compact_player(player),
+        })
+        if used_known_rock and not interact_result.get("success", False):
+            cooldown_known_rock(known_cooldowns, ore, obj, multiplier=0.25)
+            known_skip_count += 1
+            if known_skip_count >= 2:
+                prefer_known_rocks = False
+                write_event(handle, "primitive_mine_known_rock_disable", {
+                    "ore": ore,
+                    "siteId": site["id"],
+                    "reason": "repeated_unavailable_cached_rocks",
+                    "skipCount": known_skip_count,
+                    "player": compact_player(player),
+                })
+            if interact_result.get("player"):
+                player = player_from(interact_result)
+            write_event(handle, "primitive_mine_known_rock_skip", {
+                "ore": ore,
+                "siteId": site["id"],
+                "round": rounds + 1,
+                "object": obj,
+                "message": interact_result.get("message"),
+                "player": compact_player(player),
+            })
+            last_round_end = time.monotonic()
+            continue
         wait_ticks = min(40, max(1, int(args.mine_max_ticks) - total_ticks))
+        wait_started = time.monotonic()
         wait_result = call_tool("wait_until_idle_XS", {
             "maxTicks": wait_ticks,
             "movement": True,
             "skilling": True,
             "combat": False,
         })
+        wait_elapsed = round(time.monotonic() - wait_started, 3)
         player = player_from_wait_result(wait_result, handle, "primitive_mine_idle_observe_fallback")
         used_ticks = int(wait_result.get("batchTicks", wait_ticks) or wait_ticks)
         total_ticks += max(1, used_ticks)
@@ -1060,8 +1245,21 @@ def primitive_mine_batch(ore, site, args, handle, start_player=None):
             "object": obj,
             "interactSuccess": bool(interact_result.get("success")),
             "waitStatus": wait_result.get("batchStatus"),
+            "batchTicks": used_ticks,
+            "findSeconds": find_elapsed,
+            "interactSeconds": interact_elapsed,
+            "waitSeconds": wait_elapsed,
+            "roundElapsedSeconds": round(time.monotonic() - round_started, 3),
+            "gapSincePreviousRoundSeconds": gap_since_previous,
+            "source": "known_site_rock" if used_known_rock else "find_nearest_rock_XS",
             "player": compact_player(player),
         })
+        if used_known_rock and int(player.get("freeInventorySlots", 0) or 0) < free_slots_before_interact:
+            cooldown_known_rock(known_cooldowns, ore, obj)
+        if bool(getattr(args, "run_only_when_empty", False)) and int(player.get("freeInventorySlots", 0) or 0) < 28:
+            player = ensure_run(player, args, handle, "loaded_mining")
+            last_result["player"] = player
+        last_round_end = time.monotonic()
         if not interact_result.get("success", False) or not wait_result.get("success", False):
             last_result["batchStatus"] = "blocked"
             break

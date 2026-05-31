@@ -11,6 +11,7 @@ import datetime as dt
 import json
 import os
 import subprocess
+import time
 import uuid
 from pathlib import Path
 
@@ -286,23 +287,43 @@ def primitive_fletch_until_empty(player, args, handle, reason):
                 "batchStatus": "blocked",
             }
             break
+        round_started = time.monotonic()
         before_logs = fletchable_log_count(player)
         before_products = product_count(player)
         before_xp = compact_player(player)["fletchingXp"]
+        use_started = time.monotonic()
         use_result = call_tool("use_item_on_item", {
             "itemId": KNIFE_ID,
             "targetItemId": choice["logId"],
         })
+        use_ms = int((time.monotonic() - use_started) * 1000)
+        button_started = time.monotonic()
         button_result = call_tool("click_interface_button", {
             "buttonId": choice["makeAllButtonId"],
         })
+        button_ms = int((time.monotonic() - button_started) * 1000)
+        clicked_player = bridge._player_from_or(button_result, bridge._player_from_or(use_result, player))
+        write_event(handle, "primitive_fletch_start", {
+            "reason": reason,
+            "round": rounds,
+            "choice": choice,
+            "useSuccess": bool(use_result.get("success")),
+            "buttonSuccess": bool(button_result.get("success")),
+            "useMs": use_ms,
+            "buttonMs": button_ms,
+            "player": compact_player(clicked_player),
+            "logs": fletchable_log_count(clicked_player),
+            "products": product_count(clicked_player),
+        })
         wait_ticks = max(1, min(250, args.fletch_ticks - total_ticks))
+        wait_started = time.monotonic()
         wait_result = call_tool("wait_until_idle_XS", {
             "maxTicks": wait_ticks,
             "movement": True,
             "skilling": True,
             "combat": False,
         })
+        wait_ms = int((time.monotonic() - wait_started) * 1000)
         player = bridge._player_from_or(
             wait_result,
             bridge._player_from_or(button_result, bridge._player_from_or(use_result, player)),
@@ -328,6 +349,10 @@ def primitive_fletch_until_empty(player, args, handle, reason):
             "buttonSuccess": bool(button_result.get("success")),
             "waitStatus": wait_result.get("batchStatus"),
             "madeProgress": made_progress,
+            "useMs": use_ms,
+            "buttonMs": button_ms,
+            "waitMs": wait_ms,
+            "roundMs": int((time.monotonic() - round_started) * 1000),
             "player": compact_player(player),
             "logs": fletchable_log_count(player),
             "products": product_count(player),
