@@ -253,7 +253,9 @@ public class GameEngine {
 			scheduler.scheduleAtFixedRate(new Runnable() {
 				int gameTicksIncrementor;
 				final int printInfoTick = Constants.CYCLE_LOGGING_TICK;
+				final TickCadenceTracker cadenceTracker = new TickCadenceTracker(Constants.CYCLE_TIME);
 				public void run() {
+					PerformanceLogger.TickCadenceStats cadenceStats = cadenceTracker.recordTickStart(System.nanoTime());
 					Stopwatch stopwatch = Stopwatch.createStarted();
 					AgentActionService.TickStats agentStats = null;
 					long durationAgentActions = 0L;
@@ -343,6 +345,9 @@ public class GameEngine {
 							gameTicksIncrementor++;
 							boolean shouldLogInfo = Constants.CYCLE_LOGGING && gameTicksIncrementor > 1
 									&& gameTicksIncrementor % printInfoTick == 0;
+							if (shouldLogInfo) {
+								cadenceStats = cadenceTracker.snapshotAndReset();
+							}
 							if (Constants.PERFORMANCE_LOGGING && (totalCycleDuration > 100 || shouldLogInfo)) {
 								long totalMem = Runtime.getRuntime().totalMemory();
 								long freeMem = Runtime.getRuntime().freeMemory();
@@ -354,7 +359,7 @@ public class GameEngine {
 										durationNpcHandler, durationShopHandler, durationObjectHandler, durationObjectManager,
 										durationCycleEventHandler, durationSaveEvents, playerCount, npcCount,
 										(totalMem - freeMem) / 1024 / 1024, totalMem / 1024 / 1024, maxMem / 1024 / 1024,
-										Thread.activeCount()));
+										Thread.activeCount(), cadenceStats));
 							}
 							//Technically, we could add commands to test both client lag (creating many tile objects) and server lag (creating a BCrypt hash on game thread)
 							if (totalCycleDuration > 500) {
@@ -373,7 +378,8 @@ public class GameEngine {
 								System.out.println("Cycle #" + gameTicksIncrementor + " took " + totalCycleDuration + " ms. Players: " + playerCount + ", NPCs: " + npcCount +
 										", [Durations: a: " + durationAgentActions + " ms, i: " + durationItemHandler + " ms, p: " + durationPlayerHandler + " ms, n: " + durationNpcHandler + " ms, s: " + durationShopHandler +
 										" ms, oh: " + durationObjectHandler + " ms, om: " + durationObjectManager + " ms], Memory: " + (totalMem - freeMem) / 1024 / 1024 + "MB/" +
-										totalMem / 1024 / 1024 + "MB. Max: " + maxMem / 1024 / 1024 + "MB, Threads: " + Thread.activeCount() + ".");
+										totalMem / 1024 / 1024 + "MB. Max: " + maxMem / 1024 / 1024 + "MB, Threads: " + Thread.activeCount() + ". " +
+										cadenceSummary(cadenceStats));
 							}
 					} catch (Throwable ex) {
 						ex.printStackTrace();
@@ -442,6 +448,74 @@ public class GameEngine {
 			}
 		}
 		return npcCount;
+	}
+
+	private static String cadenceSummary(PerformanceLogger.TickCadenceStats cadenceStats) {
+		if (cadenceStats == null || cadenceStats.samples <= 0) {
+			return "Cadence: no interval samples yet.";
+		}
+		return "Cadence: interval=" + cadenceStats.lastIntervalMs + "ms, avg=" + cadenceStats.avgIntervalMs
+				+ "ms, min=" + cadenceStats.minIntervalMs + "ms, max=" + cadenceStats.maxIntervalMs
+				+ "ms, samples=" + cadenceStats.samples + ", short=" + cadenceStats.shortIntervals
+				+ ", long=" + cadenceStats.longIntervals + ".";
+	}
+
+	private static final class TickCadenceTracker {
+		private static final long TOLERANCE_MS = 100L;
+		private final long expectedIntervalMs;
+		private long lastTickStartNanos = -1L;
+		private long lastIntervalMs = -1L;
+		private long samples;
+		private long totalIntervalMs;
+		private long minIntervalMs = Long.MAX_VALUE;
+		private long maxIntervalMs = Long.MIN_VALUE;
+		private long shortIntervals;
+		private long longIntervals;
+
+		private TickCadenceTracker(long expectedIntervalMs) {
+			this.expectedIntervalMs = expectedIntervalMs;
+		}
+
+		private PerformanceLogger.TickCadenceStats recordTickStart(long tickStartNanos) {
+			if (lastTickStartNanos >= 0L) {
+				long intervalMs = TimeUnit.NANOSECONDS.toMillis(tickStartNanos - lastTickStartNanos);
+				lastIntervalMs = intervalMs;
+				samples++;
+				totalIntervalMs += intervalMs;
+				if (intervalMs < minIntervalMs) {
+					minIntervalMs = intervalMs;
+				}
+				if (intervalMs > maxIntervalMs) {
+					maxIntervalMs = intervalMs;
+				}
+				if (intervalMs < expectedIntervalMs - TOLERANCE_MS) {
+					shortIntervals++;
+				} else if (intervalMs > expectedIntervalMs + TOLERANCE_MS) {
+					longIntervals++;
+				}
+			}
+			lastTickStartNanos = tickStartNanos;
+			return snapshot();
+		}
+
+		private PerformanceLogger.TickCadenceStats snapshotAndReset() {
+			PerformanceLogger.TickCadenceStats stats = snapshot();
+			samples = 0L;
+			totalIntervalMs = 0L;
+			minIntervalMs = Long.MAX_VALUE;
+			maxIntervalMs = Long.MIN_VALUE;
+			shortIntervals = 0L;
+			longIntervals = 0L;
+			return stats;
+		}
+
+		private PerformanceLogger.TickCadenceStats snapshot() {
+			long min = samples <= 0L ? -1L : minIntervalMs;
+			long max = samples <= 0L ? -1L : maxIntervalMs;
+			long avg = samples <= 0L ? -1L : totalIntervalMs / samples;
+			return new PerformanceLogger.TickCadenceStats(expectedIntervalMs, lastIntervalMs, samples, min, avg, max,
+					shortIntervals, longIntervals);
+		}
 	}
 
 	public static boolean playerExecuted = false;

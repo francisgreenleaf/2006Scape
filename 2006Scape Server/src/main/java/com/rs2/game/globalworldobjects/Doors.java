@@ -12,16 +12,37 @@ import org.json.JSONObject;
 import java.io.*;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
+import java.util.Set;
 
 public class Doors {
+
+    private static final boolean USE_INDEXED_DOOR_LOOKUP = true;
+    private static final boolean VALIDATE_INDEXED_DOOR_LOOKUP = false;
+    private static final boolean LOG_DOOR_LOOKUP = true;
+    private static final boolean LOG_EACH_DOOR_USE = true;
+    private static final int DOOR_USAGE_LOG_INTERVAL = 100;
+    private static final int DOOR_RELOAD_SKIP_LOG_INTERVAL = 100;
 
     private static Doors singleton = null;
 
     private final List<Doors> doors = new ArrayList<>();
+    private final Map<Long, Doors> doorsByKey = new HashMap<>();
+    private final Set<Integer> knownDoorIds = new HashSet<>();
 
     private File doorFile;
+    private boolean loaded;
+    private int skippedReloads;
+    private long doorLookupRequests;
+    private long indexedDoorHits;
+    private long linearFallbackHits;
+    private long indexedDoorMissesForKnownIds;
+    private long doubleDoorFallbacks;
+    private long handledDoors;
 
     public static Doors getSingleton() {
         if (singleton == null) {
@@ -59,11 +80,125 @@ public class Doors {
         return null;
     }
 
+    private Doors findDoor(int id, int x, int y, int z) {
+        if (!USE_INDEXED_DOOR_LOOKUP) {
+            return getDoor(id, x, y, z);
+        }
+
+        doorLookupRequests++;
+        Doors indexedDoor = doorsByKey.get(doorKey(id, x, y, z));
+        if (indexedDoor != null) {
+            indexedDoorHits++;
+            if (VALIDATE_INDEXED_DOOR_LOOKUP) {
+                Doors linearDoor = getDoor(id, x, y, z);
+                if (linearDoor != indexedDoor) {
+                    logDoor("Indexed lookup mismatch for id=" + id + " x=" + x + " y=" + y + " z=" + z
+                            + "; indexed=" + describeDoor(indexedDoor) + ", linear=" + describeDoor(linearDoor));
+                    if (linearDoor != null) {
+                        return linearDoor;
+                    }
+                }
+            }
+            return indexedDoor;
+        }
+
+        if (knownDoorIds.contains(id)) {
+            indexedDoorMissesForKnownIds++;
+            Doors linearDoor = getDoor(id, x, y, z);
+            if (linearDoor != null) {
+                linearFallbackHits++;
+                indexDoor(linearDoor);
+                logDoor("Repaired indexed lookup miss for known door id=" + id + " x=" + x + " y=" + y + " z=" + z
+                        + " -> " + describeDoor(linearDoor));
+            }
+            return linearDoor;
+        }
+
+        return null;
+    }
+
+    private long doorKey(Doors d) {
+        return doorKey(d.doorId, d.doorX, d.doorY, d.doorZ);
+    }
+
+    private long doorKey(int id, int x, int y, int z) {
+        return (((long) z & 0xFFFFL) << 48)
+                | (((long) id & 0xFFFFL) << 32)
+                | (((long) x & 0xFFFFL) << 16)
+                | ((long) y & 0xFFFFL);
+    }
+
+    private void indexDoor(Doors d) {
+        knownDoorIds.add(d.originalId);
+        knownDoorIds.add(d.originalId - 1);
+        knownDoorIds.add(d.originalId + 1);
+        knownDoorIds.add(d.doorId);
+        knownDoorIds.add(d.doorId - 1);
+        knownDoorIds.add(d.doorId + 1);
+
+        long key = doorKey(d);
+        Doors previous = doorsByKey.get(key);
+        if (previous != null && previous != d) {
+            logDoor("Duplicate door index key kept existing=" + describeDoor(previous) + ", ignored=" + describeDoor(d));
+            return;
+        }
+        doorsByKey.put(key, d);
+    }
+
+    private void reindexDoor(Doors d, long oldKey) {
+        if (doorsByKey.isEmpty()) {
+            return;
+        }
+
+        Doors previous = doorsByKey.get(oldKey);
+        if (previous == d) {
+            doorsByKey.remove(oldKey);
+        } else if (previous != null) {
+            logDoor("Door index old-key owner changed while reindexing " + describeDoor(d)
+                    + "; old owner=" + describeDoor(previous));
+        }
+        indexDoor(d);
+    }
+
+    private String describeDoor(Doors d) {
+        if (d == null) {
+            return "null";
+        }
+        return "{id=" + d.doorId + ", originalId=" + d.originalId + ", x=" + d.doorX + ", y=" + d.doorY
+                + ", z=" + d.doorZ + ", face=" + d.currentFace + ", type=" + d.type + ", open=" + d.open + "}";
+    }
+
+    private void logDoor(String message) {
+        if (LOG_DOOR_LOOKUP) {
+            System.out.println("[Doors] " + message);
+        }
+    }
+
+    private void recordHandledDoor(Player player, int clickedId, int clickedX, int clickedY, int clickedZ,
+            int oldDoorId, int oldDoorX, int oldDoorY, int oldDoorFace, Doors d) {
+        handledDoors++;
+        if (LOG_EACH_DOOR_USE) {
+            logDoor("handled player=" + player.playerName + ", clicked={id=" + clickedId + ", x=" + clickedX
+                    + ", y=" + clickedY + ", z=" + clickedZ + "}, before={id=" + oldDoorId + ", x="
+                    + oldDoorX + ", y=" + oldDoorY + ", face=" + oldDoorFace + "}, after=" + describeDoor(d));
+        }
+        if (LOG_DOOR_LOOKUP && handledDoors % DOOR_USAGE_LOG_INTERVAL == 0) {
+            logDoor("usage handled=" + handledDoors + ", lookupRequests=" + doorLookupRequests
+                    + ", indexedHits=" + indexedDoorHits + ", linearFallbackHits=" + linearFallbackHits
+                    + ", knownIdMisses=" + indexedDoorMissesForKnownIds + ", doubleDoorFallbacks="
+                    + doubleDoorFallbacks + ", indexSize=" + doorsByKey.size() + ", doors=" + doors.size());
+        }
+    }
+
     public boolean handleDoor(Player player, int id, int x, int y, int z) {
-        Doors d = getDoor(id, x, y, z);
+        Doors d = findDoor(id, x, y, z);
 
         if (d == null) {
             //System.out.println("D: " + id + " null debug x: " + x + " y: " + y + ".");
+            if (knownDoorIds.contains(id)) {
+                doubleDoorFallbacks++;
+                logDoor("Known single-door id fell through to double-door handler id=" + id + " x=" + x + " y=" + y + " z=" + z);
+            }
             return DoubleDoors.getSingleton().handleDoor(player, id, x, y, z);
         }
 
@@ -72,6 +207,12 @@ public class Doors {
             //System.out.println("Door (single): " + id + " not in distance debug at x: " + x + " y: " + y + ".");
             return false;
         }
+
+        long oldDoorKey = doorKey(d);
+        int oldDoorId = d.doorId;
+        int oldDoorX = d.doorX;
+        int oldDoorY = d.doorY;
+        int oldDoorFace = d.currentFace;
 
         //Remove clipping for old door (gets added back in placeObject)
         //Region.removeClipping(x, y, z);
@@ -149,6 +290,8 @@ public class Doors {
             }
         }
         GameEngine.objectHandler.placeObject(new Objects(d.doorId, d.doorX, d.doorY, d.doorZ, getNextFace(d), d.type, 0));
+        reindexDoor(d, oldDoorKey);
+        recordHandledDoor(player, id, x, y, z, oldDoorId, oldDoorX, oldDoorY, oldDoorFace, d);
         return true;
     }
 
@@ -212,8 +355,17 @@ public class Doors {
     }
 
     public void load() {
+        if (loaded) {
+            skippedReloads++;
+            if (LOG_DOOR_LOOKUP && (skippedReloads == 1 || skippedReloads % DOOR_RELOAD_SKIP_LOG_INTERVAL == 0)) {
+                logDoor("Skipped " + skippedReloads + " duplicate door reload requests; doors=" + doors.size()
+                        + ", indexSize=" + doorsByKey.size());
+            }
+            return;
+        }
+
         Gson gson = new Gson();
-        //long start = System.currentTimeMillis();
+        long start = System.currentTimeMillis();
         try {
             Type collectionType = new TypeToken<DoorData[]>() {
             }.getType();
@@ -221,9 +373,15 @@ public class Doors {
 
             for (DoorData data : doorData) {
                 for (DoorData.Location location : data.getLocations()) {
-                    doors.add(new Doors(data.getId(), location.getX(), location.getY(), location.getHeight(), data.getFace(), data.getType(), alreadyOpen(data.getId()) ? 1 : 0));
+                    Doors door = new Doors(data.getId(), location.getX(), location.getY(), location.getHeight(), data.getFace(), data.getType(), alreadyOpen(data.getId()) ? 1 : 0);
+                    doors.add(door);
+                    indexDoor(door);
                 }
             }
+            loaded = true;
+            logDoor("Loaded " + doors.size() + " doors in " + (System.currentTimeMillis() - start)
+                    + " ms; indexedLookup=" + USE_INDEXED_DOOR_LOOKUP + ", validation="
+                    + VALIDATE_INDEXED_DOOR_LOOKUP + ", indexSize=" + doorsByKey.size());
             //singleton.writeJsonDump();
         } catch (FileNotFoundException e) {
             e.printStackTrace();
