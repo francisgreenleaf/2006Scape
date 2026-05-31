@@ -55,6 +55,9 @@ LEVEL_SKILLS = [
     ("prayer", "PRY"),
 ]
 
+SKILL_TILE_COUNT = 10
+ALL_PLAYER_TILE_SCALE = 1.18
+
 
 def profile_memory_state(profile: str) -> dict:
     path = (
@@ -291,6 +294,18 @@ def skill_xp(stats: dict, name: str) -> int:
     return 0
 
 
+def top_skills(stats: dict, limit: int = SKILL_TILE_COUNT) -> list[dict]:
+    skills = list(stats.get("skills", []))
+    return sorted(
+        skills,
+        key=lambda skill: (
+            -int(skill.get("baseLevel", skill.get("currentLevel", 1))),
+            -int(skill.get("xp", 0)),
+            str(skill.get("name", "")),
+        ),
+    )[:limit]
+
+
 def fun_stats(profile_stats: list[dict]) -> dict:
     fishing_xp = sum(skill_xp(stats, "fishing") for stats in profile_stats)
     mining_xp = sum(skill_xp(stats, "mining") for stats in profile_stats)
@@ -319,15 +334,6 @@ def fun_stats_line(stats: dict) -> str:
     )
 
 
-def level_row(stats: dict) -> str:
-    level_bits = ["%s %02d" % (short, skill_level(stats, name)) for name, short in LEVEL_SKILLS]
-    return "TOTAL %-3d  HRS %-5s  %s" % (
-        int(stats.get("totalLevel", 0)),
-        str(stats.get("hoursPlayed", "0H")),
-        "  ".join(level_bits),
-    )
-
-
 def project_tile(tile: dict, render_info: dict) -> tuple[int, int]:
     bounds = render_info["bounds"]
     width = int(render_info["pixelWidth"])
@@ -347,6 +353,82 @@ def color_hex(color: tuple[int, int, int]) -> str:
     return "#%02X%02X%02X" % color
 
 
+def draw_one_row_skill_backing(canvas, x: int, y: int, scale: float, count: int) -> dict:
+    layout = {
+        "x": int(x),
+        "y": int(y),
+        "uiScale": float(scale),
+        "cols": int(count),
+        "rows": 1,
+        "skillCount": int(count),
+        "skillGridW": int(math.ceil(((count - 1) * v2.SKILL_UI_CELL_STEP + v2.SKILL_UI_TILE_SPAN_X) * scale)),
+        "skillGridH": int(math.ceil(v2.SKILL_UI_TILE_SPAN_Y * scale)),
+        "iconScale": scale,
+        "iconX": 5,
+        "iconY": 5,
+        "levelCenterX": 39.5,
+        "levelBaselineY": 17.8,
+        "levelPointsize": max(16, int(round(14 * scale))),
+        "maxLevelCenterX": 53.0,
+        "maxLevelBaselineY": 30.6,
+        "maxLevelPointsize": max(16, int(round(14 * scale))),
+    }
+    v2.draw_client_skill_backing(canvas, layout)
+    return layout
+
+
+def draw_profile_skill_tiles(canvas, stats: dict, x: int, y: int, scale: float, count: int) -> tuple[dict, list[dict]]:
+    layout = draw_one_row_skill_backing(canvas, x, y, scale, count)
+    icons = v2.load_skill_icon_sprites()
+    selected = top_skills(stats, count)
+    for position, skill in enumerate(selected):
+        index = int(skill.get("index", 0))
+        sprite = icons.get(index)
+        cell_x = x + position * v2.SKILL_UI_CELL_STEP * scale
+        if sprite is not None:
+            v2.draw_indexed_sprite_at(
+                canvas,
+                sprite,
+                cell_x + layout["iconX"] * scale,
+                y + layout["iconY"] * scale,
+                layout["iconScale"],
+                0.98,
+            )
+        else:
+            cx = int(cell_x + 17 * scale)
+            cy = int(y + 18 * scale)
+            canvas.circle(cx, cy, max(5, int(round(7 * scale))), v2.PALETTE["frame"], 0.72)
+    return layout, selected
+
+
+def build_title_panel(width: int, title_h: int, profile_stats: list[dict]) -> tuple[Path, list[dict]]:
+    panel = v2.Canvas(width, title_h, v2.PALETTE["paper2"])
+    panel.rect(28, title_h - 12, width - 28, title_h - 10, v2.PALETTE["frame"])
+
+    tile_x = max(630, int(width * 0.22))
+    row_y = 25
+    row_gap = 47
+    tile_rows = []
+    for index, stats in enumerate(profile_stats):
+        y = row_y + index * row_gap
+        layout, selected = draw_profile_skill_tiles(panel, stats, tile_x, y - 22, ALL_PLAYER_TILE_SCALE, SKILL_TILE_COUNT)
+        tile_rows.append({
+            "profile": stats.get("profile"),
+            "displayName": display_profile(stats.get("profile", "")),
+            "color": PROFILE_COLORS[index % len(PROFILE_COLORS)],
+            "nameX": max(390, int(width * 0.13)),
+            "totalX": max(510, int(width * 0.17)),
+            "baselineY": y,
+            "layout": layout,
+            "skills": selected,
+        })
+
+    path = ROOT / ".local" / "map-summaries" / "all-players-fog-title-panel.png"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    panel.save_png(path)
+    return path, tile_rows
+
+
 def overlay_all_player_panel(
     output: Path,
     render_info: dict,
@@ -360,17 +442,15 @@ def overlay_all_player_panel(
 
     width = int(render_info["pixelWidth"])
     title_h = int(render_info.get("titleHeight", 220))
+    panel_path, tile_rows = build_title_panel(width, title_h, profile_stats)
     command = [
         magick,
         str(output),
+        str(panel_path),
+        "-geometry", "+0+0",
+        "-composite",
         "+antialias",
         "-font", str(v2.RUNESCAPE_FONT),
-        "-fill", color_hex(v2.PALETTE["paper2"]),
-        "-draw", "rectangle 0,0 %d,%d" % (width, title_h),
-        "-stroke", color_hex(v2.PALETTE["frame"]),
-        "-strokewidth", "2",
-        "-draw", "line 28,%d %d,%d" % (title_h - 12, width - 28, title_h - 12),
-        "-stroke", "none",
     ]
 
     left_center = min(270, max(190, width // 5))
@@ -393,15 +473,41 @@ def overlay_all_player_panel(
     )
     v2.add_shadow_text(command, 34, title_h - 30, 25, fun_stats_line(ledger), v2.PALETTE["muted"])
 
-    table_x = max(620, int(width * 0.19))
-    row_y = 43
-    row_gap = 42
-    for index, stats in enumerate(profile_stats):
-        color = PROFILE_COLORS[index % len(PROFILE_COLORS)]
-        y = row_y + index * row_gap
-        name = display_profile(stats.get("profile", ""))
-        v2.add_outline_text(command, table_x, y, 30, name, color, 2)
-        v2.add_shadow_text(command, table_x + 185, y, 26, level_row(stats), v2.PALETTE["osrs_yellow"])
+    for row in tile_rows:
+        stats = next((item for item in profile_stats if item.get("profile") == row.get("profile")), {})
+        color = row["color"]
+        baseline_y = int(row["baselineY"])
+        v2.add_outline_text(command, row["nameX"], baseline_y, 30, row["displayName"], color, 2)
+        v2.add_shadow_text(
+            command,
+            row["totalX"],
+            baseline_y,
+            25,
+            "TOTAL %s" % v2.format_int(int(stats.get("totalLevel", 0))),
+            v2.PALETTE["osrs_yellow"],
+        )
+        layout = row["layout"]
+        scale = float(layout["uiScale"])
+        for position, skill in enumerate(row["skills"]):
+            cell_x = layout["x"] + position * v2.SKILL_UI_CELL_STEP * scale
+            cell_y = layout["y"]
+            level = int(skill.get("baseLevel", skill.get("currentLevel", 1)))
+            v2.add_center_shadow_text(
+                command,
+                cell_x + layout["levelCenterX"] * scale,
+                cell_y + layout["levelBaselineY"] * scale,
+                layout["levelPointsize"],
+                str(level),
+                v2.PALETTE["osrs_yellow"],
+            )
+            v2.add_center_shadow_text(
+                command,
+                cell_x + layout["maxLevelCenterX"] * scale,
+                cell_y + layout["maxLevelBaselineY"] * scale,
+                layout["maxLevelPointsize"],
+                "99",
+                v2.PALETTE["osrs_yellow"],
+            )
 
     for index, stats in enumerate(profile_stats):
         profile = str(stats.get("profile") or "")
