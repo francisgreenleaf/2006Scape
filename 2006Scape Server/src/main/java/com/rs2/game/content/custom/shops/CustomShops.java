@@ -1,11 +1,17 @@
 package com.rs2.game.content.custom.shops;
 
 import com.rs2.game.content.StaticItemList;
+import com.rs2.game.content.randomevents.RandomEventHandler;
+import com.rs2.game.players.Player;
 import com.rs2.game.shops.ShopHandler;
 
 public final class CustomShops {
 
     public static final int BOBS_BRILLIANT_AXES = 8;
+    public static final int TRADER_STANS_TRADING_POST = 348;
+    public static final int CATHERBY_TRADER_CREWMEMBER = 4651;
+
+    private static final int TRADER_STAN_GLASS_SUPPLY_PRICE = 5;
 
     private static final StockItem[] BOBS_BRILLIANT_AXES_STOCK = {
             new StockItem(StaticItemList.BRONZE_PICKAXE, 5),
@@ -27,11 +33,41 @@ public final class CustomShops {
         replaceStandardStock(BOBS_BRILLIANT_AXES, BOBS_BRILLIANT_AXES_STOCK);
     }
 
-    public static Integer getShopValue(int shopId, int itemId, boolean isSelling) {
-        if (shopId != BOBS_BRILLIANT_AXES) {
-            return null;
+    public static Integer getShopIdForNpc(int npcType) {
+        switch (npcType) {
+            case CATHERBY_TRADER_CREWMEMBER:
+                return TRADER_STANS_TRADING_POST;
+            default:
+                return null;
         }
-        int price = getBobsBrilliantAxesValue(itemId);
+    }
+
+    public static boolean dialogueShop(Player player, int npcType) {
+        Integer shopId = getShopIdForNpc(npcType);
+        if (shopId == null) {
+            return false;
+        }
+        player.getDialogueHandler().sendDialogues(1322, npcType);
+        return true;
+    }
+
+    public static boolean openShop(Player player, int npcType) {
+        Integer shopId = getShopIdForNpc(npcType);
+        if (shopId == null) {
+            return false;
+        }
+        player.getShopAssistant().openShop(shopId);
+        RandomEventHandler.addRandom(player);
+        return true;
+    }
+
+    public static Integer getShopValue(int shopId, int itemId, boolean isSelling) {
+        int price = 0;
+        if (shopId == BOBS_BRILLIANT_AXES) {
+            price = getBobsBrilliantAxesValue(itemId);
+        } else if (shopId == TRADER_STANS_TRADING_POST) {
+            price = getTraderStansTradingPostValue(itemId);
+        }
         if (price <= 0) {
             return null;
         }
@@ -55,6 +91,18 @@ public final class CustomShops {
                 return 4096;
             case StaticItemList.RUNE_AXE:
                 return 40960;
+            default:
+                return 0;
+        }
+    }
+
+    private static int getTraderStansTradingPostValue(int itemId) {
+        switch (itemId) {
+            case StaticItemList.GLASSBLOWING_PIPE:
+            case StaticItemList.BUCKET_OF_SAND:
+            case StaticItemList.SEAWEED:
+            case StaticItemList.SODA_ASH:
+                return TRADER_STAN_GLASS_SUPPLY_PRICE;
             default:
                 return 0;
         }

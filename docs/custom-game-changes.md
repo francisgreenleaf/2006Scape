@@ -18,6 +18,7 @@ Custom content should still keep its implementation details close to the code un
 | --- | --- | --- | --- |
 | Lumbridge quests | `Pantry Panic` custom quest | Implemented; restart smoke passed | Adds a short Lumbridge story quest with NPC dialogue, item gathering, hand-in, reward, and agent guide. |
 | Lumbridge shops | Bob's Brilliant Axes stock expansion | Implemented; restart smoke passed | Adds better standard axes to Bob's shop at OSRS shop prices; black and dragon axes are excluded by request. |
+| Catherby shops and Crafting | Catherby Trader Stan's Trading Post and molten-glass crafting | Implemented; source-tested | Wires a Catherby Trader Crewmember to the existing Trading Post shop and adds sand+soda ash furnace glassmaking. |
 | Barbarian Outpost agility | Entrance gate and pipe interaction fix | Implemented; unit-tested | Handles the gate pair `2115/2116` and keeps the pipe entrance `2287` tied to the correct side-adjacent tiles so clicks do not silently no-op. |
 | Dwarf Cannon quest and recovery | Nulodion custom quest, cannonball tutorial, and cannon recovery path | Implemented; tested | Moves Nulodion interaction into custom quest content, makes the cannon shop path reachable through dialogue, teaches cannonball crafting, and fixes death recovery so the dead player's cannon is reclaimed correctly. |
 
@@ -99,6 +100,55 @@ Reference prices:
 
 - `https://oldschool.runescape.wiki/w/Axe`
 - `https://oldschool.runescape.wiki/w/Bob`
+
+## Catherby Trader Stan's Trading Post And Glassmaking
+
+Type: Custom Catherby shop access and Crafting interaction.
+
+Player-facing behavior:
+
+- A Trader Crewmember appears at the Catherby charter dock near `2792,3415,0`.
+- The Trader Crewmember opens the existing local `Trader Stan's Trading Post` shop id `348`.
+- The shop already stocks glassblowing pipe `1785`, bucket of sand `1783`, seaweed `401`, and soda ash `1781`.
+- Those four glass-supply items now have explicit 5 coin buy prices in this shop.
+- Using bucket of sand or soda ash on a supported furnace consumes one bucket of sand and one soda ash, creates molten glass `1775`, and grants 20 Crafting XP.
+- Existing glassblowing behavior then lets players use glassblowing pipe `1785` with molten glass `1775`.
+
+Reasoning:
+
+- Crafting progression in Catherby/Seers/Ardougne needed a reachable, normal-gameplay source of glass supplies and a working molten-glass step.
+- Local shop `348` already contained the relevant Trading Post stock, but no reachable NPC opened it.
+- The OSRS Wiki confirms that Trader Crewmembers run charter Trading Posts, Catherby is a charter location, the shops carry glass supplies, and molten glass is made from sand plus soda ash at a furnace.
+- This pass intentionally wires only Catherby. Other charter locations can be added later by extending the custom spawn/shop mapping.
+
+Implementation:
+
+- Custom shop mapping and prices: `2006Scape Server/src/main/java/com/rs2/game/content/custom/shops/CustomShops.java`
+- Custom spawn: `2006Scape Server/src/main/java/com/rs2/game/content/custom/npcs/CustomNpcSpawns.java`
+- Custom glassmaking: `2006Scape Server/src/main/java/com/rs2/game/content/custom/crafting/CustomGlassmaking.java`
+- Generic custom registry: `2006Scape Server/src/main/java/com/rs2/game/content/custom/CustomContent.java`
+- Minimal core hooks: `2006Scape Server/src/main/java/com/rs2/game/npcs/NpcActions.java`, `2006Scape Server/src/main/java/com/rs2/game/npcs/NpcHandler.java`, and `2006Scape Server/src/main/java/com/rs2/net/packets/impl/ItemOnObject.java`
+- Shop docs: `2006Scape Server/src/main/java/com/rs2/game/content/custom/shops/README.md`
+- Catherby-specific guide: `2006Scape Server/src/main/java/com/rs2/game/content/custom/shops/trader-stans-trading-post.md`
+- Tests: `2006Scape Server/src/test/java/com/rs2/game/content/custom/shops/CustomShopsTest.java`, `2006Scape Server/src/test/java/com/rs2/game/content/custom/npcs/CustomNpcSpawnsTest.java`, and `2006Scape Server/src/test/java/com/rs2/game/content/custom/crafting/CustomGlassmakingTest.java`
+
+Validation:
+
+- `mvn -q -pl "2006Scape Server" -Dtest=CustomShopsTest,CustomNpcSpawnsTest,CustomGlassmakingTest test`
+- `git diff --check`
+
+Known follow-up:
+
+- The running server will not see this source change until it is deliberately rebuilt and restarted.
+- Other charter Trading Posts are not wired yet.
+- Future charter ports need a decision on whether to reuse local shared shop id `348` or model modern per-port stock with additional shop ids.
+
+Reference pages:
+
+- `https://oldschool.runescape.wiki/w/Trader_Stan%27s_Trading_Post`
+- `https://oldschool.runescape.wiki/w/Charter_ship`
+- `https://oldschool.runescape.wiki/w/Molten_glass`
+- `https://oldschool.runescape.wiki/w/Glassblowing_pipe`
 
 ## Barbarian Outpost Agility Entrance Fix
 

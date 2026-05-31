@@ -3,6 +3,7 @@ package com.rs2.net.packets.impl;
 import com.rs2.event.impl.ItemOnObjectEvent;
 import com.rs2.Constants;
 import com.rs2.game.content.combat.range.DwarfCannon;
+import com.rs2.game.content.custom.CustomContent;
 import com.rs2.game.content.skills.cooking.Cooking;
 import com.rs2.game.content.skills.cooking.CookingTutorialIsland;
 import com.rs2.game.content.skills.crafting.JewelryMaking;
@@ -51,6 +52,9 @@ public class ItemOnObject implements PacketType {
 							+ " ObjectY: " + objectY + ".");
 		}
 		player.post(new ItemOnObjectEvent(itemId, objectId));
+		if (CustomContent.handleItemOnObject(player, itemId, objectId, objectX, objectY)) {
+			return;
+		}
 		switch (objectId) {
 		case 3044:
 			if (itemId == 438 || itemId == 436) {

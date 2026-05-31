@@ -13,6 +13,7 @@ import com.rs2.game.content.combat.CombatConstants;
 import com.rs2.game.content.combat.npcs.NpcAggressive;
 import com.rs2.game.content.combat.npcs.NpcCombat;
 import com.rs2.game.content.combat.npcs.NpcEmotes;
+import com.rs2.game.content.custom.CustomContent;
 import com.rs2.game.content.minigames.FightCaves;
 import com.rs2.game.content.minigames.PestControl;
 import com.rs2.game.content.music.sound.CombatSounds;
@@ -1454,6 +1455,7 @@ public class NpcHandler {
                         spawn.getAttack(),
                         spawn.getStrength());
             }
+            CustomContent.spawnNpcs(this);
         } catch (FileNotFoundException fileex) {
             System.out.println("spawns.json: file not found.");
         }

@@ -89,6 +89,31 @@ public class CustomShopsTest {
         assertNull(CustomShops.getShopValue(1, StaticItemList.RUNE_AXE, false));
     }
 
+    @Test
+    public void catherbyTraderCrewmemberMapsToTraderStansTradingPostOnly() {
+        assertEquals(Integer.valueOf(CustomShops.TRADER_STANS_TRADING_POST),
+                CustomShops.getShopIdForNpc(CustomShops.CATHERBY_TRADER_CREWMEMBER));
+        assertNull(CustomShops.getShopIdForNpc(4650));
+        assertNull(CustomShops.getShopIdForNpc(4652));
+        assertNull(CustomShops.getShopIdForNpc(563));
+    }
+
+    @Test
+    public void traderStansTradingPostUsesExpectedGlassSupplyPrices() {
+        TestClient player = new TestClient(1);
+        player.shopId = CustomShops.TRADER_STANS_TRADING_POST;
+        ShopAssistant shopAssistant = new ShopAssistant(player);
+
+        assertEquals(5, shopAssistant.getItemShopValue(StaticItemList.GLASSBLOWING_PIPE, 0, false));
+        assertEquals(5, shopAssistant.getItemShopValue(StaticItemList.BUCKET_OF_SAND, 0, false));
+        assertEquals(5, shopAssistant.getItemShopValue(StaticItemList.SEAWEED, 0, false));
+        assertEquals(5, shopAssistant.getItemShopValue(StaticItemList.SODA_ASH, 0, false));
+        assertEquals(4, shopAssistant.getItemShopValue(StaticItemList.SODA_ASH, 0, true));
+
+        assertNull(CustomShops.getShopValue(CustomShops.TRADER_STANS_TRADING_POST, StaticItemList.MOLTEN_GLASS, false));
+        assertNull(CustomShops.getShopValue(1, StaticItemList.SODA_ASH, false));
+    }
+
     private static void assertStock(int slot, int itemId, int amount) {
         int shopId = CustomShops.BOBS_BRILLIANT_AXES;
         assertEquals(itemId + 1, ShopHandler.shopItems[shopId][slot]);

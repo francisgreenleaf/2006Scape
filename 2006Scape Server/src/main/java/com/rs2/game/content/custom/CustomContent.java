@@ -3,8 +3,11 @@ package com.rs2.game.content.custom;
 import java.io.BufferedWriter;
 import java.io.IOException;
 
+import com.rs2.game.content.custom.crafting.CustomGlassmaking;
+import com.rs2.game.content.custom.npcs.CustomNpcSpawns;
 import com.rs2.game.content.custom.quests.dwarvenmine.dwarfcannon.DwarfCannonQuest;
 import com.rs2.game.content.custom.quests.lumbridge.pantrypanic.PantryPanicQuest;
+import com.rs2.game.npcs.NpcHandler;
 import com.rs2.game.players.Player;
 
 public final class CustomContent {
@@ -86,6 +89,17 @@ public final class CustomContent {
             }
         }
         return false;
+    }
+
+    public static boolean handleItemOnObject(Player player, int itemId, int objectId, int objectX, int objectY) {
+        if (CustomGlassmaking.handleItemOnObject(player, itemId, objectId)) {
+            return true;
+        }
+        return false;
+    }
+
+    public static void spawnNpcs(NpcHandler npcHandler) {
+        CustomNpcSpawns.spawnAll(npcHandler);
     }
 
     public static boolean loadPlayerSaveValue(Player player, String key, String value) {

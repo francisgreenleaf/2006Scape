@@ -13,6 +13,10 @@ com/rs2/game/content/custom/
   CustomContent.java                 # Registry and dispatcher for custom content.
   CustomQuest.java                   # Interface implemented by custom quests.
   CustomQuestState.java              # Generic player quest-stage storage helper.
+  crafting/
+    CustomGlassmaking.java           # Custom Crafting item-on-object behavior.
+  npcs/
+    CustomNpcSpawns.java             # Custom NPC spawn records registered after stock spawns.
   shops/
     CustomShops.java                 # Registry and overrides for custom shop stock/prices.
     README.md                        # Shop modification practices and Bob's Axes details.
@@ -58,6 +62,8 @@ The current generic hooks are:
 - `CustomContent.handleNpcClick(...)`
 - `CustomContent.handleObjectClick(...)`
 - `CustomContent.handleItemOnNpc(...)`
+- `CustomContent.handleItemOnObject(...)`
+- `CustomContent.spawnNpcs(...)`
 - `CustomContent.sendQuestTabs(...)`
 - `CustomContent.showQuestInformation(...)`
 - `CustomContent.loadPlayerSaveValue(...)`
@@ -65,7 +71,11 @@ The current generic hooks are:
 
 If new custom content needs another server event, add one generic hook to `CustomContent` and one minimal call site in the relevant core handler. Do not add a custom quest import to the core handler.
 
-Custom shop changes currently use `shops/CustomShops.java`, with one load-time hook from `ShopHandler` for stock overrides and one price hook from `ShopAssistant`. See `shops/README.md` before adding another shop override.
+Custom shop changes currently use `shops/CustomShops.java`, with one load-time hook from `ShopHandler` for stock overrides, one price hook from `ShopAssistant`, and generic NPC-click hooks from `NpcActions` for custom shop NPCs. See `shops/README.md` before adding another shop override.
+
+Custom NPC spawns live in `npcs/CustomNpcSpawns.java` and are registered after the stock `spawns.json` records load. Keep one-off spawn data there instead of editing the stock spawn file unless the change intentionally belongs to the base data set.
+
+Custom item-on-object interactions should route through `CustomContent.handleItemOnObject(...)`. Keep feature logic in a custom package, fail closed for unrelated item/object ids, and let the older handler continue normal processing when the custom feature does not apply.
 
 ## Adding A Custom Quest
 
