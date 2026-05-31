@@ -256,6 +256,53 @@ public class AgentToolServiceTest {
     }
 
     @Test
+    public void bankItemCountXsCountsSpecificBankItemsWithoutFullObserve() {
+        ItemDefinition.lookup(440).setName("Iron ore");
+        ItemDefinition.lookup(453).setName("Coal");
+        Player player = testPlayer(8, "MrBank");
+        player.bankItems[0] = 441;
+        player.bankItemsN[0] = 8568;
+        player.bankItems[1] = 454;
+        player.bankItemsN[1] = 289;
+        player.playerItems[0] = 454;
+        player.playerItemsN[0] = 2;
+        player.playerEquipment[0] = 440;
+        player.playerEquipmentN[0] = 0;
+
+        JsonObject arguments = new JsonObject();
+        JsonArray itemIds = new JsonArray();
+        itemIds.add(440);
+        arguments.add("itemIds", itemIds);
+        JsonArray names = new JsonArray();
+        names.add("coal");
+        names.add("definitely missing");
+        arguments.add("names", names);
+
+        JsonObject result = AgentToolService.handle(player, "bank_item_count", arguments);
+
+        assertTrue(result.get("success").getAsBoolean());
+        assertTrue(result.get("compact").getAsBoolean());
+        assertEquals("bank_item_count_XS", result.get("tool").getAsString());
+        assertEquals("Iron ore: 8568, Coal: 289", result.get("summary").getAsString());
+        JsonArray items = result.getAsJsonArray("items");
+        assertEquals(2, items.size());
+        JsonObject iron = items.get(0).getAsJsonObject();
+        assertEquals(440, iron.get("itemId").getAsInt());
+        assertEquals("Iron ore", iron.get("canonicalName").getAsString());
+        assertEquals(8568, iron.get("bankAmount").getAsInt());
+        assertEquals(0, iron.get("inventoryAmount").getAsInt());
+        assertEquals(1, iron.get("equipmentAmount").getAsInt());
+        JsonObject coal = items.get(1).getAsJsonObject();
+        assertEquals(453, coal.get("itemId").getAsInt());
+        assertEquals(289, coal.get("bankAmount").getAsInt());
+        assertEquals(2, coal.get("inventoryAmount").getAsInt());
+        assertTrue(result.has("missing"));
+        assertFalse(result.has("bank"));
+        assertEquals(8, result.getAsJsonObject("player").get("playerId").getAsInt());
+        assertEquals("MrBank", result.getAsJsonObject("player").get("name").getAsString());
+    }
+
+    @Test
     public void travelRecognizesAlKharidGateCrossingSteps() {
         assertTrue(AgentToolService.isAlKharidGateCrossingStep(3268, 3227, 3252, 3236));
         assertTrue(AgentToolService.isAlKharidGateCrossingStep(3267, 3227, 3274, 3195));

@@ -187,6 +187,9 @@ public class AgentToolService {
         if ("food_bank".equals(tool)) {
             return foodBankXs(player);
         }
+        if ("bank_item_count".equals(tool)) {
+            return bankItemCountXs(player, arguments);
+        }
         if ("combat_state".equals(tool)) {
             return combatStateXs(player);
         }
@@ -549,6 +552,71 @@ public class AgentToolService {
         result.add("equipment", compactItemArray(equipment(player), 10));
         result.add("bank", compactBankSummary(bank(player), 12));
         result.add("combat", compactCombatReadiness(combatReadiness(player)));
+        return result;
+    }
+
+    private static JsonObject bankItemCountXs(Player player, JsonObject arguments) {
+        LinkedHashMap<Integer, String> queries = new LinkedHashMap<Integer, String>();
+        JsonArray missing = new JsonArray();
+        addBankCountIdQuery(queries, getInt(arguments, "itemId", -1), "itemId");
+        addBankCountIdQueries(queries, getIntList(arguments, "itemIds"), "itemIds");
+
+        String name = getString(arguments, "name", getString(arguments, "item", ""));
+        addBankCountNameQuery(player, queries, missing, name);
+        addBankCountNameQueries(player, queries, missing, normalizedStringList(arguments, "names"));
+        addBankCountMixedQueries(player, queries, missing, arguments);
+
+        if (queries.isEmpty()) {
+            JsonObject result = failure(missing.size() > 0
+                    ? "No requested bank items matched a known item."
+                    : "Supply itemId, itemIds, name, names, item, or items to count bank items.");
+            result.addProperty("compact", true);
+            result.addProperty("tool", "bank_item_count_XS");
+            if (missing.size() > 0) {
+                result.add("missing", missing);
+            }
+            result.add("player", criticalPlayerState(player));
+            return result;
+        }
+
+        JsonArray items = new JsonArray();
+        StringBuilder summary = new StringBuilder();
+        for (Map.Entry<Integer, String> entry : queries.entrySet()) {
+            int itemId = entry.getKey();
+            String itemName = DeprecatedItems.getItemName(itemId);
+            int bankAmount = countBankItem(player, itemId);
+            int inventoryAmount = countInventoryItem(player, itemId);
+            int equipmentAmount = countEquipmentItem(player, itemId);
+
+            JsonObject item = new JsonObject();
+            item.addProperty("query", entry.getValue());
+            item.addProperty("id", itemId);
+            item.addProperty("itemId", itemId);
+            item.addProperty("name", itemName);
+            item.addProperty("canonicalName", itemName);
+            item.addProperty("amount", bankAmount);
+            item.addProperty("bankAmount", bankAmount);
+            item.addProperty("inventoryAmount", inventoryAmount);
+            item.addProperty("equipmentAmount", equipmentAmount);
+            item.addProperty("totalAmount", bankAmount + inventoryAmount + equipmentAmount);
+            items.add(item);
+
+            if (summary.length() > 0) {
+                summary.append(", ");
+            }
+            summary.append(itemName).append(": ").append(bankAmount);
+        }
+
+        JsonObject result = success("Bank counts: " + summary + ".");
+        result.addProperty("compact", true);
+        result.addProperty("tool", "bank_item_count_XS");
+        result.addProperty("summary", summary.toString());
+        result.addProperty("matched", queries.size());
+        result.add("items", items);
+        if (missing.size() > 0) {
+            result.add("missing", missing);
+        }
+        result.add("player", criticalPlayerState(player));
         return result;
     }
 
@@ -5666,6 +5734,127 @@ public class AgentToolService {
         return false;
     }
 
+    private static void addBankCountIdQueries(LinkedHashMap<Integer, String> queries, List<Integer> itemIds,
+            String source) {
+        for (Integer itemId : itemIds) {
+            if (itemId != null) {
+                addBankCountIdQuery(queries, itemId.intValue(), source);
+            }
+        }
+    }
+
+    private static void addBankCountIdQuery(LinkedHashMap<Integer, String> queries, int itemId, String source) {
+        if (itemId < 0 || queries.containsKey(itemId)) {
+            return;
+        }
+        String query = source == null || source.isEmpty() ? String.valueOf(itemId) : source;
+        if ("itemId".equals(source) || "itemIds".equals(source) || "items".equals(source)) {
+            query = source + ":" + itemId;
+        }
+        queries.put(itemId, query);
+    }
+
+    private static void addBankCountNameQueries(Player player, LinkedHashMap<Integer, String> queries,
+            JsonArray missing, List<String> names) {
+        for (String name : names) {
+            addBankCountNameQuery(player, queries, missing, name);
+        }
+    }
+
+    private static void addBankCountNameQuery(Player player, LinkedHashMap<Integer, String> queries,
+            JsonArray missing, String rawName) {
+        String name = normalize(rawName);
+        if (name.isEmpty()) {
+            return;
+        }
+        int exactItemId = DeprecatedItems.getItemId(name);
+        if (exactItemId >= 0) {
+            addBankCountIdQuery(queries, exactItemId, name);
+            return;
+        }
+        List<Integer> matchingIds = matchingHeldItemIds(player, name);
+        if (matchingIds.isEmpty()) {
+            JsonObject item = new JsonObject();
+            item.addProperty("query", rawName == null ? name : rawName);
+            item.addProperty("normalized", name);
+            item.addProperty("reason", "no matching known, banked, inventory, or equipped item");
+            missing.add(item);
+            return;
+        }
+        for (Integer itemId : matchingIds) {
+            addBankCountIdQuery(queries, itemId.intValue(), name);
+        }
+    }
+
+    private static void addBankCountMixedQueries(Player player, LinkedHashMap<Integer, String> queries,
+            JsonArray missing, JsonObject arguments) {
+        if (arguments == null || !arguments.has("items") || !arguments.get("items").isJsonArray()) {
+            return;
+        }
+        for (JsonElement element : arguments.get("items").getAsJsonArray()) {
+            if (element.isJsonPrimitive()) {
+                String value = element.getAsString();
+                int itemId = parseItemId(value);
+                if (itemId >= 0) {
+                    addBankCountIdQuery(queries, itemId, "items");
+                } else {
+                    addBankCountNameQuery(player, queries, missing, value);
+                }
+            } else if (element.isJsonObject()) {
+                JsonObject item = element.getAsJsonObject();
+                int itemId = getInt(item, "itemId", getInt(item, "id", -1));
+                if (itemId >= 0) {
+                    addBankCountIdQuery(queries, itemId, "items");
+                }
+                String name = getString(item, "name", getString(item, "item", ""));
+                if (!name.isEmpty()) {
+                    addBankCountNameQuery(player, queries, missing, name);
+                }
+            }
+        }
+    }
+
+    private static int parseItemId(String value) {
+        if (value == null) {
+            return -1;
+        }
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException ignored) {
+            return -1;
+        }
+    }
+
+    private static List<Integer> matchingHeldItemIds(Player player, String normalizedName) {
+        ArrayList<Integer> ids = new ArrayList<Integer>();
+        if (player == null) {
+            return ids;
+        }
+        addMatchingStoredItemIds(ids, player.bankItems, true, normalizedName);
+        addMatchingStoredItemIds(ids, player.playerItems, true, normalizedName);
+        addMatchingStoredItemIds(ids, player.playerEquipment, false, normalizedName);
+        return ids;
+    }
+
+    private static void addMatchingStoredItemIds(List<Integer> ids, int[] storedItems, boolean storedPlusOne,
+            String normalizedName) {
+        if (storedItems == null || normalizedName == null || normalizedName.isEmpty()) {
+            return;
+        }
+        for (int storedId : storedItems) {
+            if (storedId <= 0) {
+                continue;
+            }
+            int itemId = storedPlusOne ? storedId - 1 : storedId;
+            if (ids.contains(itemId)) {
+                continue;
+            }
+            if (normalize(DeprecatedItems.getItemName(itemId)).contains(normalizedName)) {
+                ids.add(itemId);
+            }
+        }
+    }
+
     private static JsonArray jsonArray(JsonObject object, String name) {
         if (object != null && object.has(name) && object.get(name).isJsonArray()) {
             return object.get(name).getAsJsonArray();
@@ -6422,6 +6611,16 @@ public class AgentToolService {
         for (int i = 0; i < player.bankItems.length; i++) {
             if (player.bankItems[i] == itemId + 1 && player.bankItemsN[i] > 0) {
                 count += player.bankItemsN[i];
+            }
+        }
+        return count;
+    }
+
+    static int countEquipmentItem(Player player, int itemId) {
+        int count = 0;
+        for (int i = 0; i < player.playerEquipment.length; i++) {
+            if (player.playerEquipment[i] == itemId) {
+                count += Math.max(1, player.playerEquipmentN[i]);
             }
         }
         return count;
