@@ -47,6 +47,42 @@ Useful source pages:
 - `https://oldschool.runescape.wiki/w/Axe`
 - `https://oldschool.runescape.wiki/w/Bob`
 
+## Catherby Trader Stan's Trading Post
+
+The Catherby charter trader uses the existing local shop id `348`, named `Trader Stan's Trading Post` in `shops.json`.
+
+Modern OSRS has Trader Stan at Port Sarim and Trader Crewmembers at other charter docks, including Catherby. The modern wiki says charter Trading Posts have identical inventory across locations, but each location is its own shop instance. The local server currently has one shop id for the Trading Post, so this first pass wires only a Catherby Trader Crewmember to that existing shared shop. Future charter ports can either reuse shop `348` for shared local stock or introduce separate shop ids if we want modern per-port stock independence.
+
+Custom behavior added for Catherby:
+
+| Item | Id | Local stock | Buy price |
+| --- | ---: | ---: | ---: |
+| Glassblowing pipe | `1785` | 10 | 5 coins |
+| Bucket of sand | `1783` | 10 | 5 coins |
+| Seaweed | `401` | 20 | 5 coins |
+| Soda ash | `1781` | 20 | 5 coins |
+
+The local stock quantities are preserved because the existing `shops.json` already has the needed glass supplies. The explicit prices keep these supplies from falling back to missing or one-coin item-definition values.
+
+The Catherby shop access path is:
+
+- `CustomNpcSpawns` adds a Trader Crewmember `4651` at `2792,3415,0`, the Catherby charter dock coordinate from the OSRS charter map.
+- `CustomShops.getShopIdForNpc(4651)` maps that NPC to shop `348`.
+- Generic `NpcActions` hooks call `CustomShops.dialogueShop(...)` on first-click and `CustomShops.openShop(...)` on second-click.
+
+Related crafting support:
+
+- `CustomGlassmaking` handles bucket of sand `1783` or soda ash `1781` used on supported furnace object ids.
+- One bucket of sand plus one soda ash creates molten glass `1775` and grants 20 Crafting XP.
+- Existing `GlassBlowing` code then supports glassblowing pipe `1785` plus molten glass `1775`.
+
+Useful source pages:
+
+- `https://oldschool.runescape.wiki/w/Trader_Stan%27s_Trading_Post`
+- `https://oldschool.runescape.wiki/w/Charter_ship`
+- `https://oldschool.runescape.wiki/w/Molten_glass`
+- `https://oldschool.runescape.wiki/w/Glassblowing_pipe`
+
 ## Adding A Custom Shop Change
 
 1. Identify the existing shop id in `shops.json` and the NPC mapping in `Shops.java`.

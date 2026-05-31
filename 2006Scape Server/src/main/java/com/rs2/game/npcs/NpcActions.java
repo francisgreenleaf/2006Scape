@@ -3,6 +3,7 @@ package com.rs2.game.npcs;
 import com.rs2.Constants;
 import com.rs2.game.content.StaticNpcList;
 import com.rs2.game.content.custom.CustomContent;
+import com.rs2.game.content.custom.shops.CustomShops;
 import com.rs2.game.content.quests.QuestAssistant;
 import com.rs2.game.content.skills.core.Fishing;
 import com.rs2.game.content.skills.crafting.Tanning;
@@ -28,6 +29,9 @@ public class NpcActions {
         player.clickNpcType = 0;
         player.rememberNpcIndex = player.npcClickIndex;
         player.npcClickIndex = 0;
+        if (CustomShops.dialogueShop(player, npcType)) {
+            return;
+        }
         Shops.dialogueShop(player, npcType);
         if (Fishing.fishingNPC(player, npcType)) {
             Fishing.fishingNPC(player, 1, npcType);
@@ -954,6 +958,9 @@ public class NpcActions {
         player.clickNpcType = 0;
         player.rememberNpcIndex = player.npcClickIndex;
         player.npcClickIndex = 0;
+        if (CustomShops.openShop(player, npcType)) {
+            return;
+        }
         Shops.openShop(player, npcType);
         if (Fishing.fishingNPC(player, npcType)) {
             Fishing.fishingNPC(player, 2, npcType);
