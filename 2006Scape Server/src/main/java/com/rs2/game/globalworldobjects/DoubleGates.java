@@ -1,5 +1,6 @@
 package com.rs2.game.globalworldobjects;
 
+import com.rs2.Constants;
 import com.rs2.game.players.Player;
 
 /**
@@ -11,6 +12,12 @@ public class DoubleGates extends GateHandler {
 	
 	public void useDoubleGate(Player player, int objectId) {
 		switch (objectId) {
+			case 2115:
+			case 2116:
+				if (useBarbarianOutpostGate(player)) {
+					return;
+				}
+			break;
 			case 7049:
 			if ((player.objectX == 3052 || player.objectX == 3053) && player.objectY >= 3283 && player.objectY <= 3285) {
 				handleWoodenGate(player, 7049, 7050, 3052, 3284, 3052, 3285, 3052, 3283, 3053, 3283, 2);
@@ -228,6 +235,22 @@ public class DoubleGates extends GateHandler {
 			}
 			break;
 		}
+	}
+
+	private boolean useBarbarianOutpostGate(Player player) {
+		if (player.playerLevel[Constants.AGILITY] < 35) {
+			player.getPacketSender().sendMessage("You need 35 agility to enter here!");
+			return true;
+		}
+		if (player.absY != player.objectY || Math.abs(player.absX - player.objectX) > 1) {
+			player.getPacketSender().sendMessage("Move closer so you can use the gate.");
+			return true;
+		}
+		int targetX = player.absX <= player.objectX ? player.objectX + 1 : player.objectX - 1;
+		player.startAnimation(844);
+		player.getPlayerAssistant().movePlayer(targetX, player.objectY, 0);
+		player.getPacketSender().sendMessage("You pass through the gate.");
+		return true;
 	}
 
 }

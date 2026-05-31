@@ -16,8 +16,9 @@ Custom content should still keep its implementation details close to the code un
 
 | Area | Change | Status | Notes |
 | --- | --- | --- | --- |
-| Lumbridge quests | `Pantry Panic` custom quest | Implemented in source | Adds a short Lumbridge story quest with NPC dialogue, item gathering, hand-in, reward, and agent guide. |
-| Lumbridge shops | Bob's Brilliant Axes stock expansion | Implemented in source | Adds better standard axes to Bob's shop at OSRS shop prices; black and dragon axes are excluded by request. |
+| Lumbridge quests | `Pantry Panic` custom quest | Implemented; restart smoke passed | Adds a short Lumbridge story quest with NPC dialogue, item gathering, hand-in, reward, and agent guide. |
+| Lumbridge shops | Bob's Brilliant Axes stock expansion | Implemented; restart smoke passed | Adds better standard axes to Bob's shop at OSRS shop prices; black and dragon axes are excluded by request. |
+| Barbarian Outpost agility | Entrance gate and pipe interaction fix | Implemented; unit-tested | Handles the gate pair `2115/2116` and keeps the pipe entrance `2287` tied to the correct side-adjacent tiles so clicks do not silently no-op. |
 
 ## Pantry Panic
 
@@ -48,6 +49,7 @@ Validation:
 - `mvn -q -pl "2006Scape Server" -Dtest=CustomContentTest test`
 - `mvn -q -pl "2006Scape Server" test`
 - `git diff --check`
+- Codex-run live server restart and log review on 2026-05-30 found no errors related to this custom quest code.
 
 ## Bob's Brilliant Axes Stock Expansion
 
@@ -90,11 +92,37 @@ Validation:
 - `mvn -q -pl "2006Scape Server" -Dtest=CustomShopsTest test`
 - `mvn -q -pl "2006Scape Server" test`
 - `git diff --check`
+- Codex-run live server restart and log review on 2026-05-30 found no errors related to this custom shop code.
 
 Reference prices:
 
 - `https://oldschool.runescape.wiki/w/Axe`
 - `https://oldschool.runescape.wiki/w/Bob`
+
+## Barbarian Outpost Agility Entrance Fix
+
+Type: Object interaction bug fix for the Barbarian Outpost agility area.
+
+Player-facing behavior:
+
+- The entrance gate now crosses when approached from the supported side instead of appearing clickable and doing nothing.
+- The gate still requires Agility 35.
+- The pipe entrance keeps its exact agility requirement and post-tile behavior, but the gate no longer blocks access before the course starts.
+
+Reasoning:
+
+- The live area had a mismatch between the visible gate and the actual server transition logic.
+- Object clicks succeeded, but the handler did not move the player unless the exact side tile matched the old hard-coded coordinates.
+- This fix keeps the course obstacle sequence intact and limits the change to the entrance transition.
+
+Implementation:
+
+- Gate handler: `2006Scape Server/src/main/java/com/rs2/game/globalworldobjects/DoubleGates.java`
+- Focused test: `2006Scape Server/src/test/java/com/rs2/game/globalworldobjects/DoubleGatesTest.java`
+
+Validation:
+
+- `mvn -q -pl "2006Scape Server" -Dtest=DoubleGatesTest test`
 
 ## Template For Future Entries
 
