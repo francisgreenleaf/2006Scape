@@ -26,7 +26,7 @@ python3 agent-navigation/ml2-routing/route_ml_XS.py define \
   --run-enabled
 ```
 
-The response is a single JSON object with:
+The full response is a single JSON object with:
 
 - `routeSteps`: mixed typed route steps.
 - `routeStepSchema`: currently `mixed_walk_object_transition_v1`.
@@ -35,6 +35,8 @@ The response is a single JSON object with:
 - `safety`: review flags, hazards, wrong-way flags, and detour hints.
 - `execution.command`: ML2 executor command to run exactly when live movement is intended.
 - `feedback`: ML2 evidence path and manual outcome command template.
+
+The compact `route_ml_XS.py define` response intentionally hides developer-only route-quality, wrong-way, detour, and feedback-plumbing fields. Agents should key off `status`, `decision`, `evidence.summary`, `safety.review`, and especially the presence of `cmd`. If `cmd` is present, the route is meant to be executable; `safety.review=true` is an attention flag, not a rejection by itself.
 
 ## Step Types
 
@@ -104,7 +106,7 @@ If proof fails, execution stops and the outcome uses:
 
 `status: "requires-object-transition"` means ML2 cannot automatically include or execute the needed transition in this route definition yet, usually because the request crosses surface/underground layers or separate underground cache areas without a known transition chain. It does not mean every inline gate is unsupported. Known inline transitions should appear directly in `routeSteps` as `object_transition`.
 
-`evidence.proven: false` still means "not player/route-hint proven yet"; it is not automatically a rejection when `status` is `ok`, `actionable` is `true`, and `safety.requiresReview` is `false`.
+`evidence.proven: false` still means "not player/route-hint proven yet"; it is not automatically a rejection when `status` is `ok`, an execution command is present, and `safety.requiresReview`/`safety.review` is `false`.
 
 ## Tree Gnome Gate Example
 

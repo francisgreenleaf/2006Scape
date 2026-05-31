@@ -332,23 +332,23 @@ def _route_evidence(candidate: Dict[str, Any]) -> Dict[str, Any]:
     if status_ok and trace_edges:
         level = "trace_proven"
         proven = True
-        summary = "Selected route is built from successful movement-trace edges; routeSteps are a compact execution form of trace-backed movement."
+        summary = "Backed by successful prior travel."
     elif status_ok and route_hint_edges and routes_used:
         level = "verified_route_hint"
         proven = True
-        summary = "Selected route is backed by curated route hints from the navigation database."
+        summary = "Backed by verified route notes."
     elif status_ok and route_hint_edges:
         level = "route_hint_backed"
         proven = False
-        summary = "Actionable route-hint-backed candidate: route hints support this path, but no specific verified route id was attached."
+        summary = "Route found from route notes; record the trip so it improves."
     elif cache_direct_edges or cache_mesh_edges:
         level = "cache_planned"
         proven = False
-        summary = "Actionable model/cache-planned route: cache collision found a walkable path, but no player has proven it yet."
+        summary = "Planned from the cache map; record the trip so it improves."
     else:
         level = "unproven"
         proven = False
-        summary = "Unproven route: no successful movement trace, verified route hint, or complete cache-planned path is attached."
+        summary = "Route found; record the trip so it improves."
     return {
         "level": level,
         "proven": proven,
@@ -388,14 +388,11 @@ def route_definition(args: SimpleNamespace, candidate: Dict[str, Any]) -> Dict[s
             run_segment_warnings.append("run energy {} < route segment required {}".format(current_run, max_run_requirement))
         if getattr(args, "run_enabled", None) is False:
             run_segment_warnings.append("run disabled but route has required run segments")
-    actionable = _is_actionable(candidate) and not run_segment_warnings
+    actionable = _is_actionable(candidate)
     command = _route_executor_command(args, evidence_jsonl) if actionable else []
     hazard_warnings = candidate.get("hazardWarnings") or []
-    quality = candidate.get("quality")
     evidence = _route_evidence(candidate)
     review_reasons = []
-    if quality in ("suspicious", "bad") and not evidence.get("proven"):
-        review_reasons.append("route quality is {}".format(quality))
     if candidate.get("status") == "requires-object-transition":
         review_reasons.append("route crosses coordinate layers or separate underground cache areas")
     if candidate.get("status") == "unsupported-coordinate-layer":
@@ -412,7 +409,6 @@ def route_definition(args: SimpleNamespace, candidate: Dict[str, Any]) -> Dict[s
         "planner": candidate.get("planner") or getattr(args, "planner", "fast"),
         "mode": candidate.get("mode") or "learned",
         "status": candidate.get("status"),
-        "quality": quality,
         "actionable": actionable,
         "from": args.from_tile,
         "to": args.to,

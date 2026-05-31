@@ -792,7 +792,7 @@ class ApiTests(unittest.TestCase):
         self.assertTrue(definition["actionable"])
         self.assertEqual(definition["evidence"]["level"], "cache_planned")
         self.assertFalse(definition["evidence"]["proven"])
-        self.assertIn("Actionable model/cache-planned route", definition["evidence"]["summary"])
+        self.assertIn("Planned from the cache map", definition["evidence"]["summary"])
 
     def test_route_definition_explains_coordinate_layer_transition_block(self):
         args = SimpleNamespace(
@@ -826,7 +826,7 @@ class ApiTests(unittest.TestCase):
         self.assertFalse(definition["actionable"])
         self.assertEqual(definition["status"], "requires-object-transition")
         self.assertEqual(definition["coordinateLayers"], {"from": "surface", "to": "underground"})
-        self.assertIn("coordinate layers", definition["safety"]["reviewReasons"][1])
+        self.assertIn("coordinate layers", definition["safety"]["reviewReasons"][0])
         self.assertEqual(definition["execution"]["strategy"], "not_actionable")
         self.assertEqual(definition["execution"]["command"], [])
 
