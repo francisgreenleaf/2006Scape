@@ -1,6 +1,7 @@
 package com.rs2.game.content.custom.shops;
 
 import com.rs2.game.content.StaticItemList;
+import com.rs2.game.content.custom.CustomFeatureFlags;
 import com.rs2.game.players.Client;
 import com.rs2.game.shops.ShopAssistant;
 import com.rs2.game.shops.ShopHandler;
@@ -22,6 +23,7 @@ public class CustomShopsTest {
 
     @Before
     public void setUp() {
+        CustomFeatureFlags.CATHERBY_TRADER_STAN_AND_GLASSMAKING_ENABLED = false;
         int shopId = CustomShops.BOBS_BRILLIANT_AXES;
         originalItems = ShopHandler.shopItems[shopId].clone();
         originalAmounts = ShopHandler.shopItemsN[shopId].clone();
@@ -33,6 +35,7 @@ public class CustomShopsTest {
 
     @After
     public void tearDown() {
+        CustomFeatureFlags.CATHERBY_TRADER_STAN_AND_GLASSMAKING_ENABLED = false;
         int shopId = CustomShops.BOBS_BRILLIANT_AXES;
         System.arraycopy(originalItems, 0, ShopHandler.shopItems[shopId], 0, originalItems.length);
         System.arraycopy(originalAmounts, 0, ShopHandler.shopItemsN[shopId], 0, originalAmounts.length);
@@ -90,7 +93,14 @@ public class CustomShopsTest {
     }
 
     @Test
-    public void catherbyTraderCrewmemberMapsToTraderStansTradingPostOnly() {
+    public void catherbyTraderCrewmemberIsDisabledByDefault() {
+        assertNull(CustomShops.getShopIdForNpc(CustomShops.CATHERBY_TRADER_CREWMEMBER));
+        assertNull(CustomShops.getShopValue(CustomShops.TRADER_STANS_TRADING_POST, StaticItemList.SODA_ASH, false));
+    }
+
+    @Test
+    public void catherbyTraderCrewmemberMapsToTraderStansTradingPostOnlyWhenEnabled() {
+        CustomFeatureFlags.CATHERBY_TRADER_STAN_AND_GLASSMAKING_ENABLED = true;
         assertEquals(Integer.valueOf(CustomShops.TRADER_STANS_TRADING_POST),
                 CustomShops.getShopIdForNpc(CustomShops.CATHERBY_TRADER_CREWMEMBER));
         assertNull(CustomShops.getShopIdForNpc(4650));
@@ -99,7 +109,8 @@ public class CustomShopsTest {
     }
 
     @Test
-    public void traderStansTradingPostUsesExpectedGlassSupplyPrices() {
+    public void traderStansTradingPostUsesExpectedGlassSupplyPricesWhenEnabled() {
+        CustomFeatureFlags.CATHERBY_TRADER_STAN_AND_GLASSMAKING_ENABLED = true;
         TestClient player = new TestClient(1);
         player.shopId = CustomShops.TRADER_STANS_TRADING_POST;
         ShopAssistant shopAssistant = new ShopAssistant(player);

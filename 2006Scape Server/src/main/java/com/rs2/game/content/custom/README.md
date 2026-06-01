@@ -11,6 +11,7 @@ The high-level customization ledger lives at `docs/custom-game-changes.md`. Upda
 ```text
 com/rs2/game/content/custom/
   CustomContent.java                 # Registry and dispatcher for custom content.
+  CustomFeatureFlags.java            # Default-off switches for experimental custom content.
   CustomQuest.java                   # Interface implemented by custom quests.
   CustomQuestState.java              # Generic player quest-stage storage helper.
   crafting/
@@ -76,6 +77,8 @@ Custom shop changes currently use `shops/CustomShops.java`, with one load-time h
 Custom NPC spawns live in `npcs/CustomNpcSpawns.java` and are registered after the stock `spawns.json` records load. Keep one-off spawn data there instead of editing the stock spawn file unless the change intentionally belongs to the base data set.
 
 Custom item-on-object interactions should route through `CustomContent.handleItemOnObject(...)`. Keep feature logic in a custom package, fail closed for unrelated item/object ids, and let the older handler continue normal processing when the custom feature does not apply.
+
+Experimental or disputed custom gameplay should be guarded in `CustomFeatureFlags`. A disabled flag should make the related custom code fail closed through the normal dispatcher hooks, without removing the generic core hook itself.
 
 ## Adding A Custom Quest
 

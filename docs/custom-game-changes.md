@@ -18,7 +18,7 @@ Custom content should still keep its implementation details close to the code un
 | --- | --- | --- | --- |
 | Lumbridge quests | `Pantry Panic` custom quest | Implemented; restart smoke passed | Adds a short Lumbridge story quest with NPC dialogue, item gathering, hand-in, reward, and agent guide. |
 | Lumbridge shops | Bob's Brilliant Axes stock expansion | Implemented; restart smoke passed | Adds better standard axes to Bob's shop at OSRS shop prices; black and dragon axes are excluded by request. |
-| Catherby shops and Crafting | Catherby Trader Stan's Trading Post and molten-glass crafting | Implemented; source-tested | Wires a Catherby Trader Crewmember to the existing Trading Post shop and adds sand+soda ash furnace glassmaking. |
+| Catherby shops and Crafting | Catherby Trader Stan's Trading Post and molten-glass crafting | Disabled by default; source-tested | Experimental Catherby charter/glassmaking code is gated behind one default-off feature flag until the NPC asset/protocol issue is resolved. |
 | Barbarian Outpost agility | Entrance gate and pipe interaction fix | Implemented; unit-tested | Handles the gate pair `2115/2116` and keeps the pipe entrance `2287` tied to the correct side-adjacent tiles so clicks do not silently no-op. |
 | Dwarf Cannon quest and recovery | Nulodion custom quest, cannonball tutorial, and cannon recovery path | Implemented; tested | Moves Nulodion interaction into custom quest content, makes the cannon shop path reachable through dialogue, teaches cannonball crafting, and fixes death recovery so the dead player's cannon is reclaimed correctly. |
 
@@ -107,11 +107,12 @@ Type: Custom Catherby shop access and Crafting interaction.
 
 Player-facing behavior:
 
-- A Trader Crewmember appears at the Catherby charter dock near `2792,3415,0`.
-- The Trader Crewmember opens the existing local `Trader Stan's Trading Post` shop id `348`.
-- The shop already stocks glassblowing pipe `1785`, bucket of sand `1783`, seaweed `401`, and soda ash `1781`.
-- Those four glass-supply items now have explicit 5 coin buy prices in this shop.
-- Using bucket of sand or soda ash on a supported furnace consumes one bucket of sand and one soda ash, creates molten glass `1775`, and grants 20 Crafting XP.
+- By default, there is no custom Catherby charter trader spawn, no custom NPC mapping to shop `348`, no custom glass-supply price override, and no custom molten-glass furnace behavior.
+- The whole feature is controlled by `CustomFeatureFlags.CATHERBY_TRADER_STAN_AND_GLASSMAKING_ENABLED`, which defaults to `false`.
+- When explicitly enabled, a Trader Crewmember appears at the Catherby dock near `2804,3422,0`.
+- When enabled, the Trader Crewmember opens the existing local `Trader Stan's Trading Post` shop id `348`.
+- When enabled, glassblowing pipe `1785`, bucket of sand `1783`, seaweed `401`, and soda ash `1781` have explicit 5 coin buy prices in this shop.
+- When enabled, using bucket of sand or soda ash on a supported furnace consumes one bucket of sand and one soda ash, creates molten glass `1775`, and grants 20 Crafting XP.
 - Existing glassblowing behavior then lets players use glassblowing pipe `1785` with molten glass `1775`.
 
 Reasoning:
@@ -124,6 +125,7 @@ Reasoning:
 Implementation:
 
 - Custom shop mapping and prices: `2006Scape Server/src/main/java/com/rs2/game/content/custom/shops/CustomShops.java`
+- Feature flag: `2006Scape Server/src/main/java/com/rs2/game/content/custom/CustomFeatureFlags.java`
 - Custom spawn: `2006Scape Server/src/main/java/com/rs2/game/content/custom/npcs/CustomNpcSpawns.java`
 - Custom glassmaking: `2006Scape Server/src/main/java/com/rs2/game/content/custom/crafting/CustomGlassmaking.java`
 - Generic custom registry: `2006Scape Server/src/main/java/com/rs2/game/content/custom/CustomContent.java`
@@ -140,6 +142,7 @@ Validation:
 Known follow-up:
 
 - The running server will not see this source change until it is deliberately rebuilt and restarted.
+- The feature should stay disabled until the `4651` Trader Crewmember display/name issue is resolved or a protocol-safe NPC stand-in is chosen.
 - Other charter Trading Posts are not wired yet.
 - Future charter ports need a decision on whether to reuse local shared shop id `348` or model modern per-port stock with additional shop ids.
 

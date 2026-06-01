@@ -1,6 +1,7 @@
 package com.rs2.game.content.custom.shops;
 
 import com.rs2.game.content.StaticItemList;
+import com.rs2.game.content.custom.CustomFeatureFlags;
 import com.rs2.game.content.randomevents.RandomEventHandler;
 import com.rs2.game.players.Player;
 import com.rs2.game.shops.ShopHandler;
@@ -34,6 +35,9 @@ public final class CustomShops {
     }
 
     public static Integer getShopIdForNpc(int npcType) {
+        if (!CustomFeatureFlags.CATHERBY_TRADER_STAN_AND_GLASSMAKING_ENABLED) {
+            return null;
+        }
         switch (npcType) {
             case CATHERBY_TRADER_CREWMEMBER:
                 return TRADER_STANS_TRADING_POST;
@@ -65,7 +69,8 @@ public final class CustomShops {
         int price = 0;
         if (shopId == BOBS_BRILLIANT_AXES) {
             price = getBobsBrilliantAxesValue(itemId);
-        } else if (shopId == TRADER_STANS_TRADING_POST) {
+        } else if (CustomFeatureFlags.CATHERBY_TRADER_STAN_AND_GLASSMAKING_ENABLED
+                && shopId == TRADER_STANS_TRADING_POST) {
             price = getTraderStansTradingPostValue(itemId);
         }
         if (price <= 0) {

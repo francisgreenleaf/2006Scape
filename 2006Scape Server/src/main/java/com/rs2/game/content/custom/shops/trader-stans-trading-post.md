@@ -4,14 +4,17 @@ This note covers the local Catherby implementation of Trader Stan's Trading Post
 
 ## Current Scope
 
+- Default state is disabled through `CustomFeatureFlags.CATHERBY_TRADER_STAN_AND_GLASSMAKING_ENABLED`.
 - Only the Catherby charter trader is wired.
 - The shop uses existing local shop id `348`.
-- The custom NPC spawn is Trader Crewmember `4651` at `2792,3415,0`.
+- The custom NPC spawn is Trader Crewmember `4651` at `2804,3422,0`.
 - Other charter locations are intentionally not added yet.
 
-## Player Flow
+When disabled, the feature contributes no spawn, no custom shop mapping or price override, and no custom molten-glass furnace behavior.
 
-1. Travel to the Catherby charter dock near `2792,3415,0`.
+## Player Flow When Enabled
+
+1. Travel to the Catherby dock near `2804,3422,0`.
 2. Talk to or trade with the Trader Crewmember.
 3. Buy glassblowing pipe `1785`, bucket of sand `1783`, and soda ash `1781`.
 4. Use bucket of sand or soda ash on a supported furnace, such as the Ardougne furnace object `2781` near `2601,3310,0`.
@@ -20,6 +23,7 @@ This note covers the local Catherby implementation of Trader Stan's Trading Post
 
 ## Architecture
 
+- `CustomFeatureFlags.CATHERBY_TRADER_STAN_AND_GLASSMAKING_ENABLED` is the single switch for this feature and defaults to `false`.
 - `CustomShops` owns the Catherby Trader Crewmember to shop `348` mapping and explicit glass-supply prices.
 - `CustomNpcSpawns` owns the Catherby Trader Crewmember spawn record.
 - `CustomGlassmaking` owns the sand plus soda ash furnace behavior.
