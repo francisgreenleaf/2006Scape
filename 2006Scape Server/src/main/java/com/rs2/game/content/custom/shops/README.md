@@ -53,7 +53,9 @@ The Catherby charter trader uses the existing local shop id `348`, named `Trader
 
 Modern OSRS has Trader Stan at Port Sarim and Trader Crewmembers at other charter docks, including Catherby. The modern wiki says charter Trading Posts have identical inventory across locations, but each location is its own shop instance. The local server currently has one shop id for the Trading Post, so this first pass wires only a Catherby Trader Crewmember to that existing shared shop. Future charter ports can either reuse shop `348` for shared local stock or introduce separate shop ids if we want modern per-port stock independence.
 
-Custom behavior added for Catherby:
+This feature is currently disabled by default through `CustomFeatureFlags.CATHERBY_TRADER_STAN_AND_GLASSMAKING_ENABLED`. Leave it off until the charter crewmember NPC id/model issue is resolved. When disabled, no custom Catherby trader spawn is added, no NPC is mapped to shop `348`, the Trading Post price overrides do not apply, and the custom furnace glassmaking interaction falls through.
+
+Custom behavior when enabled:
 
 | Item | Id | Local stock | Buy price |
 | --- | ---: | ---: | ---: |
@@ -66,7 +68,7 @@ The local stock quantities are preserved because the existing `shops.json` alrea
 
 The Catherby shop access path is:
 
-- `CustomNpcSpawns` adds a Trader Crewmember `4651` at `2792,3415,0`, the Catherby charter dock coordinate from the OSRS charter map.
+- `CustomNpcSpawns` adds a Trader Crewmember `4651` at `2804,3422,0`, on the existing local Catherby dock near the cache transport marker at `2805,3421,0`.
 - `CustomShops.getShopIdForNpc(4651)` maps that NPC to shop `348`.
 - Generic `NpcActions` hooks call `CustomShops.dialogueShop(...)` on first-click and `CustomShops.openShop(...)` on second-click.
 

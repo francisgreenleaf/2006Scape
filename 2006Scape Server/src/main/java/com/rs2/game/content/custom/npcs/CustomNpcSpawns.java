@@ -1,25 +1,29 @@
 package com.rs2.game.content.custom.npcs;
 
+import com.rs2.game.content.custom.CustomFeatureFlags;
 import com.rs2.game.content.custom.shops.CustomShops;
 import com.rs2.game.npcs.NpcHandler;
 
 public final class CustomNpcSpawns {
 
     private static final CustomSpawn[] SPAWNS = {
-            new CustomSpawn(CustomShops.CATHERBY_TRADER_CREWMEMBER, 2792, 3415, 0, 1, 0, 0, 0)
+            new CustomSpawn(CustomShops.CATHERBY_TRADER_CREWMEMBER, 2804, 3422, 0, 1, 0, 0, 0)
     };
 
     private CustomNpcSpawns() {
     }
 
     public static void spawnAll(NpcHandler npcHandler) {
-        for (CustomSpawn spawn : SPAWNS) {
+        for (CustomSpawn spawn : getSpawns()) {
             npcHandler.newNPC(spawn.npcId, spawn.x, spawn.y, spawn.height, spawn.walkingType,
                     NpcHandler.getNpcListHP(spawn.npcId), spawn.maxHit, spawn.attack, spawn.defence);
         }
     }
 
     public static CustomSpawn[] getSpawns() {
+        if (!CustomFeatureFlags.CATHERBY_TRADER_STAN_AND_GLASSMAKING_ENABLED) {
+            return new CustomSpawn[0];
+        }
         return SPAWNS.clone();
     }
 

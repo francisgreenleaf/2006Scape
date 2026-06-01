@@ -3,8 +3,10 @@ package com.rs2.game.content.custom.crafting;
 import com.rs2.Constants;
 import com.rs2.game.content.StaticItemList;
 import com.rs2.game.content.custom.CustomContent;
+import com.rs2.game.content.custom.CustomFeatureFlags;
 import com.rs2.game.players.Client;
 import org.apollo.cache.def.ItemDefinition;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -34,13 +36,33 @@ public class CustomGlassmakingTest {
 
     @Before
     public void setUp() {
+        CustomFeatureFlags.CATHERBY_TRADER_STAN_AND_GLASSMAKING_ENABLED = false;
         player = new TestClient(1);
         player.playerName = "glasstester";
         player.playerLevel[Constants.CRAFTING] = 1;
     }
 
+    @After
+    public void tearDown() {
+        CustomFeatureFlags.CATHERBY_TRADER_STAN_AND_GLASSMAKING_ENABLED = false;
+    }
+
+    @Test
+    public void glassmakingFallsThroughWhenCatherbyTraderFeatureIsDisabled() {
+        addInventoryItem(StaticItemList.BUCKET_OF_SAND, 1);
+        addInventoryItem(StaticItemList.SODA_ASH, 1);
+
+        assertFalse(CustomContent.handleItemOnObject(player, StaticItemList.BUCKET_OF_SAND, ARDOUGNE_FURNACE, 2601, 3310));
+
+        assertTrue(player.getItemAssistant().playerHasItem(StaticItemList.BUCKET_OF_SAND, 1));
+        assertTrue(player.getItemAssistant().playerHasItem(StaticItemList.SODA_ASH, 1));
+        assertFalse(player.getItemAssistant().playerHasItem(StaticItemList.MOLTEN_GLASS, 1));
+        assertEquals(0, player.playerXP[Constants.CRAFTING]);
+    }
+
     @Test
     public void sandAndSodaAshOnFurnaceCreatesMoltenGlassWithCraftingXp() {
+        CustomFeatureFlags.CATHERBY_TRADER_STAN_AND_GLASSMAKING_ENABLED = true;
         addInventoryItem(StaticItemList.BUCKET_OF_SAND, 1);
         addInventoryItem(StaticItemList.SODA_ASH, 1);
 
@@ -54,6 +76,7 @@ public class CustomGlassmakingTest {
 
     @Test
     public void missingIngredientIsHandledWithoutConsumingInventory() {
+        CustomFeatureFlags.CATHERBY_TRADER_STAN_AND_GLASSMAKING_ENABLED = true;
         addInventoryItem(StaticItemList.BUCKET_OF_SAND, 1);
 
         assertTrue(CustomContent.handleItemOnObject(player, StaticItemList.BUCKET_OF_SAND, ARDOUGNE_FURNACE, 2601, 3310));
@@ -65,6 +88,7 @@ public class CustomGlassmakingTest {
 
     @Test
     public void unrelatedItemsAndObjectsFallThrough() {
+        CustomFeatureFlags.CATHERBY_TRADER_STAN_AND_GLASSMAKING_ENABLED = true;
         assertFalse(CustomContent.handleItemOnObject(player, StaticItemList.SEAWEED, ARDOUGNE_FURNACE, 2601, 3310));
         assertFalse(CustomContent.handleItemOnObject(player, StaticItemList.BUCKET_OF_SAND, 9999, 2601, 3310));
     }

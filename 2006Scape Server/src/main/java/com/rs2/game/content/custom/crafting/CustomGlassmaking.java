@@ -2,6 +2,7 @@ package com.rs2.game.content.custom.crafting;
 
 import com.rs2.Constants;
 import com.rs2.game.content.StaticItemList;
+import com.rs2.game.content.custom.CustomFeatureFlags;
 import com.rs2.game.players.Player;
 
 public final class CustomGlassmaking {
@@ -16,6 +17,9 @@ public final class CustomGlassmaking {
     }
 
     public static boolean handleItemOnObject(Player player, int itemId, int objectId) {
+        if (!CustomFeatureFlags.CATHERBY_TRADER_STAN_AND_GLASSMAKING_ENABLED) {
+            return false;
+        }
         if (!isGlassIngredient(itemId) || !isFurnace(objectId)) {
             return false;
         }
