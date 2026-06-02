@@ -45,17 +45,30 @@ PROFILE_SORT_ORDER = {
     "mrathlete": 3,
 }
 
-LEVEL_SKILLS = [
-    ("attack", "ATK"),
-    ("strength", "STR"),
-    ("defence", "DEF"),
-    ("hitpoints", "HP"),
-    ("ranged", "RNG"),
-    ("magic", "MAG"),
-    ("prayer", "PRY"),
+ALL_PLAYER_SKILL_NAMES = [
+    "attack",
+    "strength",
+    "defence",
+    "hitpoints",
+    "ranged",
+    "magic",
+    "prayer",
+    "runecraft",
+    "agility",
+    "herblore",
+    "thieving",
+    "crafting",
+    "fletching",
+    "slayer",
+    "mining",
+    "smithing",
+    "fishing",
+    "cooking",
+    "firemaking",
+    "woodcutting",
+    "farming",
 ]
 
-SKILL_TILE_COUNT = 10
 ALL_PLAYER_TILE_SCALE = 1.18
 
 
@@ -294,16 +307,21 @@ def skill_xp(stats: dict, name: str) -> int:
     return 0
 
 
-def top_skills(stats: dict, limit: int = SKILL_TILE_COUNT) -> list[dict]:
-    skills = list(stats.get("skills", []))
-    return sorted(
-        skills,
-        key=lambda skill: (
-            -int(skill.get("baseLevel", skill.get("currentLevel", 1))),
-            -int(skill.get("xp", 0)),
-            str(skill.get("name", "")),
-        ),
-    )[:limit]
+def all_player_skill_tiles(stats: dict) -> list[dict]:
+    by_name = {str(skill.get("name", "")).lower(): skill for skill in stats.get("skills", [])}
+    ordered = []
+    seen = set()
+    for name in ALL_PLAYER_SKILL_NAMES:
+        skill = by_name.get(name)
+        if skill is not None:
+            ordered.append(skill)
+            seen.add(name)
+    for skill in stats.get("skills", []):
+        name = str(skill.get("name", "")).lower()
+        if name not in seen:
+            ordered.append(skill)
+            seen.add(name)
+    return ordered
 
 
 def fun_stats(profile_stats: list[dict]) -> dict:
@@ -380,7 +398,7 @@ def draw_one_row_skill_backing(canvas, x: int, y: int, scale: float, count: int)
 def draw_profile_skill_tiles(canvas, stats: dict, x: int, y: int, scale: float, count: int) -> tuple[dict, list[dict]]:
     layout = draw_one_row_skill_backing(canvas, x, y, scale, count)
     icons = v2.load_skill_icon_sprites()
-    selected = top_skills(stats, count)
+    selected = all_player_skill_tiles(stats)[:count]
     for position, skill in enumerate(selected):
         index = int(skill.get("index", 0))
         sprite = icons.get(index)
@@ -405,19 +423,20 @@ def build_title_panel(width: int, title_h: int, profile_stats: list[dict]) -> tu
     panel = v2.Canvas(width, title_h, v2.PALETTE["paper2"])
     panel.rect(28, title_h - 12, width - 28, title_h - 10, v2.PALETTE["frame"])
 
-    tile_x = max(630, int(width * 0.22))
+    tile_x = max(900, int(width * 0.29))
     row_y = 25
     row_gap = 47
     tile_rows = []
     for index, stats in enumerate(profile_stats):
         y = row_y + index * row_gap
-        layout, selected = draw_profile_skill_tiles(panel, stats, tile_x, y - 22, ALL_PLAYER_TILE_SCALE, SKILL_TILE_COUNT)
+        skill_count = len(all_player_skill_tiles(stats))
+        layout, selected = draw_profile_skill_tiles(panel, stats, tile_x, y - 22, ALL_PLAYER_TILE_SCALE, skill_count)
         tile_rows.append({
             "profile": stats.get("profile"),
             "displayName": display_profile(stats.get("profile", "")),
             "color": PROFILE_COLORS[index % len(PROFILE_COLORS)],
-            "nameX": max(390, int(width * 0.13)),
-            "totalX": max(510, int(width * 0.17)),
+            "nameX": max(620, int(width * 0.20)),
+            "totalX": max(755, int(width * 0.24)),
             "baselineY": y,
             "layout": layout,
             "skills": selected,
@@ -565,13 +584,13 @@ def update_summary(
                 "displayName": display_profile(stats.get("profile", "")),
                 "totalLevel": stats.get("totalLevel"),
                 "hoursPlayed": stats.get("hoursPlayed"),
-                "topSkills": [
+                "skillTiles": [
                     {
                         "name": skill.get("name"),
                         "level": int(skill.get("baseLevel", skill.get("currentLevel", 1))),
                         "xp": int(skill.get("xp", 0)),
                     }
-                    for skill in top_skills(stats)
+                    for skill in all_player_skill_tiles(stats)
                 ],
             }
             for stats in profile_stats

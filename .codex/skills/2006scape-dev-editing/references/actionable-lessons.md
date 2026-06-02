@@ -188,9 +188,9 @@ These notes are repo-specific operational memory from actual agent experience. A
 ### Keep full observe out of runner hot loops
 
 - **Observed:** Mining and Seers woodcutting runners repeatedly did `wait_until_idle_XS -> observe_state -> find_nearest_rock/tree`, creating large raw logs even though the script only needed free slots, tile, skills, and compact inventory.
-- **Cause:** Local runner helpers and `bridge_script.observe()` treated full `observe_state` as the easy default, so narrow helper calls inherited a full-state refresh before every resource interaction.
-- **Use instead:** Add explicit `observe_xs()`/`observe_xxs()` helpers, carry forward compact `player` results from wait/action tools, and reserve `observe_full()`/legacy `observe()` for complete bank/equipment/evidence fields.
-- **Validation:** `python3 -m py_compile agent-navigation/tools/bridge_script.py agent-navigation/tools/mining_runner.py agent-navigation/tools/seers_fletching_runner.py agent-navigation/tools/fletching_runner.py agent-navigation/tools/catherby_food_runner.py agent-navigation/tools/rs-tool_XS.py` and `git diff --check` pass after migrating hot loops.
+- **Cause:** Local runner helpers and old `bridge_script.observe()` treated full `observe_state` as the easy default, so narrow helper calls inherited a full-state refresh before every resource interaction.
+- **Use instead:** Use `observe_xs()`/`observe_xxs()` or the compact `observe()` compatibility alias, carry forward compact `player` results from wait/action tools, and reserve `observe_full()` for complete bank/equipment/evidence fields. Direct `rs-tool.sh observe_state` now requires `RS_ALLOW_FULL_OBSERVE=1` for explicit debug/evidence work.
+- **Validation:** `python3 -m py_compile agent-navigation/tools/bridge_script.py agent-navigation/tools/route_runner.py agent-navigation/tools/route_recorder.py agent-navigation/tools/observe_slim.py agent-navigation/tools/cowhide_combat_runner.py agent-navigation/tools/marathon_runner.py agent-navigation/tools/combat_trip_lib.py agent-navigation/tools/execute_route_definition.py agent-navigation/ml2-routing/tools/execute_route_definition.py agent-navigation/tools/rs-tool_XS.py` and `git diff --check` pass after migrating hot loops.
 
 ### Refresh leather-crafting state after dead clicks instead of stopping the trip
 

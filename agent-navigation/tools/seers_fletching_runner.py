@@ -175,6 +175,8 @@ def call_tool(tool_name, arguments=None):
     env = os.environ.copy()
     if RUN_PROFILE:
         env["RS_PROFILE"] = RUN_PROFILE
+    if tool_name == "observe_state":
+        env.setdefault("RS_ALLOW_FULL_OBSERVE", "1")
     proc = subprocess.run(
         [str(RS_TOOL), tool_name, json.dumps(arguments or {}, separators=(",", ":"))],
         cwd=str(REPO_ROOT),

@@ -67,6 +67,8 @@ def call_tool_shell(tool_name, arguments=None, profile=""):
     env = os.environ.copy()
     if profile:
         env["RS_PROFILE"] = profile
+    if tool_name == "observe_state":
+        env.setdefault("RS_ALLOW_FULL_OBSERVE", "1")
     proc = subprocess.run(
         [str(RS_TOOL), tool_name, json.dumps(arguments or {}, separators=(",", ":"))],
         cwd=str(REPO_ROOT),
@@ -182,8 +184,8 @@ def observe_xxs(profile=""):
 
 
 def observe(profile=""):
-    """Legacy full-state observe. Prefer observe_xs/observe_xxs in new loops."""
-    return observe_full(profile=profile)
+    """Compatibility observe that returns compact XS state by default."""
+    return observe_xs(profile=profile)
 
 
 def inventory(player):

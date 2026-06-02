@@ -278,7 +278,7 @@ def run_recorder(args):
     with output.open("a", encoding="utf-8") as handle:
         while not stop["value"]:
             try:
-                state = run_tool("observe_state", {}, profile=args.profile)
+                state = run_tool("observe_state_XS", {}, profile=args.profile)
                 record = make_record(state, previous, trace_id, profile=args.profile)
                 write, last_idle_write = should_write(record, previous_written, last_idle_write, args.idle_every)
                 if write:

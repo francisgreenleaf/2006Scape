@@ -101,6 +101,16 @@ def player_from(result):
     player = result.get("player")
     if not isinstance(player, dict):
         raise RuntimeError("bridge response did not include player state")
+    player = dict(player)
+    inventory = result.get("inventory")
+    if not isinstance(player.get("inventory"), list) and isinstance(inventory, dict):
+        player["inventory"] = inventory.get("counts") or inventory.get("items") or []
+    combat = result.get("combat")
+    if "combatReadiness" not in player and isinstance(combat, dict):
+        player["combatReadiness"] = {
+            "inventoryFoodCount": combat.get("inventoryFood", combat.get("invFood")),
+            "inventoryCoins": combat.get("inventoryCoins", combat.get("invCoins")),
+        }
     return player
 
 
@@ -129,7 +139,7 @@ def compact_player(player):
 
 
 def observe_compact():
-    return compact_player(player_from(call_tool("observe_state", {})))
+    return compact_player(player_from(call_tool("observe_state_XS", {})))
 
 
 def write_event(handle, event, data):

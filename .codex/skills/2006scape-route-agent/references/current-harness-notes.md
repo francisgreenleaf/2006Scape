@@ -4,7 +4,7 @@ Important local files:
 
 - `agent-navigation/tools/observe_XS.sh`: default extra-compact state observe wrapper.
 - `agent-navigation/tools/rs-tool_XS.sh`: default extra-compact bridge wrapper for gameplay tools.
-- `agent-navigation/tools/observe-slim.sh` and `agent-navigation/tools/rs-tool.sh`: full/fallback bridge wrappers for missing fields or debugging.
+- `agent-navigation/tools/observe-slim.sh` and `agent-navigation/tools/rs-tool.sh`: fallback bridge wrappers for missing fields or debugging. `rs-tool.sh observe_state` requires `RS_ALLOW_FULL_OBSERVE=1` to prevent accidental full-state context dumps.
 - `agent-navigation/tools/runtime_doctor.py`: status, restart, claim, verify, and route recorder helper.
 - `agent-navigation/tools/capture-cardinal-screenshots.sh`: compact north/east/south/west client screenshots.
 - `agent-navigation/ml2-routing/route_ml_XS.py`: preferred ML2 route-definition API for normal A-to-B routing.

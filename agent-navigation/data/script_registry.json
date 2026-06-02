@@ -274,6 +274,61 @@
       ]
     },
     {
+      "id": "seers_flax_bowstring_runner",
+      "name": "Seers Flax Bowstring Runner",
+      "path": "agent-navigation/tools/seers_flax_bowstring_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Reusable profile-aware Seers Village flax loop that picks flax, climbs to the spinning wheel, spins bowstrings with primitive item/object and interface clicks, banks products, supports cooperative status/stop files, and uses compact bridge state.",
+      "aliases": [
+        "seers flax",
+        "flax",
+        "bowstrings",
+        "bowstring runner",
+        "spin flax",
+        "seers spinning"
+      ],
+      "tags": [
+        "gameplay",
+        "crafting",
+        "flax",
+        "bowstrings",
+        "runner",
+        "primitive",
+        "seers"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/seers_flax_bowstring_runner.py --profile PROFILE --target-bowstrings 5000 --quiet",
+        "python3 agent-navigation/tools/script_registry.py run seers flax -- --profile PROFILE --max-cycles 1"
+      ]
+    },
+    {
+      "id": "seers_crafting_plan_runner",
+      "name": "Seers Crafting Plan Runner",
+      "path": "agent-navigation/tools/seers_crafting_plan_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Standalone Crafting plan runner that bootstraps to level 10 with Catherby charter glass supplies and Ardougne furnace glassmaking, then continues with the reusable Seers flax-to-bowstring loop. Requires CustomFeatureFlags.CATHERBY_TRADER_STAN_AND_GLASSMAKING_ENABLED, which defaults disabled.",
+      "aliases": [
+        "crafting plan",
+        "crafting 10",
+        "glass to bowstrings",
+        "bowstring plan",
+        "seers crafting"
+      ],
+      "tags": [
+        "gameplay",
+        "crafting",
+        "glassmaking",
+        "flax",
+        "bowstrings",
+        "runner",
+        "orchestration"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/seers_crafting_plan_runner.py --profile PROFILE --target-bowstrings 5000 --quiet",
+        "python3 agent-navigation/tools/script_registry.py run crafting plan -- --profile PROFILE --max-flax-cycles 1"
+      ]
+    },
+    {
       "id": "cowhide_combat_runner",
       "name": "Cowhide Combat Runner",
       "path": "agent-navigation/tools/cowhide_combat_runner.py",

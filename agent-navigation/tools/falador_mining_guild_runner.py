@@ -160,7 +160,7 @@ def mining_args(args):
         stop_on_blocked=args.stop_on_blocked,
         loop_delay=args.loop_delay,
         prefer_known_rocks=True,
-        run_only_when_empty=True,
+        run_off_when_full=True,
     )
 
 

@@ -20,7 +20,7 @@ Never print, paste, inspect, log, or commit bridge tokens. The only allowed toke
 - Default profile: `MrFlame`; pass `--profile <name>` or set `RS_PROFILE=<name>` for another character.
 - Server launcher: `./scripts/start-server.sh`, which runs from the repo root and copies the jar to `/tmp/2006scape-run/`.
 - Client launcher: `./scripts/start-client.sh`.
-- Bridge wrappers: use `agent-navigation/tools/observe_XXS.sh` and `agent-navigation/tools/rs-tool_XXS.sh` for confirmation/status checks, and `agent-navigation/tools/observe_XS.sh` / `agent-navigation/tools/rs-tool_XS.sh` for compact decision context. `observe-slim.sh` and `rs-tool.sh` are full/fallback surfaces only.
+- Bridge wrappers: use `agent-navigation/tools/observe_XXS.sh` and `agent-navigation/tools/rs-tool_XXS.sh` for confirmation/status checks, and `agent-navigation/tools/observe_XS.sh` / `agent-navigation/tools/rs-tool_XS.sh` for compact decision context. `observe-slim.sh` and `rs-tool.sh` are fallback surfaces only; `rs-tool.sh observe_state` requires `RS_ALLOW_FULL_OBSERVE=1` for explicit debug/evidence work.
 - Runtime helper: `agent-navigation/tools/runtime_doctor.py`.
 - Server tick log summarizer: `agent-navigation/tools/server_tick_report.py`.
 

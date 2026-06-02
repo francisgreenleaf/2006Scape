@@ -2786,7 +2786,7 @@ def fight_once(player, plan, args, handle, cycle):
         player = player_from_combat_state(state)
         npc = active_combat_npc(state, player) if bool(player.get("isInCombat", False)) else None
     else:
-        state = bridge.call_tool("observe_state", {}, profile=args.profile)
+        state = bridge.call_tool("observe_state_XS", {}, profile=args.profile)
         player = bridge.player_from(state)
         npc = active_combat_npc(state, player) if bool(player.get("isInCombat", False)) else None
     if npc_matches_plan(npc, plan) and target_is_suppressed(npc, args):
@@ -3407,7 +3407,7 @@ def run_enemy(args, plan):
                 stop_if_unsafe({"nearbyNpcs": []}, player, plan, args, handle, "before_fight_fast")
                 player = eat_if_needed(player, args, handle, "before_fight_fast")
             else:
-                state = bridge.call_tool("observe_state", {}, profile=args.profile)
+                state = bridge.call_tool("observe_state_XS", {}, profile=args.profile)
                 player = bridge.player_from(state)
                 stop_if_unsafe(state, player, plan, args, handle, "before_fight")
                 player = eat_if_needed(player, args, handle, "before_fight")

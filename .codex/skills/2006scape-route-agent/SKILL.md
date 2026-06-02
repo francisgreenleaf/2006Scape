@@ -30,9 +30,11 @@ Use full or legacy state only for a named missing field, deep debugging, session
 
 ```sh
 agent-navigation/tools/observe-slim.sh
-agent-navigation/tools/rs-tool.sh observe_state '{}'
-RS_PROFILE=MrGem agent-navigation/tools/rs-tool.sh observe_state '{}'
+RS_ALLOW_FULL_OBSERVE=1 agent-navigation/tools/rs-tool.sh observe_state '{}'
+RS_PROFILE=MrGem RS_ALLOW_FULL_OBSERVE=1 agent-navigation/tools/rs-tool.sh observe_state '{}'
 ```
+
+Direct `rs-tool.sh observe_state` is blocked without `RS_ALLOW_FULL_OBSERVE=1` so a routine command cannot dump full state into Codex context by accident.
 
 Treat unexpected state changes as possibly user-driven. Always observe before deciding after a pause, heartbeat, manual user action, combat, death, inventory change, or movement you did not initiate.
 

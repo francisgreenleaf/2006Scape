@@ -51,6 +51,25 @@ SELLABLE_PRODUCTS = (
     COIF,
 )
 
+EXACT_BANK_COUNT_ITEMS = {
+    COINS,
+    COWHIDE,
+    NEEDLE,
+    THREAD,
+    SOFT_LEATHER,
+    HARD_LEATHER,
+    LEATHER_GLOVES,
+    LEATHER_BOOTS,
+    LEATHER_COWL,
+    LEATHER_VAMBRACES,
+    LEATHER_BODY,
+    LEATHER_CHAPS,
+    HARDLEATHER_BODY,
+    COIF,
+}
+
+ACTIVE_PROFILE = ""
+
 RECIPES = (
     {
         "name": "leather gloves",
@@ -211,6 +230,11 @@ def carried_count(player, item_id):
 
 
 def bank_count(player, item_id):
+    if ACTIVE_PROFILE and int(item_id) in EXACT_BANK_COUNT_ITEMS:
+        result = bridge.call_tool("bank_item_count", {"itemIds": [int(item_id)]}, profile=ACTIVE_PROFILE)
+        for item in result.get("items") or []:
+            if int(item.get("id", item.get("itemId", -1)) or -1) == int(item_id):
+                return int(item.get("bankAmount", 0) or 0)
     return bridge.count_bank_item(player, item_id)
 
 
@@ -897,6 +921,8 @@ def resume_carried_trip(player, profile, handle, args):
 
 
 def run(args):
+    global ACTIVE_PROFILE
+    ACTIVE_PROFILE = args.profile
     RUNS_DIR.mkdir(parents=True, exist_ok=True)
     run_path = RUNS_DIR / "{}-{}.jsonl".format(
         dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ"),
