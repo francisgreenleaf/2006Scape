@@ -26,9 +26,9 @@ Always keep bridge tokens, API keys, saved-character secrets, passwords, and non
 
 ## Context Budget Rule
 
-For live gameplay and navigation, use the smallest state surface that can support the next decision. Use XXS for confirmation, status, health, position, and stable polling: `observe_XXS.sh`, `rs.observe_state_XXS`, `rs.observe_state_if_changed_XXS`, and `rs-tool_XXS.sh`. Use XS when planning needs compact inventory, equipment, bank, nearby NPC/object, route, or skill context; use `bank_item_count_XS` for exact counts of specific bank items. Use full/legacy tools only for a named missing field, evidence capture, or debugging a new workflow. Do not call full `observe_state`, `observe-slim.sh`, or `rs-tool.sh` in normal loops or immediately after every compact action result just to be safe; treat compact batch/tool results as the next observation whenever they include the state needed for the next decision.
+For live gameplay and navigation, use the smallest state surface that can support the next decision. Use XXS for confirmation, status, health, position, and stable polling: `observe_XXS.sh`, `rs.observe_state_XXS`, `rs.observe_state_if_changed_XXS`, and `rs-tool_XXS.sh`. Use XS when planning needs compact inventory, equipment, bank, nearby NPC/object, route, or skill context; use `bank_item_count_XS` for exact counts of specific bank items. Use full/legacy tools only for a named missing field, evidence capture, or debugging a new workflow. Do not call full `observe_state`, `observe-slim.sh`, or base `rs-tool.sh` in normal loops or immediately after every compact action result just to be safe; treat compact batch/tool results as the next observation whenever they include the state needed for the next decision. Direct `rs-tool.sh observe_state` is blocked unless `RS_ALLOW_FULL_OBSERVE=1` is set for an explicit debug/evidence command.
 
-For Python runners, prefer `bridge_script.observe_xxs()` or `bridge_script.observe_xs()` and carry forward compact `player` results from action/wait tools. `bridge_script.observe()` is the legacy full-state helper; leave it only for complete bank contents, complete evidence, profile/personality context, or a named missing field.
+For Python runners, prefer `bridge_script.observe_xxs()` for confirmation or `bridge_script.observe_xs()`/`bridge_script.observe()` for compact decision state, and carry forward compact `player` results from action/wait tools. Use `bridge_script.observe_full()` only for complete bank contents, complete evidence, profile/personality context, or a named missing field; do not print the full result into the Codex context unless that is the actual evidence being collected.
 
 When a live route fails near a building, door, gate, ladder, or other object blocker, do not leave the fix as a one-off manual recovery. Inspect compact nearby object evidence first, then use server data such as `2006Scape Server/data/doors.json`, context maps, or passive traces to identify the exact object id/tile/approach/post-state. Once proved, encode the transition in the runner or a location-specific `bridge_script` helper and document it in `2006scape-object-transitions` or `scripting-primitives.md` so the next run uses the learned primitive automatically.
 
@@ -100,7 +100,7 @@ python3 agent-navigation/tools/food_bank_XS.py
 python3 agent-navigation/tools/object_search_XS.py --name NAME --max-distance 20
 # Debug/evidence fallback only; do not use these in normal loops.
 agent-navigation/tools/observe-slim.sh
-agent-navigation/tools/rs-tool.sh observe_state '{}'
+RS_ALLOW_FULL_OBSERVE=1 agent-navigation/tools/rs-tool.sh observe_state '{}'
 agent-navigation/tools/rs-tool.sh TOOL_NAME 'JSON_ARGS'
 
 # 2006scape-route-agent: observe, route, validate, and render route topology

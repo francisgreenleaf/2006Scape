@@ -29,6 +29,8 @@ import com.rs2.game.content.StaticItemList;
 import com.rs2.game.content.StaticObjectList;
 import com.rs2.game.content.consumables.Food;
 import com.rs2.game.content.consumables.Kebabs;
+import com.rs2.game.content.custom.CustomContent;
+import com.rs2.game.content.custom.shops.CustomShops;
 import com.rs2.game.content.skills.SkillHandler;
 import com.rs2.game.content.skills.cooking.Cooking;
 import com.rs2.game.content.skills.cooking.CookingTutorialIsland;
@@ -36,6 +38,7 @@ import com.rs2.game.content.skills.core.Fishing;
 import com.rs2.game.content.skills.core.Mining;
 import com.rs2.agent.AgentSmithingPlanner.ItemValueProvider;
 import com.rs2.game.content.skills.crafting.LeatherMaking;
+import com.rs2.game.content.skills.crafting.Spinning;
 import com.rs2.game.content.skills.crafting.Tanning;
 import com.rs2.game.content.skills.fletching.LogCutting;
 import com.rs2.game.content.skills.firemaking.Firemaking;
@@ -1072,6 +1075,8 @@ public class AgentToolService {
         player.endCurrentTask();
         int before = countInventoryItem(player, item.itemId);
         boolean openedCookingInterface = false;
+        boolean handledCustomContent = false;
+        boolean openedSpinningInterface = false;
         if (isCookingObject(objectId) && isRawCookableFood(item.itemId)) {
             openedCookingInterface = Cooking.startCooking(player, item.itemId, objectId);
             if (!openedCookingInterface && !player.playerIsCooking) {
@@ -1086,6 +1091,11 @@ public class AgentToolService {
                 addPlayerState(result, player);
                 return result;
             }
+        } else if (CustomContent.handleItemOnObject(player, item.itemId, objectId, x, y)) {
+            handledCustomContent = true;
+        } else if (isSpinningWheelItemOnObject(item.itemId, objectId)) {
+            Spinning.showSpinning(player);
+            openedSpinningInterface = true;
         } else {
             UseItem.itemOnObject(player, objectId, x, y, item.itemId);
         }
@@ -1097,6 +1107,8 @@ public class AgentToolService {
         result.addProperty("itemCountBefore", before);
         result.addProperty("itemCountAfter", countInventoryItem(player, item.itemId));
         result.addProperty("openedCookingInterface", openedCookingInterface);
+        result.addProperty("handledCustomContent", handledCustomContent);
+        result.addProperty("openedSpinningInterface", openedSpinningInterface);
         addPlayerState(result, player);
         return result;
     }
@@ -1141,6 +1153,8 @@ public class AgentToolService {
         Smelting.getBar(player, buttonId);
         LeatherMaking.craftLeather(player, buttonId);
         Tanning.tanHide(player, buttonId);
+        player.getGlassBlowing().handleActionButtin(buttonId);
+        handleSpinningButton(player, buttonId);
         handleCookingButton(player, buttonId);
         Climbing.handleLadderButtons(player, buttonId);
         DialogueOptions.handleDialogueOptions(player, buttonId);
@@ -1149,6 +1163,43 @@ public class AgentToolService {
         result.addProperty("buttonId", buttonId);
         addPlayerState(result, player);
         return result;
+    }
+
+    private static boolean isSpinningWheelItemOnObject(int itemId, int objectId) {
+        return objectId == 2644 && (itemId == 1737 || itemId == 1779);
+    }
+
+    private static void handleSpinningButton(Player player, int buttonId) {
+        if (!player.clickedSpinning) {
+            return;
+        }
+        int amount = spinningAmountForButton(buttonId);
+        if (amount > 0) {
+            Spinning.getAmount(player, amount);
+        }
+    }
+
+    private static int spinningAmountForButton(int buttonId) {
+        switch (buttonId) {
+        case 34185:
+        case 34193:
+        case 34189:
+            return 1;
+        case 34184:
+        case 34188:
+        case 34192:
+            return 5;
+        case 34183:
+        case 34187:
+        case 34191:
+            return 10;
+        case 34182:
+        case 34186:
+        case 34190:
+            return 28;
+        default:
+            return 0;
+        }
     }
 
     private static void handleCookingButton(Player player, int buttonId) {
@@ -2753,29 +2804,31 @@ public class AgentToolService {
         String name = normalize(getString(arguments, "name", getString(arguments, "item", "")));
         int maxDistance = getInt(arguments, "maxDistance", 10);
         Npc nearest = null;
-        Shops.Shop nearestShop = null;
+        int nearestShopId = -1;
         int nearestDistance = Integer.MAX_VALUE;
         for (Npc npc : NpcHandler.npcs) {
             if (!isNpcPresent(player, npc)) {
                 continue;
             }
             Shops.Shop shop = Shops.Shop.forId(npc.npcType);
-            if (shop == null) {
+            Integer customShopId = CustomShops.getShopIdForNpc(npc.npcType);
+            if (shop == null && customShopId == null) {
                 continue;
             }
             String npcName = normalize(npc.name());
-            String shopName = normalize(ShopHandler.shopName[shop.getShop()]);
+            int shopId = customShopId == null ? shop.getShop() : customShopId.intValue();
+            String shopName = normalize(ShopHandler.shopName[shopId]);
             if (!name.isEmpty() && !npcName.contains(name) && !shopName.contains(name)) {
                 continue;
             }
             int distance = AgentKnowledgeBase.distance(player.absX, player.absY, npc.absX, npc.absY);
             if (distance <= maxDistance && distance < nearestDistance) {
                 nearest = npc;
-                nearestShop = shop;
+                nearestShopId = shopId;
                 nearestDistance = distance;
             }
         }
-        if (nearest == null || nearestShop == null) {
+        if (nearest == null || nearestShopId < 0) {
             return failure("No shopkeeper found nearby.");
         }
         player.stopMovement();
@@ -2787,8 +2840,10 @@ public class AgentToolService {
         player.npcType = nearest.npcType;
         player.talkingNpc = nearest.npcType;
         player.faceUpdate(nearest.npcId);
-        Shops.openShop(player, nearest.npcType);
-        JsonObject result = success("Opened " + ShopHandler.shopName[nearestShop.getShop()] + ".");
+        if (!CustomShops.openShop(player, nearest.npcType)) {
+            Shops.openShop(player, nearest.npcType);
+        }
+        JsonObject result = success("Opened " + ShopHandler.shopName[nearestShopId] + ".");
         result.add("npc", npcJson(nearest, nearestDistance));
         addPlayerState(result, player);
         return result;

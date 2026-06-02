@@ -257,19 +257,19 @@ def ensure_run(player, args, handle=None, reason="general"):
         "minRunEnergy": int(args.min_run_energy),
         "before": before,
     }
-    if bool(getattr(args, "run_only_when_empty", False)) and int(player.get("freeInventorySlots", 0) or 0) < 28:
+    if should_disable_run_for_load(player, args):
         if bool(player.get("runEnabled", False)):
             result = call_tool("set_run_XXS", {"enabled": False})
             updated = dict(player)
             updated.update(player_from(result))
-            event["decision"] = "disable_loaded"
+            event["decision"] = "disable_full_load"
             event["success"] = bool(result.get("success"))
             event["message"] = result.get("message")
             event["after"] = compact_player(updated)
             event["runDelta"] = run_delta(before, event["after"])
             write_event(handle, "run_policy", event)
             return updated
-        event["decision"] = "loaded_no_run"
+        event["decision"] = "full_load_no_run"
         event["after"] = before
         write_event(handle, "run_policy", event)
         return player
@@ -297,6 +297,15 @@ def ensure_run(player, args, handle=None, reason="general"):
     event["runDelta"] = run_delta(before, event["after"])
     write_event(handle, "run_policy", event)
     return updated
+
+
+def should_disable_run_for_load(player, args):
+    free_slots = int(player.get("freeInventorySlots", 0) or 0)
+    if bool(getattr(args, "run_off_when_full", False)):
+        return free_slots < 1
+    if bool(getattr(args, "run_only_when_empty", False)):
+        return free_slots < 28
+    return False
 
 
 def count_inventory_item(player, item_id):
@@ -1256,7 +1265,7 @@ def primitive_mine_batch(ore, site, args, handle, start_player=None):
         })
         if used_known_rock and int(player.get("freeInventorySlots", 0) or 0) < free_slots_before_interact:
             cooldown_known_rock(known_cooldowns, ore, obj)
-        if bool(getattr(args, "run_only_when_empty", False)) and int(player.get("freeInventorySlots", 0) or 0) < 28:
+        if should_disable_run_for_load(player, args):
             player = ensure_run(player, args, handle, "loaded_mining")
             last_result["player"] = player
         last_round_end = time.monotonic()

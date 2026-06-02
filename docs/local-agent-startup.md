@@ -207,7 +207,7 @@ PY
 - Use `-password-character-save "2006Scape Server/data/characters/<profile>.txt"` with `-agent-auto-login` so the client logs in without manual typing when the saved profile exists.
 - Use `-agent-claim <nonce>` and then claim through `POST /agent/session/claim`; this creates the scoped local bridge session for repo tools.
 - Write only ignored files under `agent-navigation/.local/`. Never print or inspect the bridge token.
-- Prefer `agent-navigation/tools/observe_XXS.sh`, `agent-navigation/tools/observe_XS.sh`, `agent-navigation/tools/rs-tool_XXS.sh`, and `agent-navigation/tools/rs-tool_XS.sh` after startup. They read the selected profile session file and keep tool calls compact and consistent. Use `observe-slim.sh` or full `rs-tool.sh` only when compact output omits a specific field needed for debugging or evidence.
+- Prefer `agent-navigation/tools/observe_XXS.sh`, `agent-navigation/tools/observe_XS.sh`, `agent-navigation/tools/rs-tool_XXS.sh`, and `agent-navigation/tools/rs-tool_XS.sh` after startup. They read the selected profile session file and keep tool calls compact and consistent. Use `observe-slim.sh` or full `rs-tool.sh` only when compact output omits a specific field needed for debugging or evidence; `rs-tool.sh observe_state` requires `RS_ALLOW_FULL_OBSERVE=1` so full state is not dumped into Codex context by accident.
 - Do not stack idle clients. Reuse a logged-in client or stop only the stale client for the intended profile before starting over.
 
 ## Troubleshooting

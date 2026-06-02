@@ -184,7 +184,7 @@ def active_enemy_snapshot(player: Dict[str, Any], profile: str) -> Dict[str, Any
         if int(value or 0) > 0
     }
     try:
-        observed = bridge.call_tool("observe_state", {}, profile=profile)
+        observed = bridge.call_tool("observe_state_XS", {}, profile=profile)
     except Exception:
         return {}
     npcs = observed.get("nearbyNpcs") or []

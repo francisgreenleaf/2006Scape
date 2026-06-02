@@ -109,6 +109,16 @@ def player_from(result):
     player = result.get("player")
     if not isinstance(player, dict):
         raise RuntimeError("bridge response did not include player state")
+    player = dict(player)
+    inventory = result.get("inventory")
+    if not isinstance(player.get("inventory"), list) and isinstance(inventory, dict):
+        player["inventory"] = inventory.get("counts") or inventory.get("items") or []
+    combat = result.get("combat")
+    if "combatReadiness" not in player and isinstance(combat, dict):
+        player["combatReadiness"] = {
+            "inventoryFoodCount": combat.get("inventoryFood", combat.get("invFood")),
+            "inventoryCoins": combat.get("inventoryCoins", combat.get("invCoins")),
+        }
     return player
 
 
@@ -807,7 +817,7 @@ def render_orient_context_map(evaluation, plan, current_tile, args):
 
 
 def orient(args):
-    observed = call_tool("observe_state", {})
+    observed = call_tool("observe_state_XS", {})
     player = player_from(observed)
     current_tile = player_tile(player)
     db = navdb.load_db()
@@ -875,7 +885,7 @@ def orient(args):
 
 
 def run(args):
-    observed = call_tool("observe_state", {})
+    observed = call_tool("observe_state_XS", {})
     player = player_from(observed)
     db = navdb.load_db()
     route_definition = load_route_definition(args.route_definition)

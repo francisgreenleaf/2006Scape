@@ -26,15 +26,16 @@ def compact_item(item):
 
 def compact_npc(npc):
     return {
-        "idx": npc.get("npcIndex"),
+        "idx": npc.get("npcIndex", npc.get("index", npc.get("idx"))),
         "name": npc.get("name"),
-        "level": npc.get("combatLevel"),
+        "level": npc.get("combatLevel", npc.get("level")),
         "x": npc.get("x"),
         "y": npc.get("y"),
-        "h": npc.get("height"),
+        "h": npc.get("height", npc.get("h")),
+        "tile": npc.get("tile"),
         "dist": npc.get("distance"),
-        "hp": npc.get("hitpoints"),
-        "maxHp": npc.get("maxHitpoints"),
+        "hp": npc.get("hitpoints", npc.get("hp")),
+        "maxHp": npc.get("maxHitpoints", npc.get("maxHp")),
         "aggressive": npc.get("aggressive"),
         "underAttack": npc.get("underAttack"),
     }
@@ -47,16 +48,23 @@ def compact_object(obj):
         "x": obj.get("x"),
         "y": obj.get("y"),
         "h": obj.get("height"),
+        "tile": obj.get("tile"),
         "dist": obj.get("distance"),
         "reachable": obj.get("reachable"),
         "inRange": obj.get("interactionInRange"),
     }
     if obj.get("interactionWalkTarget"):
         t = obj["interactionWalkTarget"]
-        out["walkTarget"] = {"x": t.get("x"), "y": t.get("y"), "h": t.get("height")}
+        out["walkTarget"] = (
+            {"x": t.get("x"), "y": t.get("y"), "h": t.get("height")}
+            if isinstance(t, dict) else t
+        )
     if obj.get("nearestInteractionTile"):
         t = obj["nearestInteractionTile"]
-        out["near"] = {"x": t.get("x"), "y": t.get("y"), "h": t.get("height")}
+        out["near"] = (
+            {"x": t.get("x"), "y": t.get("y"), "h": t.get("height")}
+            if isinstance(t, dict) else t
+        )
     return out
 
 
@@ -68,13 +76,20 @@ def main():
     env = os.environ.copy()
     if args.profile:
         env["RS_PROFILE"] = args.profile
-    raw = subprocess.check_output([str(RSTOOL), "observe_state", "{}"], cwd=str(ROOT.parent), text=True, env=env)
+    raw = subprocess.check_output([str(RSTOOL), "observe_state_XS", "{}"], cwd=str(ROOT.parent), text=True, env=env)
     data = json.loads(raw)
     if not data.get("success"):
         print(json.dumps({"success": False, "message": data.get("message", "observe_state failed")}, sort_keys=True))
         raise SystemExit(1)
     p = data.get("player", {})
-    inv = data.get("inventory") or p.get("inventory", [])
+    inv_data = data.get("inventory") or p.get("inventory", [])
+    if isinstance(inv_data, dict):
+        inv = inv_data.get("items") or inv_data.get("counts") or []
+    elif isinstance(inv_data, list):
+        inv = inv_data
+    else:
+        inv = []
+    inv = [item for item in inv if isinstance(item, dict)]
     food = [item for item in inv if item.get("foodHeal")]
     nearby_npcs = sorted(data.get("nearbyNpcs", []), key=lambda n: n.get("distance", 999))[:12]
     nearby_objects = sorted(data.get("nearbyObjects", []), key=lambda o: o.get("distance", 999))[:16]

@@ -217,11 +217,12 @@ is the default for route, skilling, combat, and recovery loops. It keeps compact
 inventory, bank/equipment summaries, nearby entities, and skills without loading
 the full observe payload.
 
-`bridge_script.observe_full(profile=PROFILE)` and the legacy
-`bridge_script.observe(profile=PROFILE)` call full `observe_state`. Use them
-only when a script can name the missing field, usually complete bank contents,
-complete equipment/inventory evidence, profile/personality context, or a new
-debug workflow. Do not call full observe before narrow helpers such as
+`bridge_script.observe(profile=PROFILE)` is a compatibility alias for compact
+XS decision state. `bridge_script.observe_full(profile=PROFILE)` calls full
+`observe_state`; use it only when a script can name the missing field, usually
+complete bank contents, complete equipment/inventory evidence,
+profile/personality context, or a new debug workflow. Do not call full observe
+before narrow helpers such as
 `find_nearest_rock`, `find_nearest_tree`, or after every compact wait just to
 refresh.
 
@@ -234,8 +235,9 @@ when you need the player object.
 1. Resolve the target profile from `--profile`, `RS_PROFILE`, or
    `RSBRIDGE_PROFILE`, then pass it explicitly to bridge helpers and child
    commands.
-2. Read state with `observe_xxs` or `observe_xs`. Use full observe only after
-   naming the missing field and keeping that call out of hot loops.
+2. Read state with `observe_xxs`, `observe_xs`, or the compact `observe`
+   compatibility alias. Use full observe only after naming the missing field
+   and keeping that call out of hot loops.
 3. Request normal A-to-B routes through ML1 (`route_ml.py define`) and follow the returned `routeSteps` with movement primitives. Use bare `route_runner.py` only for legacy diagnostics or compatibility-executor regression checks.
 4. Use one primitive action, such as item-on-item, object interaction, shop buy,
    or NPC attack.

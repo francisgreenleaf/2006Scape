@@ -32,6 +32,7 @@ RUN_PROFILE = ""
 COWHIDE = 1739
 COINS = 995
 KEBAB = 1971
+BRONZE_SWORD = 1277
 BRONZE_SCIMITAR = 1321
 IRON_SCIMITAR = 1323
 STEEL_SCIMITAR = 1325
@@ -39,7 +40,13 @@ MITHRIL_SCIMITAR = 1329
 STEEL_WEAPON_ATTACK_LEVEL = 5
 MITHRIL_SCIMITAR_ATTACK_LEVEL = 20
 EARLY_STYLE_LEVEL = 5
-EXTRA_COW_TRIP_BANK_ITEM_IDS = (IRON_SCIMITAR,)  # Iron scimitar; steel scimitar is equipped once attack is 5.
+MELEE_STYLE_ROTATION = ("attack", "strength", "defence")
+STYLE_LEVEL_KEYS = {
+    "attack": "attackLevel",
+    "strength": "strengthLevel",
+    "defence": "defenceLevel",
+}
+EXTRA_COW_TRIP_BANK_ITEM_IDS = (BRONZE_SWORD, IRON_SCIMITAR)  # Steel scimitar is equipped once Attack is 5.
 LUMBRIDGE_COW_PEN_GATE_IDS = {1551, 1553}
 LUMBRIDGE_COW_PEN_GATE_X_RANGE = (3251, 3253)
 LUMBRIDGE_COW_PEN_GATE_Y_RANGE = (3266, 3267)
@@ -54,6 +61,8 @@ LUMBRIDGE_COW_PEN_EXIT_TILES = (
 )
 AL_KHARID_GATE_WEST_TILE = (3267, 3227, 0)
 AL_KHARID_GATE_EAST_TILE = (3268, 3227, 0)
+AL_KHARID_BANK_TILE = (3269, 3167, 0)
+AL_KHARID_LOCAL_WALK_DISTANCE = 96
 AL_KHARID_GATE_DIALOGUE_IDS = {1019, 1020, 1024, 1026, 1027}
 AL_KHARID_GATE_DIALOGUE_ACTIONS = {502, 508}
 KNOWN_FOOD_IDS = {
@@ -152,7 +161,7 @@ def player_from_or(result, fallback):
 
 
 def observe_state():
-    result = call_tool("observe_state", {})
+    result = call_tool("observe_state_XS", {})
     player = player_from(result)
     return result, player
 
@@ -168,6 +177,13 @@ def tile_from_player(player):
 def same_tile(player, destination):
     x, y, h = destination
     return player_x(player) == int(x) and player_y(player) == int(y) and player_h(player) == int(h)
+
+
+def chebyshev_to(player, destination):
+    x, y, h = destination
+    if player_h(player) != int(h):
+        return 999999
+    return max(abs(player_x(player) - int(x)), abs(player_y(player) - int(y)))
 
 
 def tile_string(value):
@@ -247,7 +263,10 @@ def gate_object_is_lumbridge_cow_pen(gate):
 def skill_level(player, name):
     skills = player.get("skills") or {}
     skill = skills.get(name) or {}
-    return int(skill.get("baseLevel", skill.get("level", 0)) or 0)
+    level = skill.get("baseLevel", skill.get("level", None))
+    if level is None:
+        level = player.get(STYLE_LEVEL_KEYS.get(name, ""))
+    return int(level or 0)
 
 
 def skill_xp(player, name):
@@ -476,7 +495,9 @@ def runner_args_summary(args):
         "bank_at_hides",
         "stop_when_inventory_full",
         "final_bank",
+        "auto_buy_steel_scimitar",
         "auto_buy_mithril_scimitar",
+        "balance_all_from_start",
         "quiet",
     )
     return {key: jsonable(getattr(args, key, None)) for key in keys}
@@ -752,16 +773,23 @@ def route_or_stop(target, args, handle, reason, run_path, player=None):
 
 def walk_short(player, destination, args, handle, reason, max_ticks=None, max_distance=None):
     x, y, h = destination
-    result = call_tool("walk_to_tile_until_arrived_XS", {
-        "x": int(x),
-        "y": int(y),
-        "height": int(h),
-        "stopDistance": 0,
-        "maxTicks": int(max_ticks or args.cow_gate_cross_ticks),
-        "maxWalkDistance": int(max_distance or args.cow_gate_cross_distance),
-        "stopOnCombat": True,
-        "stopOnStall": True,
-    })
+    try:
+        result = call_tool("walk_to_tile_until_arrived_XS", {
+            "x": int(x),
+            "y": int(y),
+            "height": int(h),
+            "stopDistance": 0,
+            "maxTicks": int(max_ticks or args.cow_gate_cross_ticks),
+            "maxWalkDistance": int(max_distance or args.cow_gate_cross_distance),
+            "stopOnCombat": True,
+            "stopOnStall": True,
+        })
+    except RuntimeError as exc:
+        result = {
+            "success": False,
+            "message": str(exc),
+            "player": player,
+        }
     updated = player_from_or(result, player)
     write_event(handle, "walk_short", {
         "reason": reason,
@@ -775,8 +803,33 @@ def walk_short(player, destination, args, handle, reason, max_ticks=None, max_di
     return result, updated
 
 
+def local_walk_if_near(player, destination, args, handle, reason, max_distance=AL_KHARID_LOCAL_WALK_DISTANCE):
+    distance = chebyshev_to(player, destination)
+    if distance > int(max_distance):
+        return False, player
+    _walk, updated = walk_short(
+        player,
+        destination,
+        args,
+        handle,
+        reason,
+        max_ticks=max(40, int(distance * 3) + 12),
+        max_distance=max(int(max_distance), int(distance) + 8),
+    )
+    return same_tile(updated, destination), updated
+
+
 def route_to_al_kharid_gate_tile(player, destination, args, handle, run_path, reason):
     if same_tile(player, destination):
+        return player
+    arrived, player = local_walk_if_near(
+        player,
+        destination,
+        args,
+        handle,
+        reason + "_local_walk",
+    )
+    if arrived:
         return player
     target = "{},{},{}".format(int(destination[0]), int(destination[1]), int(destination[2]))
     _state, player = route_or_stop(target, args, handle, reason + "_route", run_path, player)
@@ -900,6 +953,18 @@ def route_to_al_kharid_bank_for_cow_trip(player, args, handle, run_path, reason)
         player = cross_al_kharid_gate_to_bank_side(player, args, handle, reason, run_path)
     if bool(player.get("inBankArea", False)):
         return player
+    arrived, player = local_walk_if_near(
+        player,
+        AL_KHARID_BANK_TILE,
+        args,
+        handle,
+        "al_kharid_bank_" + reason + "_local_walk",
+    )
+    if arrived:
+        state, player = observe_state()
+        stop_if_unsafe(state, player, args, handle, "after_al_kharid_bank_" + reason + "_local_walk")
+        if bool(player.get("inBankArea", False)):
+            return player
     _state, player = route_or_stop(args.bank_target, args, handle, "al_kharid_bank_" + reason, run_path, player)
     return player
 
@@ -1212,14 +1277,27 @@ def ensure_cow_area(player, args, handle, run_path, reason):
             player = cross_al_kharid_gate_to_lumbridge_side(player, args, handle, reason, run_path)
             state, player = observe_state()
             stop_if_unsafe(state, player, args, handle, reason + "_after_al_kharid_gate")
-        state, player = route_or_stop(
-            args.cow_gate_approach_target,
-            args,
-            handle,
-            reason + "_gate_approach",
-            run_path,
-            player,
-        )
+        gate_target = tuple(int(part) for part in str(args.cow_gate_approach_target).split(",", 2))
+        if chebyshev_to(player, gate_target) <= AL_KHARID_LOCAL_WALK_DISTANCE:
+            _arrived, player = local_walk_if_near(
+                player,
+                gate_target,
+                args,
+                handle,
+                reason + "_gate_approach_local",
+                max_distance=AL_KHARID_LOCAL_WALK_DISTANCE,
+            )
+            state, player = observe_state()
+            stop_if_unsafe(state, player, args, handle, reason + "_after_local_gate_approach")
+        else:
+            state, player = route_or_stop(
+                args.cow_gate_approach_target,
+                args,
+                handle,
+                reason + "_gate_approach",
+                run_path,
+                player,
+            )
         if in_lumbridge_cow_pen(player):
             return state, player
 
@@ -1231,10 +1309,59 @@ def ensure_cow_area(player, args, handle, run_path, reason):
     return state, player
 
 
-def choose_combat_style(player, args):
+def style_target(style, args):
+    if style == "attack":
+        return int(args.target_attack)
+    if style == "strength":
+        return int(args.target_strength)
+    if style == "defence":
+        return int(args.target_defence)
+    return 0
+
+
+def first_level_rotation_style(player, args):
+    candidates = []
+    priority = {"strength": 0, "defence": 1, "attack": 2}
+    for style in MELEE_STYLE_ROTATION:
+        level = skill_level(player, style)
+        if level < style_target(style, args):
+            candidates.append((level, priority[style], style))
+    if not candidates:
+        return None
+    _level, _priority, style = min(candidates)
+    return style
+
+
+def next_level_rotation_style(current_style, player, args):
+    if current_style not in MELEE_STYLE_ROTATION:
+        return first_level_rotation_style(player, args)
+    current_index = MELEE_STYLE_ROTATION.index(current_style)
+    for offset in range(1, len(MELEE_STYLE_ROTATION) + 1):
+        style = MELEE_STYLE_ROTATION[(current_index + offset) % len(MELEE_STYLE_ROTATION)]
+        if skill_level(player, style) < style_target(style, args):
+            return style
+    return None
+
+
+def choose_combat_style(player, args, level_rotation=None):
     attack = skill_level(player, "attack")
     strength = skill_level(player, "strength")
     defence = skill_level(player, "defence")
+
+    if bool(getattr(args, "balance_all_from_start", False)):
+        style = None
+        if isinstance(level_rotation, dict):
+            candidate = level_rotation.get("style")
+            if candidate in MELEE_STYLE_ROTATION and skill_level(player, candidate) < style_target(candidate, args):
+                style = candidate
+        if style is None:
+            style = first_level_rotation_style(player, args)
+        if style is None:
+            return None, "targets_reached"
+        if isinstance(level_rotation, dict):
+            level_rotation["style"] = style
+            level_rotation["level"] = skill_level(player, style)
+        return style, "balance_all_level_rotation_{}_level_{}".format(style, skill_level(player, style))
 
     attack_gate = min(STEEL_WEAPON_ATTACK_LEVEL, int(args.target_attack))
     defence_target = int(args.target_defence)
@@ -1277,6 +1404,31 @@ def choose_combat_style(player, args):
     if defence < defence_target:
         return "defence", "post_balance_defence_target"
     return None, "targets_reached"
+
+
+def update_level_rotation_after_fight(level_rotation, before_player, after_player, args, handle, cycle, fight_status):
+    if not bool(getattr(args, "balance_all_from_start", False)) or not isinstance(level_rotation, dict):
+        return
+    style = level_rotation.get("style")
+    if style not in MELEE_STYLE_ROTATION:
+        return
+    before_level = int(level_rotation.get("level", skill_level(before_player, style)) or 0)
+    after_level = skill_level(after_player, style)
+    if after_level <= before_level and after_level < style_target(style, args):
+        return
+    next_style = next_level_rotation_style(style, after_player, args)
+    write_event(handle, "combat_style_level_rotation", {
+        "cycle": cycle,
+        "fightStatus": fight_status,
+        "fromStyle": style,
+        "fromLevelBefore": before_level,
+        "fromLevelAfter": after_level,
+        "toStyle": next_style,
+        "toLevel": skill_level(after_player, next_style) if next_style else None,
+        "player": compact_player(after_player),
+    })
+    level_rotation["style"] = next_style
+    level_rotation["level"] = skill_level(after_player, next_style) if next_style else None
 
 
 def targets_reached(player, args):
@@ -1362,7 +1514,10 @@ def withdraw_coin_float(player, args, handle, run_path, reason):
     if wanted <= 0 or inventory_coins(player) >= wanted or bank_coins(player) <= 0:
         return player
     if not bool(player.get("inBankArea", False)):
-        _state, player = route_or_stop(args.bank_target, args, handle, "coin_float_bank_" + reason, run_path, player)
+        if is_lumbridge_cow_pen_target(args.cow_area_target) and is_al_kharid_bank_target(args.bank_target):
+            player = route_to_al_kharid_bank_for_cow_trip(player, args, handle, run_path, "coin_float_bank_" + reason)
+        else:
+            _state, player = route_or_stop(args.bank_target, args, handle, "coin_float_bank_" + reason, run_path, player)
     amount = min(bank_coins(player), max(1, wanted - inventory_coins(player)))
     result = call_tool("withdraw_bank_items", {"itemId": COINS, "amount": amount})
     updated = player_from_or(result, player)
@@ -1374,6 +1529,18 @@ def withdraw_coin_float(player, args, handle, run_path, reason):
         "player": compact_player(updated),
     })
     return updated
+
+
+def route_to_kebab_shop_for_cow_trip(player, args, handle, run_path, reason):
+    """Restock through the toll gate instead of letting generic routing wander."""
+    if is_lumbridge_cow_pen_target(args.cow_area_target) and str(args.kebab_shop_target).lower() == "al_kharid_kebab_shop":
+        if in_lumbridge_cow_pen(player):
+            player = exit_lumbridge_cow_pen_gate(player, args, handle, "kebab_shop_" + reason)
+        if not on_al_kharid_side(player):
+            player = cross_al_kharid_gate_to_bank_side(player, args, handle, "kebab_shop_" + reason, run_path)
+        state, player = route_or_stop(args.kebab_shop_target, args, handle, "kebab_shop_" + reason, run_path, player)
+        return state, player
+    return route_or_stop(args.kebab_shop_target, args, handle, "kebab_shop_" + reason, run_path, player)
 
 
 def prepare_bank_loadout(player, args, handle, run_path, reason, deposit_hides=False):
@@ -1413,16 +1580,24 @@ def buy_kebabs_if_needed(player, args, handle, run_path, reason):
             player = bank_hides(player, args, handle, run_path, "food_restock_inventory_full")
         else:
             raise RunnerStop("full_inventory", "Inventory is full before kebab restock and no hides can be banked.", player)
-    player = withdraw_coin_float(player, args, handle, run_path, reason)
     deficit = max(0, int(args.food_target) - inventory_food_count(player))
     amount = min(deficit, int(player.get("freeInventorySlots", 0) or 0))
     if amount <= 0:
         return player
+    needed_coins = amount * max(1, int(args.kebab_price))
+    if is_lumbridge_cow_pen_target(args.cow_area_target) and str(args.kebab_shop_target).lower() == "al_kharid_kebab_shop" and not on_al_kharid_side(player):
+        needed_coins += 10
+    if inventory_coins(player) < needed_coins:
+        player = withdraw_coin_float(player, args, handle, run_path, reason)
+        deficit = max(0, int(args.food_target) - inventory_food_count(player))
+        amount = min(deficit, int(player.get("freeInventorySlots", 0) or 0))
+        if amount <= 0:
+            return player
     affordable = inventory_coins(player) // max(1, int(args.kebab_price))
     amount = min(amount, affordable)
     if amount <= 0:
         raise RunnerStop("no_food_money", "No carried coins are available for kebabs.", player)
-    _state, player = route_or_stop(args.kebab_shop_target, args, handle, "kebab_shop_" + reason, run_path, player)
+    _state, player = route_to_kebab_shop_for_cow_trip(player, args, handle, run_path, reason)
     player = close_interfaces_if_needed(player, handle, "before_kebab_shop")
     opened = call_tool("open_nearest_shop", {"name": args.kebab_shop_name, "maxDistance": args.shop_max_distance})
     player = player_from_or(opened, player)
@@ -1472,6 +1647,92 @@ def route_to_bank_for_upgrade(player, args, handle, run_path, reason):
     if is_lumbridge_cow_pen_target(args.cow_area_target) and is_al_kharid_bank_target(args.bank_target):
         return route_to_al_kharid_bank_for_cow_trip(player, args, handle, run_path, reason)
     _state, player = route_or_stop(args.bank_target, args, handle, reason, run_path, player)
+    return player
+
+
+def ensure_steel_scimitar_upgrade(player, args, handle, run_path, reason):
+    if not bool(args.auto_buy_steel_scimitar):
+        return player
+    if skill_level(player, "attack") < STEEL_WEAPON_ATTACK_LEVEL:
+        return player
+    if equipment_has_item(player, MITHRIL_SCIMITAR) or equipment_has_item(player, STEEL_SCIMITAR):
+        return player
+
+    if count_inventory_item(player, STEEL_SCIMITAR) > 0:
+        return equip_inventory_item(player, STEEL_SCIMITAR, args, handle, "steel_scimitar_inventory_" + reason)
+
+    if count_bank_item(player, STEEL_SCIMITAR) > 0:
+        player = route_to_bank_for_upgrade(player, args, handle, run_path, "steel_scimitar_bank_" + reason)
+        withdrawn = call_tool("withdraw_bank_items", {"itemId": STEEL_SCIMITAR, "amount": 1})
+        player = player_from_or(withdrawn, player)
+        write_event(handle, "withdraw_steel_scimitar", {
+            "reason": reason,
+            "success": bool(withdrawn.get("success")),
+            "message": withdrawn.get("message"),
+            "withdrawnAmount": withdrawn.get("withdrawnAmount"),
+            "player": compact_player(player),
+        })
+        if count_inventory_item(player, STEEL_SCIMITAR) <= 0:
+            raise RunnerStop("steel_scimitar_withdraw_failed", "Steel scimitar was banked but could not be withdrawn.", player)
+        return equip_inventory_item(player, STEEL_SCIMITAR, args, handle, "steel_scimitar_bank_" + reason)
+
+    if inventory_coins(player) < int(args.steel_scimitar_coin_budget):
+        player = route_to_bank_for_upgrade(player, args, handle, run_path, "steel_scimitar_coins_" + reason)
+        player = prepare_bank_loadout(player, args, handle, run_path, "steel_scimitar_pre_buy_loadout")
+        need = max(0, int(args.steel_scimitar_coin_budget) - inventory_coins(player))
+        if need > 0:
+            withdrawn = call_tool("withdraw_bank_items", {"itemId": COINS, "amount": need})
+            player = player_from_or(withdrawn, player)
+            write_event(handle, "withdraw_steel_scimitar_coins", {
+                "reason": reason,
+                "requestedAmount": need,
+                "success": bool(withdrawn.get("success")),
+                "message": withdrawn.get("message"),
+                "withdrawnAmount": withdrawn.get("withdrawnAmount"),
+                "player": compact_player(player),
+            })
+        if inventory_coins(player) < int(args.steel_scimitar_coin_budget):
+            raise RunnerStop("steel_scimitar_coins_missing", "Could not withdraw enough coins for a Steel scimitar.", player)
+
+    if int(player.get("freeInventorySlots", 0) or 0) <= 0:
+        player = route_to_bank_for_upgrade(player, args, handle, run_path, "steel_scimitar_space_" + reason)
+        player = prepare_bank_loadout(player, args, handle, run_path, "steel_scimitar_inventory_space")
+        if int(player.get("freeInventorySlots", 0) or 0) <= 0:
+            raise RunnerStop("steel_scimitar_inventory_full", "No inventory slot available to buy a Steel scimitar.", player)
+
+    _state, player = route_or_stop(args.steel_scimitar_shop_target, args, handle, "steel_scimitar_shop_" + reason, run_path, player)
+    player = close_interfaces_if_needed(player, handle, "before_steel_scimitar_shop")
+    opened = call_tool("open_nearest_shop", {"name": args.steel_scimitar_shop_name, "maxDistance": args.shop_max_distance})
+    player = player_from_or(opened, player)
+    shop = (opened.get("player") or {}).get("shop") or {}
+    write_event(handle, "open_steel_scimitar_shop", {
+        "reason": reason,
+        "success": bool(opened.get("success")),
+        "message": opened.get("message"),
+        "shop": shop,
+        "player": compact_player(player),
+    })
+    if not opened.get("success"):
+        raise RunnerStop("steel_scimitar_shop_unavailable", "Could not open a nearby scimitar shop.", player)
+
+    bought = call_tool("buy_shop_item", {"itemId": STEEL_SCIMITAR, "amount": 1})
+    player = player_from_or(bought, player)
+    write_event(handle, "buy_steel_scimitar", {
+        "reason": reason,
+        "success": bool(bought.get("success")),
+        "message": bought.get("message"),
+        "bought": bought.get("bought", 0),
+        "player": compact_player(player),
+    })
+    player = close_interfaces_if_needed(player, handle, "after_steel_scimitar_shop")
+    if count_inventory_item(player, STEEL_SCIMITAR) <= 0 and not equipment_has_item(player, STEEL_SCIMITAR):
+        raise RunnerStop("steel_scimitar_purchase_failed", "Could not buy a Steel scimitar.", player)
+    if not equipment_has_item(player, STEEL_SCIMITAR):
+        player = equip_inventory_item(player, STEEL_SCIMITAR, args, handle, "steel_scimitar_bought_" + reason)
+
+    if is_al_kharid_bank_target(args.bank_target):
+        _state, player = route_or_stop(args.bank_target, args, handle, "steel_scimitar_post_buy_bank", run_path, player)
+        player = prepare_bank_loadout(player, args, handle, run_path, "steel_scimitar_post_buy_loadout")
     return player
 
 
@@ -1698,8 +1959,8 @@ def find_cow(player, args, handle, run_path):
     raise RunnerStop("no_cow_target", "No reachable cow target was found near the cow area.", player)
 
 
-def fight_one_cow(player, args, handle, run_path, cycle):
-    style, style_reason = choose_combat_style(player, args)
+def fight_one_cow(player, args, handle, run_path, cycle, level_rotation=None):
+    style, style_reason = choose_combat_style(player, args, level_rotation=level_rotation)
     if style is None:
         write_event(handle, "target_reached", {"cycle": cycle, "player": compact_player(player)})
         return player, "target_reached"
@@ -1842,6 +2103,7 @@ def run(args):
     fights_done = 0
     cycles_done = 0
     stopped_reason = None
+    level_rotation = {"style": None, "level": None}
     cleared_stop_requests = clear_runner_stop_requests(args)
     try:
         write_event(handle, "run_start", {
@@ -1895,6 +2157,7 @@ def run(args):
 
             if bool(player.get("inBankArea", False)):
                 player = prepare_bank_loadout(player, args, handle, run_path, "cycle_start")
+            player = ensure_steel_scimitar_upgrade(player, args, handle, run_path, "cycle_start")
             player = ensure_mithril_scimitar_upgrade(player, args, handle, run_path, "cycle_start")
             player = buy_kebabs_if_needed(player, args, handle, run_path, "before_fight")
             if targets_reached(player, args):
@@ -1924,7 +2187,7 @@ def run(args):
                 player = bank_hides(player, args, handle, run_path, "inventory_full_after_pre_fight_loot")
 
             before = compact_player(player)
-            player, fight_status = fight_one_cow(player, args, handle, run_path, cycle)
+            player, fight_status = fight_one_cow(player, args, handle, run_path, cycle, level_rotation=level_rotation)
             if fight_status == "target_reached":
                 stopped_reason = "target_levels"
                 break
@@ -1945,6 +2208,7 @@ def run(args):
                 "before": before,
                 "after": after,
             })
+            update_level_rotation_after_fight(level_rotation, before, player, args, handle, cycle, fight_status)
             log("cycle {} atk={} str={} def={} hp={}/{} hides={} food={} free={}".format(
                 cycle,
                 after["attackLevel"],
@@ -2040,6 +2304,8 @@ def main(argv=None):
                         help="After the Attack/Strength checkpoint, force Attack to this level before lowest-level all-melee balancing.")
     parser.add_argument("--balance-all-after-attack-checkpoint", action=argparse.BooleanOptionalAction, default=True,
                         help="After the Attack checkpoint, train the lowest of Attack/Strength/Defence with direct styles instead of controlled XP.")
+    parser.add_argument("--balance-all-from-start", action=argparse.BooleanOptionalAction, default=False,
+                        help="Immediately train the lowest of Attack/Strength/Defence instead of rushing early Attack/Strength gates.")
     parser.add_argument("--bank-target", default="al_kharid_bank", help="ML1 route target for hide banking.")
     parser.add_argument("--cow-area-target", default="lumbridge_cow_pen", help="ML1 route target for cow combat.")
     parser.add_argument("--cow-gate-approach-target", default="3252,3266,0",
@@ -2083,6 +2349,10 @@ def main(argv=None):
     parser.add_argument("--coin-float", type=int, default=100)
     parser.add_argument("--kebab-shop-name", default="kebab")
     parser.add_argument("--shop-max-distance", type=int, default=8)
+    parser.add_argument("--auto-buy-steel-scimitar", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--steel-scimitar-shop-target", default="al_kharid_scimitar_shop")
+    parser.add_argument("--steel-scimitar-shop-name", default="scimitar")
+    parser.add_argument("--steel-scimitar-coin-budget", type=int, default=1000)
     parser.add_argument("--auto-buy-mithril-scimitar", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--mithril-scimitar-shop-target", default="al_kharid_scimitar_shop")
     parser.add_argument("--mithril-scimitar-shop-name", default="scimitar")

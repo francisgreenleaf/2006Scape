@@ -8,7 +8,8 @@ Usage: agent-navigation/tools/rs-tool.sh [--profile PROFILE] TOOL [JSON_ARGUMENT
 Call a 2006Scape rs bridge tool through the active local session.
 
 Examples:
-  agent-navigation/tools/rs-tool.sh observe_state '{}'
+  agent-navigation/tools/rs-tool_XS.sh observe_state '{}'
+  agent-navigation/tools/rs-tool_XXS.sh observe_state '{}'
   agent-navigation/tools/rs-tool.sh walk_to_tile_until_arrived '{"x":3222,"y":3218,"height":0}'
 
 Environment:
@@ -17,6 +18,7 @@ Environment:
   RSBRIDGE_SESSION_FILE  Override session file path
   RSBRIDGE_EXPECT_PLAYER Validate the session player before sending the tool call
   RSBRIDGE_TOOL_URL      Override tool URL, default http://127.0.0.1:43610/agent/tool
+  RS_ALLOW_FULL_OBSERVE  Set to 1/true/yes to allow full observe_state output
 EOF
 }
 
@@ -79,6 +81,23 @@ if [[ $# -ge 2 ]]; then
   ARGS_JSON="$2"
 else
   ARGS_JSON="{}"
+fi
+
+if [[ "$TOOL" == "observe_state" ]]; then
+  case "${RS_ALLOW_FULL_OBSERVE:-}" in
+    1|true|TRUE|yes|YES|on|ON)
+      ;;
+    *)
+      python3 - <<'PY'
+import json
+print(json.dumps({
+    "success": False,
+    "message": "Full observe_state is blocked by rs-tool.sh to avoid dumping large state into Codex context. Use observe_XXS.sh, observe_XS.sh, rs-tool_XXS.sh observe_state '{}', or rs-tool_XS.sh observe_state '{}'. Set RS_ALLOW_FULL_OBSERVE=1 only for explicit evidence/debug work.",
+}, separators=(",", ":")))
+PY
+      exit 2
+      ;;
+  esac
 fi
 
 if [[ ! -f "$SESSION_FILE" ]]; then
