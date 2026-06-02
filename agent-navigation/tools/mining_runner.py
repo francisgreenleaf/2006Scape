@@ -1363,6 +1363,16 @@ def choose_site(ores, args, player):
     if args.site and args.site != "auto":
         site_tile = parse_tile(args.site)
         bank_tile = parse_tile(args.bank_tile) if args.bank_tile else site_tile
+        rocks = []
+        if bool(getattr(args, "prefer_known_rocks", False)):
+            max_level = max(mining_level(player), args.target_mining_level or mining_level(player))
+            try:
+                rocks = rock_objects(bounds_around(site_tile, args.rock_scan_distance), ores, max_level)
+            except Exception:
+                rocks = []
+        ore_counts = {}
+        for rock in rocks:
+            ore_counts[rock["ore"]] = ore_counts.get(rock["ore"], 0) + 1
         return {
             "id": "manual_{}".format(tile_string(site_tile).replace(",", "_")),
             "source": "manual",
@@ -1372,12 +1382,12 @@ def choose_site(ores, args, player):
             "tile": site_tile,
             "arrivalRadius": args.arrival_radius,
             "rockScanDistance": args.rock_scan_distance,
-            "oreCounts": {ore: 1 for ore in ores},
-            "rockCount": len(ores),
+            "oreCounts": ore_counts or {ore: 1 for ore in ores},
+            "rockCount": len(rocks) or len(ores),
             "bankDistance": chebyshev(site_tile, bank_tile),
             "currentDistance": chebyshev(site_tile, tile_from_player(player)),
             "score": 0,
-            "rocks": [],
+            "rocks": rocks,
         }
     current_level = mining_level(player)
     max_level = max(current_level, args.target_mining_level or current_level)
@@ -1525,6 +1535,8 @@ def main(argv=None):
     parser.add_argument("--bank-distance-weight", type=float, default=1.0)
     parser.add_argument("--current-distance-weight", type=float, default=0.25)
     parser.add_argument("--rock-scan-distance", type=int, default=24)
+    parser.add_argument("--prefer-known-rocks", action="store_true",
+                        help="For manual sites, pre-load cache rock tiles and prefer them over live nearest-rock searches.")
     parser.add_argument("--xp-weight", type=float, default=2.0)
     parser.add_argument("--rock-distance-weight", type=float, default=1.0)
     parser.add_argument("--respawn-weight", type=float, default=0.15)
