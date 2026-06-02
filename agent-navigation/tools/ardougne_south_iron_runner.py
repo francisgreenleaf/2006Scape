@@ -44,6 +44,7 @@ def build_mining_args(args):
         "--route-max-ticks", str(args.route_max_ticks),
         "--min-run-energy", str(args.min_run_energy),
         "--loop-delay", str(args.loop_delay),
+        "--prefer-known-rocks",
     ]
     if args.target_mining_level:
         forwarded.extend(["--target-mining-level", str(args.target_mining_level)])
