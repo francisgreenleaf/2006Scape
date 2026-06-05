@@ -249,6 +249,33 @@
       ]
     },
     {
+      "id": "seers_yew_longbow_runner",
+      "name": "Seers Yew Longbow Runner",
+      "path": "agent-navigation/tools/seers_yew_longbow_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Seers Village yew longbow wrapper around the proven Seers fletching loop, with independent profile-scoped status/stop files, a yew tree route anchor, product banking, bird-nest pickup, and tiny shutdown-status polling.",
+      "aliases": [
+        "seers yew",
+        "yew longbow",
+        "seers longbow",
+        "yew fletching",
+        "seers yew longbow"
+      ],
+      "tags": [
+        "gameplay",
+        "woodcutting",
+        "fletching",
+        "yew",
+        "longbow",
+        "runner",
+        "seers"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/seers_yew_longbow_runner.py --profile PROFILE --max-cycles 1",
+        "python3 agent-navigation/tools/script_registry.py run seers yew -- --profile PROFILE --shutdown-status"
+      ]
+    },
+    {
       "id": "woodcutting_runner",
       "name": "Primitive Woodcutting Runner",
       "path": "agent-navigation/tools/woodcutting_runner.py",
@@ -299,6 +326,59 @@
       "examples": [
         "python3 agent-navigation/tools/seers_flax_bowstring_runner.py --profile PROFILE --target-bowstrings 5000 --quiet",
         "python3 agent-navigation/tools/script_registry.py run seers flax -- --profile PROFILE --max-cycles 1"
+      ]
+    },
+    {
+      "id": "seers_flax_spin_fast_runner",
+      "name": "Fast Seers Flax Spin Runner",
+      "path": "agent-navigation/tools/seers_flax_spin_fast_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Fast Seers Village flax picker and bowstring spinner with low-overhead tick-analysis events, cached flax selection, compact bridge calls, cooperative status/stop files, and tiny shutdown-status polling.",
+      "aliases": [
+        "seers flax fast",
+        "fast flax",
+        "flax fast",
+        "spin flax fast",
+        "seers flax spin fast"
+      ],
+      "tags": [
+        "gameplay",
+        "crafting",
+        "flax",
+        "bowstrings",
+        "runner",
+        "primitive",
+        "seers",
+        "tick-analysis"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/seers_flax_spin_fast_runner.py --profile PROFILE --max-cycles 1 --quiet",
+        "python3 agent-navigation/tools/script_registry.py run seers flax fast -- --profile PROFILE --shutdown-status"
+      ]
+    },
+    {
+      "id": "tick_analysis_report",
+      "name": "Runner Tick Analysis Report",
+      "path": "agent-navigation/tools/tick_analysis_report.py",
+      "kind": "diagnostic_tool",
+      "description": "Summarizes low-overhead runner timing JSONL logs into compact cycle, item-arrival, route, and slow-event reports so agents do not need to read raw logs.",
+      "aliases": [
+        "tick analysis",
+        "timing report",
+        "runner timing",
+        "flax timing",
+        "tick report"
+      ],
+      "tags": [
+        "analysis",
+        "performance",
+        "runner",
+        "timing",
+        "tick-analysis"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/tick_analysis_report.py --latest --runner seers-flax-spin-fast --profile PROFILE",
+        "python3 agent-navigation/tools/script_registry.py run tick analysis -- --latest --runner seers-flax-spin-fast --profile PROFILE"
       ]
     },
     {
