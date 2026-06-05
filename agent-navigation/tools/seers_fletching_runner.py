@@ -25,6 +25,13 @@ REPO_ROOT = SCRIPT_DIR.parents[1]
 RS_TOOL = SCRIPT_DIR / "rs-tool.sh"
 RUNS_DIR = ROOT / "data" / "fletching" / "seers-runs"
 RUN_PROFILE = ""
+TERMINAL_PHASES = {
+    "blocked",
+    "complete",
+    "done",
+    "stopped",
+    "target_reached",
+}
 
 SEERS_BANK = "seers_bank"
 SEERS_OAK = "seers_oak_trees"
@@ -1079,6 +1086,46 @@ def print_status():
     return 1
 
 
+def print_shutdown_status():
+    path = status_path()
+    stop = stop_path()
+    if not path.exists():
+        print(json.dumps({
+            "ok": False,
+            "runner": "seers_fletching_runner",
+            "error": "no_status",
+            "profile": RUN_PROFILE or "default",
+            "stopRequested": stop.exists(),
+            "shutdownComplete": False,
+        }, sort_keys=True, separators=(",", ":")))
+        return 1
+    try:
+        status = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        print(json.dumps({
+            "ok": False,
+            "runner": "seers_fletching_runner",
+            "error": "invalid_status",
+            "profile": RUN_PROFILE or "default",
+            "stopRequested": stop.exists(),
+            "shutdownComplete": False,
+        }, sort_keys=True, separators=(",", ":")))
+        return 1
+    phase = str(status.get("phase") or "")
+    stop_requested = bool(status.get("stopRequested")) or stop.exists()
+    print(json.dumps({
+        "ok": True,
+        "runner": status.get("runner") or "seers_fletching_runner",
+        "profile": status.get("profile") or RUN_PROFILE or "default",
+        "phase": phase,
+        "stopRequested": stop_requested,
+        "shutdownComplete": phase in TERMINAL_PHASES,
+        "pid": status.get("pid"),
+        "updatedAt": status.get("updatedAt"),
+    }, sort_keys=True, separators=(",", ":")))
+    return 0
+
+
 def request_stop():
     path = stop_path()
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -1151,6 +1198,8 @@ def main(argv=None):
     parser.add_argument("--nest-pickup-attempts", type=int, default=5)
     parser.add_argument("--quiet", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument("--status", action="store_true", help="Print the last compact runner status and exit.")
+    parser.add_argument("--shutdown-status", action="store_true",
+                        help="Print a tiny cooperative shutdown status and exit.")
     parser.add_argument("--request-stop", action="store_true",
                         help="Ask a running Seers fletching loop to stop at the next safe cycle boundary.")
     parser.add_argument("--sell-now", action="store_true",
@@ -1167,6 +1216,8 @@ def main(argv=None):
     RUN_PROFILE = args.profile
     if args.status:
         return print_status()
+    if args.shutdown_status:
+        return print_shutdown_status()
     if args.request_stop:
         return request_stop()
     if stop_path().exists():

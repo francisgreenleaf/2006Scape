@@ -143,6 +143,13 @@ These notes are repo-specific operational memory from actual agent experience. A
 
 ## Progression Scripts
 
+### Use tiny shutdown status for cooperative stop polling
+
+- **Observed:** Polling Seers runner `--status` while waiting for a cooperative stop repeatedly dumped full JSON payloads with player, args, counts, and route fields into Codex context.
+- **Cause:** The diagnostic status surface was reused as a high-frequency stop check, even though the agent only needed to know whether the stop file had been honored and the runner had reached a terminal phase.
+- **Use instead:** For cooperative long runners, keep `--status` for occasional diagnosis, use `--request-stop` to ask for a safe-boundary stop, and poll a tiny `--shutdown-status`/XS control wrapper that reports only `phase`, `stopRequested`, `shutdownComplete`, `pid`, and `updatedAt`.
+- **Validation:** `python3 agent-navigation/tools/seers_yew_longbow_runner.py --profile Mrwood --shutdown-status` prints one compact JSON line instead of the full runner status blob.
+
 ### Launching the GUI client from Codex requires escalation; sandboxed claim runs can fake progress
 
 - **Observed:** `runtime_doctor.py claim` could print `client_starting ...` and leave only `Launching 2006Scape client against localhost...` in `/tmp/2006scape-client.log`, but never create `agent-navigation/.local/rsbridge-session.json` or connect the player.
