@@ -21,7 +21,7 @@ When a known lesson applies, follow its corrected workflow before improvising. I
 
 When changing runtime bridge behavior, remember that a compiled jar is not live code. Build first, restart through the documented launcher flow, then prove the behavior through the bridge wrapper.
 
-When creating or changing repo tools, make profile agnosticism part of the design check. Runnable helpers should accept `--profile PROFILE` or honor `RS_PROFILE`/`RSBRIDGE_PROFILE`, propagate the resolved profile to child commands and bridge calls, and avoid new MrFlame-only path assumptions. Writable status, evidence, logs, maps, and caches should be profile-scoped or carry explicit `profile`, `playerName`, and `sessionId` metadata when intentionally shared.
+When creating or changing repo tools, make profile agnosticism part of the design check. Runnable helpers should accept `--profile PROFILE` or honor `RS_PROFILE`/`RSBRIDGE_PROFILE`, propagate the resolved profile to child commands and bridge calls, and avoid new MrFlame-only path assumptions. Writable status, evidence, logs, maps, and caches should be profile-scoped or carry explicit `profile`, `playerName`, and `sessionId` metadata when intentionally shared. Cooperative long runners should keep verbose `--status` for diagnosis and add a tiny `--shutdown-status` or XS control wrapper for repeated stop polling after `--request-stop`.
 
 When gameplay names, requirements, or mechanics are unclear during implementation, use `2006scape-osrs-wiki` as a research aid before guessing. Treat it as modern OSRS context only and verify the repo's actual behavior before coding around it.
 
