@@ -47,6 +47,7 @@ BAIT_FISHING_SPOTS = [316, 326, 327, 330, 332, 404]
 CAGE_HARPOON_SPOTS = [312, 321, 324, 405]
 LOBSTER_SPOTS = CAGE_HARPOON_SPOTS
 HARPOON_SPOTS = CAGE_HARPOON_SPOTS
+SHARK_HARPOON_SPOTS = [313, 322, 334]
 BUYABLE_SUPPLIES = {SMALL_NET, FISHING_ROD, LOBSTER_POT, HARPOON, FISHING_BAIT}
 FISHING_SUPPLY_IDS = {SMALL_NET, FISHING_ROD, LOBSTER_POT, HARPOON, FISHING_BAIT}
 SHOP_PRICE_ESTIMATES = {
@@ -86,6 +87,7 @@ FISHING_METHOD_ORDER = [
     {"name": "harpoon_tuna", "fishing": 35, "cooking": 30},
     {"name": "lobster", "fishing": 40, "cooking": 40},
     {"name": "harpoon_tuna_swordfish", "fishing": 50, "cooking": 50},
+    {"name": "harpoon_shark", "fishing": 83, "cooking": 76},
 ]
 BANK_WITHDRAW_ITEM_BUTTON = 21011
 
@@ -882,6 +884,14 @@ def ensure_bank_item_withdraw_mode(args, handle, player, reason):
 def fishing_method(player):
     fishing = bridge.skill_level(player, "fishing")
     cooking = bridge.skill_level(player, "cooking")
+    if fishing >= 83 and cooking >= 76:
+        return {
+            "name": "harpoon_shark",
+            "tool": HARPOON,
+            "npcIds": SHARK_HARPOON_SPOTS,
+            "option": "second",
+            "bait": None,
+        }
     if fishing >= 50 and cooking >= 50:
         return {
             "name": "harpoon_tuna_swordfish",
