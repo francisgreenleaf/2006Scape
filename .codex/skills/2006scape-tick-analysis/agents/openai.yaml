@@ -1,0 +1,4 @@
+interface:
+  display_name: "2006Scape Tick Analysis"
+  short_description: "Analyze runner timing and tick efficiency"
+  default_prompt: "Use $2006scape-tick-analysis to instrument a 2006Scape runner and summarize its timing logs without reading raw JSONL."
