@@ -22,11 +22,19 @@ public class RSApplet extends Applet implements Runnable, MouseListener, MouseWh
 	final void createClientFrame(int i, int j) {
 		myWidth = j;
 		myHeight = i;
-		this.setPreferredSize(new Dimension(scaled(this.myWidth), scaled(this.myHeight)));
+		this.setPreferredSize(ClientWindow.gameSizeForScale(clientScale()));
+		this.setMinimumSize(ClientWindow.gameSizeForScale(1));
 
 		gameFrame = new RSFrame(this);
 		graphics = getGameComponent().getGraphics();
 		fullGameScreen = new RSImageProducer(myWidth, myHeight, getGameComponent());
+		getGameComponent().addComponentListener(new ComponentAdapter() {
+			public void componentResized(ComponentEvent event) {
+				graphics = getGameComponent().getGraphics();
+				shouldClearScreen = true;
+				raiseWelcomeScreen();
+			}
+		});
 
 		if (ClientSettings.SHOW_NAVBAR) {
 			try {
@@ -35,7 +43,8 @@ public class RSApplet extends Applet implements Runnable, MouseListener, MouseWh
 				attributes.put(TextAttribute.UNDERLINE, TextAttribute.UNDERLINE_ON);
 
 				JLayeredPane layers = new JLayeredPane();
-				layers.setPreferredSize(new Dimension(765, 25));
+				layers.setPreferredSize(new Dimension(ClientWindow.BASE_WIDTH, ClientWindow.NAVBAR_HEIGHT));
+				layers.setMinimumSize(new Dimension(ClientWindow.BASE_WIDTH, ClientWindow.NAVBAR_HEIGHT));
 
 				ImageIcon backgroundImg = new ImageIcon(this.getClass().getResource("navbar.gif"));
 				ImageIcon menuImg = new ImageIcon(this.getClass().getResource("navbar_mainmenu.gif"));
@@ -405,9 +414,16 @@ public class RSApplet extends Applet implements Runnable, MouseListener, MouseWh
 
 	@Override
 	public final void mousePressed(MouseEvent mouseevent) {
-		int i = unscaled(mouseevent.getX());
-		int j = unscaled(mouseevent.getY());
 		idleTime = 0;
+		if (!isGamePoint(mouseevent)) {
+			mouseX = -1;
+			mouseY = -1;
+			clickMode1 = 0;
+			clickMode2 = 0;
+			return;
+		}
+		int i = gameX(mouseevent);
+		int j = gameY(mouseevent);
 		clickX = i;
 		clickY = j;
 		clickTime = System.currentTimeMillis();
@@ -451,8 +467,13 @@ public class RSApplet extends Applet implements Runnable, MouseListener, MouseWh
 	}
 
 	public final void mouseDragged(MouseEvent e) {
-		int x = unscaled(e.getX());
-		int y = unscaled(e.getY());
+		if (!isGamePoint(e)) {
+			mouseX = -1;
+			mouseY = -1;
+			return;
+		}
+		int x = gameX(e);
+		int y = gameY(e);
 		if (mouseWheelDown) {
 			int deltaX = mouseWheelX - x;
 			int deltaY = mouseWheelY - y;
@@ -471,23 +492,32 @@ public class RSApplet extends Applet implements Runnable, MouseListener, MouseWh
 
 	@Override
 	public void mouseMoved(MouseEvent mouseevent) {
-		int i = unscaled(mouseevent.getX());
-		int j = unscaled(mouseevent.getY());
 		idleTime = 0;
+		if (!isGamePoint(mouseevent)) {
+			mouseX = -1;
+			mouseY = -1;
+			return;
+		}
+		int i = gameX(mouseevent);
+		int j = gameY(mouseevent);
 		mouseX = i;
 		mouseY = j;
 	}
 
-	private int scaled(int value) {
-		return value * clientScale();
+	private boolean isGamePoint(MouseEvent event) {
+		return ClientWindow.containsGamePoint(getGameComponent(), event.getX(), event.getY());
 	}
 
-	private int unscaled(int value) {
-		return value / clientScale();
+	private int gameX(MouseEvent event) {
+		return ClientWindow.toGameX(getGameComponent(), event.getX());
+	}
+
+	private int gameY(MouseEvent event) {
+		return ClientWindow.toGameY(getGameComponent(), event.getY());
 	}
 
 	private int clientScale() {
-		return Math.max(1, ClientSettings.CLIENT_SCALE);
+		return ClientWindow.clampScale(ClientSettings.CLIENT_SCALE);
 	}
 
 	@Override
