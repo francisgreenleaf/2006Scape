@@ -21,6 +21,7 @@ public final class Main {
 
 	public static void main(String[] args) {
 		try {
+			configureDesktopProperties();
 			// Process client arguments to connect to
 			for (int i = 0; i < args.length; i++) {
 				switch(args[i]) {
@@ -169,6 +170,12 @@ public final class Main {
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
 		}
+	}
+
+	private static void configureDesktopProperties() {
+		System.setProperty("apple.awt.application.name", ClientSettings.SERVER_NAME);
+		System.setProperty("apple.laf.useScreenMenuBar", "true");
+		System.setProperty("com.apple.mrj.application.apple.menu.about.name", ClientSettings.SERVER_NAME);
 	}
 
 	private static Image loadClientIcon() {

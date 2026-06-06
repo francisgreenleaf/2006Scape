@@ -16,6 +16,7 @@ final class RSImageProducer implements ImageProducer, ImageObserver {
 	public RSImageProducer(int i, int j, Component component) {
 		anInt316 = i;
 		anInt317 = j;
+		this.component = component;
 		anIntArray315 = new int[i * j];
 		aColorModel318 = new DirectColorModel(32, 0xff0000, 65280, 255);
 		anImage320 = component.createImage(this);
@@ -34,12 +35,7 @@ final class RSImageProducer implements ImageProducer, ImageObserver {
 
 	public void drawGraphics(int i, Graphics g, int k) {
 		method239();
-		int scale = Math.max(1, ClientSettings.CLIENT_SCALE);
-		if (scale == 1) {
-			g.drawImage(anImage320, k, i, this);
-		} else {
-			g.drawImage(anImage320, k * scale, i * scale, anInt316 * scale, anInt317 * scale, this);
-		}
+		ClientWindow.drawImage(component, g, anImage320, k, i, anInt316, anInt317, this);
 	}
 
 	@Override
@@ -88,6 +84,7 @@ final class RSImageProducer implements ImageProducer, ImageObserver {
 	public final int[] anIntArray315;
 	private final int anInt316;
 	private final int anInt317;
+	private final Component component;
 	private final ColorModel aColorModel318;
 	private ImageConsumer anImageConsumer319;
 	private final Image anImage320;
