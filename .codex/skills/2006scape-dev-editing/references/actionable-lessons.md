@@ -34,6 +34,13 @@ These notes are repo-specific operational memory from actual agent experience. A
 - **Use instead:** Treat `mvn -q -DskipTests package` as compile validation only. Restart the server/client through `agent-navigation/tools/runtime_doctor.py` before testing new bridge tools through `agent-navigation/tools/rs-tool_XXS.sh` or `agent-navigation/tools/rs-tool_XS.sh`; use full `rs-tool.sh` only when compact proof omits a required field.
 - **Validation:** After restart, call the new compact alias through `rs-tool_XXS.sh`/`rs-tool_XS.sh` and confirm the response shape matches the source change.
 
+### Use trade primitives instead of generic trade-button clicks
+
+- **Observed:** `click_interface_button_XS {"buttonId":13092}` could return `success:true` on a trade accept button while `trade_status_XS` still showed the player on the first trade screen.
+- **Cause:** Trade accept cases live in the packet button handler path, while the generic bridge interface-button primitive only routes selected server interfaces and can acknowledge a click without invoking trade confirmation logic.
+- **Use instead:** For player-to-player trades, use `request_player_trade_XS`, `offer_trade_item_XS`, `accept_trade_XS`, and `trade_status_XS`. `accept_trade_XS '{"expectPartner":"NAME","expectItemId":995,"minAmount":N}'` is the normal one-call agent accept and records auto-final intent; avoid manually clicking first and final trade-confirmation buttons except as an explicit stale-runtime debug fallback.
+- **Validation:** `trade_status_XS` should progress through `first_screen`, `first_accepted`, `confirm_screen`, and completion, and `mvn -q -DskipTests package` should pass after bridge changes.
+
 ### Make primitive item-on-object start cooking interfaces
 
 - **Observed:** `catherby_food_runner.py` could cook tuna through `use_item_on_object` plus `click_interface_button`, but the first lobster inventory logged `cook_primitive_round madeProgress:false` before falling back to `cook_food`.
