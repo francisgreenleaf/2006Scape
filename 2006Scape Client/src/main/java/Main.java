@@ -5,6 +5,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.awt.Image;
+import java.net.URL;
+import javax.swing.ImageIcon;
 
 public final class Main {
 
@@ -161,9 +164,39 @@ public final class Main {
 			Game.isMembers = true;
 			Signlink.storeid = 32;
 			Signlink.startpriv(InetAddress.getLocalHost());
+			setApplicationIcon(loadClientIcon());
 			game.createClientFrame(503, 765);
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
+		}
+	}
+
+	private static Image loadClientIcon() {
+		URL iconUrl = Main.class.getResource("/client-icon.png");
+		if (iconUrl == null) {
+			return null;
+		}
+		return new ImageIcon(iconUrl).getImage();
+	}
+
+	private static void setApplicationIcon(Image icon) {
+		if (icon == null) {
+			return;
+		}
+		try {
+			Class<?> taskbarClass = Class.forName("java.awt.Taskbar");
+			Object taskbar = taskbarClass.getMethod("getTaskbar").invoke(null);
+			taskbarClass.getMethod("setIconImage", Image.class).invoke(taskbar, icon);
+			return;
+		} catch (Throwable ignored) {
+			// Fall back to the legacy macOS API below.
+		}
+		try {
+			Class<?> applicationClass = Class.forName("com.apple.eawt.Application");
+			Object application = applicationClass.getMethod("getApplication").invoke(null);
+			applicationClass.getMethod("setDockIconImage", Image.class).invoke(application, icon);
+		} catch (Throwable ignored) {
+			// If neither API exists, the frame icon still applies.
 		}
 	}
 
