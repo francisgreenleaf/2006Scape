@@ -57,7 +57,8 @@ Use these from external scripts through `agent-navigation/tools/rs-tool.sh`, pre
   `bury_bones`, `bury_bones_XS`, `bury_bones_XXS`, `drop_inventory_items`, `bank_item_count_XS`, `deposit_inventory_items`, `deposit_inventory_items_XS`, `deposit_inventory_items_XXS`,
   `withdraw_bank_items`, `withdraw_bank_items_XS`, `withdraw_bank_items_XXS`,
   `open_nearest_shop`, `buy_shop_item`, `sell_inventory_item`,
-  `sell_inventory_items`, `deposit_excess_coins`
+  `sell_inventory_items`, `deposit_excess_coins`, `trade_status_XS`,
+  `request_player_trade_XS`, `offer_trade_item_XS`, `accept_trade_XS`
 
 The main compact dynamic surfaces are `observe_state_XS`,
 `observe_state_if_changed_XS`, `combat_state_XS`, `walk_path_steps_XS`,
@@ -67,7 +68,8 @@ The main compact dynamic surfaces are `observe_state_XS`,
 `interact_object_XS`, `find_nearest_object_XS`, `find_nearest_rock_XS`,
 `find_nearest_tree_XS`,
 `bury_bones_XS`, `bank_item_count_XS`, `deposit_inventory_items_XS`, `withdraw_bank_items_XS`,
-`unequip_items_XS`, and `food_bank_XS`.
+`unequip_items_XS`, `trade_status_XS`, `request_player_trade_XS`,
+`offer_trade_item_XS`, `accept_trade_XS`, and `food_bank_XS`.
 They use the same mechanics as their
 full counterparts and return smaller status/player/inventory summaries. Use
 full tools only for missing debug fields or complete evidence capture.
@@ -91,6 +93,24 @@ example, fletching should use a knife on logs with `use_item_on_item`, click the
 make-all button with `click_interface_button`, and wait through
 `wait_until_idle`. The choice of logs, products, targets, banking, selling, and
 retry policy belongs in Python or JSON data.
+
+For player-to-player trades, use the trade primitives instead of generic
+interface-button clicks. Each claimed session controls only its own player's
+trade window. `request_player_trade_XS` opens or answers the normal trade
+request and may auto-walk a short nearby distance into the server's 3-tile trade
+range; otherwise it returns `tooFar`, `distance`, and `maxDistance`.
+`offer_trade_item_XS` offers carried items on the first trade screen, and
+`trade_status_XS` gives the compact partner/offer/confirmation state.
+`accept_trade_XS '{"expectPartner":"NAME","expectItemId":995,"minAmount":N}'`
+is the normal safe agent accept: it validates the partner and partner-offered
+item before accepting, records auto-final intent, and reports item-count delta
+when an expected item is supplied. When both trading parties have each called it
+once, the ordinary second confirmation is completed for the two opted-in sides.
+Use explicit `stage` or `screen` arguments only as a debug fallback for stale
+runtimes or partial-state recovery. For receiving-only flows, prefer
+`python3 agent-navigation/tools/receive_trade.py --profile PROFILE --from NAME
+--item coins --min-amount N`; it polls compact status and controls only the
+selected profile.
 
 For cooking, use a raw cookable item on a cooking object with
 `use_item_on_object`, click the make-all cooking button with

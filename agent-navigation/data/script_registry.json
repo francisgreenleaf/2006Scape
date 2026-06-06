@@ -2,6 +2,30 @@
   "schemaVersion": 1,
   "scripts": [
     {
+      "id": "receive_trade",
+      "name": "Receive Trade",
+      "path": "agent-navigation/tools/receive_trade.py",
+      "kind": "gameplay_helper",
+      "description": "Receives an expected player-to-player trade through compact profile-scoped trade primitives, validating partner, item, and minimum amount before accepting.",
+      "aliases": [
+        "receive trade",
+        "trade receive",
+        "accept trade",
+        "get trade",
+        "receive coins"
+      ],
+      "tags": [
+        "gameplay",
+        "trade",
+        "helper",
+        "profile"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/receive_trade.py --profile Mrathlete --from mrwood --item coins --min-amount 100000",
+        "python3 agent-navigation/tools/script_registry.py run receive trade -- --profile Mrathlete --from mrwood --item coins --min-amount 100000"
+      ]
+    },
+    {
       "id": "agility_runner",
       "name": "Adaptive Agility Runner",
       "path": "agent-navigation/tools/agility_runner.py",

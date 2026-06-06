@@ -50,6 +50,7 @@ import com.rs2.game.content.skills.smithing.Smelting;
 import com.rs2.game.content.skills.smithing.SmithingData;
 import com.rs2.game.content.skills.woodcutting.Woodcutting;
 import com.rs2.game.items.DeprecatedItems;
+import com.rs2.game.items.GameItem;
 import com.rs2.game.items.GroundItem;
 import com.rs2.game.items.ItemConstants;
 import com.rs2.game.items.ItemData;
@@ -84,6 +85,8 @@ public class AgentToolService {
     private static final int DEFAULT_WALK_CHUNK_DISTANCE = 48;
     private static final int MAX_WALK_CHUNK_DISTANCE = MAP_REGION_SIZE - 2 * MAP_REGION_MARGIN - 1;
     private static final int MAX_AGENT_WALK_PATH_STEPS = 8;
+    private static final int TRADE_INTERACTION_DISTANCE = 3;
+    private static final int TRADE_AUTO_WALK_MAX_DISTANCE = 12;
     private static final long OBSERVATION_REACHABILITY_CACHE_TTL_MS = 2000L;
     private static final int OBSERVATION_REACHABILITY_CACHE_MAX_SIZE = 4096;
     private static final long MINING_RECLICK_COOLDOWN_MS = 1800L;
@@ -95,6 +98,8 @@ public class AgentToolService {
     private static final String SMITHING_ANVIL_LANDMARK = "varrock west anvils";
     private static final ConcurrentMap<String, ReachabilityCacheEntry> OBSERVATION_REACHABILITY_CACHE =
             new ConcurrentHashMap<String, ReachabilityCacheEntry>();
+    private static final ConcurrentMap<String, Boolean> TRADE_AUTO_CONFIRM_INTENT =
+            new ConcurrentHashMap<String, Boolean>();
     private static final String SMITHING_SHOP_LANDMARK = "varrock general store";
     private static final int SMITHING_TRAVEL_COINS = 20;
     private static final int AL_KHARID_GATE_WEST_X = 3267;
@@ -216,6 +221,33 @@ public class AgentToolService {
         }
         if ("preview_local_path".equals(tool)) {
             return previewLocalPath(player, arguments);
+        }
+        if ("trade_status".equals(tool)) {
+            return tradeStatus(player);
+        }
+        if ("request_player_trade".equals(tool)) {
+            if (!canTradeInterfaceAct(player)) {
+                return failure("The player cannot trade right now.");
+            }
+            return requestPlayerTrade(player, arguments);
+        }
+        if ("offer_trade_item".equals(tool)) {
+            if (!canTradeInterfaceAct(player)) {
+                return failure("The player cannot offer trade items right now.");
+            }
+            return offerTradeItem(player, arguments);
+        }
+        if ("accept_trade".equals(tool)) {
+            if (!canTradeInterfaceAct(player)) {
+                return failure("The player cannot accept trade right now.");
+            }
+            return acceptTrade(player, arguments);
+        }
+        if ("click_interface_button".equals(tool) && player != null && player.inTrade) {
+            if (!canTradeInterfaceAct(player)) {
+                return failure("The player cannot click trade interface buttons right now.");
+            }
+            return clickInterfaceButton(player, arguments);
         }
         if (!canAct(player)) {
             return failure("The player cannot act right now.");
@@ -675,6 +707,7 @@ public class AgentToolService {
         copyIfPresent(result, compact, "batchStatus");
         copyIfPresent(result, compact, "status");
         copyIfPresent(result, compact, "event");
+        copyIfPresent(result, compact, "stage");
         copyIfPresent(result, compact, "changed");
         copyIfPresent(result, compact, "stateHash");
         copyIfPresent(result, compact, "phase");
@@ -704,6 +737,19 @@ public class AgentToolService {
         copyIfPresent(result, compact, "itemId");
         copyIfPresent(result, compact, "itemName");
         copyIfPresent(result, compact, "itemCountAfter");
+        copyIfPresent(result, compact, "offered");
+        copyIfPresent(result, compact, "offeredAmount");
+        copyIfPresent(result, compact, "partnerOfferedAmount");
+        copyIfPresent(result, compact, "requested");
+        copyIfPresent(result, compact, "tradeOpen");
+        copyIfPresent(result, compact, "tradeConfirmed");
+        copyIfPresent(result, compact, "tradeConfirmed2");
+        copyIfPresent(result, compact, "partnerTradeConfirmed");
+        copyIfPresent(result, compact, "partnerTradeConfirmed2");
+        copyIfPresent(result, compact, "autoFinalIntent");
+        copyIfPresent(result, compact, "partnerAutoFinalIntent");
+        copyIfPresent(result, compact, "trade");
+        copyIfPresent(result, compact, "partner");
 
         JsonObject playerJson = result.has("player") && result.get("player").isJsonObject()
                 ? result.get("player").getAsJsonObject()
@@ -737,6 +783,7 @@ public class AgentToolService {
         copyIfPresent(result, compact, "batchStatus");
         copyIfPresent(result, compact, "status");
         copyIfPresent(result, compact, "event");
+        copyIfPresent(result, compact, "stage");
         copyIfPresent(result, compact, "changed");
         copyIfPresent(result, compact, "stateHash");
         copyIfPresent(result, compact, "phase");
@@ -776,6 +823,30 @@ public class AgentToolService {
         copyIfPresent(result, compact, "amount");
         copyIfPresent(result, compact, "itemId");
         copyIfPresent(result, compact, "itemName");
+        copyIfPresent(result, compact, "expectedItemId");
+        copyIfPresent(result, compact, "expectedItemName");
+        copyIfPresent(result, compact, "itemDelta");
+        copyIfPresent(result, compact, "offered");
+        copyIfPresent(result, compact, "offeredAmount");
+        copyIfPresent(result, compact, "partnerOfferedAmount");
+        copyIfPresent(result, compact, "partnerOfferedExpectedAmount");
+        copyIfPresent(result, compact, "requested");
+        copyIfPresent(result, compact, "tradeOpen");
+        copyIfPresent(result, compact, "tradeConfirmed");
+        copyIfPresent(result, compact, "tradeConfirmed2");
+        copyIfPresent(result, compact, "partnerTradeConfirmed");
+        copyIfPresent(result, compact, "partnerTradeConfirmed2");
+        copyIfPresent(result, compact, "autoFinalIntent");
+        copyIfPresent(result, compact, "partnerAutoFinalIntent");
+        copyIfPresent(result, compact, "tooFar");
+        copyIfPresent(result, compact, "distance");
+        copyIfPresent(result, compact, "maxDistance");
+        copyIfPresent(result, compact, "autoWalk");
+        copyIfPresent(result, compact, "autoWalkMaxDistance");
+        copyIfPresent(result, compact, "heightMismatch");
+        copyIfPresent(result, compact, "blockedReason");
+        copyIfPresent(result, compact, "trade");
+        copyIfPresent(result, compact, "partner");
         copyIfPresent(result, compact, "skillChanges");
         copyIfPresent(result, compact, "xpRecent");
         copyCompactTileIfPresent(result, compact, "target");
@@ -904,6 +975,10 @@ public class AgentToolService {
 
     private static boolean canAct(Player player) {
         return player != null && !player.disconnected && !player.isDead && !player.inTrade && player.duelStatus != 5;
+    }
+
+    private static boolean canTradeInterfaceAct(Player player) {
+        return player != null && !player.disconnected && !player.isDead && player.duelStatus != 5;
     }
 
     static SkillSnapshot captureSkillSnapshot(Player player) {
@@ -1128,6 +1203,603 @@ public class AgentToolService {
         result.addProperty("itemCountAfter", after);
         addPlayerState(result, player);
         return result;
+    }
+
+    private static JsonObject requestPlayerTrade(Player player, JsonObject arguments) {
+        Player target = findTradeTarget(player, arguments);
+        if (target == null) {
+            return failure("No matching nearby player found to trade.");
+        }
+        if (target == player) {
+            return failure("Cannot trade yourself.");
+        }
+        if (player.inTrade) {
+            JsonObject result;
+            if (player.tradeWith == target.playerId) {
+                result = success("Trade is already open with " + target.playerName + ".");
+            } else {
+                result = failure("The player is already in a trade with another player.");
+            }
+            result.add("partner", tradePartnerJson(player, target));
+            addTradeSummary(result, player);
+            addPlayerState(result, player);
+            return result;
+        }
+        clearTradeAutoConfirmIntent(player);
+        clearTradeAutoConfirmIntent(target);
+        int distance = AgentKnowledgeBase.distance(player.absX, player.absY, target.absX, target.absY);
+        int maxDistance = Math.max(1, Math.min(TRADE_INTERACTION_DISTANCE,
+                getInt(arguments, "maxDistance", TRADE_INTERACTION_DISTANCE)));
+        if (target.heightLevel != player.heightLevel) {
+            JsonObject result = failure("Trade target is on a different height level.");
+            result.add("partner", tradePartnerJson(player, target));
+            result.addProperty("heightMismatch", true);
+            result.addProperty("distance", distance);
+            result.addProperty("maxDistance", maxDistance);
+            addTradeSummary(result, player);
+            addPlayerState(result, player);
+            return result;
+        }
+        if (distance > maxDistance) {
+            boolean autoWalk = getBoolean(arguments, "autoWalk", true);
+            int autoWalkMaxDistance = Math.max(maxDistance,
+                    Math.min(30, getInt(arguments, "autoWalkMaxDistance", TRADE_AUTO_WALK_MAX_DISTANCE)));
+            JsonObject result;
+            if (autoWalk && distance <= autoWalkMaxDistance) {
+                player.getPlayerAssistant().resetFollow();
+                player.getCombatAssistant().resetPlayerAttack();
+                player.endCurrentTask();
+                SkillHandler.resetSkills(player);
+                player.getPacketSender().closeAllWindows();
+                player.isBanking = false;
+                player.isShopping = false;
+                int[] walkTarget = boundedWalkTarget(player, target.absX, target.absY, autoWalkMaxDistance);
+                player.getPlayerAssistant().playerWalk(walkTarget[0], walkTarget[1]);
+                result = success("Walking closer to " + target.playerName + " for trade.");
+                result.addProperty("approaching", true);
+                result.add("walkTarget", tile(walkTarget[0], walkTarget[1], player.heightLevel));
+            } else {
+                result = failure("Trade target is not close enough.");
+                result.addProperty("blockedReason", autoWalk ? "too_far_for_auto_walk" : "too_far");
+            }
+            result.add("partner", tradePartnerJson(player, target));
+            result.addProperty("tooFar", true);
+            result.addProperty("distance", distance);
+            result.addProperty("maxDistance", maxDistance);
+            result.addProperty("autoWalk", autoWalk);
+            result.addProperty("autoWalkMaxDistance", autoWalkMaxDistance);
+            addTradeSummary(result, player);
+            addPlayerState(result, player);
+            return result;
+        }
+        player.getTrading().requestTrade(target.playerId);
+        boolean opened = player.inTrade && player.tradeWith == target.playerId;
+        boolean requested = player.tradeRequested && player.tradeWith == target.playerId;
+        JsonObject result = opened
+                ? success("Trade opened with " + target.playerName + ".")
+                : requested
+                        ? success("Trade requested with " + target.playerName + ".")
+                        : failure("Trade request did not change state.");
+        result.addProperty("requested", requested);
+        result.addProperty("tradeOpen", opened);
+        result.add("partner", tradePartnerJson(player, target));
+        addTradeSummary(result, player);
+        addPlayerState(result, player);
+        return result;
+    }
+
+    private static JsonObject offerTradeItem(Player player, JsonObject arguments) {
+        if (!player.inTrade) {
+            JsonObject result = failure("The player is not in an open trade.");
+            addTradeSummary(result, player);
+            addPlayerState(result, player);
+            return result;
+        }
+        ItemMatch item = findInventoryItem(player, arguments);
+        if (item == null) {
+            JsonObject result = failure("No matching inventory item found to offer.");
+            addTradeSummary(result, player);
+            addPlayerState(result, player);
+            return result;
+        }
+        int beforeInventory = countInventoryItem(player, item.itemId);
+        int beforeOffered = countOfferedItem(player, item.itemId);
+        int requestedAmount = getInt(arguments, "amount", item.amount);
+        int amount = Math.max(1, Math.min(beforeInventory, requestedAmount));
+        boolean offered = player.getTrading().tradeItem(item.itemId, item.slot, amount);
+        int afterInventory = countInventoryItem(player, item.itemId);
+        int afterOffered = countOfferedItem(player, item.itemId);
+        int moved = Math.max(0, afterOffered - beforeOffered);
+        JsonObject result = offered && moved > 0
+                ? success("Offered " + moved + " " + DeprecatedItems.getItemName(item.itemId) + ".")
+                : failure("No " + DeprecatedItems.getItemName(item.itemId) + " was offered.");
+        result.add("item", itemMatchJson(item));
+        result.addProperty("itemId", item.itemId);
+        result.addProperty("itemName", DeprecatedItems.getItemName(item.itemId));
+        result.addProperty("amount", amount);
+        result.addProperty("offered", moved);
+        result.addProperty("offeredAmount", afterOffered);
+        result.addProperty("itemCountBefore", beforeInventory);
+        result.addProperty("itemCountAfter", afterInventory);
+        addTradeSummary(result, player);
+        addPlayerState(result, player);
+        return result;
+    }
+
+    private static JsonObject acceptTrade(Player player, JsonObject arguments) {
+        if (!player.inTrade) {
+            JsonObject result = failure("The player is not in an open trade.");
+            addTradeSummary(result, player);
+            addPlayerState(result, player);
+            return result;
+        }
+        Player partner = tradePartner(player);
+        if (partner == null || !partner.inTrade) {
+            player.getTrading().declineTrade();
+            clearTradeAutoConfirmIntent(player);
+            JsonObject result = failure("Trade declined because the other player is not in the trade.");
+            addTradeSummary(result, player);
+            addPlayerState(result, player);
+            return result;
+        }
+
+        JsonObject expectationFailure = validateTradeExpectations(player, partner, arguments);
+        if (expectationFailure != null) {
+            addTradeSummary(expectationFailure, player);
+            addPlayerState(expectationFailure, player);
+            return expectationFailure;
+        }
+        int deltaItemId = expectedTradeDeltaItemId(partner, arguments);
+        int deltaItemBefore = deltaItemId >= 0 ? countInventoryItem(player, deltaItemId) : 0;
+        boolean explicitStage = hasPrimitive(arguments, "stage") || hasPrimitive(arguments, "screen");
+        String stage = normalize(getString(arguments, "stage", getString(arguments, "screen", "auto")));
+        if ("confirm".equals(stage) || "final".equals(stage)) {
+            stage = "second";
+        }
+        if ("offer".equals(stage)) {
+            stage = "first";
+        }
+        if (!explicitStage || "auto".equals(stage) || "once".equals(stage) || stage.isEmpty()) {
+            JsonObject result = acceptTradeOnce(player, partner);
+            result.addProperty("stage", "auto");
+            addExpectedTradeDelta(result, player, deltaItemId, deltaItemBefore);
+            addTradeSummary(result, player);
+            addPlayerState(result, player);
+            return result;
+        }
+
+        JsonObject result;
+        if ("first".equals(stage)) {
+            result = acceptFirstTradeScreen(player, partner);
+        } else if ("second".equals(stage)) {
+            result = acceptSecondTradeScreen(player, partner);
+        } else {
+            result = failure("Unknown trade accept stage: " + stage + ". Use first, second, final, or auto.");
+        }
+        result.addProperty("stage", stage);
+        addExpectedTradeDelta(result, player, deltaItemId, deltaItemBefore);
+        addTradeSummary(result, player);
+        addPlayerState(result, player);
+        return result;
+    }
+
+    private static JsonObject validateTradeExpectations(Player player, Player partner, JsonObject arguments) {
+        String expectedPartner = normalize(getString(arguments, "expectPartner",
+                getString(arguments, "expectedPartner", getString(arguments, "expectPlayer",
+                        getString(arguments, "from", "")))));
+        if (!expectedPartner.isEmpty() && (partner.playerName == null
+                || !normalize(partner.playerName).equals(expectedPartner))) {
+            JsonObject result = failure("Trade partner did not match expected player.");
+            result.addProperty("expectedPartner", expectedPartner);
+            result.addProperty("actualPartner", partner.playerName == null ? "" : partner.playerName);
+            return result;
+        }
+
+        List<Integer> expectedItemIds = expectedTradeItemIds(arguments);
+        String expectedItemName = expectedTradeItemName(arguments);
+        boolean expectsItem = !expectedItemIds.isEmpty() || !expectedItemName.isEmpty();
+        if (!expectsItem) {
+            return null;
+        }
+        int minAmount = Math.max(1, getInt(arguments, "minAmount",
+                getInt(arguments, "expectMinAmount", getInt(arguments, "expectedAmount", 1))));
+        int offered = partnerOfferedAmount(partner, expectedItemIds, expectedItemName);
+        if (offered < minAmount) {
+            JsonObject result = failure("Trade offer did not include the expected item amount.");
+            result.addProperty("minAmount", minAmount);
+            result.addProperty("partnerOfferedExpectedAmount", offered);
+            if (!expectedItemIds.isEmpty()) {
+                JsonArray ids = new JsonArray();
+                for (Integer itemId : expectedItemIds) {
+                    if (itemId != null) {
+                        ids.add(itemId.intValue());
+                    }
+                }
+                result.add("expectedItemIds", ids);
+            }
+            if (!expectedItemName.isEmpty()) {
+                result.addProperty("expectedItem", expectedItemName);
+            }
+            return result;
+        }
+        return null;
+    }
+
+    private static List<Integer> expectedTradeItemIds(JsonObject arguments) {
+        ArrayList<Integer> itemIds = new ArrayList<Integer>();
+        addExpectedTradeItemId(itemIds, getInt(arguments, "expectItemId",
+                getInt(arguments, "expectedItemId", -1)));
+        addExpectedTradeItemId(itemIds, getInt(arguments, "itemId", -1));
+        for (Integer itemId : getIntList(arguments, "expectItemIds")) {
+            if (itemId != null) {
+                addExpectedTradeItemId(itemIds, itemId.intValue());
+            }
+        }
+        for (Integer itemId : getIntList(arguments, "expectedItemIds")) {
+            if (itemId != null) {
+                addExpectedTradeItemId(itemIds, itemId.intValue());
+            }
+        }
+        return itemIds;
+    }
+
+    private static void addExpectedTradeItemId(List<Integer> itemIds, int itemId) {
+        if (itemId >= 0 && !itemIds.contains(Integer.valueOf(itemId))) {
+            itemIds.add(Integer.valueOf(itemId));
+        }
+    }
+
+    private static String expectedTradeItemName(JsonObject arguments) {
+        return normalize(getString(arguments, "expectItem",
+                getString(arguments, "expectedItem", getString(arguments, "item", ""))));
+    }
+
+    private static int partnerOfferedAmount(Player partner, List<Integer> expectedItemIds, String expectedItemName) {
+        if (partner == null || partner.getTrading() == null) {
+            return 0;
+        }
+        int count = 0;
+        for (GameItem item : partner.getTrading().offeredItems) {
+            if (item == null || item.id <= 0 || item.amount <= 0) {
+                continue;
+            }
+            if (matchesTradeExpectedItem(item.id, expectedItemIds, expectedItemName)) {
+                count += item.amount;
+            }
+        }
+        return count;
+    }
+
+    private static boolean matchesTradeExpectedItem(int itemId, List<Integer> expectedItemIds, String expectedItemName) {
+        if (expectedItemIds != null && expectedItemIds.contains(Integer.valueOf(itemId))) {
+            return true;
+        }
+        return expectedItemName != null && !expectedItemName.isEmpty()
+                && normalize(DeprecatedItems.getItemName(itemId)).contains(expectedItemName);
+    }
+
+    private static int expectedTradeDeltaItemId(Player partner, JsonObject arguments) {
+        List<Integer> itemIds = expectedTradeItemIds(arguments);
+        if (!itemIds.isEmpty()) {
+            return itemIds.get(0).intValue();
+        }
+        String expectedItemName = expectedTradeItemName(arguments);
+        if (partner != null && partner.getTrading() != null && !expectedItemName.isEmpty()) {
+            for (GameItem item : partner.getTrading().offeredItems) {
+                if (item != null && item.id > 0
+                        && normalize(DeprecatedItems.getItemName(item.id)).contains(expectedItemName)) {
+                    return item.id;
+                }
+            }
+        }
+        return -1;
+    }
+
+    private static void addExpectedTradeDelta(JsonObject result, Player player, int itemId, int before) {
+        if (result == null || player == null || itemId < 0) {
+            return;
+        }
+        int after = countInventoryItem(player, itemId);
+        result.addProperty("expectedItemId", itemId);
+        result.addProperty("expectedItemName", DeprecatedItems.getItemName(itemId));
+        result.addProperty("itemCountBefore", before);
+        result.addProperty("itemCountAfter", after);
+        result.addProperty("itemDelta", after - before);
+    }
+
+    private static JsonObject acceptTradeOnce(Player player, Player partner) {
+        setTradeAutoConfirmIntent(player);
+        JsonObject firstResult = null;
+        if (!player.tradeConfirmed) {
+            firstResult = acceptFirstTradeScreen(player, partner);
+            if (!getBoolean(firstResult, "success", false)) {
+                return firstResult;
+            }
+        }
+        JsonObject finalResult = autoAcceptFinalTradeScreen(player, partner);
+        if (finalResult != null) {
+            return finalResult;
+        }
+        if (firstResult != null) {
+            firstResult.addProperty("autoFinalIntent", true);
+            return firstResult;
+        }
+        JsonObject result = success("Trade already accepted; waiting for other player.");
+        result.addProperty("autoFinalIntent", true);
+        return result;
+    }
+
+    private static JsonObject acceptFirstTradeScreen(Player player, Player partner) {
+        player.getPacketSender().sendString("Waiting for other player...", 3431);
+        partner.getPacketSender().sendString("Other player has accepted.", 3431);
+        player.goodTrade = true;
+        partner.goodTrade = true;
+
+        int offeredSlots = player.getTrading().offeredItems.size();
+        if (offeredSlots > 0 && partner.getItemAssistant().freeSlots() < offeredSlots) {
+            int remove = offeredSlots - partner.getItemAssistant().freeSlots();
+            player.goodTrade = false;
+            partner.goodTrade = false;
+            player.getPacketSender().sendString("Not enough inventory spaces.", 3431);
+            partner.getPacketSender().sendString("Not enough inventory spaces.", 3431);
+            return failure(partner.playerName + " needs " + remove + " more free inventory slots.");
+        }
+
+        if (!player.tradeConfirmed && partner.goodTrade && player.goodTrade) {
+            player.tradeConfirmed = true;
+            if (partner.tradeConfirmed) {
+                player.getTrading().confirmScreen();
+                partner.getTrading().confirmScreen();
+                return success("Accepted first trade screen and opened confirmation screen.");
+            }
+            return success("Accepted first trade screen; waiting for other player.");
+        }
+        return success("First trade screen was already accepted.");
+    }
+
+    private static JsonObject autoAcceptFinalTradeScreen(Player player, Player partner) {
+        if (!player.tradeConfirmed || !partner.tradeConfirmed) {
+            return null;
+        }
+        if (hasTradeAutoConfirmIntent(partner) && !partner.tradeConfirmed2) {
+            partner.tradeConfirmed2 = true;
+        }
+        JsonObject result = acceptSecondTradeScreen(player, partner);
+        result.addProperty("autoFinalIntent", true);
+        result.addProperty("partnerAutoFinalIntent", hasTradeAutoConfirmIntent(partner));
+        return result;
+    }
+
+    private static JsonObject acceptSecondTradeScreen(Player player, Player partner) {
+        if (!player.tradeConfirmed || !partner.tradeConfirmed) {
+            return failure("Both players must accept the first trade screen before final confirmation.");
+        }
+        if (!player.tradeConfirmed2) {
+            player.tradeConfirmed2 = true;
+        }
+        if (partner.tradeConfirmed2) {
+            player.acceptedTrade = true;
+            partner.acceptedTrade = true;
+            player.getTrading().giveItems();
+            partner.getTrading().giveItems();
+            player.getPacketSender().sendMessage("@red@Trade completed.");
+            partner.getPacketSender().sendMessage("@red@Trade completed.");
+            player.tradeStatus = 0;
+            partner.tradeStatus = 0;
+            clearTradeAutoConfirmIntent(player);
+            clearTradeAutoConfirmIntent(partner);
+            return success("Final trade confirmation accepted; trade completed.");
+        }
+        partner.getPacketSender().sendString("Other player has accepted.", 3535);
+        player.getPacketSender().sendString("Waiting for other player...", 3535);
+        return success("Accepted final trade confirmation; waiting for other player.");
+    }
+
+    private static JsonObject tradeStatus(Player player) {
+        JsonObject result = success("Observed trade status.");
+        addTradeSummary(result, player);
+        result.add("player", criticalPlayerState(player));
+        result.add("inventory", compactInventorySummary(inventory(player), 10));
+        return result;
+    }
+
+    private static void addTradeSummary(JsonObject result, Player player) {
+        JsonObject trade = tradeSummary(player);
+        result.add("trade", trade);
+        copyIfPresent(trade, result, "phase");
+        copyIfPresent(trade, result, "tradeOpen");
+        copyIfPresent(trade, result, "requested");
+        copyIfPresent(trade, result, "tradeConfirmed");
+        copyIfPresent(trade, result, "tradeConfirmed2");
+        copyIfPresent(trade, result, "partnerTradeConfirmed");
+        copyIfPresent(trade, result, "partnerTradeConfirmed2");
+        copyIfPresent(trade, result, "autoFinalIntent");
+        copyIfPresent(trade, result, "partnerAutoFinalIntent");
+        copyIfPresent(trade, result, "offeredAmount");
+        copyIfPresent(trade, result, "partnerOfferedAmount");
+        if (trade.has("partner") && trade.get("partner").isJsonObject()) {
+            result.add("partner", trade.get("partner").getAsJsonObject());
+        }
+    }
+
+    private static JsonObject tradeSummary(Player player) {
+        JsonObject trade = new JsonObject();
+        trade.addProperty("phase", tradePhase(player));
+        trade.addProperty("tradeOpen", player != null && player.inTrade);
+        trade.addProperty("requested", player != null && player.tradeRequested);
+        if (player == null) {
+            return trade;
+        }
+        Player partner = tradePartner(player);
+        if (partner != null) {
+            trade.add("partner", tradePartnerJson(player, partner));
+        } else if (player.tradeWith > 0) {
+            trade.addProperty("partnerPlayerId", player.tradeWith);
+        }
+        trade.addProperty("tradeWith", player.tradeWith);
+        trade.addProperty("tradeStatus", player.tradeStatus);
+        trade.addProperty("tradeConfirmed", player.tradeConfirmed);
+        trade.addProperty("tradeConfirmed2", player.tradeConfirmed2);
+        trade.addProperty("acceptedTrade", player.acceptedTrade);
+        trade.addProperty("autoFinalIntent", hasTradeAutoConfirmIntent(player));
+        trade.add("offeredItems", offeredItemsJson(player));
+        trade.addProperty("offeredAmount", offeredItemAmount(player));
+        if (partner != null) {
+            trade.addProperty("partnerTradeConfirmed", partner.tradeConfirmed);
+            trade.addProperty("partnerTradeConfirmed2", partner.tradeConfirmed2);
+            trade.addProperty("partnerAcceptedTrade", partner.acceptedTrade);
+            trade.addProperty("partnerAutoFinalIntent", hasTradeAutoConfirmIntent(partner));
+            trade.add("partnerOfferedItems", offeredItemsJson(partner));
+            trade.addProperty("partnerOfferedAmount", offeredItemAmount(partner));
+        }
+        return trade;
+    }
+
+    private static String tradePhase(Player player) {
+        if (player == null) {
+            return "offline";
+        }
+        if (!player.inTrade) {
+            return player.tradeRequested ? "requested" : "none";
+        }
+        if (player.tradeConfirmed2) {
+            return "second_confirmed";
+        }
+        Player partner = tradePartner(player);
+        if (player.tradeConfirmed && partner != null && partner.tradeConfirmed) {
+            return "confirm_screen";
+        }
+        if (player.tradeConfirmed) {
+            return "first_accepted";
+        }
+        return "first_screen";
+    }
+
+    private static Player tradePartner(Player player) {
+        if (player == null || player.tradeWith < 0 || player.tradeWith >= PlayerHandler.players.length) {
+            return null;
+        }
+        Player partner = PlayerHandler.players[player.tradeWith];
+        if (partner == null || partner.disconnected) {
+            return null;
+        }
+        return partner;
+    }
+
+    private static void setTradeAutoConfirmIntent(Player player) {
+        TRADE_AUTO_CONFIRM_INTENT.put(tradeAutoConfirmKey(player), Boolean.TRUE);
+    }
+
+    private static boolean hasTradeAutoConfirmIntent(Player player) {
+        return player != null && Boolean.TRUE.equals(TRADE_AUTO_CONFIRM_INTENT.get(tradeAutoConfirmKey(player)));
+    }
+
+    private static void clearTradeAutoConfirmIntent(Player player) {
+        if (player != null) {
+            TRADE_AUTO_CONFIRM_INTENT.remove(tradeAutoConfirmKey(player));
+        }
+    }
+
+    private static String tradeAutoConfirmKey(Player player) {
+        if (player == null) {
+            return "unknown:-1";
+        }
+        String name = player.playerName == null ? "unknown" : normalize(player.playerName);
+        return name + ":" + player.playerId;
+    }
+
+    private static Player findTradeTarget(Player player, JsonObject arguments) {
+        int playerId = getInt(arguments, "playerId", getInt(arguments, "targetPlayerId",
+                getInt(arguments, "id", -1)));
+        if (playerId >= 0 && playerId < PlayerHandler.players.length) {
+            Player target = PlayerHandler.players[playerId];
+            if (target != null && !target.disconnected) {
+                return target;
+            }
+        }
+        String name = normalize(getString(arguments, "name", getString(arguments, "player",
+                getString(arguments, "targetName", ""))));
+        if (name.isEmpty()) {
+            return null;
+        }
+        Player nearest = null;
+        int nearestDistance = Integer.MAX_VALUE;
+        for (Player other : PlayerHandler.players) {
+            if (other == null || other == player || other.disconnected || other.playerName == null) {
+                continue;
+            }
+            if (!normalize(other.playerName).equals(name)) {
+                continue;
+            }
+            int distance = AgentKnowledgeBase.distance(player.absX, player.absY, other.absX, other.absY);
+            if (nearest == null || distance < nearestDistance) {
+                nearest = other;
+                nearestDistance = distance;
+            }
+        }
+        return nearest;
+    }
+
+    private static JsonObject tradePartnerJson(Player player, Player target) {
+        JsonObject json = new JsonObject();
+        if (target == null) {
+            return json;
+        }
+        json.addProperty("name", target.playerName);
+        json.addProperty("playerId", target.playerId);
+        json.addProperty("x", target.absX);
+        json.addProperty("y", target.absY);
+        json.addProperty("height", target.heightLevel);
+        json.addProperty("combatLevel", target.combatLevel);
+        if (player != null) {
+            json.addProperty("distance", AgentKnowledgeBase.distance(player.absX, player.absY, target.absX, target.absY));
+        }
+        return json;
+    }
+
+    private static JsonArray offeredItemsJson(Player player) {
+        JsonArray array = new JsonArray();
+        if (player == null || player.getTrading() == null) {
+            return array;
+        }
+        for (GameItem item : player.getTrading().offeredItems) {
+            if (item == null || item.id <= 0 || item.amount <= 0) {
+                continue;
+            }
+            JsonObject json = new JsonObject();
+            json.addProperty("itemId", item.id);
+            json.addProperty("id", item.id);
+            json.addProperty("name", DeprecatedItems.getItemName(item.id));
+            json.addProperty("amount", item.amount);
+            array.add(json);
+        }
+        return array;
+    }
+
+    private static int countOfferedItem(Player player, int itemId) {
+        if (player == null || player.getTrading() == null) {
+            return 0;
+        }
+        int amount = 0;
+        for (GameItem item : player.getTrading().offeredItems) {
+            if (item != null && item.id == itemId) {
+                amount += item.amount;
+            }
+        }
+        return amount;
+    }
+
+    private static int offeredItemAmount(Player player) {
+        if (player == null || player.getTrading() == null) {
+            return 0;
+        }
+        int amount = 0;
+        for (GameItem item : player.getTrading().offeredItems) {
+            if (item != null && item.id > 0) {
+                amount += Math.max(0, item.amount);
+            }
+        }
+        return amount;
     }
 
     private static JsonObject clickInterfaceButton(Player player, JsonObject arguments) {
@@ -5778,6 +6450,10 @@ public class AgentToolService {
     private static boolean hasArray(JsonObject object, String name) {
         return object != null && object.has(name) && object.get(name).isJsonArray()
                 && object.get(name).getAsJsonArray().size() > 0;
+    }
+
+    private static boolean hasPrimitive(JsonObject object, String name) {
+        return object != null && object.has(name) && object.get(name).isJsonPrimitive();
     }
 
     private static boolean matchesAnyName(String candidate, List<String> names) {
