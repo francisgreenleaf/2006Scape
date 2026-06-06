@@ -3,6 +3,8 @@
 // Decompiler options: packimports(3) 
 
 import java.awt.*;
+import java.net.URL;
+import javax.swing.ImageIcon;
 
 final class RSFrame extends Frame {
 
@@ -10,6 +12,7 @@ final class RSFrame extends Frame {
 		rsApplet = applet;
 
 		setTitle(ClientSettings.SERVER_NAME + " World: " + ClientSettings.SERVER_WORLD + ((ClientSettings.SERVER_IP.equals("localhost") || ClientSettings.SERVER_IP.equals("127.0.0.1")) ?  " [Local]" : ""));
+		setIconImage(loadClientIcon());
 		this.setResizable(false);
 		this.setBackground(Color.BLACK);
 
@@ -21,6 +24,14 @@ final class RSFrame extends Frame {
 		this.setVisible(true);
 		this.toFront();
 		this.transferFocus();
+	}
+
+	private Image loadClientIcon() {
+		URL iconUrl = RSFrame.class.getResource("/client-icon.png");
+		if (iconUrl == null) {
+			return null;
+		}
+		return new ImageIcon(iconUrl).getImage();
 	}
 
 	private final RSApplet rsApplet;
