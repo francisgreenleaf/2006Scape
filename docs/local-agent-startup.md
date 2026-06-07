@@ -20,6 +20,15 @@ This builds if needed, starts the server, waits for port `43594`, and launches t
 CLIENT_SINGLE_INSTANCE=0 ./scripts/start-client.sh -u "MrGem" -scale 2 -no-nav
 ```
 
+To tile several visible clients across the usable screen, pass a 1-based
+`slot/total` tile value. Two clients use left/right halves, and four clients use
+quadrants:
+
+```sh
+./scripts/start-client.sh -u "MrFlame" -tile 1/2
+CLIENT_SINGLE_INSTANCE=0 ./scripts/start-client.sh -u "MrGem" -tile 2/2
+```
+
 ## Agent-Owned Relaunch
 
 Use this when Codex needs to operate the route harness from the repo with `agent-navigation/tools/observe_XXS.sh`, `agent-navigation/tools/observe_XS.sh`, `agent-navigation/tools/rs-tool_XXS.sh`, or `agent-navigation/tools/rs-tool_XS.sh`. This is the path that has been the most reliable.
@@ -49,6 +58,16 @@ For a second profile against an existing server, prefer claiming only that profi
 
 ```sh
 python3 agent-navigation/tools/runtime_doctor.py claim --profile MrGem --verify
+```
+
+When launching multiple agent-owned clients, pass the same tile values through
+the helper:
+
+```sh
+python3 agent-navigation/tools/runtime_doctor.py claim --profile MrFlame --tile 1/4
+python3 agent-navigation/tools/runtime_doctor.py claim --profile MrGem --tile 2/4
+python3 agent-navigation/tools/runtime_doctor.py claim --profile MrFish --tile 3/4
+python3 agent-navigation/tools/runtime_doctor.py claim --profile MrWood --tile 4/4
 ```
 
 For route learning sessions that still need the fallback recorder because passive server telemetry is unavailable or a deliberate debug recording needs extra NPC snapshots, add:

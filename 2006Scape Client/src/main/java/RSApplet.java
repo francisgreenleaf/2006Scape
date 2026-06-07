@@ -23,7 +23,7 @@ public class RSApplet extends Applet implements Runnable, MouseListener, MouseWh
 		myWidth = j;
 		myHeight = i;
 		this.setPreferredSize(ClientWindow.gameSizeForScale(clientScale()));
-		this.setMinimumSize(ClientWindow.gameSizeForScale(1));
+		this.setMinimumSize(ClientWindow.minimumGameSize());
 
 		gameFrame = new RSFrame(this);
 		graphics = getGameComponent().getGraphics();

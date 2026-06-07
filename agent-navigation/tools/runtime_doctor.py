@@ -370,6 +370,13 @@ def launch_client(args, nonce):
         str(args.scale),
         "-no-nav",
     ]
+    if args.tile:
+        cmd.extend(["-tile", args.tile])
+    else:
+        if args.tile_slot is not None:
+            cmd.extend(["-tile-slot", str(args.tile_slot)])
+        if args.tile_total is not None:
+            cmd.extend(["-tile-total", str(args.tile_total)])
     pid = launch_detached(cmd, client_log, client_pid_file, env=env)
     print("client_starting profile={} pid={} log={}".format(args.user, pid, client_log))
     return pid
@@ -562,6 +569,9 @@ def add_claim_args(parser):
     add_profile_args(parser)
     parser.add_argument("--password-file")
     parser.add_argument("--scale", type=int, default=2)
+    parser.add_argument("--tile", help="Client window tile as 1-based SLOT/TOTAL, such as 1/2 or 4/4.")
+    parser.add_argument("--tile-slot", type=int, help="1-based client window tile slot.")
+    parser.add_argument("--tile-total", type=int, help="Total client windows in the tile grid.")
     parser.add_argument("--claim-timeout", type=float, default=90.0)
     parser.add_argument("--server-timeout", type=float, default=45.0)
     parser.add_argument("--replace-client", dest="replace_client", action="store_true")
