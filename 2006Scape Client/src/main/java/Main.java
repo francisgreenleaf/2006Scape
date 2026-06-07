@@ -22,6 +22,7 @@ public final class Main {
 	public static void main(String[] args) {
 		try {
 			configureDesktopProperties();
+			configureWindowTileFromEnvironment();
 			// Process client arguments to connect to
 			for (int i = 0; i < args.length; i++) {
 				switch(args[i]) {
@@ -103,9 +104,24 @@ public final class Main {
 						case "-window-scale":
 							ClientSettings.CLIENT_SCALE = parseClientScale(args[++i]);
 							break;
+						case "-tile":
+						case "-client-tile":
+						case "-window-tile":
+							parseWindowTile(args[++i]);
+							break;
+						case "-tile-slot":
+						case "-client-tile-slot":
+						case "-window-tile-slot":
+							parseWindowTileSlot(args[++i]);
+							break;
+						case "-tile-total":
+						case "-client-tile-total":
+						case "-window-tile-total":
+							parseWindowTileTotal(args[++i]);
+							break;
+						}
 					}
 				}
-			}
 
 			Game game = new Game();
 
@@ -178,6 +194,20 @@ public final class Main {
 		System.setProperty("com.apple.mrj.application.apple.menu.about.name", ClientSettings.SERVER_NAME);
 	}
 
+	private static void configureWindowTileFromEnvironment() {
+		parseWindowTile(optionalEnv("CLIENT_TILE"));
+		parseWindowTileSlot(optionalEnv("CLIENT_TILE_SLOT"));
+		parseWindowTileTotal(optionalEnv("CLIENT_TILE_TOTAL"));
+	}
+
+	private static String optionalEnv(String variableName) {
+		String value = System.getenv(variableName);
+		if (value == null || value.trim().length() == 0) {
+			return null;
+		}
+		return value.trim();
+	}
+
 	private static Image loadClientIcon() {
 		URL iconUrl = Main.class.getResource("/client-icon.png");
 		if (iconUrl == null) {
@@ -220,6 +250,55 @@ public final class Main {
 		} catch (NumberFormatException e) {
 			System.out.println("[Client] invalid scale value, using 1: " + value);
 			return 1;
+		}
+	}
+
+	private static void parseWindowTile(String value) {
+		if (value == null || value.trim().length() == 0) {
+			return;
+		}
+		String[] parts = value.trim().split("[/:,]");
+		if (parts.length != 2) {
+			System.out.println("[Client] invalid tile value, expected slot/total: " + value);
+			return;
+		}
+		parseWindowTileSlot(parts[0]);
+		parseWindowTileTotal(parts[1]);
+	}
+
+	private static void parseWindowTileSlot(String value) {
+		if (value == null || value.trim().length() == 0) {
+			return;
+		}
+		try {
+			int slot = Integer.parseInt(value.trim());
+			if (slot < 1) {
+				System.out.println("[Client] invalid tile slot, using no slot: " + value);
+				ClientSettings.WINDOW_TILE_SLOT = -1;
+				return;
+			}
+			ClientSettings.WINDOW_TILE_SLOT = slot - 1;
+		} catch (NumberFormatException e) {
+			System.out.println("[Client] invalid tile slot, using no slot: " + value);
+			ClientSettings.WINDOW_TILE_SLOT = -1;
+		}
+	}
+
+	private static void parseWindowTileTotal(String value) {
+		if (value == null || value.trim().length() == 0) {
+			return;
+		}
+		try {
+			int total = Integer.parseInt(value.trim());
+			if (total < 1) {
+				System.out.println("[Client] invalid tile total, disabling tiling: " + value);
+				ClientSettings.WINDOW_TILE_TOTAL = 0;
+				return;
+			}
+			ClientSettings.WINDOW_TILE_TOTAL = total;
+		} catch (NumberFormatException e) {
+			System.out.println("[Client] invalid tile total, disabling tiling: " + value);
+			ClientSettings.WINDOW_TILE_TOTAL = 0;
 		}
 	}
 
