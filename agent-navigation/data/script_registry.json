@@ -381,6 +381,59 @@
       ]
     },
     {
+      "id": "magic_training_runner",
+      "name": "Magic Training Runner",
+      "path": "agent-navigation/tools/magic_training_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Profile-scoped Magic combat runner that selects standard combat spells, equips an air staff, manages food and runes, trains on safe nearby NPCs, and records compact Magic XP run logs.",
+      "aliases": [
+        "magic training",
+        "train magic",
+        "magic runner",
+        "cast spells",
+        "combat magic"
+      ],
+      "tags": [
+        "gameplay",
+        "magic",
+        "combat",
+        "training",
+        "runner",
+        "primitive"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/magic_training_runner.py --profile PROFILE --npc goblin --max-rounds 20 --setup-bank",
+        "python3 agent-navigation/tools/script_registry.py run magic training -- --profile PROFILE --max-rounds 20"
+      ]
+    },
+    {
+      "id": "magic_campaign_runner",
+      "name": "Magic Campaign Runner",
+      "path": "agent-navigation/tools/magic_campaign_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Long-running profile-scoped Magic campaign runner that restocks runes, prepares bank loadouts, routes to training targets, runs Magic training batches, and writes campaign status/log artifacts.",
+      "aliases": [
+        "magic campaign",
+        "magic campaign runner",
+        "long magic training",
+        "rune restock magic"
+      ],
+      "tags": [
+        "gameplay",
+        "magic",
+        "combat",
+        "training",
+        "campaign",
+        "runner",
+        "bank",
+        "shop"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/magic_campaign_runner.py --profile PROFILE --max-batches 1",
+        "python3 agent-navigation/tools/script_registry.py run magic campaign -- --profile PROFILE --status"
+      ]
+    },
+    {
       "id": "woodcutting_runner",
       "name": "Primitive Woodcutting Runner",
       "path": "agent-navigation/tools/woodcutting_runner.py",

@@ -31,6 +31,7 @@ import com.rs2.game.content.consumables.Food;
 import com.rs2.game.content.consumables.Kebabs;
 import com.rs2.game.content.custom.CustomContent;
 import com.rs2.game.content.custom.shops.CustomShops;
+import com.rs2.game.content.combat.magic.MagicData;
 import com.rs2.game.content.skills.SkillHandler;
 import com.rs2.game.content.skills.cooking.Cooking;
 import com.rs2.game.content.skills.cooking.CookingTutorialIsland;
@@ -290,6 +291,9 @@ public class AgentToolService {
         }
         if ("attack_npc".equals(tool)) {
             return attackNpc(player, arguments);
+        }
+        if ("cast_spell_on_npc".equals(tool)) {
+            return castSpellOnNpc(player, arguments);
         }
         if ("train_combat".equals(tool)) {
             return trainCombat(player, arguments);
@@ -736,6 +740,9 @@ public class AgentToolService {
         copyIfPresent(result, compact, "amount");
         copyIfPresent(result, compact, "itemId");
         copyIfPresent(result, compact, "itemName");
+        copyIfPresent(result, compact, "spell");
+        copyIfPresent(result, compact, "spellId");
+        copyIfPresent(result, compact, "spellIndex");
         copyIfPresent(result, compact, "itemCountAfter");
         copyIfPresent(result, compact, "offered");
         copyIfPresent(result, compact, "offeredAmount");
@@ -823,6 +830,9 @@ public class AgentToolService {
         copyIfPresent(result, compact, "amount");
         copyIfPresent(result, compact, "itemId");
         copyIfPresent(result, compact, "itemName");
+        copyIfPresent(result, compact, "spell");
+        copyIfPresent(result, compact, "spellId");
+        copyIfPresent(result, compact, "spellIndex");
         copyIfPresent(result, compact, "expectedItemId");
         copyIfPresent(result, compact, "expectedItemName");
         copyIfPresent(result, compact, "itemDelta");
@@ -1808,6 +1818,48 @@ public class AgentToolService {
         if (buttonId < 0) {
             return failure("buttonId is required.");
         }
+        if (buttonId == 1093 || buttonId == 1094 || buttonId == 1097) {
+            if (player.autocastId > 0) {
+                player.getPlayerAssistant().resetAutocast();
+                JsonObject result = success("Reset autocast spell.");
+                result.addProperty("buttonId", buttonId);
+                result.addProperty("autocasting", player.autocasting);
+                result.addProperty("autocastId", player.autocastId);
+                addPlayerState(result, player);
+                return result;
+            }
+            if (player.playerMagicBook == 1) {
+                if (player.playerEquipment[player.playerWeapon] != 4675) {
+                    return failure("You can't autocast ancients without an ancient staff.");
+                }
+                player.getPacketSender().setSidebarInterface(0, 1689);
+            } else if (player.playerMagicBook == 0) {
+                if (player.playerEquipment[player.playerWeapon] == 4170) {
+                    player.getPacketSender().setSidebarInterface(0, 12050);
+                } else {
+                    player.getPacketSender().setSidebarInterface(0, 1829);
+                }
+            }
+            player.post(new ButtonActionEvent(buttonId));
+            JsonObject result = success("Opened autocast spell chooser.");
+            result.addProperty("buttonId", buttonId);
+            addPlayerState(result, player);
+            return result;
+        }
+        if (player.isAutoButton(buttonId)) {
+            player.assignAutocast(buttonId);
+            player.post(new ButtonActionEvent(buttonId));
+            JsonObject result = success("Selected autocast spell.");
+            result.addProperty("buttonId", buttonId);
+            result.addProperty("autocasting", player.autocasting);
+            result.addProperty("autocastId", player.autocastId);
+            if (player.autocastId >= 0 && player.autocastId < MagicData.MAGIC_SPELLS.length) {
+                result.addProperty("spellId", MagicData.MAGIC_SPELLS[player.autocastId][0]);
+                result.addProperty("spell", magicSpellLabel(player.autocastId));
+            }
+            addPlayerState(result, player);
+            return result;
+        }
         if (buttonId == 21010 || buttonId == 21011) {
             if (!player.isBanking) {
                 return failure("The player must be banking to change bank withdraw mode.");
@@ -2599,21 +2651,169 @@ public class AgentToolService {
         SkillHandler.resetSkills(player);
         player.getPlayerAssistant().resetFollow();
         player.getCombatAssistant().resetPlayerAttack();
+        boolean usingAutocast = player.autocastId > 0;
+        if (usingAutocast) {
+            player.autocasting = true;
+        }
         player.npcIndex = npcIndex;
         player.followNpcId = npcIndex;
         player.followPlayerId = 0;
         player.faceUpdate(npcIndex);
         boolean inMeleeRange = player.goodDistance(player.getX(), player.getY(), npc.getX(), npc.getY(), 1);
-        if (!inMeleeRange) {
+        boolean inAttackRange = usingAutocast
+                ? player.goodDistance(player.getX(), player.getY(), npc.getX(), npc.getY(), 6)
+                : inMeleeRange;
+        if (!inAttackRange) {
             player.getPlayerAssistant().playerWalk(npc.getX(), npc.getY());
         } else {
+            if (usingAutocast) {
+                player.stopMovement();
+            }
             player.getCombatAssistant().attackNpc(npcIndex);
         }
-        JsonObject result = success((inMeleeRange ? "Attacking " : "Walking into melee range to attack ") + npc.name() + ".");
-        result.addProperty("approaching", !inMeleeRange);
+        String action = usingAutocast ? "autocast attack " : "attack ";
+        JsonObject result = success((inAttackRange ? "Starting " : "Walking into range to start ")
+                + action + npc.name() + ".");
+        result.addProperty("approaching", !inAttackRange);
+        result.addProperty("autocasting", player.autocasting);
+        result.addProperty("autocastId", player.autocastId);
         result.add("npc", npcJson(npc, AgentKnowledgeBase.distance(player.absX, player.absY, npc.absX, npc.absY)));
         addPlayerState(result, player);
         return result;
+    }
+
+    private static JsonObject castSpellOnNpc(Player player, JsonObject arguments) {
+        int spellIndex = resolveMagicSpellIndex(arguments);
+        if (spellIndex < 0) {
+            return failure("Unknown spell. Pass spellId/magicId from MagicData or spellIndex.");
+        }
+        if (player.playerLevel[Constants.MAGIC] < MagicData.MAGIC_SPELLS[spellIndex][1]) {
+            return failure("Magic level " + MagicData.MAGIC_SPELLS[spellIndex][1] + " is required for this spell.");
+        }
+
+        Npc npc = findNpcForInteraction(player, arguments);
+        if (npc == null || !isNpcCandidate(player, npc) || npc.MaxHP <= 0) {
+            return failure("No matching attackable NPC found nearby.");
+        }
+        if (!isReachableNpc(player, npc)) {
+            player.getCombatAssistant().resetPlayerAttack();
+            return failure("That NPC is not reachable with normal movement.");
+        }
+
+        int distance = AgentKnowledgeBase.distance(player.absX, player.absY, npc.absX, npc.absY);
+        boolean inCastRange = player.goodDistance(player.getX(), player.getY(), npc.getX(), npc.getY(), 6);
+        player.endCurrentTask();
+        SkillHandler.resetSkills(player);
+        player.getPlayerAssistant().resetFollow();
+        player.getCombatAssistant().resetPlayerAttack();
+        player.spellId = spellIndex;
+        player.usingMagic = true;
+        player.autocasting = false;
+        player.npcIndex = npc.npcId;
+        player.followNpcId = npc.npcId;
+        player.followPlayerId = 0;
+        player.faceUpdate(npc.npcId);
+        if (!inCastRange) {
+            player.getPlayerAssistant().playerWalk(npc.getX(), npc.getY());
+        } else {
+            player.stopMovement();
+            if (player.attackTimer <= 0) {
+                player.getCombatAssistant().attackNpc(npc.npcId);
+                player.attackTimer++;
+            }
+        }
+
+        JsonObject result = success((inCastRange ? "Casting " : "Walking into range to cast ")
+                + magicSpellLabel(spellIndex) + " on " + npc.name() + ".");
+        result.addProperty("approaching", !inCastRange);
+        result.addProperty("spellIndex", spellIndex);
+        result.addProperty("spellId", MagicData.MAGIC_SPELLS[spellIndex][0]);
+        result.addProperty("spell", magicSpellLabel(spellIndex));
+        result.add("npc", npcJson(npc, distance));
+        addPlayerState(result, player);
+        return result;
+    }
+
+    private static int resolveMagicSpellIndex(JsonObject arguments) {
+        int explicitIndex = getInt(arguments, "spellIndex", -1);
+        if (explicitIndex >= 0 && explicitIndex < MagicData.MAGIC_SPELLS.length) {
+            return explicitIndex;
+        }
+        int spellId = getInt(arguments, "spellId", getInt(arguments, "magicId", -1));
+        if (spellId >= 0) {
+            for (int i = 0; i < MagicData.MAGIC_SPELLS.length; i++) {
+                if (MagicData.MAGIC_SPELLS[i][0] == spellId) {
+                    return i;
+                }
+            }
+        }
+        String spellName = normalize(getString(arguments, "spell", getString(arguments, "name", "")));
+        if (spellName.isEmpty()) {
+            return -1;
+        }
+        for (int i = 0; i < MagicData.MAGIC_SPELLS.length; i++) {
+            if (normalize(magicSpellLabel(i)).equals(spellName)) {
+                return i;
+            }
+        }
+        if ("wind strike".equals(spellName)) {
+            return 0;
+        }
+        if ("wind bolt".equals(spellName)) {
+            return 4;
+        }
+        if ("wind blast".equals(spellName)) {
+            return 8;
+        }
+        if ("wind wave".equals(spellName)) {
+            return 12;
+        }
+        return -1;
+    }
+
+    private static String magicSpellLabel(int spellIndex) {
+        switch (spellIndex) {
+        case 0:
+            return "Wind Strike";
+        case 1:
+            return "Water Strike";
+        case 2:
+            return "Earth Strike";
+        case 3:
+            return "Fire Strike";
+        case 4:
+            return "Wind Bolt";
+        case 5:
+            return "Water Bolt";
+        case 6:
+            return "Earth Bolt";
+        case 7:
+            return "Fire Bolt";
+        case 8:
+            return "Wind Blast";
+        case 9:
+            return "Water Blast";
+        case 10:
+            return "Earth Blast";
+        case 11:
+            return "Fire Blast";
+        case 12:
+            return "Wind Wave";
+        case 13:
+            return "Water Wave";
+        case 14:
+            return "Earth Wave";
+        case 15:
+            return "Fire Wave";
+        case 16:
+            return "Confuse";
+        case 17:
+            return "Weaken";
+        case 18:
+            return "Curse";
+        default:
+            return MagicData.getSpellName(spellIndex);
+        }
     }
 
     private static JsonObject trainCombat(Player player, JsonObject arguments) {
