@@ -5,6 +5,7 @@ import com.rs2.game.content.StaticNpcList;
 import com.rs2.game.content.custom.CustomContent;
 import com.rs2.game.content.custom.shops.CustomShops;
 import com.rs2.game.content.quests.QuestAssistant;
+import com.rs2.game.content.skills.agility.PyramidAgility;
 import com.rs2.game.content.skills.core.Fishing;
 import com.rs2.game.content.skills.crafting.Tanning;
 import com.rs2.game.content.traveling.Sailing;
@@ -49,6 +50,9 @@ public class NpcActions {
             return;
         }
         switch (npcType) {
+            case SIMON_TEMPLETON:
+                PyramidAgility.sellPyramidTops(player);
+                break;
             case THORMAC:
                 player.getDialogueHandler().sendDialogues(3574, npcType);
                 break;
@@ -973,6 +977,9 @@ public class NpcActions {
             }
         }
         switch (npcType) {
+            case SIMON_TEMPLETON:
+                PyramidAgility.sellPyramidTops(player);
+                break;
             case TOOL_LEPRECHAUN:
                 player.getFarmingTools().loadInterfaces();
                 break;

@@ -28,13 +28,14 @@ AGILITY_DIR = ROOT / "data" / "agility"
 RUNS_DIR = AGILITY_DIR / "runs"
 POLICY_DIR = AGILITY_DIR / "policies"
 RUN_PROFILE = ""
+EVENT_LOG_STATE = {}
 
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 import navdb  # noqa: E402
 import bridge_script as bridge  # noqa: E402
-from profile_utils import resolve_profile  # noqa: E402
+from profile_utils import resolve_profile, safe_profile  # noqa: E402
 
 
 def utc_now():
@@ -76,13 +77,62 @@ def compact_player(player):
         "tile": tile_from_player(player),
         "hitpoints": int(player.get("hitpoints", player.get("hp", 0)) or 0),
         "maxHitpoints": int(player.get("maxHitpoints", player.get("maxHp", 0)) or 0),
+        "freeInventorySlots": free_inventory_slots(player),
         "runEnergy": int(player.get("runEnergy", 0) or 0),
         "runEnabled": bool(player.get("runEnabled", False)),
         "isDead": bool(player.get("isDead", False)),
         "isInCombat": bool(player.get("isInCombat", False)),
+        "food": food_count(player),
         "agilityLevel": int(agility.get("level", 0) or 0),
         "agilityXp": int(float(agility.get("xp", 0) or 0)),
     }
+
+
+def inventory_entries(player):
+    inv = player.get("inventory") or player.get("inv") or []
+    if isinstance(inv, list):
+        return inv
+    if not isinstance(inv, dict):
+        return []
+    if isinstance(inv.get("counts"), list):
+        return inv["counts"]
+    if isinstance(inv.get("items"), list):
+        return inv["items"]
+    return []
+
+
+def inventory_count(player, item_id):
+    total = 0
+    for item in inventory_entries(player):
+        if not isinstance(item, dict) or "more" in item:
+            continue
+        found_id = int(item.get("id", item.get("itemId", -1)) or -1)
+        if found_id == int(item_id):
+            total += int(item.get("amount", item.get("a", 0)) or 0)
+    return total
+
+
+def free_inventory_slots(player):
+    free = player.get("freeInventorySlots", player.get("freeSlots"))
+    if free is not None:
+        return int(free or 0)
+    inv = player.get("inventory") or player.get("inv") or {}
+    if isinstance(inv, dict):
+        free = inv.get("freeInventorySlots", inv.get("freeSlots"))
+        if free is not None:
+            return int(free or 0)
+    return -1
+
+
+def food_count(player):
+    inv = player.get("inventory") or player.get("inv") or {}
+    combat = player.get("combat") or {}
+    food = player.get("food")
+    if food is None and isinstance(inv, dict):
+        food = inv.get("food")
+    if food is None and isinstance(combat, dict):
+        food = combat.get("inventoryFood", combat.get("invFood"))
+    return int(food or 0)
 
 
 def call_tool(tool, arguments=None):
@@ -107,7 +157,19 @@ def call_tool(tool, arguments=None):
 
 
 def player_from(result):
-    return bridge.player_from(result)
+    player = bridge.player_from(result)
+    if not isinstance(player, dict):
+        return player
+    enriched = dict(player)
+    if "inventory" in result and "inventory" not in enriched:
+        enriched["inventory"] = result["inventory"]
+    if "inv" in result and "inv" not in enriched:
+        enriched["inv"] = result["inv"]
+    if "inventory" in result and "inv" not in enriched:
+        enriched["inv"] = result["inventory"]
+    if "combat" in result and "combat" not in enriched:
+        enriched["combat"] = result["combat"]
+    return enriched
 
 
 def observe():
@@ -135,8 +197,25 @@ def ensure_run(player, args, current_tick=0):
 
 
 def write_event(handle, event, data):
-    record = {"event": event, "timestamp": utc_now()}
+    now = time.monotonic()
+    state = EVENT_LOG_STATE.setdefault(id(handle), {
+        "startedAt": now,
+        "lastEventAt": None,
+        "seq": 0,
+    })
+    timestamp = utc_now()
+    record = {
+        "event": event,
+        "timestamp": timestamp,
+        "ts": timestamp,
+        "seq": state["seq"],
+        "runElapsedMs": int((now - state["startedAt"]) * 1000),
+    }
+    if state["lastEventAt"] is not None:
+        record["sincePrevEventMs"] = int((now - state["lastEventAt"]) * 1000)
     record.update(data)
+    state["lastEventAt"] = now
+    state["seq"] += 1
     handle.write(json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n")
     handle.flush()
 
@@ -149,6 +228,28 @@ def load_courses():
 
 def policy_path(course_id):
     return POLICY_DIR / "{}.policy.json".format(course_id)
+
+
+def runner_name(course_id):
+    if course_id == "agility_pyramid_course":
+        return "agility-pyramid"
+    return str(course_id).replace("_course", "").replace("_", "-")
+
+
+def stop_path(profile, course_id):
+    return ROOT / ".local" / "runners" / safe_profile(profile) / "{}.stop".format(runner_name(course_id))
+
+
+def stop_requested(args, course):
+    return stop_path(args.profile, course["id"]).exists()
+
+
+def clear_stop_request(args, course):
+    path = stop_path(args.profile, course["id"])
+    try:
+        path.unlink()
+    except FileNotFoundError:
+        pass
 
 
 def load_policy(course_id):
@@ -244,7 +345,9 @@ def choose_variant(policy, step, args):
     return scored[0][1], "adaptive-score"
 
 
-def nearby_object_override(player, variant):
+def nearby_object_override(player, variant, course=None):
+    if "objectId" not in variant:
+        return variant
     wanted_id = int(variant["objectId"])
     wanted_height = int((variant.get("objectTile") or {}).get("height", variant.get("approachTile", {}).get("height", 0)))
     objects = []
@@ -269,7 +372,8 @@ def nearby_object_override(player, variant):
         "height": int(obj.get("height", obj.get("h", wanted_height)) or 0),
     }
     walk_target = obj.get("interactionWalkTarget") or obj.get("nearestInteractionTile")
-    if isinstance(walk_target, dict):
+    lock_approach = bool(variant.get("lockApproach") or (course or {}).get("lockApproach"))
+    if isinstance(walk_target, dict) and not lock_approach:
         updated["approachTile"] = {
             "x": int(walk_target["x"]),
             "y": int(walk_target["y"]),
@@ -305,26 +409,66 @@ def wait_idle(max_ticks):
     })
 
 
+def heal_if_needed(player, args, current_tick=0):
+    hp = int(player.get("hitpoints", player.get("hp", 0)) or 0)
+    max_hp = int(player.get("maxHitpoints", player.get("maxHp", 0)) or 0)
+    food = food_count(player)
+    if hp <= 0:
+        return player, current_tick, "dead"
+    if max_hp > 0 and hp < max_hp and hp <= int(args.eat_at) and food > 0:
+        result = call_tool("eat_best_food_XXS", {
+            "emergency": hp <= int(args.retreat_at),
+        })
+        return player_from(result), response_tick(result, current_tick), None
+    if hp <= int(args.retreat_at) and food <= 0:
+        return player, current_tick, "low_hp_no_food"
+    return player, current_tick, None
+
+
 def wait_for_post_state(step, max_ticks, poll_ticks):
     deadline = time.monotonic() + max(1, int(max_ticks)) * 0.75 + 1.0
     last_result = None
     last_player = None
+    poll_count = 0
     while time.monotonic() <= deadline:
+        poll_count += 1
         last_result = wait_idle(min(max(1, int(poll_ticks)), max(1, int(max_ticks))))
         last_player = player_from(last_result)
         if in_post_state(step, tile_from_player(last_player)):
-            return last_result, last_player
+            return last_result, last_player, poll_count
         if last_player.get("isDead") or last_player.get("isInCombat"):
-            return last_result, last_player
+            return last_result, last_player, poll_count
         time.sleep(0.25)
     if last_player is None:
         last_player = observe()
-    return last_result, last_player
+    return last_result, last_player, poll_count
 
 
 def in_post_state(step, tile):
     radius = int(step.get("postRadius", 0))
     return any(tile_distance(tile, post) <= radius for post in step.get("postTiles", []))
+
+
+def on_course(course, player):
+    tile = tile_from_player(player)
+    if tile_distance(tile, course["startTile"]) <= int(course.get("startRadius", 4)):
+        return True
+    bounds = course.get("courseBounds")
+    if isinstance(bounds, dict):
+        h = int(tile.get("height", 0))
+        heights = bounds.get("heights")
+        height_ok = heights is None or h in [int(item) for item in heights]
+        if (height_ok
+                and int(bounds.get("minX", -10_000)) <= int(tile["x"]) <= int(bounds.get("maxX", 10_000))
+                and int(bounds.get("minY", -10_000)) <= int(tile["y"]) <= int(bounds.get("maxY", 10_000))):
+            return True
+    for step in course.get("steps", []):
+        if in_post_state(step, tile):
+            return True
+        for variant in step.get("variants", []):
+            if tile_distance(tile, variant.get("approachTile", {})) <= 3:
+                return True
+    return False
 
 
 def step_index_from_state(course, player):
@@ -408,6 +552,18 @@ def recover_to_course(course, args, handle, run_id, lap, reason):
     return success
 
 
+def step_skip_reason(step, player):
+    missing_item_id = step.get("skipIfMissingItemId")
+    if missing_item_id is not None and inventory_count(player, int(missing_item_id)) <= 0:
+        return "missing_item_{}".format(int(missing_item_id))
+    free_slots_above = step.get("skipIfFreeInventorySlotsAbove")
+    if free_slots_above is not None:
+        free_slots = free_inventory_slots(player)
+        if free_slots >= 0 and free_slots > int(free_slots_above):
+            return "free_inventory_slots_above_{}".format(int(free_slots_above))
+    return None
+
+
 def run_step(course, step, policy, args, handle, run_id, lap, step_number, current_player=None, current_tick=0):
     if current_player is None:
         player, start_tick = observe_with_tick()
@@ -415,63 +571,221 @@ def run_step(course, step, policy, args, handle, run_id, lap, step_number, curre
         player = current_player
         start_tick = current_tick
     player, start_tick = ensure_run(player, args, start_tick)
+    player, start_tick, heal_reason = heal_if_needed(player, args, start_tick)
     variant, decision = choose_variant(policy, step, args)
-    variant = nearby_object_override(player, variant)
+    variant = nearby_object_override(player, variant, course)
+    action = variant.get("action", step.get("action", "interact_object"))
     approach = variant["approachTile"]
     start_player = compact_player(player)
     start_tile = start_player["tile"]
     start_time = time.monotonic()
     reason = None
     last_tool_result = None
+    walk_started = None
+    walk_duration = None
+    interact_started = None
+    interact_duration = None
+    post_poll_count = 0
+    object_transition_batched = False
 
-    if player.get("isDead") or player.get("isInCombat"):
+    skip_reason = step_skip_reason(step, player)
+    if skip_reason is not None:
+        item_id = int(step["skipIfMissingItemId"]) if "skipIfMissingItemId" in step else None
+        result = {
+            "runId": run_id,
+            "courseId": course["id"],
+            "lap": lap,
+            "step": step_number,
+            "stepId": step["id"],
+            "stepName": step["name"],
+            "variantId": variant.get("id", "main"),
+            "variantDecision": decision,
+            "action": action,
+            "targetId": int(variant.get("objectId", variant.get("npcId", step.get("npcId", -1)))),
+            "objectId": int(variant["objectId"]) if "objectId" in variant else None,
+            "npcId": int(variant["npcId"]) if "npcId" in variant else None,
+            "objectTile": variant.get("objectTile"),
+            "approachTile": approach,
+            "startState": start_player,
+            "endState": start_player,
+            "startTile": start_tile,
+            "endTile": start_tile,
+            "success": True,
+            "reason": skip_reason,
+            "skipped": True,
+            "ticks": 0,
+            "durationSeconds": round(time.monotonic() - start_time, 3),
+            "walkDurationSeconds": None,
+            "interactDurationSeconds": None,
+            "objectTransitionStep": False,
+            "postPollCount": 0,
+            "postPollTicks": int(args.post_poll_ticks),
+            "runEnergySpent": 0,
+            "agilityXpGained": 0,
+            "freeInventorySlots": start_player.get("freeInventorySlots"),
+            "skipItemId": item_id,
+            "skipItemCount": inventory_count(player, item_id) if item_id is not None else None,
+            "isAgilityCourse": True,
+        }
+        write_event(handle, "step_skip", result)
+        write_event(handle, "step_end", result)
+        return True, result, player, start_tick
+
+    if heal_reason is not None:
+        reason = heal_reason
+    elif player.get("isDead") or player.get("isInCombat"):
         reason = "dead_or_combat"
     elif int(start_tile.get("height", 0)) != int(approach.get("height", 0)):
         reason = "wrong_height"
     elif tile_distance(start_tile, approach) > args.approach_radius:
+        walk_started = time.monotonic()
+        write_event(handle, "step_walk_start", {
+            "runId": run_id,
+            "courseId": course["id"],
+            "lap": lap,
+            "step": step_number,
+            "stepId": step["id"],
+            "from": start_tile,
+            "to": approach,
+            "currentTick": start_tick,
+            "isAgilityCourse": True,
+        })
         walk_result = walk_to(approach, args, player, start_tick)
+        walk_duration = time.monotonic() - walk_started
         last_tool_result = walk_result
         player = player_from(walk_result)
+        write_event(handle, "step_walk_end", {
+            "runId": run_id,
+            "courseId": course["id"],
+            "lap": lap,
+            "step": step_number,
+            "stepId": step["id"],
+            "success": bool(walk_result.get("success")),
+            "batchStatus": walk_result.get("batchStatus"),
+            "serverTick": response_tick(walk_result, start_tick),
+            "durationSeconds": round(walk_duration, 3),
+            "player": compact_player(player),
+            "isAgilityCourse": True,
+        })
         if player.get("isDead") or player.get("isInCombat"):
             reason = "walk_interrupted"
         elif tile_distance(tile_from_player(player), approach) > args.approach_radius:
             reason = "approach_not_reached"
         else:
-            variant = nearby_object_override(player, variant)
+            variant = nearby_object_override(player, variant, course)
 
     interact_result = None
     if reason is None:
-        obj_tile = variant["objectTile"]
-        interact_result = call_tool("interact_object_XS", {
-            "objectId": int(variant["objectId"]),
-            "x": int(obj_tile["x"]),
-            "y": int(obj_tile["y"]),
-            "height": int(obj_tile.get("height", 0)),
-            "option": "first",
+        obj_tile = variant.get("objectTile")
+        action_tick = response_tick(last_tool_result or {}, start_tick)
+        interact_started = time.monotonic()
+        target_id = int(variant.get("objectId", variant.get("npcId", step.get("npcId", -1))))
+        write_event(handle, "action_start", {
+            "runId": run_id,
+            "courseId": course["id"],
+            "lap": lap,
+            "step": step_number,
+            "stepId": step["id"],
+            "action": action,
+            "targetId": target_id,
+            "objectId": int(variant["objectId"]) if "objectId" in variant else None,
+            "npcId": int(variant["npcId"]) if "npcId" in variant else None,
+            "objectTile": obj_tile,
+            "approachTile": approach,
+            "startTile": tile_from_player(player),
+            "serverTick": action_tick,
+            "isAgilityCourse": True,
         })
+        if action == "interact_npc":
+            interact_result = call_tool("interact_npc", {
+                "npcId": int(variant.get("npcId", step.get("npcId"))),
+                "option": variant.get("option", step.get("option", "first")),
+                "requireReachable": True,
+                "maxDistance": int(variant.get("maxDistance", step.get("maxDistance", 5))),
+            })
+        else:
+            object_args = {
+                "objectId": int(variant["objectId"]),
+                "x": int(obj_tile["x"]),
+                "y": int(obj_tile["y"]),
+                "height": int(obj_tile.get("height", 0)),
+                "option": variant.get("option", "first"),
+            }
+            if args.object_transition_step:
+                object_transition_batched = True
+                object_args["maxTicks"] = int(step.get("maxTicks", args.step_max_ticks))
+                interact_result = call_tool("object_transition_step_XS", object_args)
+            else:
+                interact_result = call_tool("interact_object_XS", object_args)
+        interact_duration = time.monotonic() - interact_started
         last_tool_result = interact_result
-        if not interact_result.get("success"):
+        if action == "interact_object" and not interact_result.get("success"):
             refreshed = observe()
-            refreshed_variant = nearby_object_override(refreshed, variant)
+            refreshed_variant = nearby_object_override(refreshed, variant, course)
             if refreshed_variant.get("objectTile") != obj_tile:
                 variant = refreshed_variant
                 obj_tile = variant["objectTile"]
-                interact_result = call_tool("interact_object_XS", {
+                write_event(handle, "action_retry", {
+                    "runId": run_id,
+                    "courseId": course["id"],
+                    "lap": lap,
+                    "step": step_number,
+                    "stepId": step["id"],
+                    "action": action,
+                    "reason": "refreshed_object_tile",
+                    "objectId": int(variant["objectId"]),
+                    "objectTile": obj_tile,
+                    "isAgilityCourse": True,
+                })
+                interact_started = time.monotonic()
+                retry_args = {
                     "objectId": int(variant["objectId"]),
                     "x": int(obj_tile["x"]),
                     "y": int(obj_tile["y"]),
                     "height": int(obj_tile.get("height", 0)),
                     "option": "first",
-                })
+                }
+                if args.object_transition_step:
+                    retry_args["maxTicks"] = int(step.get("maxTicks", args.step_max_ticks))
+                    interact_result = call_tool("object_transition_step_XS", retry_args)
+                else:
+                    interact_result = call_tool("interact_object_XS", retry_args)
+                interact_duration = time.monotonic() - interact_started
                 last_tool_result = interact_result
             if not interact_result.get("success"):
                 reason = "interact_failed"
+        elif not interact_result.get("success"):
+            reason = "interact_failed"
+        interact_player = player_from(interact_result)
+        write_event(handle, "action_end", {
+            "runId": run_id,
+            "courseId": course["id"],
+            "lap": lap,
+            "step": step_number,
+            "stepId": step["id"],
+            "action": action,
+            "success": bool(interact_result.get("success")),
+            "message": interact_result.get("message"),
+            "phase": interact_result.get("phase"),
+            "batchStatus": interact_result.get("batchStatus"),
+            "batchTicks": interact_result.get("batchTicks"),
+            "objectTransitionStep": object_transition_batched,
+            "serverTick": response_tick(interact_result, action_tick),
+            "durationSeconds": round(interact_duration, 3) if interact_duration is not None else None,
+            "player": compact_player(interact_player),
+            "isAgilityCourse": True,
+        })
 
     idle_result = None
     if reason is None:
-        idle_result, player = wait_for_post_state(
-            step, step.get("maxTicks", args.step_max_ticks), args.post_poll_ticks)
-        last_tool_result = idle_result
+        if object_transition_batched:
+            idle_result = interact_result
+            player = player_from(interact_result)
+            post_poll_count = int(interact_result.get("batchTicks", 0) or 0)
+        else:
+            idle_result, player, post_poll_count = wait_for_post_state(
+                step, step.get("maxTicks", args.step_max_ticks), args.post_poll_ticks)
+            last_tool_result = idle_result
         if not player.get("isDead") and not player.get("isInCombat"):
             player, _ = ensure_run(player, args, response_tick(idle_result or {}, start_tick))
 
@@ -492,8 +806,11 @@ def run_step(course, step, policy, args, handle, run_id, lap, step_number, curre
         "stepName": step["name"],
         "variantId": variant.get("id", "main"),
         "variantDecision": decision,
-        "objectId": int(variant["objectId"]),
-        "objectTile": variant["objectTile"],
+        "action": action,
+        "targetId": int(variant.get("objectId", variant.get("npcId", step.get("npcId", -1)))),
+        "objectId": int(variant["objectId"]) if "objectId" in variant else None,
+        "npcId": int(variant["npcId"]) if "npcId" in variant else None,
+        "objectTile": variant.get("objectTile"),
         "approachTile": approach,
         "startState": start_player,
         "endState": end_player,
@@ -503,6 +820,11 @@ def run_step(course, step, policy, args, handle, run_id, lap, step_number, curre
         "reason": reason,
         "ticks": ticks,
         "durationSeconds": round(duration, 3),
+        "walkDurationSeconds": round(walk_duration, 3) if walk_duration is not None else None,
+        "interactDurationSeconds": round(interact_duration, 3) if interact_duration is not None else None,
+        "objectTransitionStep": object_transition_batched,
+        "postPollCount": post_poll_count,
+        "postPollTicks": int(args.post_poll_ticks),
         "runEnergySpent": max(0, start_player["runEnergy"] - end_player["runEnergy"]),
         "agilityXpGained": max(0, end_player["agilityXp"] - start_player["agilityXp"]),
         "isAgilityCourse": True,
@@ -526,7 +848,7 @@ def run_lap(course, policy, args, handle, run_id, lap):
     step_index = step_index_from_state(course, current_player)
     step_results = []
     failure_counts = {}
-    success = True
+    terminal_failure = False
     while step_index < len(course["steps"]):
         step = course["steps"][step_index]
         ok, result, current_player, current_tick = run_step(
@@ -536,25 +858,26 @@ def run_lap(course, policy, args, handle, run_id, lap):
         if ok:
             step_index += 1
             continue
-        success = False
         if result["endState"]["isDead"] or result["endState"]["isInCombat"]:
+            terminal_failure = True
             break
         step_failures = failure_counts.get(step["id"], 0) + 1
         failure_counts[step["id"]] = step_failures
         inferred = step_index_from_state(course, current_player)
         if inferred > step_index:
             step_index = inferred
-            success = True
             continue
         if step_failures <= args.max_step_retries:
             recover_to_course(course, args, handle, run_id, lap, result.get("reason") or "step_failed")
             current_player, current_tick = observe_with_tick()
+            current_player, current_tick, _ = heal_if_needed(current_player, args, current_tick)
             step_index = step_index_from_state(course, current_player)
             continue
+        terminal_failure = True
         break
     end_state = compact_player(current_player)
     duration = time.monotonic() - start_time
-    lap_success = success and step_index >= len(course["steps"]) and not end_state["isDead"] and not end_state["isInCombat"]
+    lap_success = (not terminal_failure) and step_index >= len(course["steps"]) and not end_state["isDead"] and not end_state["isInCombat"]
     lap_result = {
         "runId": run_id,
         "courseId": course["id"],
@@ -570,6 +893,10 @@ def run_lap(course, policy, args, handle, run_id, lap):
         "endState": end_state,
         "isAgilityCourse": True,
     }
+    expected_xp = course.get("expectedLapXp")
+    if expected_xp is not None:
+        lap_result["expectedLapXp"] = int(expected_xp)
+        lap_result["xpMatchesExpected"] = int(lap_result["agilityXpGained"]) == int(expected_xp)
     write_event(handle, "lap_end", lap_result)
     return lap_result
 
@@ -627,17 +954,33 @@ def run(args):
     summary_path = RUNS_DIR / "{}.summary.json".format(run_id)
 
     if args.dry_run:
+        current = observe()
         print(json.dumps({
             "course": course,
             "policyPath": str(policy_path(course["id"])),
             "runLogPath": str(log_path),
-            "currentState": compact_player(observe()),
+            "currentState": compact_player(current),
+            "readyToRun": on_course(course, current),
         }, sort_keys=True))
         return 0
+
+    if args.clear_stop:
+        clear_stop_request(args, course)
+
+    if course.get("requiresSetup"):
+        current = observe()
+        if not on_course(course, current):
+            setup_script = course.get("setupScript", "the course setup script")
+            raise SystemExit(
+                "{} requires setup before running. Current tile is {}. Run {} first.".format(
+                    course["name"], tile_key(tile_from_player(current)), setup_script
+                )
+            )
 
     laps = []
     best_lap = None
     route_result = None
+    stop_was_requested = False
     with log_path.open("a", encoding="utf-8") as handle:
         write_event(handle, "run_start", {
             "runId": run_id,
@@ -662,6 +1005,17 @@ def run(args):
             current_state = compact_player(observe())
             if target_reached(args, current_state):
                 break
+            if stop_requested(args, course):
+                stop_was_requested = True
+                write_event(handle, "run_stop_requested", {
+                    "runId": run_id,
+                    "courseId": course["id"],
+                    "lap": lap,
+                    "state": current_state,
+                    "stopPath": str(stop_path(args.profile, course["id"])),
+                    "isAgilityCourse": True,
+                })
+                break
             result = run_lap(course, policy, args, handle, run_id, lap)
             laps.append(result)
             if result["success"]:
@@ -675,6 +1029,7 @@ def run(args):
                 "bestLapSeconds": best_lap,
                 "targetAgilityLevel": args.target_agility_level,
                 "targetReached": target_reached(args, result["endState"]),
+                "stopRequested": stop_was_requested,
                 "logPath": str(log_path),
                 "policyPath": str(policy_path(course["id"])),
                 "laps": laps,
@@ -696,6 +1051,8 @@ def run(args):
         final_state = compact_player(observe())
         target_success = target_reached(args, final_state)
         success = (
+            (stop_was_requested and all(item["success"] for item in laps))
+            or
             (args.target_agility_level is not None and target_success)
             or (len(laps) == args.laps and all(item["success"] for item in laps))
         )
@@ -709,6 +1066,7 @@ def run(args):
                 "bestLapSeconds": best_lap,
                 "targetAgilityLevel": args.target_agility_level,
                 "targetReached": target_success,
+                "stopRequested": stop_was_requested,
                 "routeAfterTarget": route_result,
                 "logPath": str(log_path),
                 "policyPath": str(policy_path(course["id"])),
@@ -723,6 +1081,7 @@ def run(args):
             "bestLapSeconds": best_lap,
             "targetAgilityLevel": args.target_agility_level,
             "targetReached": target_success,
+            "stopRequested": stop_was_requested,
             "routeAfterTarget": route_result,
             "finalState": final_state,
             "logPath": str(log_path),
@@ -745,12 +1104,16 @@ def main(argv=None):
     parser.add_argument("--route-max-batches", type=int, default=80)
     parser.add_argument("--run-id")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--clear-stop", action="store_true",
+                        help="Clear this course/profile's cooperative stop request before running.")
     parser.add_argument("--preposition", action="store_true", default=True)
     parser.add_argument("--no-preposition", dest="preposition", action="store_false")
     parser.add_argument("--stop-on-failure", action="store_true", default=True)
     parser.add_argument("--continue-on-failure", dest="stop_on_failure", action="store_false")
     parser.add_argument("--stop-on-death", action="store_true", default=True)
     parser.add_argument("--no-run", action="store_true")
+    parser.add_argument("--eat-at", type=int, default=12)
+    parser.add_argument("--retreat-at", type=int, default=6)
     parser.add_argument("--min-run-energy", type=int, default=8)
     parser.add_argument("--approach-radius", type=int, default=0)
     parser.add_argument("--walk-max-ticks", type=int, default=60)
@@ -759,6 +1122,8 @@ def main(argv=None):
     parser.add_argument("--max-walk-distance", type=int, default=48)
     parser.add_argument("--local-recovery-distance", type=int, default=96)
     parser.add_argument("--max-step-retries", type=int, default=1)
+    parser.add_argument("--object-transition-step", action="store_true",
+                        help="Use the batched object transition primitive for object agility steps.")
     parser.add_argument("--explore-rate", type=float, default=0.0)
     parser.add_argument("--untried-bonus", type=float, default=20.0)
     parser.add_argument("--default-step-ticks", type=float, default=24.0)
