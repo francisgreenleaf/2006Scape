@@ -24,10 +24,14 @@ COURSE_SPECS = {
     "pyramid": {
         "courseId": "agility_pyramid_course",
         "name": "Agility Pyramid",
-        "minLevel": 66,
+        "minLevel": 30,
         "defaultTargetLevel": 99,
         "preferredUntilLevel": 99,
-        "safety": "preferred 66-99 course once the local route and full obstacle sequence are defined",
+        "safety": "preferred 30-99 course once the local route and obstacle sequence are defined",
+        "noPreposition": True,
+        "extraArgs": [
+            "--continue-on-failure", "--max-step-retries", "12", "--eat-at", "18", "--retreat-at", "8",
+        ],
     },
     "barbarian": {
         "courseId": "barbarian_outpost_agility_course",
@@ -85,4 +89,7 @@ def launch_course(key, args):
         "--min-run-energy", str(args.min_run_energy),
         "--route-max-batches", str(args.route_max_batches),
     ]
+    if spec.get("noPreposition"):
+        command.append("--no-preposition")
+    command.extend(spec.get("extraArgs", []))
     return subprocess.call(command, cwd=str(bridge.REPO_ROOT), env=os.environ.copy())

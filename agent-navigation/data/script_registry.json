@@ -102,7 +102,7 @@
       "name": "Agility Pyramid Runner",
       "path": "agent-navigation/tools/agility_pyramid_runner.py",
       "kind": "gameplay_runner",
-      "description": "Course-specific wrapper for the Agility Pyramid phase. It exits with a clear message until the pyramid course definition and route data are added locally.",
+      "description": "Course-specific wrapper for the Agility Pyramid phase. Uses the locally defined fast stair route and delegates obstacle execution to the adaptive agility runner.",
       "aliases": [
         "agility pyramid runner",
         "pyramid agility",
@@ -116,8 +116,62 @@
         "runner"
       ],
       "examples": [
-        "python3 agent-navigation/tools/agility_pyramid_runner.py --target-agility-level 40",
+        "python3 agent-navigation/tools/agility_pyramid_runner.py --target-agility-level 99",
+        "python3 agent-navigation/tools/agility_pyramid_runner.py --profile Mrathlete --launch-detached",
+        "python3 agent-navigation/tools/agility_pyramid_runner.py --profile Mrathlete --status",
+        "python3 agent-navigation/tools/agility_pyramid_runner.py --profile Mrathlete --report --report-text",
         "python3 agent-navigation/tools/script_registry.py run pyramid agility -- --quiet"
+      ]
+    },
+    {
+      "id": "agility_runner_report",
+      "name": "Agility Runner Report",
+      "path": "agent-navigation/tools/agility_runner_report.py",
+      "kind": "report",
+      "description": "Summarizes adaptive agility runner JSONL logs by lap timing, XP/hour, per-step timing, failure reasons, and slowest steps without loading raw logs into Codex context.",
+      "aliases": [
+        "agility report",
+        "agility timing report",
+        "agility runner report",
+        "pyramid agility report"
+      ],
+      "tags": [
+        "agility",
+        "report",
+        "timing",
+        "tick-analysis",
+        "runner"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/agility_runner_report.py --profile Mrathlete --course agility_pyramid_course --text",
+        "python3 agent-navigation/tools/agility_runner_report.py --profile Mrathlete --course barbarian_outpost_agility_course --text",
+        "python3 agent-navigation/tools/script_registry.py run agility report -- --profile Mrathlete --course agility_pyramid_course --text"
+      ]
+    },
+    {
+      "id": "agility_pyramid_travel_setup",
+      "name": "Agility Pyramid Travel Setup",
+      "path": "agent-navigation/tools/agility_pyramid_travel_setup.py",
+      "kind": "gameplay_setup",
+      "description": "Safely moves a selected profile from Lumbridge or Al Kharid to the Agility Pyramid start, requiring carried coins for the toll, Shantay pass, and full waterskins before any desert crossing.",
+      "aliases": [
+        "pyramid agility setup",
+        "agility pyramid setup",
+        "pyramid travel setup",
+        "shantay pyramid setup"
+      ],
+      "tags": [
+        "gameplay",
+        "agility",
+        "pyramid",
+        "travel",
+        "setup",
+        "desert"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/agility_pyramid_travel_setup.py --profile Mrathlete --status",
+        "python3 agent-navigation/tools/agility_pyramid_travel_setup.py --profile Mrathlete --waterskins 2",
+        "python3 agent-navigation/tools/script_registry.py run pyramid travel setup -- --profile Mrathlete"
       ]
     },
     {
