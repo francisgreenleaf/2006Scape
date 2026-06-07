@@ -25,7 +25,9 @@ final class RSFrame extends Frame {
 		this.add(applet, BorderLayout.CENTER);
 		this.pack();
 
-		this.setLocationRelativeTo(null);
+		if (!ClientWindow.applyConfiguredTile(this)) {
+			this.setLocationRelativeTo(null);
+		}
 		this.setVisible(true);
 		this.toFront();
 		this.transferFocus();
@@ -106,6 +108,13 @@ final class RSFrame extends Frame {
 		windowMenu.add(createMenuItem("Minimize", KeyEvent.VK_M, new ActionListener() {
 			public void actionPerformed(ActionEvent event) {
 				setState(Frame.ICONIFIED);
+			}
+		}));
+		windowMenu.add(createMenuItem("Retile", 0, new ActionListener() {
+			public void actionPerformed(ActionEvent event) {
+				if (!ClientWindow.applyConfiguredTile(RSFrame.this)) {
+					setLocationRelativeTo(null);
+				}
 			}
 		}));
 		windowMenu.add(createMenuItem("Center", 0, new ActionListener() {

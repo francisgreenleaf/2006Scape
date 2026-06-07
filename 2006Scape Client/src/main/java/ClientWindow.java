@@ -1,7 +1,9 @@
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.Frame;
 import java.awt.Graphics;
+import java.awt.GraphicsEnvironment;
 import java.awt.Image;
 import java.awt.Rectangle;
 import java.awt.Shape;
@@ -10,6 +12,8 @@ import java.awt.image.ImageObserver;
 final class ClientWindow {
 
 	private static final int MAX_SCALE = 4;
+	private static final int MIN_GAME_WIDTH = 360;
+	private static final int MIN_GAME_HEIGHT = 236;
 	static final int BASE_WIDTH = 765;
 	static final int BASE_HEIGHT = 503;
 	static final int NAVBAR_HEIGHT = 25;
@@ -30,6 +34,25 @@ final class ClientWindow {
 	static Dimension gameSizeForScale(int scale) {
 		int clampedScale = clampScale(scale);
 		return new Dimension(BASE_WIDTH * clampedScale, BASE_HEIGHT * clampedScale);
+	}
+
+	static Dimension minimumGameSize() {
+		return new Dimension(MIN_GAME_WIDTH, MIN_GAME_HEIGHT);
+	}
+
+	static boolean applyConfiguredTile(Frame frame) {
+		int total = ClientSettings.WINDOW_TILE_TOTAL;
+		if (total <= 1) {
+			return false;
+		}
+		int slot = ClientSettings.WINDOW_TILE_SLOT;
+		if (slot < 0) {
+			slot = 0;
+		}
+		Rectangle cell = tileCell(slot, total);
+		frame.setBounds(cell);
+		frame.validate();
+		return true;
 	}
 
 	static Rectangle gameViewport(Component component) {
@@ -100,5 +123,30 @@ final class ClientWindow {
 
 	private static int scaled(int value, double scale) {
 		return (int) Math.round(value * scale);
+	}
+
+	private static Rectangle tileCell(int slot, int total) {
+		Rectangle screen = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+		int clampedTotal = Math.max(1, total);
+		int clampedSlot = Math.max(0, Math.min(slot, clampedTotal - 1));
+		int columns = columnsFor(clampedTotal);
+		int rows = (int) Math.ceil(clampedTotal / (double) columns);
+		int column = clampedSlot % columns;
+		int row = clampedSlot / columns;
+		int x = screen.x + (screen.width * column) / columns;
+		int y = screen.y + (screen.height * row) / rows;
+		int right = screen.x + (screen.width * (column + 1)) / columns;
+		int bottom = screen.y + (screen.height * (row + 1)) / rows;
+		return new Rectangle(x, y, Math.max(1, right - x), Math.max(1, bottom - y));
+	}
+
+	private static int columnsFor(int total) {
+		if (total <= 1) {
+			return 1;
+		}
+		if (total == 2) {
+			return 2;
+		}
+		return (int) Math.ceil(Math.sqrt(total));
 	}
 }
