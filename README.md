@@ -9,21 +9,182 @@
 
 # About This Fork
 
-This fork adds a local Codex RuneScape agent bridge on top of the 2006Scape client and server. After logging into a local world, a player can type `/agent ...` in the normal chatbox to ask Codex to perform gameplay tasks through server-authoritative tools instead of screen automation or admin shortcuts.
+This fork turns 2006Scape into a local, instrumented RuneScape agent laboratory. The original private server and desktop client are still here, but they now carry a Codex bridge that lets a logged-in player type `/agent ...` in the normal chatbox and hand a bounded gameplay task to an AI agent. The interesting part is the constraint: the agent plays through the server's own mechanics. It walks, clicks objects, opens gates, fights NPCs, eats food, banks, shops, mines, cooks, smiths, and waits for real ticks. It does not teleport, spawn items, edit stats, or drive the screen with brittle mouse automation.
 
-The agent bridge currently supports:
+The result is a fork that is part RSPS, part embodied-agent testbed. It has local route memory, compact game-state tools, profile-scoped sessions, primitive-backed Python runners, passive telemetry, screenshot evidence, and readable session reports. A run is not just "the bot did a thing"; it leaves behind enough structured evidence to explain how the agent chose a route, what the world did back, where it got stuck, and what the harness should learn next.
 
-- Local client-to-Codex app-server sessions started from the game client.
-- A server-side HTTP bridge on `127.0.0.1:43610` that exposes only the logged-in player's scoped session.
-- Dynamic `rs` tools for observing state, walking to known landmarks, dialogue/object interaction, NPC combat, food use, shops, banking, mining, woodcutting, smelting, and smithing.
-- Server-side batch tools for long-running actions such as landmark travel, tile walking, mining to a full inventory, woodcutting to a full inventory, and waiting until movement/skilling/combat activity settles. These avoid slow one-tick polling from the client or in-app chat.
-- Combat-training planning toward melee goals, including training-style selection, safer target choice, food thresholds, gear recommendations, and excess-coin banking.
-- Starter world knowledge for Lumbridge, Varrock, Barbarian Village, Al Kharid shops, Falador, rock crabs, banks, mines, trees, and combat areas.
-- Agent session logs under `2006Scape Server/data/logs/agent-sessions/<yyyy-MM-dd>/`, with raw JSONL events and a readable Markdown summary.
+## Current Agent Demo
 
-The bridge is intentionally constrained. Agent actions go through existing game mechanics such as walking, combat, shops, banking, mining, and smithing. It does not add admin teleports, item spawning, direct player-stat edits, or screen automation.
+These screenshots were captured from this checkout on June 6, 2026 with the local client, server, and bridge running. The demonstration used the starter `MrFlame` profile, dismissed the post-login welcome interface through the bridge, then ran one bounded `cowhide_combat_runner.py` cycle. The runner walked from Lumbridge toward the cow pen, enabled run, opened the cow-pen gate, attacked a cow, gained combat XP, picked up one cowhide, and stopped at its `max_cycles` boundary.
 
-For a contributor-oriented summary of the fork work, see [canvrno's additions so far](docs/canvrno-additions.md).
+| Starting In Lumbridge | Fighting Through The Bridge | Result In The Cow Pen |
+| --- | --- | --- |
+| ![MrFlame logged in near Lumbridge with starter inventory and the local agent terminal open.](docs/images/agent-lumbridge-start.png) | ![MrFlame fighting a cow while the local Codex app-server terminal is visible in the client side panel.](docs/images/agent-cow-combat.png) | ![MrFlame standing in the Lumbridge cow pen after the bounded run picked up a cowhide.](docs/images/agent-cow-result.png) |
+
+The final compact checks showed `MrFlame` alive at `3254,3266,0`, HP `9/10`, run still enabled, one cowhide in inventory, and recent Attack and Hitpoints XP from the fight. That small run is representative of the fork's design: a high-level goal becomes server-authoritative primitives, and the proof is visible in both the game client and the generated route/combat evidence.
+
+The in-client Agent Terminal is also live. In the same session, typing `/agent status` through the Java client opened the side-panel terminal, started and initialized the Codex app-server path, connected the game bridge, and reported `Status: ready for mrflame`.
+
+![The 2006Scape Agent Terminal after a client-side /agent status command connected the local app-server and game bridge.](docs/images/agent-terminal-status.png)
+
+## What Makes It Different
+
+- **The client can summon Codex from inside the game.** `/agent key`, `/agent status`, `/agent stop`, and `/agent <task>` live in the normal chat flow. The Java client launches `codex app-server --listen stdio://`, exposes dynamic `rs` tools, and keeps the player-facing experience inside the 2006Scape window.
+- **The server owns the truth.** The bridge runs on `127.0.0.1:43610`, scopes each session token to the logged-in player that claimed it, and queues gameplay work through `AgentActionService` so actions drain on normal server ticks. HTTP handlers do not mutate player state directly.
+- **The tool surface is compact enough for long runs.** Full observation exists for debugging, but normal agent loops use XS and XXS tools such as `observe_state_XS`, `observe_state_XXS`, `walk_to_tile_until_arrived_XS`, `wait_until_idle_XXS`, `wait_until_combat_event_smart_XXS`, `deposit_inventory_items_XS`, `withdraw_bank_items_XS`, and `bank_item_count_XS`. Those tools return the survival, inventory, movement, XP, and decision fields an agent needs without flooding the model with the whole world.
+- **Strategy lives outside Java.** The Java bridge provides reusable primitives: observe, walk, interact with objects/NPCs, use item on item/object, click interface buttons, select interface items, attack, eat, pick up drops, bury bones, bank, shop, and wait. Python runners compose those primitives into mining, woodcutting, fletching, food, smithing, combat, agility, crafting, route, and banking workflows.
+- **Routes are learned artifacts, not hidden behavior.** `agent-navigation/` stores places, hazards, route definitions, movement traces, object-transition evidence, screenshots, route tests, and helper scripts. ML2 route definitions are the preferred normal A-to-B route contract, while older route runners remain as diagnostics.
+- **Profiles are isolated.** `MrFlame` remains the legacy default, but other profiles such as `MrGem` use their own bridge session files, client pid files, logs, route trace filters, screenshots, runner status files, and sparse character memories.
+- **Every serious run can become evidence.** Agent sessions write raw JSONL events and readable Markdown summaries under `2006Scape Server/data/logs/agent-sessions/`. Passive movement telemetry records active players without model polling. Screenshot helpers capture compact client-window proof when live geometry or UI state matters.
+
+## Agent Capabilities
+
+The current bridge and harness can support:
+
+- compact state observation, profile memory hints, HP/food/run/combat checks, recent XP deltas, nearby NPC/object/ground-item context, and bank/item count queries;
+- safe movement through tiles, path steps, landmarks, route definitions, run-energy policy, and object transitions such as gates, doors, ladders, stairs, and trapdoors;
+- combat loops with style selection, target choice, HP thresholds, eating, combat-event waits, selected looting, bone burial, and banking/restock policy;
+- skilling loops for mining, woodcutting, fletching, fishing, cooking, firemaking, smithing, crafting, agility, and food production through primitive-backed scripts;
+- economy actions such as opening shops, buying/selling items, banking resources, preserving food counts, trimming coin floats, and checking exact bank quantities without a full observation dump;
+- route and map tooling, including passive movement traces, cache-backed map rendering, active movement/fog/heat maps, route risk checks, and failure summaries;
+- reusable script discovery through `agent-navigation/tools/script_registry.py`, so an agent can search for `combat`, `mining`, `food`, `smithing`, `route`, or other workflows before guessing filenames.
+
+The most important design rule is that new gameplay automation should prefer these primitives and scripts before adding another Java strategy tool. Java is the control surface; Python and JSON own route choice, trip policy, recovery, banking strategy, and long-running skill logic.
+
+## Safety And Boundaries
+
+This fork deliberately avoids the shortcuts that would make the demo less interesting. Agent actions should stay server-authoritative and use existing mechanics such as walking, `ClickObject`, `CombatAssistant.attackNpc`, normal skill handlers, bank/shop handlers, dialogue buttons, and inventory interactions. Do not add admin teleports, item spawning, direct player-state edits, raw token logging, or screen automation for gameplay.
+
+Bridge sessions are local and scoped. The client claims a server-side session with a one-time nonce, the repo wrappers read only ignored session files under `agent-navigation/.local/`, and secrets must not be printed, committed, or copied into logs. The generated traces, screenshots, runner logs, and local character files are ignored unless a specific artifact is intentionally curated, as the demo images above were.
+
+For a contributor-oriented inventory of fork work, see [canvrno's additions so far](docs/canvrno-additions.md). For the runtime flow that starts the server, launches a profile-aware client, claims the bridge, and verifies compact tools without printing tokens, see [Local Agent Startup](docs/local-agent-startup.md). For the route and runner harness, start with [agent-navigation/README.md](agent-navigation/README.md) and [Agent Scripting Primitives](agent-navigation/scripting-primitives.md).
+
+## Usage Quickstart
+
+There are two good ways to drive the agent.
+
+**In the game client:** use this when you want the 2006Scape window to be the main control surface.
+
+```sh
+./scripts/run-local.sh -u "MrFlame"
+```
+
+Then log in and type commands in chat:
+
+```text
+/agent status
+/agent travel to Lumbridge cows
+/agent kill one cow and pick up the cowhide
+/agent mine copper and tin, then bank the ores
+/agent stop
+```
+
+If `/agent status` says Codex needs a key, run `/agent key` and enter the API key in the Swing password dialog. The key is passed to Codex auth and is not written into repository files. Once the terminal says the app-server and game bridge are ready, ordinary `/agent <task>` commands become Codex turns with read-only filesystem policy, no network access at turn time, and dynamic `rs` tools scoped to the logged-in player.
+
+**From the repo harness:** use this when you want reproducible local automation, screenshots, route evidence, and compact wrapper commands.
+
+```sh
+JAVA_BIN=/opt/homebrew/opt/openjdk/bin/java \
+  python3 agent-navigation/tools/runtime_doctor.py claim --profile MrFlame --verify
+
+agent-navigation/tools/observe_XXS.sh
+agent-navigation/tools/observe_XS.sh
+python3 agent-navigation/tools/script_registry.py search combat
+```
+
+For another profile, pass `--profile MrGem` or set `RS_PROFILE=MrGem`. The helper writes only ignored session files under `agent-navigation/.local/`, and the wrapper scripts read those files without printing bridge tokens.
+
+## Sample Workflows
+
+**Check readiness and player state**
+
+```sh
+python3 agent-navigation/tools/runtime_doctor.py status --profile MrFlame --observe
+agent-navigation/tools/observe_XXS.sh
+agent-navigation/tools/observe_XS.sh
+agent-navigation/tools/rs-tool_XS.sh bank_item_count '{"names":["Cowhide","Coal","Iron ore"]}'
+```
+
+Use XXS for heartbeat checks such as tile, HP, food, combat, death, and run state. Use XS when the next decision needs compact inventory, bank, equipment, nearby object/NPC, route, or skill context.
+
+**Run a bounded early-combat trip**
+
+```sh
+python3 agent-navigation/tools/cowhide_combat_runner.py \
+  --profile MrFlame \
+  --max-cycles 1 \
+  --no-final-bank \
+  --no-buy-kebabs \
+  --quiet
+```
+
+That is the workflow used for the screenshots above. It routes to the Lumbridge cow pen, handles the gate, attacks through combat primitives, watches HP/XP/drop state, picks up cowhide, and stops at a safe boundary.
+
+**Route somewhere with the current ML2 route contract**
+
+```sh
+agent-navigation/tools/observe_XS.sh
+python3 agent-navigation/ml2-routing/route_ml_XS.py define \
+  --from 3254,3266,0 \
+  --to lumbridge_bank \
+  --combat-level 3 \
+  --food 2 \
+  --run-energy 80 \
+  --run-enabled
+```
+
+If the returned route definition includes an execution command, run that command exactly when live movement is intended. The route definition is the contract: it captures the decision, safety notes, route steps, object transitions, and execution path.
+
+**Mine and bank resources**
+
+```sh
+python3 agent-navigation/tools/script_registry.py search mining
+python3 agent-navigation/tools/mining_runner.py --list-sites --ores copper,tin,iron
+python3 agent-navigation/tools/mining_runner.py --ores iron --max-loads 1 --quiet
+python3 agent-navigation/tools/mining_runner.py --target-mining-level 20 --auto-buy-bronze-pickaxe
+```
+
+The mining runner chooses live rocks from cache-backed site data, routes between mines and banks, mines through object primitives, waits for real idle/completion states, and records generated evidence under ignored local run folders.
+
+**Fish, cook, and bank food**
+
+```sh
+python3 agent-navigation/tools/script_registry.py search food
+python3 agent-navigation/tools/food_bank_XS.py
+python3 agent-navigation/tools/food_runner.py --mode fish-cook --quiet
+python3 agent-navigation/tools/catherby_food_runner.py --cycles 1 --quiet
+```
+
+The Catherby runner is a larger example of script-side strategy: it moves among shore, range, bank, and shop targets, opens known doors, chooses fish methods by both Fishing and Cooking requirements, drops burnt food, and banks useful output.
+
+**Smelt or smith through interface primitives**
+
+```sh
+python3 agent-navigation/tools/script_registry.py search smithing
+python3 agent-navigation/tools/smithing_runner.py --mode smelt --bar bronze --quiet
+python3 agent-navigation/tools/smithing_runner.py --mode smith --item sword --amount 10
+```
+
+Smithing uses ordinary furnace/anvil/object interactions, interface button clicks, item selection, and `wait_until_idle` rather than a one-off Java strategy shortcut.
+
+**Capture visual evidence**
+
+```sh
+agent-navigation/tools/capture-client-screenshot.sh --prefix route-proof --native-size
+agent-navigation/tools/capture-cardinal-screenshots.sh --prefix gate-debug
+```
+
+Use screenshots when the live client view matters: wrong side of a gate, a door state, a staircase, a wall pocket, an unexpected combat situation, or a README-quality demo. Generated captures under `agent-navigation/screenshots/` are ignored by default; copy only curated images into `docs/images/` when they belong in documentation.
+
+**Inspect session and runner evidence**
+
+```sh
+python3 agent-navigation/tools/agent_session_XS.py --profile MrFlame --latest
+python3 agent-navigation/tools/runner_status_XS.py --profile MrFlame
+python3 agent-navigation/tools/route_failure_XS.py --profile MrFlame
+```
+
+These compact readers are meant for the agent loop. They summarize current status, last route outcome, blockers, and recent session usage without dumping full raw JSONL into the model context.
 
 # Installation + Running (Developers)
 
