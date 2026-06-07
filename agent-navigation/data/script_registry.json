@@ -354,6 +354,33 @@
       ]
     },
     {
+      "id": "yew_longbow_stringer",
+      "name": "Yew Longbow Stringer",
+      "path": "agent-navigation/tools/yew_longbow_stringer.py",
+      "kind": "gameplay_runner",
+      "description": "Profile-scoped bank runner that strings yew longbow (u) with bow strings into yew longbows using normal withdraw, calibrated exact-tick stringing waits, immediate bank/deposit loops, and compact primitives. It supports status and cooperative stop files.",
+      "aliases": [
+        "string yews",
+        "yew stringing",
+        "string yew longbows",
+        "yew longbow stringer",
+        "bow string yews"
+      ],
+      "tags": [
+        "gameplay",
+        "fletching",
+        "yew",
+        "longbow",
+        "stringing",
+        "runner",
+        "bank"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/yew_longbow_stringer.py --profile PROFILE --bank falador_east_bank --max-cycles 1",
+        "python3 agent-navigation/tools/script_registry.py run string yews -- --profile PROFILE --status"
+      ]
+    },
+    {
       "id": "woodcutting_runner",
       "name": "Primitive Woodcutting Runner",
       "path": "agent-navigation/tools/woodcutting_runner.py",
@@ -411,7 +438,7 @@
       "name": "Fast Seers Flax Spin Runner",
       "path": "agent-navigation/tools/seers_flax_spin_fast_runner.py",
       "kind": "gameplay_runner",
-      "description": "Fast Seers Village flax picker and bowstring spinner with low-overhead tick-analysis events, cached flax selection, compact bridge calls, cooperative status/stop files, and tiny shutdown-status polling.",
+      "description": "Fast Seers Village flax picker and bowstring spinner with low-overhead tick-analysis events, cached flax selection, compact bridge calls, exact-tick spinning waits, cooperative status/stop files, and tiny shutdown-status polling.",
       "aliases": [
         "seers flax fast",
         "fast flax",
@@ -432,6 +459,34 @@
       "examples": [
         "python3 agent-navigation/tools/seers_flax_spin_fast_runner.py --profile PROFILE --max-cycles 1 --quiet",
         "python3 agent-navigation/tools/script_registry.py run seers flax fast -- --profile PROFILE --shutdown-status"
+      ]
+    },
+    {
+      "id": "seers_bowstring_yew_master",
+      "name": "Seers Bowstring Yew Master",
+      "path": "agent-navigation/tools/seers_bowstring_yew_master.py",
+      "kind": "gameplay_runner",
+      "description": "Profile-scoped master runner that alternates the fast Seers flax-to-bowstring runner with bank-based yew longbow stringing at Seers bank, while exposing compact status and cooperative stop controls.",
+      "aliases": [
+        "seers bowstring yew master",
+        "bowstring yew master",
+        "alternate bowstrings yews",
+        "flax yew alternator",
+        "seers master"
+      ],
+      "tags": [
+        "gameplay",
+        "crafting",
+        "fletching",
+        "flax",
+        "bowstrings",
+        "yew",
+        "runner",
+        "seers"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/seers_bowstring_yew_master.py --profile PROFILE --max-master-cycles 1",
+        "python3 agent-navigation/tools/script_registry.py run seers master -- --profile PROFILE --shutdown-status"
       ]
     },
     {
