@@ -28,10 +28,7 @@ public class AgentBridgeServer {
         }
         try {
             server = HttpServer.create(new InetSocketAddress("127.0.0.1", DEFAULT_PORT), 0);
-            server.createContext("/agent/health", new HealthHandler());
-            server.createContext("/agent/session/claim", new ClaimHandler());
-            server.createContext("/agent/session/event", new SessionEventHandler());
-            server.createContext("/agent/tool", new ToolHandler());
+            registerContexts(server);
             server.setExecutor(Executors.newCachedThreadPool(r -> {
                 Thread thread = new Thread(r, "AgentBridgeServer");
                 thread.setDaemon(true);
@@ -43,6 +40,27 @@ public class AgentBridgeServer {
             System.err.println("Unable to start agent bridge on 127.0.0.1:" + DEFAULT_PORT + ": " + e.getMessage());
             server = null;
         }
+    }
+
+    static HttpServer createServerForTests(InetSocketAddress address) throws IOException {
+        HttpServer testServer = HttpServer.create(address, 0);
+        registerContexts(testServer);
+        testServer.setExecutor(Executors.newCachedThreadPool(r -> {
+            Thread thread = new Thread(r, "AgentBridgeServerTest");
+            thread.setDaemon(true);
+            return thread;
+        }));
+        return testServer;
+    }
+
+    private static void registerContexts(HttpServer target) {
+        target.createContext("/agent/health", new HealthHandler());
+        target.createContext("/agent/session/claim", new ClaimHandler());
+        target.createContext("/agent/session/event", new SessionEventHandler());
+        target.createContext("/agent/personality/pending", new PersonalityPendingHandler());
+        target.createContext("/agent/personality/complete", new PersonalityCompleteHandler());
+        target.createContext("/agent/personality/failed", new PersonalityFailedHandler());
+        target.createContext("/agent/tool", new ToolHandler());
     }
 
     private static class HealthHandler implements HttpHandler {
@@ -141,9 +159,84 @@ public class AgentBridgeServer {
         }
     }
 
+    private static class PersonalityPendingHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                sendError(exchange, 405, "GET required.");
+                return;
+            }
+            AgentSession session = authenticatedSession(exchange);
+            if (session == null) {
+                sendError(exchange, 401, "Invalid or expired agent session.");
+                return;
+            }
+            int limit = queryParamInt(exchange, "limit", 3);
+            JsonObject response = AgentPersonalityNarrator.INSTANCE.pendingForSession(session, limit);
+            sendJson(exchange, 200, response);
+        }
+    }
+
+    private static class PersonalityCompleteHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                sendError(exchange, 405, "POST required.");
+                return;
+            }
+            AgentSession session = authenticatedSession(exchange);
+            if (session == null) {
+                sendError(exchange, 401, "Invalid or expired agent session.");
+                return;
+            }
+            JsonObject response = AgentPersonalityNarrator.INSTANCE.complete(
+                    AgentSessionLog.INSTANCE, session, readJson(exchange));
+            sendJson(exchange, response.has("success") && response.get("success").getAsBoolean() ? 200 : 400, response);
+        }
+    }
+
+    private static class PersonalityFailedHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                sendError(exchange, 405, "POST required.");
+                return;
+            }
+            AgentSession session = authenticatedSession(exchange);
+            if (session == null) {
+                sendError(exchange, 401, "Invalid or expired agent session.");
+                return;
+            }
+            JsonObject response = AgentPersonalityNarrator.INSTANCE.failed(
+                    AgentSessionLog.INSTANCE, session, readJson(exchange));
+            sendJson(exchange, response.has("success") && response.get("success").getAsBoolean() ? 200 : 400, response);
+        }
+    }
+
     private static AgentSession authenticatedSession(HttpExchange exchange) {
         String token = exchange.getRequestHeaders().getFirst("X-Agent-Token");
         return token == null ? null : AgentSessionManager.INSTANCE.getSession(token);
+    }
+
+    static int queryParamInt(HttpExchange exchange, String name, int fallback) {
+        if (exchange == null || exchange.getRequestURI() == null || exchange.getRequestURI().getRawQuery() == null) {
+            return fallback;
+        }
+        String[] parts = exchange.getRequestURI().getRawQuery().split("&");
+        for (String part : parts) {
+            int equals = part.indexOf('=');
+            String key = equals >= 0 ? part.substring(0, equals) : part;
+            if (!name.equals(key)) {
+                continue;
+            }
+            String value = equals >= 0 ? part.substring(equals + 1) : "";
+            try {
+                return Integer.parseInt(value);
+            } catch (NumberFormatException ignored) {
+                return fallback;
+            }
+        }
+        return fallback;
     }
 
     private static JsonObject readJson(HttpExchange exchange) throws IOException {

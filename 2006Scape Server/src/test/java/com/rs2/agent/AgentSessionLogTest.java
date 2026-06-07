@@ -43,12 +43,14 @@ public class AgentSessionLogTest {
             AgentSessionManager.INSTANCE.invalidate(token, "test");
             token = null;
         }
+        AgentPersonalityNarrator.INSTANCE.resetForTests();
         AgentSessionLog.INSTANCE.resetLogDirectoryForTests();
         PlayerHandler.players[8] = null;
     }
 
     @Test
     public void recordsSessionAndToolEventsWithoutSessionToken() throws Exception {
+        AgentPersonalityNarrator.INSTANCE.resetForTests();
         token = AgentSessionManager.INSTANCE.registerClaim(PlayerHandler.players[8], "nonce-log");
         AgentSessionManager.ClaimResult claim = AgentSessionManager.INSTANCE.consumeClaim("nonce-log");
         AgentSession session = claim.getSession();
@@ -75,12 +77,14 @@ public class AgentSessionLogTest {
         assertTrue(content.contains("\"event\":\"session_claimed\""));
         assertTrue(content.contains("\"event\":\"tool_completed\""));
         assertTrue(content.contains("\"event\":\"tool_failed\""));
+        assertTrue(content.contains("\"event\":\"personality_chatter\""));
         assertTrue(content.contains("\"tool\":\"find_nearest_npc\""));
         assertTrue(content.contains("\"token\":\"[redacted]\""));
         assertTrue(content.contains("\"apiKey\":\"[redacted]\""));
         assertFalse(content.contains(token));
         assertFalse(content.contains("should-not-be-written"));
         assertFalse(content.contains("sk-raw-sensitive-api-key"));
+        assertFalse(content.contains("Request JSON"));
 
         File summaryFile = findSessionFile(logDirectory, session.getSessionId(), ".md");
         assertNotNull(summaryFile);
@@ -100,9 +104,11 @@ public class AgentSessionLogTest {
         assertTrue(summary.contains("inventory space"));
         assertTrue(summary.contains("## Harness Reflection"));
         assertTrue(summary.contains("## Learning Over Time"));
+        assertTrue(summary.contains("## Personality Chatter"));
         assertFalse(summary.contains(token));
         assertFalse(summary.contains("should-not-be-written"));
         assertFalse(summary.contains("sk-raw-sensitive-api-key"));
+        assertFalse(summary.contains("Request JSON"));
 
         File profileMemory = AgentProfileMemory.INSTANCE.personalityFile(logDirectory, "logger_tester");
         assertTrue(profileMemory.exists());
@@ -110,8 +116,11 @@ public class AgentSessionLogTest {
         assertTrue(profile.contains("# Agent Profile Memory - logger_tester"));
         assertTrue(profile.contains("## Operational Memory"));
         assertTrue(profile.contains("## Recent Notes"));
+        assertTrue(profile.contains("## Narrative Self-Talk"));
+        assertTrue(profile.contains("## Personality Sketch"));
         assertFalse(profile.contains(token));
         assertFalse(profile.contains("sk-raw-sensitive-api-key"));
+        assertFalse(profile.contains("Request JSON"));
     }
 
     private File findSessionFile(File directory, String sessionId, String extension) {

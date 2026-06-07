@@ -45,6 +45,16 @@ public class AgentBridgeHttpClient {
         return response;
     }
 
+    public boolean adoptSession(String token, String sessionId, String playerName) {
+        if (token == null || token.trim().isEmpty()) {
+            return false;
+        }
+        sessionToken = token.trim();
+        this.sessionId = sessionId == null ? "" : sessionId.trim();
+        this.playerName = playerName == null ? "" : playerName.trim();
+        return true;
+    }
+
     public void recordSessionEvent(String event, JsonObject data) throws IOException {
         if (!hasSession()) {
             return;
@@ -53,6 +63,30 @@ public class AgentBridgeHttpClient {
         body.addProperty("event", event == null ? "" : event);
         body.add("data", data == null ? new JsonObject() : data);
         request("POST", "/agent/session/event", body, sessionToken);
+    }
+
+    public JsonObject fetchPendingPersonality(int limit) throws IOException {
+        if (!hasSession()) {
+            JsonObject response = new JsonObject();
+            response.addProperty("success", false);
+            response.addProperty("message", "No active bridge session.");
+            return response;
+        }
+        return request("GET", "/agent/personality/pending?limit=" + Math.max(1, Math.min(8, limit)), null, sessionToken);
+    }
+
+    public JsonObject completePersonality(String requestId, String text) throws IOException {
+        JsonObject body = new JsonObject();
+        body.addProperty("requestId", requestId == null ? "" : requestId);
+        body.addProperty("text", text == null ? "" : text);
+        return request("POST", "/agent/personality/complete", body, sessionToken);
+    }
+
+    public JsonObject failPersonality(String requestId, String reason) throws IOException {
+        JsonObject body = new JsonObject();
+        body.addProperty("requestId", requestId == null ? "" : requestId);
+        body.addProperty("reason", reason == null ? "" : reason);
+        return request("POST", "/agent/personality/failed", body, sessionToken);
     }
 
     public JsonObject callTool(String tool, JsonObject arguments) throws IOException {

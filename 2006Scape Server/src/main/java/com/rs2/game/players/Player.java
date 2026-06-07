@@ -2598,7 +2598,7 @@ public abstract class Player {
 
 	protected void appendPlayerChatText(Stream str) {
 		if (str == null) return;
-		str.writeWordBigEndian(((getChatTextColor() & 0xFF) << 8) + (getChatTextEffects() & 0xFF));
+		str.writeWordBigEndian_dup(((getChatTextColor() & 0xFF) << 8) + (getChatTextEffects() & 0xFF));
 		str.writeByte(playerRights);
 		str.writeByteC(getChatTextSize());
 		str.writeBytes_reverse(getChatText(), getChatTextSize(), 0);

@@ -3,6 +3,7 @@ package com.rs2.agent;
 import static com.rs2.game.content.StaticItemList.KEBAB;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -1094,7 +1095,7 @@ public class AgentToolService {
         player.setChatTextColor(color);
         player.setChatTextEffects(effects);
         player.setChatTextSize((byte) stream.currentOffset);
-        player.setChatText(stream.buffer);
+        player.setChatText(Arrays.copyOf(stream.buffer, stream.currentOffset));
         player.setChatTextUpdateRequired(true);
         JsonObject result = success("Sent public chat.");
         result.addProperty("chatMessage", message);

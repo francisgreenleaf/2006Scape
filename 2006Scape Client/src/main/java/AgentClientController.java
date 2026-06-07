@@ -4,7 +4,13 @@ import com.google.gson.JsonObject;
 import javax.swing.JPasswordField;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
+import com.google.gson.JsonParser;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -22,6 +28,7 @@ public class AgentClientController {
     });
     private final AgentBridgeHttpClient bridgeHttpClient;
     private final CodexAppServerClient codexClient;
+    private final AgentPersonalityNarrationClient narrationClient;
     private final AgentTerminalLog terminalLog;
     private final SecureRandom secureRandom = new SecureRandom();
     private static final Pattern COMBAT_GOAL_LEVEL_PATTERN = Pattern.compile("(?:base|level|to)\\s+(\\d{1,2})",
@@ -39,6 +46,7 @@ public class AgentClientController {
         this.bridgeHttpClient = new AgentBridgeHttpClient(ClientSettings.AGENT_BRIDGE_PORT);
         Consumer<String> messages = text -> { };
         this.codexClient = new CodexAppServerClient(bridgeHttpClient, messages, terminalLog, () -> taskRunning = false);
+        this.narrationClient = new AgentPersonalityNarrationClient(bridgeHttpClient, terminalLog);
     }
 
     public void handleChatCommand(String rawCommand) {
@@ -96,6 +104,21 @@ public class AgentClientController {
         return codexClient.status();
     }
 
+    public void adoptLocalSessionAsync() {
+        executor.submit(() -> {
+            if (bridgeHttpClient.hasSession()) {
+                narrationClient.start();
+                narrationClient.pumpOnceAsync();
+                return;
+            }
+            if (tryAdoptLocalSession()) {
+                terminalLog.system("Game bridge session adopted for " + bridgeHttpClient.getPlayerName() + ".");
+                narrationClient.start();
+                narrationClient.pumpOnceAsync();
+            }
+        });
+    }
+
     private void showStatus() {
         executor.submit(() -> {
             try {
@@ -103,6 +126,9 @@ public class AgentClientController {
                 codexClient.refreshAccount();
                 if (bridgeHttpClient.health() && !bridgeHttpClient.hasSession()) {
                     tryClaimGameSession();
+                }
+                if (bridgeHttpClient.hasSession()) {
+                    narrationClient.pumpOnceAsync();
                 }
             } catch (Exception ignored) {
             }
@@ -153,6 +179,7 @@ public class AgentClientController {
             try {
                 ensureReadyForTask();
                 recordTurnRequested(command);
+                narrationClient.pumpOnceAsync();
                 codexClient.startTurn(command);
             } catch (Exception e) {
                 taskRunning = false;
@@ -171,6 +198,7 @@ public class AgentClientController {
         try {
             ensureBridgeSessionOnly();
             recordTurnRequested(command);
+            narrationClient.pumpOnceAsync();
             JsonObject arguments = new JsonObject();
             arguments.addProperty("targetLevel", parseCombatGoalTargetLevel(command));
             arguments.addProperty("stepIntervalTicks", 4);
@@ -243,6 +271,12 @@ public class AgentClientController {
     }
 
     private void tryClaimGameSession() throws Exception {
+        if (tryAdoptLocalSession()) {
+            terminalLog.system("Game bridge session adopted for " + bridgeHttpClient.getPlayerName() + ".");
+            narrationClient.start();
+            narrationClient.pumpOnceAsync();
+            return;
+        }
         String nonce = nonce();
         if (!game.sendAgentBridgeClaimCommand(nonce)) {
             terminalLog.warn("Log in before using the agent.");
@@ -253,10 +287,12 @@ public class AgentClientController {
             try {
                 Thread.sleep(150L);
                 JsonObject response = bridgeHttpClient.claimSession(nonce);
-                if (response.has("success") && response.get("success").getAsBoolean()) {
-                    terminalLog.system("Game bridge connected for " + bridgeHttpClient.getPlayerName() + ".");
-                    return;
-                }
+            if (response.has("success") && response.get("success").getAsBoolean()) {
+                terminalLog.system("Game bridge connected for " + bridgeHttpClient.getPlayerName() + ".");
+                narrationClient.start();
+                narrationClient.pumpOnceAsync();
+                return;
+            }
             } catch (Exception e) {
                 lastError = e;
             }
@@ -264,6 +300,82 @@ public class AgentClientController {
         String message = lastError == null ? "Unable to claim game bridge session." : cleanMessage(lastError);
         terminalLog.error(message);
         throw new IOException(message);
+    }
+
+    private boolean tryAdoptLocalSession() {
+        File sessionFile = localSessionFile();
+        if (sessionFile == null || !sessionFile.exists()) {
+            return false;
+        }
+        try {
+            JsonObject session = new JsonParser().parse(readFile(sessionFile)).getAsJsonObject();
+            String token = stringField(session, "token", "");
+            String sessionId = stringField(session, "sessionId", "");
+            String playerName = stringField(session, "playerName", game.myUsername == null ? "" : game.myUsername);
+            if (!playerMatches(playerName)) {
+                return false;
+            }
+            if (!bridgeHttpClient.adoptSession(token, sessionId, playerName)) {
+                return false;
+            }
+            JsonObject pending = bridgeHttpClient.fetchPendingPersonality(1);
+            if (pending.has("success") && pending.get("success").getAsBoolean()) {
+                return true;
+            }
+        } catch (Exception ignored) {
+        }
+        bridgeHttpClient.clearSession();
+        return false;
+    }
+
+    private File localSessionFile() {
+        String profile = game.myUsername == null ? "" : game.myUsername.trim();
+        if (profile.isEmpty()) {
+            return null;
+        }
+        File workspace = workspaceDir();
+        File local = new File(new File(workspace, "agent-navigation"), ".local");
+        String safe = safeProfileName(profile);
+        if ("mrflame".equals(safe)) {
+            File legacy = new File(local, "rsbridge-session.json");
+            if (legacy.exists()) {
+                return legacy;
+            }
+        }
+        return new File(local, "rsbridge-session-" + safe + ".json");
+    }
+
+    private File workspaceDir() {
+        if (ClientSettings.AGENT_WORKSPACE_DIR != null && !ClientSettings.AGENT_WORKSPACE_DIR.trim().isEmpty()) {
+            return new File(ClientSettings.AGENT_WORKSPACE_DIR.trim());
+        }
+        File cwd = new File(System.getProperty("user.dir", "."));
+        if ("2006Scape Client".equals(cwd.getName()) && cwd.getParentFile() != null) {
+            return cwd.getParentFile();
+        }
+        return cwd;
+    }
+
+    private boolean playerMatches(String playerName) {
+        String expected = safeProfileName(game.myUsername == null ? "" : game.myUsername);
+        String actual = safeProfileName(playerName == null ? "" : playerName);
+        return expected.length() > 0 && expected.equals(actual);
+    }
+
+    private String readFile(File file) throws IOException {
+        StringBuilder builder = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(
+                new FileInputStream(file), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                builder.append(line);
+            }
+        }
+        return builder.toString();
+    }
+
+    private static String safeProfileName(String playerName) {
+        return playerName == null ? "" : playerName.trim().toLowerCase().replaceAll("[^a-z0-9._-]+", "-");
     }
 
     private void recordTurnRequested(String command) {
