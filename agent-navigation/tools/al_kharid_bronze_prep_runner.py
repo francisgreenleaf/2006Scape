@@ -307,7 +307,8 @@ def run(args):
         common.write_event(handle, "run_start", {"args": vars(args), "player": common.compact(player)})
         while True:
             loops += 1
-            counts, player = common.count_items(profile, [common.COPPER, common.TIN, common.BRONZE_BAR, common.RUNE_PICKAXE])
+            counts, _count_player = common.count_items(profile, [common.COPPER, common.TIN, common.BRONZE_BAR, common.RUNE_PICKAXE])
+            player = bridge.observe_xs(profile=profile)
             need = bronze_need(player, counts, args.target_smithing_level)
             pairs_available = min(counts[common.COPPER]["total"], counts[common.TIN]["total"])
             if need["bronzePairsNeeded"] <= 0:
@@ -330,7 +331,8 @@ def run(args):
                 common.log("mining one Al Kharid copper/tin load; {} pairs still needed".format(need["bronzePairsNeeded"]), args)
                 mine_bronze_load(profile, handle, args)
                 player = bridge.observe_xs(profile=profile)
-            counts, player = common.count_items(profile, [common.COPPER, common.TIN, common.BRONZE_BAR, common.RUNE_PICKAXE])
+            counts, _count_player = common.count_items(profile, [common.COPPER, common.TIN, common.BRONZE_BAR, common.RUNE_PICKAXE])
+            player = bridge.observe_xs(profile=profile)
             payload = status_payload(player, counts, args, "running", loops, run_path)
             common.write_status(profile, STATUS_NAME, payload)
     finally:

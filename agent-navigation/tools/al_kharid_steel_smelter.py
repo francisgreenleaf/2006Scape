@@ -77,7 +77,8 @@ def run(args):
                 radius=8,
             )
             player = common.deposit_all_except(player, profile, keep_ids=(), handle=handle, reason="pre_steel_cleanup")
-            counts, player = common.count_items(profile, [common.IRON_ORE, common.COAL, common.STEEL_BAR])
+            counts, _count_player = common.count_items(profile, [common.IRON_ORE, common.COAL, common.STEEL_BAR])
+            player = bridge.observe_xs(profile=profile)
             if bridge.skill_level(player, "smithing") < 20:
                 data = payload(player, counts, args, "blocked_smithing_under_20", batches, run_path)
                 common.write_status(profile, STATUS_NAME, data)
@@ -110,7 +111,8 @@ def run(args):
             )
             batches += 1
             player = common.deposit_all_except(player, profile, keep_ids=(), handle=handle, reason="post_steel_bank")
-            counts, player = common.count_items(profile, [common.IRON_ORE, common.COAL, common.STEEL_BAR])
+            counts, _count_player = common.count_items(profile, [common.IRON_ORE, common.COAL, common.STEEL_BAR])
+            player = bridge.observe_xs(profile=profile)
             common.write_status(profile, STATUS_NAME, payload(player, counts, args, "running", batches, run_path))
     finally:
         if handle is not None:

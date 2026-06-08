@@ -74,28 +74,32 @@ def run(args):
             )
             if bridge.skill_level(player, "smithing") >= int(args.target_smithing_level):
                 player = common.deposit_all_except(player, profile, keep_ids=(), handle=handle, reason="phase_complete_cleanup")
-                counts, player = common.count_items(profile, [common.BRONZE_BAR, common.HAMMER])
+                counts, _count_player = common.count_items(profile, [common.BRONZE_BAR, common.HAMMER])
+                player = bridge.observe_xs(profile=profile)
                 data = payload(player, counts, args, "complete", batches, run_path)
                 common.write_status(profile, STATUS_NAME, data)
                 common.write_event(handle, "run_finish", data)
                 common.log("bronze smithing complete: Smithing {}".format(bridge.skill_level(player, "smithing")), args)
                 return 0
             if args.max_batches > 0 and batches >= args.max_batches:
-                counts, player = common.count_items(profile, [common.BRONZE_BAR, common.HAMMER])
+                counts, _count_player = common.count_items(profile, [common.BRONZE_BAR, common.HAMMER])
+                player = bridge.observe_xs(profile=profile)
                 data = payload(player, counts, args, "batch_cap_reached", batches, run_path)
                 common.write_status(profile, STATUS_NAME, data)
                 common.write_event(handle, "run_paused", data)
                 common.log("bronze smithing paused at batch cap; Smithing {}".format(bridge.skill_level(player, "smithing")), args)
                 return 0
             player = common.deposit_all_except(player, profile, keep_ids=(common.HAMMER,), handle=handle, reason="pre_smith_cleanup")
-            counts, player = common.count_items(profile, [common.BRONZE_BAR, common.HAMMER])
+            counts, _count_player = common.count_items(profile, [common.BRONZE_BAR, common.HAMMER])
+            player = bridge.observe_xs(profile=profile)
             if counts[common.HAMMER]["total"] <= 0:
                 data = payload(player, counts, args, "blocked_missing_hammer", batches, run_path)
                 common.write_status(profile, STATUS_NAME, data)
                 raise RuntimeError("hammer is required for bronze smithing")
             if bridge.count_inventory_item(player, common.HAMMER) <= 0:
                 player = common.withdraw_item(player, profile, common.HAMMER, 1, handle=handle, reason="withdraw_hammer")
-            counts, player = common.count_items(profile, [common.BRONZE_BAR, common.HAMMER])
+            counts, _count_player = common.count_items(profile, [common.BRONZE_BAR, common.HAMMER])
+            player = bridge.observe_xs(profile=profile)
             banked_bars = counts[common.BRONZE_BAR]["bank"]
             if banked_bars <= 0:
                 data = payload(player, counts, args, "blocked_no_bronze_bars", batches, run_path)
@@ -117,7 +121,8 @@ def run(args):
             )
             batches += 1
             player = common.deposit_all_except(player, profile, keep_ids=(common.HAMMER,), handle=handle, reason="post_smith_bank")
-            counts, player = common.count_items(profile, [common.BRONZE_BAR, common.HAMMER])
+            counts, _count_player = common.count_items(profile, [common.BRONZE_BAR, common.HAMMER])
+            player = bridge.observe_xs(profile=profile)
             common.write_status(profile, STATUS_NAME, payload(player, counts, args, "running", batches, run_path))
     finally:
         if handle is not None:
