@@ -5,7 +5,7 @@ description: "Use when managing the local 2006Scape runtime in /Users/kevin/Docu
 
 # 2006Scape Local Runtime
 
-Use this skill for runtime lifecycle work only. Other agents may be playing or editing the repo, so do not stop, restart, kill, rebuild, or replace the server/client unless the user explicitly asked for runtime management or evidence shows the runtime is stale and unusable.
+Use this skill for runtime lifecycle work only. Other agents may be playing or editing the repo, so do not stop, restart, kill, rebuild, or replace the server/client unless the user explicitly asked for runtime management or evidence shows the runtime is stale and unusable. Never interrupt another player's active gameplay automation to speed up your own task; if another player must respond, wait patiently or ask the user.
 
 ## Main Rule
 
@@ -23,6 +23,7 @@ Never print, paste, inspect, log, or commit bridge tokens. The only allowed toke
 - Bridge wrappers: use `agent-navigation/tools/observe_XXS.sh` and `agent-navigation/tools/rs-tool_XXS.sh` for confirmation/status checks, and `agent-navigation/tools/observe_XS.sh` / `agent-navigation/tools/rs-tool_XS.sh` for compact decision context. `observe-slim.sh` and `rs-tool.sh` are fallback surfaces only; `rs-tool.sh observe_state` requires `RS_ALLOW_FULL_OBSERVE=1` for explicit debug/evidence work.
 - Runtime helper: `agent-navigation/tools/runtime_doctor.py`.
 - Server tick log summarizer: `agent-navigation/tools/server_tick_report.py`.
+- Client scale: use 1x by default for profile relaunches and claims unless the user explicitly asks for another scale.
 
 ## Preflight
 
@@ -87,6 +88,7 @@ Read `docs/local-agent-startup.md` for details or manual fallback. Do not retype
 Before stopping anything, identify who owns the runtime:
 
 - If another user/agent is actively exploring, ask before interrupting unless the user already requested a stop.
+- If another profile's skilling/combat/travel/trade runner is active, do not kill, pause, cancel, or manipulate it for convenience. Wait for that player to respond, or ask the user for explicit permission to take over that exact profile.
 - If ports are occupied but `observe_XS.sh` works, attach to the current runtime.
 - If the bridge token is invalid after a server/client restart, remove only that profile's ignored session file and re-claim.
 

@@ -27,6 +27,13 @@ These notes are repo-specific operational memory from actual agent experience. A
 
 ## Codex Agent Bridge
 
+### Never interrupt another player to complete a trade
+
+- **Observed:** During a cross-profile coin transfer, stopping the other profile's active Seers fletching runner and closing its interfaces made the trade faster but interrupted that player's productive work.
+- **Cause:** The trade workflow treated "the other profile can be controlled" as permission to pause or repurpose that profile, instead of treating it as another player with its own active task.
+- **Use instead:** Control only the selected profile. Send or answer trade requests from that profile and wait patiently for the other player to respond; if the other side is busy, poll compact trade status at human-scale intervals and report a blocker rather than cancelling actions, killing runners, banking, moving, or closing interfaces on the other profile.
+- **Validation:** Before using `RS_PROFILE=OTHER_PROFILE` for live actions, confirm the user explicitly named that profile and asked you to take it over; otherwise no process or gameplay state belonging to the other profile should change.
+
 ### Runtime bridge changes need a restart before tool calls can prove them
 
 - **Observed:** Adding a new bridge tool to Java source and client tool metadata compiles locally, but the currently running server/client keep using the old jar.
@@ -199,6 +206,13 @@ These notes are repo-specific operational memory from actual agent experience. A
 - **Use instead:** For bank-side conversion/cleanup loops, first detect carried work items, close interfaces, process them, re-observe with XS or a focused helper such as `food_bank_XS`, then reopen or resume banking. Use full state only if compact output lacks a specific required field.
 - **Validation:** The patched herb-cleaning flow can restart mid-trip with a full carried inventory and continue depositing cleaned output instead of failing on the next withdrawal.
 
+### Prove exact-tick production waits before trusting optimistic counts
+
+- **Observed:** An optimized yew-longbow stringing loop in `agent-navigation/tools/yew_longbow_stringer.py` waited a guessed exact tick count, assumed all 14 bows were done, and banked with 8 finished yew longbows plus 6 unstrung bows and 6 bow strings still in inventory.
+- **Cause:** `wait_ticks_XS` timing did not map cleanly to the server skill event cadence, and optimistic post-wait counts hid an under-waited inventory.
+- **Use instead:** Calibrate exact waits against live run logs, keep a fallback that checks the compact wait result for unfinished inputs, and verify bank/product deltas before removing idle waits from production loops.
+- **Validation:** A proof cycle should deposit only the finished product id, with no remaining input ids in `deposit_relevant_inventory`, before launching a long `screen` runner.
+
 ### Keep full observe out of runner hot loops
 
 - **Observed:** Mining and Seers woodcutting runners repeatedly did `wait_until_idle_XS -> observe_state -> find_nearest_rock/tree`, creating large raw logs even though the script only needed free slots, tile, skills, and compact inventory.
@@ -275,3 +289,10 @@ These notes are repo-specific operational memory from actual agent experience. A
 - **Cause:** The XS wrappers passed base tool names through `rs-tool.sh` instead of mapping known compact-capable names to server-side `_XS` aliases.
 - **Use instead:** Keep `rs-tool_XS.py` mapping known aliases such as `observe_state`, `wait_until_idle`, and `walk_to_tile_until_arrived` to their `_XS` bridge tools; use full tool names only when compact output lacks a specific field.
 - **Validation:** `python3 -m py_compile agent-navigation/tools/rs-tool_XS.py agent-navigation/tools/observe_XS.py agent-navigation/tools/xs_common.py` passes, and `xs_tool_name('observe_state')` returns `observe_state_XS`.
+
+### Long production waits must account for the 25-tick bridge cap
+
+- **Observed:** `yew_longbow_stringer.py` requested an 84-tick `wait_ticks_XS`, but the server capped the wait at 25 ticks, then the runner spent roughly 12 extra seconds in a fallback `wait_until_idle_XS`.
+- **Cause:** `AgentActionService` clamps `wait_ticks` requests to `1..25` ticks, so a single long wait can return early while production is still active.
+- **Use instead:** Chunk exact production waits into 25-tick-or-smaller `wait_ticks_XS` calls, log each chunk's wall time, and only use `wait_until_idle_XS` as a verified fallback. Avoid separate bank-open calls when the next deposit/withdraw primitive already opens the bank.
+- **Validation:** A two-cycle Mrwood yew-longbow stringing proof completed `14` bows per cycle with `25+17` tick chunks, no fallback wait, final deposits containing only item `855`, and a steady-state cycle of `28.2s` / about `1,787` bows per hour.

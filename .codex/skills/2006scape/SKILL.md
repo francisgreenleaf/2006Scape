@@ -11,7 +11,7 @@ Use this as the umbrella skill for `/Users/kevin/Documents/2006Scape`. Load this
 
 Skill links are routing pointers, not inherited context. Available skills expose their `name`, `description`, and `path`; the full body of a child `SKILL.md` is read only when the agent chooses that child skill. Keep this file useful enough to orient a new agent, then load the smallest relevant child skill before doing specialized work.
 
-Other agents may be editing code or playing the game. Keep work scoped to the user's task, avoid process restarts unless requested, and do not touch runtime/game code when the task is only about skills or docs.
+Other agents may be editing code or playing the game. Keep work scoped to the user's task, avoid process restarts unless requested, and do not touch runtime/game code when the task is only about skills or docs. Never interrupt another player's active automation, movement, skilling, combat, trade, or interface state in order to make your task faster. If another player must participate, make the request from your controlled profile and wait patiently; only control, stop, move, bank, or close interfaces on the other profile when the user explicitly names that profile and asks you to take it over.
 
 Always keep bridge tokens, API keys, saved-character secrets, passwords, and nonces out of messages, logs, screenshots, and committed files.
 
