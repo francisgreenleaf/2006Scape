@@ -40,7 +40,11 @@ public class Game extends RSApplet {
 	
 	private boolean graphicsEnabled = true;
 	private static final long AGENT_AUTO_LOGIN_RETRY_DELAY_MS = 30000L;
+	private static final long AGENT_WELCOME_SCREEN_AUTO_DISMISS_DELAY_MS = 5000L;
 	private static final int AGENT_AUTO_CLAIM_MAX_ATTEMPTS = 3;
+	private static final int WELCOME_SCREEN_INTERFACE_ID = 15244;
+	private static final int WELCOME_SCREEN_CHRISTMAS_INTERFACE_ID = 15819;
+	private static final int WELCOME_SCREEN_ITEM_SCAM_INTERFACE_ID = 15801;
 	private static final int AGENT_TERMINAL_TAB = 7;
 	private static final int AGENT_TERMINAL_PANEL_X = 5;
 	private static final int AGENT_TERMINAL_PANEL_Y = 6;
@@ -2534,8 +2538,9 @@ public class Game extends RSApplet {
 			}
 		} else {
 			maybeAutoClaimAgentBridge();
-			maybeRunAgentAutoCommand();
 			mainGameProcessor();
+			maybeAutoDismissAgentWelcomeScreen();
+			maybeRunAgentAutoCommand();
 		}
 			processOnDemandQueue();
 			method49();
@@ -2548,6 +2553,70 @@ public class Game extends RSApplet {
 				return false;
 			}
 			return !agentAutoLoginAttempted || System.currentTimeMillis() >= agentNextAutoLoginAttemptAt;
+		}
+
+		private boolean isAgentStartupSession() {
+			return ClientSettings.AGENT_AUTO_LOGIN || hasText(ClientSettings.AGENT_AUTO_CLAIM_NONCE)
+					|| hasText(ClientSettings.AGENT_AUTO_COMMAND);
+		}
+
+		private boolean hasText(String value) {
+			return value != null && !value.trim().isEmpty();
+		}
+
+		private boolean isAgentWelcomeScreenActive() {
+			return fullScreenInterfaceId == WELCOME_SCREEN_INTERFACE_ID
+					&& (openInterfaceID == WELCOME_SCREEN_ITEM_SCAM_INTERFACE_ID
+							|| openInterfaceID == WELCOME_SCREEN_CHRISTMAS_INTERFACE_ID
+							|| openInterfaceID == WELCOME_SCREEN_INTERFACE_ID);
+		}
+
+		private void markAgentWelcomeScreenOpened() {
+			if (!isAgentStartupSession()) {
+				clearAgentWelcomeScreenState();
+				return;
+			}
+			agentWelcomeScreenOpenedAt = System.currentTimeMillis();
+			agentWelcomeScreenPending = true;
+		}
+
+		private void clearAgentWelcomeScreenState() {
+			agentWelcomeScreenOpenedAt = 0L;
+			agentWelcomeScreenPending = false;
+		}
+
+		private void maybeAutoDismissAgentWelcomeScreen() {
+			if (!isAgentStartupSession()) {
+				clearAgentWelcomeScreenState();
+				return;
+			}
+			if (agentWelcomeScreenOpenedAt <= 0L) {
+				return;
+			}
+			if (!isAgentWelcomeScreenActive()) {
+				clearAgentWelcomeScreenState();
+				return;
+			}
+			long elapsed = System.currentTimeMillis() - agentWelcomeScreenOpenedAt;
+			if (elapsed >= AGENT_WELCOME_SCREEN_AUTO_DISMISS_DELAY_MS) {
+				System.out.println("[AgentClient] auto-dismissing welcome screen after " + elapsed + "ms");
+				closeOpenInterfaces();
+				clearAgentWelcomeScreenState();
+			}
+		}
+
+		private boolean isAgentWelcomeScreenBlockingAutoCommand() {
+			if (!isAgentStartupSession()) {
+				return false;
+			}
+			if (agentWelcomeScreenPending) {
+				if (agentWelcomeScreenOpenedAt > 0L && !isAgentWelcomeScreenActive()) {
+					clearAgentWelcomeScreenState();
+					return false;
+				}
+				return true;
+			}
+			return false;
 		}
 
 	public void method47(boolean flag) {
@@ -6024,6 +6093,9 @@ public class Game extends RSApplet {
 				|| ClientSettings.AGENT_AUTO_COMMAND.trim().isEmpty()) {
 			return;
 		}
+		if (isAgentWelcomeScreenBlockingAutoCommand()) {
+			return;
+		}
 		agentAutoCommandSent = true;
 		String command = ClientSettings.AGENT_AUTO_COMMAND.trim();
 		if (!command.toLowerCase().startsWith("/agent")) {
@@ -6474,6 +6546,8 @@ public class Game extends RSApplet {
 					loggedIn = true;
 					agentAutoLoginAttempted = false;
 					agentNextAutoLoginAttemptAt = 0L;
+					agentWelcomeScreenPending = isAgentStartupSession();
+					agentWelcomeScreenOpenedAt = 0L;
 					stream.currentOffset = 0;
 					inStream.currentOffset = 0;
 					pktType = -1;
@@ -12056,13 +12130,14 @@ public class Game extends RSApplet {
 				// 15791 = Password Safety 
 				// 15774 = Good/Bad Password
 				// 15767 = Drama Type 
-				if (l7 == 15244) {
+				if (l7 == WELCOME_SCREEN_INTERFACE_ID) {
 					if (ClientSettings.SNOW_OVERLAY_FORCE_ENABLED || (ClientSettings.SNOW_OVERLAY_ENABLED && Flo.getTodaysDate().contains(ClientSettings.SNOW_MONTH))) {
-						openInterfaceID = 15819;
+						openInterfaceID = WELCOME_SCREEN_CHRISTMAS_INTERFACE_ID;
 					} else {
-						openInterfaceID = 15801;
+						openInterfaceID = WELCOME_SCREEN_ITEM_SCAM_INTERFACE_ID;
 					}
-					fullScreenInterfaceId = 15244;
+					fullScreenInterfaceId = WELCOME_SCREEN_INTERFACE_ID;
+					markAgentWelcomeScreenOpened();
 				} else {
 					openInterfaceID = l7;
 				}
@@ -12642,6 +12717,8 @@ public class Game extends RSApplet {
 	private boolean agentAutoLoginAttempted;
 	private boolean agentAutoCommandSent;
 	private long agentNextAutoLoginAttemptAt;
+	private boolean agentWelcomeScreenPending;
+	private long agentWelcomeScreenOpenedAt;
 	public final int maxPlayers;
 	public final int myPlayerIndex;
 	public Player[] playerArray;
@@ -13302,13 +13379,14 @@ public class Game extends RSApplet {
 			inputDialogState = 0;
 			inputTaken = true;
 		}
-		if (interfaceID == 15244) {
+		if (interfaceID == WELCOME_SCREEN_INTERFACE_ID) {
 			if (ClientSettings.SNOW_OVERLAY_FORCE_ENABLED || (ClientSettings.SNOW_OVERLAY_ENABLED && Flo.getTodaysDate().contains(ClientSettings.SNOW_MONTH))) {
-				openInterfaceID = 15819;
+				openInterfaceID = WELCOME_SCREEN_CHRISTMAS_INTERFACE_ID;
 			} else {
-				openInterfaceID = 15801;
+				openInterfaceID = WELCOME_SCREEN_ITEM_SCAM_INTERFACE_ID;
 			}
-			fullScreenInterfaceId = 15244;
+			fullScreenInterfaceId = WELCOME_SCREEN_INTERFACE_ID;
+			markAgentWelcomeScreenOpened();
 		} else {
 			openInterfaceID = interfaceID;
 		}
