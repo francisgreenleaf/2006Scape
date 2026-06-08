@@ -15,6 +15,7 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class AgentPersonalityNarratorTest {
@@ -27,6 +28,7 @@ public class AgentPersonalityNarratorTest {
 
     @Before
     public void setUp() throws Exception {
+        drainQueuedActionsForTests();
         logDirectory = temporaryFolder.newFolder("agent-sessions");
         AgentSessionLog.INSTANCE.setLogDirectoryForTests(logDirectory);
         AgentPersonalityNarrator.INSTANCE.resetForTests();
@@ -40,6 +42,7 @@ public class AgentPersonalityNarratorTest {
 
     @After
     public void tearDown() {
+        drainQueuedActionsForTests();
         if (token != null) {
             AgentSessionManager.INSTANCE.invalidate(token, "test");
             token = null;
@@ -151,6 +154,8 @@ public class AgentPersonalityNarratorTest {
         }
         content = new String(Files.readAllBytes(logFile.toPath()), StandardCharsets.UTF_8);
         assertEquals(1, countOccurrences(content, "\"milestone\":\"ambient\""));
+        AgentActionService.INSTANCE.processPendingActions();
+        content = new String(Files.readAllBytes(logFile.toPath()), StandardCharsets.UTF_8);
         assertEquals(1, countOccurrences(content, "\"event\":\"personality_spoken\""));
 
         AgentPersonalityNarrator.INSTANCE.setNowForTests(start
@@ -161,6 +166,8 @@ public class AgentPersonalityNarratorTest {
         }
         content = new String(Files.readAllBytes(logFile.toPath()), StandardCharsets.UTF_8);
         assertEquals(2, countOccurrences(content, "\"milestone\":\"ambient\""));
+        AgentActionService.INSTANCE.processPendingActions();
+        content = new String(Files.readAllBytes(logFile.toPath()), StandardCharsets.UTF_8);
         assertEquals(2, countOccurrences(content, "\"event\":\"personality_spoken\""));
         assertEquals(0, AgentPersonalityNarrator.INSTANCE.pendingCountForTests());
     }
@@ -194,7 +201,7 @@ public class AgentPersonalityNarratorTest {
     }
 
     @Test
-    public void spokenNarrationUsesForcedChatSoTheSpeakerSeesIt() throws Exception {
+    public void spokenNarrationQueuesForcedChatOnGameTickSoTheSpeakerSeesIt() throws Exception {
         AgentPersonalityNarrator.INSTANCE.setNowForTests(1_000_000L);
         token = AgentSessionManager.INSTANCE.registerClaim(PlayerHandler.players[9], "nonce-spoken");
         AgentSessionManager.ClaimResult claim = AgentSessionManager.INSTANCE.consumeClaim("nonce-spoken");
@@ -203,6 +210,10 @@ public class AgentPersonalityNarratorTest {
 
         AgentSessionLog.INSTANCE.toolCompleted(session, "wait_until_idle_XS", new JsonObject(),
                 skillResult("cooking", 21, 495), 5L);
+
+        assertFalse(player.forcedChatUpdateRequired);
+        assertEquals(1, AgentActionService.INSTANCE.pendingActionCountForTests());
+        AgentActionService.INSTANCE.processPendingActions();
 
         assertTrue(player.forcedChatUpdateRequired);
         assertEquals("~A little better. That is how the grind sneaks up on you.", player.forcedText);
@@ -262,6 +273,12 @@ public class AgentPersonalityNarratorTest {
             }
         }
         return null;
+    }
+
+    private void drainQueuedActionsForTests() {
+        for (int i = 0; i < 20 && AgentActionService.INSTANCE.pendingActionCountForTests() > 0; i++) {
+            AgentActionService.INSTANCE.processPendingActions();
+        }
     }
 
     private int countOccurrences(String text, String needle) {

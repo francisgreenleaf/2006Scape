@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
@@ -596,26 +597,37 @@ public class AgentPersonalityNarrator {
                 || now - profileState.lastPublicChatAtMs < PUBLIC_CHAT_COOLDOWN_MS) {
             return;
         }
-        Player player = session.getPlayer();
-        if (!canSpeak(player)) {
+        if (!canSpeak(session.getPlayer())) {
             return;
         }
-        speak(player, text);
         sessionState.publicLines++;
         profileState.lastPublicChatAtMs = now;
-        JsonObject spoken = new JsonObject();
-        spoken.addProperty("text", text);
-        spoken.addProperty("reason", signal.milestone);
-        spoken.addProperty("cooldownMs", PUBLIC_CHAT_COOLDOWN_MS);
-        log.recordPersonalityEvent(session, "personality_spoken", spoken);
+        queueSpeech(log, session, signal.milestone, text);
     }
 
     private boolean canSpeak(Player player) {
         return player != null && !player.disconnected && !player.isDead && !player.playerIsBusy();
     }
 
-    private void speak(Player player, String text) {
-        player.forcedChat("~" + text);
+    private void queueSpeech(final AgentSessionLog log, final AgentSession session,
+            final String reason, final String text) {
+        AgentActionService.INSTANCE.enqueueOnGameTick("personality_speech", new Callable<JsonObject>() {
+            @Override
+            public JsonObject call() {
+                Player player = session.getPlayer();
+                if (!canSpeak(player)) {
+                    recordFailure(log, session, "", "speak_unavailable");
+                    return AgentToolService.failure("Personality speech target was unavailable.");
+                }
+                player.forcedChat("~" + text);
+                JsonObject spoken = new JsonObject();
+                spoken.addProperty("text", text);
+                spoken.addProperty("reason", reason);
+                spoken.addProperty("cooldownMs", PUBLIC_CHAT_COOLDOWN_MS);
+                log.recordPersonalityEvent(session, "personality_spoken", spoken);
+                return AgentToolService.success("Personality speech queued on game tick.");
+            }
+        });
     }
 
     private void recordFailure(AgentSessionLog log, AgentSession session, String requestId, String reason) {
