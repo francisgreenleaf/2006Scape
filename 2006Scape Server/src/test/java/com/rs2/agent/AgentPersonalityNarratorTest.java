@@ -8,6 +8,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.rs2.game.players.Player;
 import com.rs2.game.players.PlayerHandler;
+import com.rs2.util.Misc;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -201,7 +202,7 @@ public class AgentPersonalityNarratorTest {
     }
 
     @Test
-    public void spokenNarrationQueuesForcedChatOnGameTickSoTheSpeakerSeesIt() throws Exception {
+    public void spokenNarrationQueuesPublicChatOnGameTickSoTheSpeakerSeesIt() throws Exception {
         AgentPersonalityNarrator.INSTANCE.setNowForTests(1_000_000L);
         token = AgentSessionManager.INSTANCE.registerClaim(PlayerHandler.players[9], "nonce-spoken");
         AgentSessionManager.ClaimResult claim = AgentSessionManager.INSTANCE.consumeClaim("nonce-spoken");
@@ -212,11 +213,14 @@ public class AgentPersonalityNarratorTest {
                 skillResult("cooking", 21, 495), 5L);
 
         assertFalse(player.forcedChatUpdateRequired);
+        assertFalse(player.isChatTextUpdateRequired());
         assertEquals(1, AgentActionService.INSTANCE.pendingActionCountForTests());
         AgentActionService.INSTANCE.processPendingActions();
 
-        assertTrue(player.forcedChatUpdateRequired);
-        assertEquals("~A little better. That is how the grind sneaks up on you.", player.forcedText);
+        assertFalse(player.forcedChatUpdateRequired);
+        assertTrue(player.isChatTextUpdateRequired());
+        assertEquals("a little better. that is how the grind sneaks up on you.",
+                Misc.textUnpack(player.getChatText(), player.getChatTextSize()));
         File logFile = findSessionFile(logDirectory, session.getSessionId(), ".jsonl");
         String content = new String(Files.readAllBytes(logFile.toPath()), StandardCharsets.UTF_8);
         assertEquals(1, countOccurrences(content, "\"event\":\"personality_spoken\""));

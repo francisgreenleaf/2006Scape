@@ -1,6 +1,7 @@
 package com.rs2.agent;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -16,7 +17,10 @@ import java.util.concurrent.ConcurrentMap;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.rs2.Constants;
 import com.rs2.game.players.Player;
+import com.rs2.util.Misc;
+import com.rs2.util.Stream;
 
 public class AgentPersonalityNarrator {
 
@@ -242,7 +246,7 @@ public class AgentPersonalityNarrator {
         }
         if ("session_expired".equals(event) || "session_invalidated".equals(event)) {
             String reason = compact(string(data, "reason", "session ended"), 90);
-            NarrationSignal signal = signal("session_end", true, false, entry,
+            NarrationSignal signal = signal("session_end", true, true, entry,
                     "That is enough for now. Pack the lesson before the kit.");
             signal.facts.add("Session ended: " + reason);
             signal.moodSignals.add("reflective");
@@ -619,7 +623,14 @@ public class AgentPersonalityNarrator {
                     recordFailure(log, session, "", "speak_unavailable");
                     return AgentToolService.failure("Personality speech target was unavailable.");
                 }
-                player.forcedChat("~" + text);
+                String message = compact(text, 80);
+                Stream stream = new Stream(new byte[Constants.BUFFER_SIZE]);
+                Misc.textPack(stream, message);
+                player.setChatTextColor(0);
+                player.setChatTextEffects(0);
+                player.setChatTextSize((byte) stream.currentOffset);
+                player.setChatText(Arrays.copyOf(stream.buffer, stream.currentOffset));
+                player.setChatTextUpdateRequired(true);
                 JsonObject spoken = new JsonObject();
                 spoken.addProperty("text", text);
                 spoken.addProperty("reason", reason);
