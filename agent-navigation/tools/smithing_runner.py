@@ -179,13 +179,15 @@ def smelt_progress(player, primary_item, bar_item, before_primary, before_bars, 
         "afterPrimary": after_primary,
         "afterBars": after_bars,
         "afterXp": after_xp,
-        "madeProgress": after_primary < before_primary or after_bars > before_bars or after_xp > before_xp,
+        "madeProgress": after_bars > before_bars or after_xp > before_xp,
     }
 
 
 def smelt_chunk_button(bar, remaining):
     buttons = SMELT_BUTTONS[bar]
     if int(remaining) >= 10:
+        return 10, int(buttons[10])
+    if int(remaining) >= 6:
         return 10, int(buttons[10])
     if int(remaining) >= 5:
         return 5, int(buttons[5])
@@ -219,18 +221,12 @@ def smelt_round(profile, args, handle):
         bridge.route_to(args.furnace, profile=profile, handle=handle, reason="furnace")
     furnace = find_object(FURNACE_IDS, args.object_max_distance, profile)
     amount = max(1, min(int(args.amount), int(possible), 27))
-    chunk_amount, button_id = smelt_chunk_button(bar, amount)
-    use = bridge.call_tool("use_item_on_object", {
-        "itemId": int(primary_item),
-        "objectId": int(furnace.get("objectId")),
-        "x": int(furnace.get("x")),
-        "y": int(furnace.get("y")),
-        "height": int(furnace.get("height", 0) or 0),
+    start = bridge.call_tool("smelt_bar", {
+        "bar": bar,
+        "amount": int(amount),
+        "maxDistance": int(args.object_max_distance),
     }, profile=profile)
-    button = bridge.call_tool("click_interface_button", {
-        "buttonId": int(button_id),
-    }, profile=profile)
-    player = bridge._player_from_or(button, bridge._player_from_or(use, player))
+    player = bridge._player_from_or(start, player)
     wait = bridge.call_tool("wait_until_idle_XS", {
         "maxTicks": args.max_ticks,
         "movement": True,
@@ -242,13 +238,9 @@ def smelt_round(profile, args, handle):
     bridge.write_event(handle, "smelt_round", {
         "bar": bar,
         "amount": int(amount),
-        "chunkAmount": int(chunk_amount),
         "furnace": furnace,
-        "useSuccess": bool(use.get("success")),
-        "useMessage": use.get("message"),
-        "buttonId": int(button_id),
-        "buttonSuccess": bool(button.get("success")),
-        "buttonMessage": button.get("message"),
+        "startSuccess": bool(start.get("success")),
+        "startMessage": start.get("message"),
         "waitStatus": wait.get("batchStatus"),
         "beforePrimary": before_primary,
         "afterPrimary": progress["afterPrimary"],
@@ -260,7 +252,7 @@ def smelt_round(profile, args, handle):
         "player": bridge.compact_player(player, ("smithing",)),
     })
     if not progress["madeProgress"]:
-        raise RuntimeError("smelting made no ore, bar, or XP progress")
+        raise RuntimeError("smelting made no bar or XP progress")
     return player
 
 

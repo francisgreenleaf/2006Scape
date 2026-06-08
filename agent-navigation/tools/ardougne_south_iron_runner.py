@@ -21,12 +21,79 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 import mining_runner  # noqa: E402
+import bridge_script as bridge  # noqa: E402
 from profile_utils import resolve_profile  # noqa: E402
 
 
 ARDY_SOUTH_IRON_SITE = "2606,3238,0"
 ARDY_SOUTH_BANK = "ardougne_south_bank"
 ARDY_SOUTH_BANK_TILE = "2654,3283,0"
+
+
+def _ardy_tile(value):
+    return mining_runner.parse_tile(value)
+
+
+def _ardy_direct_walk(target, args, handle, reason, stop_distance=0, require_bank=False):
+    max_distance = max(int(args.max_walk_distance), 96)
+    result = bridge.call_tool("walk_to_tile_until_arrived_XS", {
+        "x": int(target["x"]),
+        "y": int(target["y"]),
+        "height": int(target.get("height", 0) or 0),
+        "stopDistance": int(stop_distance),
+        "maxTicks": int(args.route_max_ticks),
+        "maxWalkDistance": max_distance,
+        "stopOnCombat": True,
+        "stopOnStall": True,
+    }, profile=args.profile)
+    player = bridge.player_from(result)
+    ok = bool(player.get("inBankArea")) if require_bank else (
+        mining_runner.chebyshev(mining_runner.tile_from_player(player), target) <= int(stop_distance)
+    )
+    mining_runner.write_event(handle, "ardy_direct_walk", {
+        "reason": reason,
+        "target": mining_runner.tile_string(target),
+        "stopDistance": int(stop_distance),
+        "requireBank": bool(require_bank),
+        "success": ok,
+        "batchStatus": result.get("batchStatus"),
+        "message": result.get("message"),
+        "player": mining_runner.compact_player(player),
+    })
+    return ok
+
+
+def install_ardy_route_hooks():
+    original_route_to_tile = mining_runner.route_to_tile
+    original_route_to_bank = mining_runner.route_to_bank
+    site_tile = _ardy_tile(ARDY_SOUTH_IRON_SITE)
+    bank_tile = _ardy_tile(ARDY_SOUTH_BANK_TILE)
+
+    def route_to_tile(target_tile, args, handle, reason):
+        if mining_runner.tile_string(target_tile) == ARDY_SOUTH_IRON_SITE:
+            return _ardy_direct_walk(
+                site_tile,
+                args,
+                handle,
+                reason or "ardy_mine_site",
+                stop_distance=int(args.arrival_radius),
+            )
+        return original_route_to_tile(target_tile, args, handle, reason)
+
+    def route_to_bank(site, args, handle):
+        if site.get("bankPlace") == ARDY_SOUTH_BANK or mining_runner.tile_string(site.get("bankTile", {})) == ARDY_SOUTH_BANK_TILE:
+            return _ardy_direct_walk(
+                bank_tile,
+                args,
+                handle,
+                "ardy_south_bank",
+                stop_distance=4,
+                require_bank=True,
+            )
+        return original_route_to_bank(site, args, handle)
+
+    mining_runner.route_to_tile = route_to_tile
+    mining_runner.route_to_bank = route_to_bank
 
 
 def build_mining_args(args):
@@ -79,7 +146,7 @@ def main(argv=None):
     parser.add_argument("--rock-scan-distance", type=int, default=8)
     parser.add_argument("--mine-max-ticks", type=int, default=250)
     parser.add_argument("--max-batches-per-leg", type=int, default=8)
-    parser.add_argument("--max-walk-distance", type=int, default=48)
+    parser.add_argument("--max-walk-distance", type=int, default=96)
     parser.add_argument("--route-max-ticks", type=int, default=180)
     parser.add_argument("--min-run-energy", type=int, default=10)
     parser.add_argument("--loop-delay", type=float, default=0.05)
@@ -97,6 +164,7 @@ def main(argv=None):
     if args.print_command:
         print("python3 agent-navigation/tools/mining_runner.py " + " ".join(delegated))
         return 0
+    install_ardy_route_hooks()
     return mining_runner.main(delegated)
 
 

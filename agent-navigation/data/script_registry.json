@@ -381,6 +381,32 @@
       ]
     },
     {
+      "id": "falador_willow_longbow_selloff",
+      "name": "Falador Willow Longbow Selloff",
+      "path": "agent-navigation/tools/falador_willow_longbow_selloff.py",
+      "kind": "gameplay_runner",
+      "description": "Profile-scoped Falador cleanup helper that withdraws only banked willow longbow (u) as notes, sells them to the Falador general store, and returns to Falador east bank to bank the sale coins without touching yew bow stock.",
+      "aliases": [
+        "sell willow longs",
+        "sell willow longbows",
+        "falador willow selloff",
+        "willow longbow selloff"
+      ],
+      "tags": [
+        "gameplay",
+        "fletching",
+        "willow",
+        "longbow",
+        "shop",
+        "falador",
+        "bank"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/falador_willow_longbow_selloff.py --profile PROFILE",
+        "python3 agent-navigation/tools/script_registry.py run sell willow longs -- --profile PROFILE"
+      ]
+    },
+    {
       "id": "magic_training_runner",
       "name": "Magic Training Runner",
       "path": "agent-navigation/tools/magic_training_runner.py",
@@ -973,7 +999,7 @@
       "name": "Primitive Smithing Runner",
       "path": "agent-navigation/tools/smithing_runner.py",
       "kind": "gameplay_runner",
-      "description": "Runs smelting and smithing externally using object interaction, item-on-object, interface-button smelting, interface-item smithing selection, wait_until_idle, and SmithingData parsing instead of Java smelt_bar, smith_item, smith_best_item, plan_smithing, or train_smithing_profit strategy calls.",
+      "description": "Runs smelting and smithing externally using reusable bridge primitives such as smelt_bar, object interaction, interface-item smithing selection, wait_until_idle, and SmithingData parsing instead of Java smith_item, smith_best_item, plan_smithing, or train_smithing_profit strategy calls.",
       "aliases": [
         "smithing",
         "smith",
@@ -992,6 +1018,81 @@
       "examples": [
         "python3 agent-navigation/tools/script_registry.py run smithing -- --mode smelt --bar bronze --quiet",
         "python3 agent-navigation/tools/smithing_runner.py --mode smith --item sword --amount 10"
+      ]
+    },
+    {
+      "id": "al_kharid_bronze_prep_runner",
+      "name": "Al Kharid Bronze Prep Runner",
+      "path": "agent-navigation/tools/al_kharid_bronze_prep_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Phase-specific Smithing-30 prep wrapper that mines balanced Al Kharid copper/tin with a rune pickaxe, smelts bronze at the Al Kharid furnace, and stops once banked bronze can finish level 30 Smithing.",
+      "aliases": [
+        "bronze prep",
+        "al kharid bronze",
+        "copper tin smithing prep",
+        "smithing 30 prep"
+      ],
+      "tags": [
+        "gameplay",
+        "mining",
+        "smithing",
+        "bronze",
+        "runner",
+        "phase"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/al_kharid_bronze_prep_runner.py --profile MrFlame --max-loops 2",
+        "python3 agent-navigation/tools/script_registry.py run bronze prep -- --profile MrFlame --quiet"
+      ]
+    },
+    {
+      "id": "varrock_bronze_smith_runner",
+      "name": "Varrock Bronze Smith Runner",
+      "path": "agent-navigation/tools/varrock_bronze_smith_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Phase-specific wrapper that routes to Varrock west bank, withdraws hammer and bronze bars, smiths at Varrock west anvils, banks products, and stops at the target Smithing level.",
+      "aliases": [
+        "varrock bronze smith",
+        "bronze smithing",
+        "smith bronze bars",
+        "smithing 30 bronze"
+      ],
+      "tags": [
+        "gameplay",
+        "smithing",
+        "bronze",
+        "anvil",
+        "runner",
+        "phase"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/varrock_bronze_smith_runner.py --profile MrFlame --max-batches 2",
+        "python3 agent-navigation/tools/script_registry.py run varrock bronze smith -- --profile MrFlame --quiet"
+      ]
+    },
+    {
+      "id": "al_kharid_steel_smelter",
+      "name": "Al Kharid Steel Smelter",
+      "path": "agent-navigation/tools/al_kharid_steel_smelter.py",
+      "kind": "gameplay_runner",
+      "description": "Phase-specific wrapper that smelts banked iron ore and coal into steel bars at Al Kharid furnace using 9-steel inventory loads and banks each batch.",
+      "aliases": [
+        "steel smelter",
+        "al kharid steel",
+        "smelt steel bars",
+        "steel bar phase"
+      ],
+      "tags": [
+        "gameplay",
+        "smithing",
+        "smelting",
+        "steel",
+        "runner",
+        "phase"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/al_kharid_steel_smelter.py --profile MrFlame --max-batches 2",
+        "python3 agent-navigation/tools/script_registry.py run steel smelter -- --profile MrFlame --quiet"
       ]
     },
     {
