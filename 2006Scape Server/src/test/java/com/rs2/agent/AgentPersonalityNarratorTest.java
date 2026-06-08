@@ -128,6 +128,72 @@ public class AgentPersonalityNarratorTest {
     }
 
     @Test
+    public void ambientChatterRepeatsOnThirtyMinuteActivePlayCadence() throws Exception {
+        long start = 1_000_000L;
+        AgentPersonalityNarrator.INSTANCE.setNowForTests(start);
+        token = AgentSessionManager.INSTANCE.registerClaim(PlayerHandler.players[9], "nonce-ambient");
+        AgentSessionManager.ClaimResult claim = AgentSessionManager.INSTANCE.consumeClaim("nonce-ambient");
+        AgentSession session = claim.getSession();
+
+        for (int i = 0; i < 25; i++) {
+            AgentSessionLog.INSTANCE.toolCompleted(session, "observe_state_XS", new JsonObject(),
+                    AgentToolService.success("Observed compact game state."), 5L);
+        }
+        File logFile = findSessionFile(logDirectory, session.getSessionId(), ".jsonl");
+        String content = new String(Files.readAllBytes(logFile.toPath()), StandardCharsets.UTF_8);
+        assertEquals(0, countOccurrences(content, "\"milestone\":\"ambient\""));
+
+        AgentPersonalityNarrator.INSTANCE.setNowForTests(start
+                + AgentPersonalityNarrator.AMBIENT_CHATTER_INTERVAL_MS + 1L);
+        for (int i = 0; i < AgentPersonalityNarrator.AMBIENT_EVENT_INTERVAL; i++) {
+            AgentSessionLog.INSTANCE.toolCompleted(session, "observe_state_XS", new JsonObject(),
+                    AgentToolService.success("Observed compact game state."), 5L);
+        }
+        content = new String(Files.readAllBytes(logFile.toPath()), StandardCharsets.UTF_8);
+        assertEquals(1, countOccurrences(content, "\"milestone\":\"ambient\""));
+        assertEquals(1, countOccurrences(content, "\"event\":\"personality_spoken\""));
+
+        AgentPersonalityNarrator.INSTANCE.setNowForTests(start
+                + (2L * AgentPersonalityNarrator.AMBIENT_CHATTER_INTERVAL_MS) + 2L);
+        for (int i = 0; i < AgentPersonalityNarrator.AMBIENT_EVENT_INTERVAL; i++) {
+            AgentSessionLog.INSTANCE.toolCompleted(session, "observe_state_XS", new JsonObject(),
+                    AgentToolService.success("Observed compact game state."), 5L);
+        }
+        content = new String(Files.readAllBytes(logFile.toPath()), StandardCharsets.UTF_8);
+        assertEquals(2, countOccurrences(content, "\"milestone\":\"ambient\""));
+        assertEquals(2, countOccurrences(content, "\"event\":\"personality_spoken\""));
+        assertEquals(0, AgentPersonalityNarrator.INSTANCE.pendingCountForTests());
+    }
+
+    @Test
+    public void ambientChatterCanFireDuringRepeatedDuplicateFriction() throws Exception {
+        long start = 1_000_000L;
+        AgentPersonalityNarrator.INSTANCE.setNowForTests(start);
+        token = AgentSessionManager.INSTANCE.registerClaim(PlayerHandler.players[9], "nonce-ambient-friction");
+        AgentSessionManager.ClaimResult claim = AgentSessionManager.INSTANCE.consumeClaim("nonce-ambient-friction");
+        AgentSession session = claim.getSession();
+        JsonObject args = new JsonObject();
+        JsonObject failure = AgentToolService.failure("No matching object found nearby.");
+
+        for (int i = 0; i < 3; i++) {
+            AgentSessionLog.INSTANCE.toolFailed(session, "find_nearest_object", args, failure, 5L);
+        }
+
+        AgentPersonalityNarrator.INSTANCE.setNowForTests(start
+                + AgentPersonalityNarrator.AMBIENT_CHATTER_INTERVAL_MS + 1L);
+        for (int i = 0; i < AgentPersonalityNarrator.AMBIENT_EVENT_INTERVAL; i++) {
+            AgentSessionLog.INSTANCE.toolFailed(session, "find_nearest_object", args, failure, 5L);
+        }
+
+        File logFile = findSessionFile(logDirectory, session.getSessionId(), ".jsonl");
+        String content = new String(Files.readAllBytes(logFile.toPath()), StandardCharsets.UTF_8);
+        assertEquals(1, countOccurrences(content, "\"milestone\":\"ambient\""));
+        assertTrue(content.contains("The path keeps arguing")
+                || content.contains("Patient feet")
+                || content.contains("Small steps"));
+    }
+
+    @Test
     public void spokenNarrationUsesForcedChatSoTheSpeakerSeesIt() throws Exception {
         AgentPersonalityNarrator.INSTANCE.setNowForTests(1_000_000L);
         token = AgentSessionManager.INSTANCE.registerClaim(PlayerHandler.players[9], "nonce-spoken");

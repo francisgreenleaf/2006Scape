@@ -23,9 +23,9 @@ public class AgentPersonalityNarrator {
 
     static final long LLM_COOLDOWN_MS = 10L * 60L * 1000L;
     static final long PUBLIC_CHAT_COOLDOWN_MS = 4L * 60L * 1000L;
-    static final long AMBIENT_COOLDOWN_MS = 5L * 60L * 1000L;
+    static final long AMBIENT_CHATTER_INTERVAL_MS = 30L * 60L * 1000L;
     static final int MAX_LLM_REQUESTS_PER_SESSION = 8;
-    static final int MAX_PUBLIC_LINES_PER_SESSION = 12;
+    static final int MAX_PUBLIC_LINES_PER_SESSION = 48;
     static final int AMBIENT_EVENT_INTERVAL = 20;
     private static final int MAX_PENDING_REQUESTS = 200;
 
@@ -50,26 +50,25 @@ public class AgentPersonalityNarrator {
         SessionNarrationState sessionState = sessionState(session);
         ProfileNarrationState profileState = profileState(session);
         sessionState.eventCount++;
-        NarrationSignal signal = classify(session, entry, sessionState, now);
-        if (signal == null && shouldAmbient(sessionState, now)) {
-            signal = ambientSignal(session, entry);
+        if (!sessionState.ambientClockStarted) {
+            sessionState.ambientClockStarted = true;
             sessionState.lastAmbientAtMs = now;
             sessionState.lastAmbientEventCount = sessionState.eventCount;
+        }
+        NarrationSignal signal = classify(session, entry, sessionState, now);
+        if (signal == null && shouldAmbient(sessionState, now)) {
+            signal = ambientSignal(session, entry, sessionState, profileState);
         }
         if (signal == null) {
             return;
         }
-        String dedupeKey = signal.dedupeKey();
-        if (!sessionState.recentDedupeKeys.add(dedupeKey)) {
-            return;
-        }
-        while (sessionState.recentDedupeKeys.size() > 40) {
-            Iterator<String> iterator = sessionState.recentDedupeKeys.iterator();
-            if (iterator.hasNext()) {
-                iterator.next();
-                iterator.remove();
-            } else {
-                break;
+        if (!rememberDedupe(sessionState, signal)) {
+            if ("ambient".equals(signal.milestone) || !shouldAmbient(sessionState, now)) {
+                return;
+            }
+            signal = ambientSignal(session, entry, sessionState, profileState);
+            if (!rememberDedupe(sessionState, signal)) {
+                return;
             }
         }
 
@@ -78,9 +77,13 @@ public class AgentPersonalityNarrator {
             return;
         }
         writeChatter(log, session, signal, fallback, "template");
+        rememberSelfTalk(profileState, fallback);
+        if ("ambient".equals(signal.milestone)) {
+            recordAmbientFired(sessionState, now);
+        }
         maybeSpeak(log, session, signal, fallback, now, sessionState, profileState);
         if (signal.highSignal && shouldQueueLlm(sessionState, profileState, now)) {
-            queueLlmRequest(session, signal, fallback, now, sessionState, profileState);
+            queueLlmRequest(session, signal, now, sessionState, profileState);
         }
     }
 
@@ -130,9 +133,10 @@ public class AgentPersonalityNarrator {
             response.addProperty("message", "Generated personality chatter was rejected.");
             return response;
         }
-        writeChatter(log, session, pending.signal, text, "llm");
         SessionNarrationState sessionState = sessionState(session);
         ProfileNarrationState profileState = profileState(session);
+        writeChatter(log, session, pending.signal, text, "llm");
+        rememberSelfTalk(profileState, text);
         maybeSpeak(log, session, pending.signal, text, now(), sessionState, profileState);
         response.addProperty("success", true);
         response.addProperty("accepted", true);
@@ -251,7 +255,7 @@ public class AgentPersonalityNarrator {
             return classifyFailure(data, entry, state);
         }
         if ("tool_completed".equals(event)) {
-            return classifySuccess(data, entry);
+            return classifySuccess(data, entry, state);
         }
         return null;
     }
@@ -298,6 +302,7 @@ public class AgentPersonalityNarrator {
 
     private NarrationSignal classifyFailure(JsonObject data, JsonObject entry,
             SessionNarrationState state) {
+        state.failureCount++;
         String tool = string(data, "tool", "unknown");
         JsonObject result = object(data, "result");
         String message = compact(string(result, "message", "tool failed"), 90);
@@ -311,6 +316,7 @@ public class AgentPersonalityNarrator {
             return signal;
         }
         if (containsAny(lower, "inventory", "space", "full")) {
+            state.inventoryPressureCount++;
             NarrationSignal signal = signal("inventory_pressure", false, true, entry,
                     "Right. Bank first, heroics later.");
             signal.facts.add("Inventory blocker: " + message);
@@ -349,11 +355,14 @@ public class AgentPersonalityNarrator {
         return null;
     }
 
-    private NarrationSignal classifySuccess(JsonObject data, JsonObject entry) {
+    private NarrationSignal classifySuccess(JsonObject data, JsonObject entry,
+            SessionNarrationState state) {
+        state.successCount++;
         String tool = string(data, "tool", "");
         JsonObject result = object(data, "result");
         JsonArray skillChanges = array(result, "skillChanges");
         if (skillChanges.size() > 0) {
+            state.skillProgressCount++;
             boolean levelGain = hasLevelGain(skillChanges);
             NarrationSignal signal = signal("skill_progress", levelGain, levelGain, entry,
                     "A little better. That is how the grind sneaks up on you.");
@@ -366,6 +375,7 @@ public class AgentPersonalityNarrator {
         String message = string(result, "message", "");
         if ((tool.startsWith("travel_to_landmark") || tool.startsWith("walk_to_tile"))
                 && ("arrived".equalsIgnoreCase(status) || containsAny(message.toLowerCase(Locale.ENGLISH), "arrived", "complete"))) {
+            state.arrivalCount++;
             NarrationSignal signal = signal("arrival", true, true, entry,
                     "Arrived. Somehow, my boots and I remain on speaking terms.");
             signal.facts.add("Movement reached its target.");
@@ -406,13 +416,76 @@ public class AgentPersonalityNarrator {
         return "Skill progress: " + skill + " changed.";
     }
 
-    private NarrationSignal ambientSignal(AgentSession session, JsonObject entry) {
+    private NarrationSignal ambientSignal(AgentSession session, JsonObject entry,
+            SessionNarrationState state, ProfileNarrationState profileState) {
         NarrationSignal signal = signal("ambient", false, true, entry,
-                "Small steps, steady hands. That usually works.");
-        signal.facts.add("A long routine continued without a major milestone.");
+                ambientFallback(state, profileState));
+        signal.facts.add("Active play reflection " + (state.ambientLines + 1) + ".");
         signal.moodSignals.add("steady");
         signal.styleTags.add("skiller-routine");
         return signal;
+    }
+
+    private String ambientFallback(SessionNarrationState state, ProfileNarrationState profileState) {
+        int choice = (int) ((state.eventCount * 31L + state.ambientLines * 17L
+                + state.successCount * 7L + state.failureCount * 13L) % 8L);
+        if (state.routeFrictionCount >= 3 && choice % 2 == 0) {
+            return "The path keeps arguing, but I am learning its habits.";
+        }
+        if (state.inventoryPressureCount > 0 && choice % 3 == 0) {
+            return "Bank first, heroics later. I do know this bit now.";
+        }
+        if (state.skillProgressCount > 0 && choice % 3 == 1) {
+            return "The grind is quiet, but it is still adding up.";
+        }
+        if (state.arrivalCount > 0 && choice % 4 == 3) {
+            return "A few arrivals make the map feel a little less smug.";
+        }
+        String reflected = reflectedAmbient(profileState, choice);
+        if (reflected.length() > 0 && choice % 3 == 2) {
+            return reflected;
+        }
+        String[] lines = {
+                "Small steps, steady hands. The routine is doing its work.",
+                "A quiet stretch, then. I will keep my boots pointed forward.",
+                "Patient feet, tidy clicks, and maybe fewer surprises.",
+                "The pack and the plan are both behaving. Suspicious, but welcome.",
+                "One more ordinary bit done. That is usually how progress looks."
+        };
+        return lines[choice % lines.length];
+    }
+
+    private String reflectedAmbient(ProfileNarrationState profileState, int choice) {
+        String recent = lastRecentSelfTalk(profileState);
+        if (recent.length() == 0) {
+            return "";
+        }
+        String lower = recent.toLowerCase(Locale.ENGLISH);
+        if (containsAny(lower, "path", "road", "boots", "walk")) {
+            return "I remember the road being fussy. Patient feet, better choices.";
+        }
+        if (containsAny(lower, "bank", "pack", "inventory", "food")) {
+            return "I am keeping the bank in mind before the pack gets silly.";
+        }
+        if (containsAny(lower, "progress", "grind", "better", "level")) {
+            return "The last bit of progress is still warm. Keep at it.";
+        }
+        if (containsAny(lower, "requirement", "paperwork", "wrong window")) {
+            return "The world had paperwork earlier. Best keep one eye open.";
+        }
+        if (choice % 2 == 0) {
+            return "I remember enough from earlier to be careful with this next bit.";
+        }
+        return "";
+    }
+
+    private String lastRecentSelfTalk(ProfileNarrationState profileState) {
+        synchronized (profileState.recentSelfTalk) {
+            if (profileState.recentSelfTalk.isEmpty()) {
+                return "";
+            }
+            return profileState.recentSelfTalk.get(profileState.recentSelfTalk.size() - 1);
+        }
     }
 
     private NarrationSignal signal(String milestone, boolean highSignal, boolean speakable,
@@ -427,7 +500,7 @@ public class AgentPersonalityNarrator {
 
     private boolean shouldAmbient(SessionNarrationState state, long now) {
         return state.eventCount - state.lastAmbientEventCount >= AMBIENT_EVENT_INTERVAL
-                && now - state.lastAmbientAtMs >= AMBIENT_COOLDOWN_MS;
+                && now - state.lastAmbientAtMs >= AMBIENT_CHATTER_INTERVAL_MS;
     }
 
     private boolean shouldQueueLlm(SessionNarrationState sessionState,
@@ -438,19 +511,56 @@ public class AgentPersonalityNarrator {
         return now - profileState.lastLlmAtMs >= LLM_COOLDOWN_MS;
     }
 
-    private void queueLlmRequest(AgentSession session, NarrationSignal signal, String fallback,
+    private void queueLlmRequest(AgentSession session, NarrationSignal signal,
             long now, SessionNarrationState sessionState, ProfileNarrationState profileState) {
         trimPendingQueue();
         String requestId = UUID.randomUUID().toString();
         PendingNarration pending = PendingNarration.create(requestId, session.getSessionId(),
-                session.getPlayerName(), signal, now, profileState.recentSelfTalk);
+                session.getPlayerName(), signal, now, recentSelfTalkSnapshot(profileState));
         pendingById.put(requestId, pending);
         pendingOrder.add(requestId);
         sessionState.llmRequests++;
         profileState.lastLlmAtMs = now;
-        profileState.recentSelfTalk.add(fallback);
-        while (profileState.recentSelfTalk.size() > 6) {
-            profileState.recentSelfTalk.remove(0);
+    }
+
+    private boolean rememberDedupe(SessionNarrationState sessionState, NarrationSignal signal) {
+        if (!sessionState.recentDedupeKeys.add(signal.dedupeKey())) {
+            return false;
+        }
+        while (sessionState.recentDedupeKeys.size() > 40) {
+            Iterator<String> iterator = sessionState.recentDedupeKeys.iterator();
+            if (iterator.hasNext()) {
+                iterator.next();
+                iterator.remove();
+            } else {
+                break;
+            }
+        }
+        return true;
+    }
+
+    private void recordAmbientFired(SessionNarrationState state, long now) {
+        state.lastAmbientAtMs = now;
+        state.lastAmbientEventCount = state.eventCount;
+        state.ambientLines++;
+    }
+
+    private void rememberSelfTalk(ProfileNarrationState profileState, String text) {
+        String cleaned = validateGeneratedText(text);
+        if (cleaned.length() == 0) {
+            return;
+        }
+        synchronized (profileState.recentSelfTalk) {
+            profileState.recentSelfTalk.add(cleaned);
+            while (profileState.recentSelfTalk.size() > 6) {
+                profileState.recentSelfTalk.remove(0);
+            }
+        }
+    }
+
+    private List<String> recentSelfTalkSnapshot(ProfileNarrationState profileState) {
+        synchronized (profileState.recentSelfTalk) {
+            return new ArrayList<String>(profileState.recentSelfTalk);
         }
     }
 
@@ -680,8 +790,15 @@ public class AgentPersonalityNarrator {
         private int llmRequests;
         private int publicLines;
         private int routeFrictionCount;
+        private int inventoryPressureCount;
+        private int skillProgressCount;
+        private int arrivalCount;
+        private int successCount;
+        private int failureCount;
+        private int ambientLines;
         private int lastAmbientEventCount;
         private long lastAmbientAtMs;
+        private boolean ambientClockStarted;
         private final LinkedHashSet<String> recentDedupeKeys = new LinkedHashSet<String>();
     }
 
