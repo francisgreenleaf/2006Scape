@@ -114,6 +114,31 @@ public class AgentSessionLogTest {
         assertFalse(profile.contains("sk-raw-sensitive-api-key"));
     }
 
+    @Test
+    public void keepsRawLogCompleteWhileBoundingMarkdownSummary() throws Exception {
+        token = AgentSessionManager.INSTANCE.registerClaim(PlayerHandler.players[8], "nonce-log-bounded");
+        AgentSessionManager.ClaimResult claim = AgentSessionManager.INSTANCE.consumeClaim("nonce-log-bounded");
+        AgentSession session = claim.getSession();
+
+        JsonObject arguments = new JsonObject();
+        for (int i = 0; i < 160; i++) {
+            JsonObject result = AgentToolService.success("Action " + i + " complete.");
+            AgentSessionLog.INSTANCE.toolCompleted(session, "observe_state_XS", arguments, result, i);
+        }
+
+        File logFile = findSessionFile(logDirectory, session.getSessionId(), ".jsonl");
+        assertNotNull(logFile);
+        String content = new String(Files.readAllBytes(logFile.toPath()), StandardCharsets.UTF_8);
+        assertTrue(content.contains("Action 0 complete."));
+        assertTrue(content.contains("Action 159 complete."));
+
+        File summaryFile = findSessionFile(logDirectory, session.getSessionId(), ".md");
+        assertNotNull(summaryFile);
+        String summary = new String(Files.readAllBytes(summaryFile.toPath()), StandardCharsets.UTF_8);
+        assertFalse(summary.contains("Action 0 complete."));
+        assertTrue(summary.contains("Action 159 complete."));
+    }
+
     private File findSessionFile(File directory, String sessionId, String extension) {
         File[] files = directory.listFiles();
         if (files == null) {
