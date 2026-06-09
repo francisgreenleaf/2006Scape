@@ -254,25 +254,33 @@ def withdraw_batch(args, handle, player, counts, withdraw_mode_ready, bank_inter
             player = open_bank_only(args, handle, "before_set_withdraw_mode", player=player)
         player = set_item_withdraw_mode(args, handle, player)
         withdraw_mode_ready = True
-    for item_id, label in ((YEW_LONGBOW_U, "yew_longbow_u"), (BOW_STRING, "bow_string")):
-        before = inventory_count(player, item_id)
-        result = timed_tool(args.profile, handle, "tool_timing", "withdraw_bank_items_XS", {
-            "itemId": item_id,
-            "amount": possible,
-        }, {"label": label, "itemId": item_id, "amount": possible})
-        player = player_from(result, args.profile, player)
-        write_event(handle, "withdraw_batch_item", {
-            "label": label,
-            "itemId": item_id,
-            "amount": possible,
-            "success": bool(result.get("success")),
-            "message": result.get("message"),
-            "withdrawnAmount": result.get("withdrawnAmount"),
-            "wallMs": result.get("_wallMs"),
-            "before": before,
-            "after": inventory_count(player, item_id),
-            "player": compact(player),
-        })
+    before_counts = {
+        YEW_LONGBOW_U: inventory_count(player, YEW_LONGBOW_U),
+        BOW_STRING: inventory_count(player, BOW_STRING),
+    }
+    requests = [
+        {"itemId": YEW_LONGBOW_U, "amount": possible},
+        {"itemId": BOW_STRING, "amount": possible},
+    ]
+    result = timed_tool(args.profile, handle, "tool_timing", "withdraw_bank_items_XS", {
+        "items": requests,
+    }, {"label": "stringing_pair", "items": requests})
+    player = player_from(result, args.profile, player)
+    after_counts = {
+        YEW_LONGBOW_U: inventory_count(player, YEW_LONGBOW_U),
+        BOW_STRING: inventory_count(player, BOW_STRING),
+    }
+    write_event(handle, "withdraw_batch_items", {
+        "items": requests,
+        "success": bool(result.get("success")),
+        "message": result.get("message"),
+        "withdrawnAmount": result.get("withdrawnAmount"),
+        "resultItems": result.get("items"),
+        "wallMs": result.get("_wallMs"),
+        "before": before_counts,
+        "after": after_counts,
+        "player": compact(player),
+    })
     actual = min(inventory_count(player, YEW_LONGBOW_U), inventory_count(player, BOW_STRING))
     return player, actual, counts, withdraw_mode_ready
 

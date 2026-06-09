@@ -569,6 +569,37 @@
       ]
     },
     {
+      "id": "seers_yew_complete_bow_master",
+      "name": "Seers Yew Complete Bow Master",
+      "path": "agent-navigation/tools/seers_yew_complete_bow_master.py",
+      "kind": "gameplay_runner",
+      "description": "Profile-scoped master runner that makes finished yew longbows by switching between existing Seers yew chop/fletch, fast flax-to-bowstring, and yew-longbow stringing runners. It prioritizes stringing pairable supplies first and exposes compact status plus cooperative stop controls.",
+      "aliases": [
+        "seers complete yews",
+        "complete yew bows",
+        "make complete yew longbows",
+        "yew flax string master",
+        "seers yew complete master"
+      ],
+      "tags": [
+        "gameplay",
+        "woodcutting",
+        "fletching",
+        "crafting",
+        "flax",
+        "bowstrings",
+        "yew",
+        "longbow",
+        "runner",
+        "wrapper",
+        "seers"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/seers_yew_complete_bow_master.py --profile PROFILE --max-master-cycles 1",
+        "python3 agent-navigation/tools/script_registry.py run complete yew bows -- --profile PROFILE --shutdown-status"
+      ]
+    },
+    {
       "id": "tick_analysis_report",
       "name": "Runner Tick Analysis Report",
       "path": "agent-navigation/tools/tick_analysis_report.py",
