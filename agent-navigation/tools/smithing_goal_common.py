@@ -196,19 +196,29 @@ def ensure_coin_float_for_route(player, profile, amount, handle=None):
     return player
 
 
-def run_subprocess(command, profile, handle, event, args, expect_json=False):
+def run_subprocess(command, profile, handle, event, args, expect_json=False, timeout=None):
     env = os.environ.copy()
     if profile:
         env["RS_PROFILE"] = profile
         env["RSBRIDGE_PROFILE"] = profile
-    proc = subprocess.run(
-        command,
-        cwd=str(REPO_ROOT),
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        env=env,
-    )
+    try:
+        proc = subprocess.run(
+            command,
+            cwd=str(REPO_ROOT),
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=env,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as exc:
+        write_event(handle, event, {
+            "command": command,
+            "timeoutSeconds": int(timeout or 0),
+            "stdoutTail": [line for line in (exc.stdout or "").splitlines() if line.strip()][-10:],
+            "stderrTail": [line for line in (exc.stderr or "").splitlines() if line.strip()][-10:],
+        })
+        raise RuntimeError("{} timed out after {} seconds".format(event, int(timeout or 0)))
     stdout_lines = [line for line in (proc.stdout or "").splitlines() if line.strip()]
     stderr_lines = [line for line in (proc.stderr or "").splitlines() if line.strip()]
     write_event(handle, event, {
@@ -284,9 +294,4 @@ def ensure_bank_at(profile, bank_place, bank_tile, handle, args, coin_float=0, r
 def smelt_load_size(possible, needed, hard_cap=10):
     possible = int(possible)
     needed = max(1, int(needed))
-    target = min(possible, needed, int(hard_cap))
-    if target >= 6:
-        return target
-    if possible >= 5:
-        return 5
-    return 1
+    return max(1, min(possible, needed, int(hard_cap)))
