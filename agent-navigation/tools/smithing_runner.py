@@ -225,6 +225,7 @@ def smelt_round(profile, args, handle):
         "bar": bar,
         "amount": int(amount),
         "maxDistance": int(args.object_max_distance),
+        "legacyCompatibility": True,
     }, profile=profile)
     player = bridge._player_from_or(start, player)
     wait = bridge.call_tool("wait_until_idle_XS", {
