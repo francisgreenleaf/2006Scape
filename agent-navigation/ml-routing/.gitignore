@@ -3,18 +3,5 @@ artifacts/*
 !artifacts/.gitkeep
 # Legacy ML1 model artifacts are intentionally ignored. Keep the checked-in
 # current model under ../ml2-routing/artifacts/models/ instead.
-!artifacts/datasets/
-artifacts/datasets/*
-!artifacts/datasets/latest.json
-!artifacts/datasets/route-pack-20260525T174700Z/
-artifacts/datasets/route-pack-20260525T174700Z/*
-!artifacts/datasets/route-pack-20260525T174700Z/*.jsonl
-!artifacts/datasets/route-pack-20260525T174700Z/summary.json
-!artifacts/benchmarks/
-artifacts/benchmarks/*
-!artifacts/benchmarks/latest.json
-!artifacts/benchmarks/route-pack-20260525T174700Z/
-artifacts/benchmarks/route-pack-20260525T174700Z/*
-!artifacts/benchmarks/route-pack-20260525T174700Z/benchmark.json
 __pycache__/
 *.py[cod]
