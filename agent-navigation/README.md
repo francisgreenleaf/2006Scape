@@ -90,7 +90,7 @@ Use [Agent Scripting Primitives](scripting-primitives.md) before adding or chang
 
 Legacy high-level Java tools such as `fletch_logs_until_inventory_empty`, `mine_ore_until_inventory_full`, `chop_tree_until_inventory_full`, `fish_food`, `cook_food`, `light_fire`, `smith_item`, and `train_combat` remain available for compatibility, but new runners should prefer primitive composition. Current primitive-backed runners cover mining, woodcutting/fletching, food, smithing, and combat.
 
-For banking, prefer `tools/bank_loadout.py`, `food_bank_XS.py`, or shared `bridge_script.execute_bank_policy` instead of ad hoc repeated deposit loops. A bank policy should observe inventory once, skip absent items, deposit listed resources/junk in one `deposit_inventory_items_XS` call using `itemIds` for multiple item types, trim food with `keepFoodCount` in one call, and adjust the coin float once. For equipment cleanup, use `unequip_items_XS` rather than looping `unequip_item` across slots.
+For banking, prefer `tools/bank_loadout.py`, `food_bank_XS.py`, or shared `bridge_script.execute_bank_policy` instead of ad hoc repeated deposit loops. A bank policy should observe inventory once, skip absent items, deposit listed resources/junk in one `deposit_inventory_items_XS` call using `itemIds` for multiple item types, withdraw mixed exact quantities in one `withdraw_bank_items_XS` call using `items:[{"itemId":440,"amount":9},{"itemId":453,"amount":18}]`, trim food with `keepFoodCount` in one call, and adjust the coin float once. For equipment cleanup, use `unequip_items_XS` rather than looping `unequip_item` across slots.
 
 ## Character Memory
 

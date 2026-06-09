@@ -115,8 +115,203 @@ def call_tool_direct(tool_name, arguments=None, profile=""):
         raise RuntimeError("{} returned invalid JSON: {}".format(tool_name, exc))
 
 
+def _bridge_tool_base(tool_name):
+    value = str(tool_name or "")
+    for suffix in ("_XXS", "_XS"):
+        if value.endswith(suffix):
+            return value[:-len(suffix)]
+    return value
+
+
+def _batched_withdraw_entries(arguments):
+    if not isinstance(arguments, dict):
+        return []
+    for key in ("items", "withdrawals", "requests"):
+        value = arguments.get(key)
+        if isinstance(value, list):
+            return value
+    return []
+
+
+def _has_batched_withdraw_args(tool_name, arguments):
+    return _bridge_tool_base(tool_name) == "withdraw_bank_items" and bool(_batched_withdraw_entries(arguments or {}))
+
+
+def _int_amount(value, default=1):
+    try:
+        return max(1, int(value))
+    except (TypeError, ValueError):
+        return max(1, int(default))
+
+
+def _int_count(value, default=0):
+    try:
+        return max(0, int(value))
+    except (TypeError, ValueError):
+        return max(0, int(default))
+
+
+def _normalize_withdraw_request(entry, default_amount=1):
+    if isinstance(entry, dict):
+        amount = _int_amount(
+            entry.get("amount", entry.get("count", entry.get("quantity", default_amount))),
+            default=default_amount,
+        )
+        request = {"amount": amount}
+        item_id = entry.get("itemId", entry.get("id"))
+        name = entry.get("name", entry.get("item"))
+        if item_id is not None:
+            request["itemId"] = int(item_id)
+        elif name is not None:
+            request["name"] = str(name)
+        else:
+            raise ValueError("batch withdraw entry must include itemId/id or name/item")
+        return request
+    if isinstance(entry, list) and len(entry) >= 2:
+        return {"itemId": int(entry[0]), "amount": _int_amount(entry[1], default=default_amount)}
+    raise ValueError("batch withdraw entries must be objects or [itemId, amount] pairs")
+
+
+def _normalize_withdraw_requests(arguments):
+    default_amount = _int_amount((arguments or {}).get("amount", 1))
+    return [_normalize_withdraw_request(entry, default_amount=default_amount)
+            for entry in _batched_withdraw_entries(arguments or {})]
+
+
+def _batch_withdraw_tool_name(tool_name):
+    if str(tool_name or "").endswith("_XXS"):
+        return "withdraw_bank_items_XXS"
+    return "withdraw_bank_items_XS"
+
+
+def _call_single_withdraw(tool_name, request, profile=""):
+    if os.environ.get("RSBRIDGE_USE_SHELL", "").lower() in ("1", "true", "yes", "on"):
+        return call_tool_shell(tool_name, request, profile=profile)
+    return call_tool_direct(tool_name, request, profile=profile)
+
+
+def _call_tool_no_batch(tool_name, arguments=None, profile=""):
+    if os.environ.get("RSBRIDGE_USE_SHELL", "").lower() in ("1", "true", "yes", "on"):
+        return call_tool_shell(tool_name, arguments, profile=profile)
+    return call_tool_direct(tool_name, arguments, profile=profile)
+
+
+def _copy_compact_state(source, target):
+    if not isinstance(source, dict):
+        return
+    for key in ("player", "inventory", "bank", "equipment", "combat", "xp"):
+        value = source.get(key)
+        if value is not None:
+            target[key] = value
+
+
+def _looks_like_java_batch_withdraw_result(result):
+    return isinstance(result, dict) and isinstance(result.get("items"), list)
+
+
+def call_withdraw_bank_items_batch_fallback(tool_name, arguments=None, profile=""):
+    """Compatibility fallback for pre-restart runtimes without Java batch withdraw."""
+    args = arguments or {}
+    try:
+        requests = _normalize_withdraw_requests(args)
+    except (TypeError, ValueError) as exc:
+        return {
+            "success": False,
+            "compact": True,
+            "tool": _batch_withdraw_tool_name(tool_name),
+            "message": "Invalid batch withdraw request: {}".format(exc),
+            "withdrawn": 0,
+            "withdrawnAmount": 0,
+            "items": [],
+        }
+    if not requests:
+        return {
+            "success": False,
+            "compact": True,
+            "tool": _batch_withdraw_tool_name(tool_name),
+            "message": "No batch withdraw items were provided.",
+            "withdrawn": 0,
+            "withdrawnAmount": 0,
+            "items": [],
+        }
+
+    subtool = _batch_withdraw_tool_name(tool_name)
+    allow_partial = bool(args.get("allowPartial", False))
+    summaries = []
+    total_withdrawn = 0
+    completed = 0
+    last_result = None
+    failed_message = ""
+
+    for request in requests:
+        requested = int(request.get("amount", 1) or 1)
+        try:
+            result = _call_single_withdraw(subtool, request, profile=profile)
+        except RuntimeError as exc:
+            result = {"success": False, "message": str(exc), "withdrawnAmount": 0}
+        last_result = result
+        moved = _int_count(result.get("withdrawnAmount", 0))
+        ok = bool(result.get("success")) and (allow_partial or moved >= requested)
+        summary = {
+            "requested": requested,
+            "withdrawnAmount": moved,
+        }
+        if "itemId" in request:
+            summary["itemId"] = request["itemId"]
+        if "name" in request:
+            summary["name"] = request["name"]
+        if not ok:
+            summary["success"] = False
+            summary["message"] = result.get("message", "withdraw failed")
+            failed_message = summary["message"]
+        else:
+            completed += 1
+        summaries.append(summary)
+        total_withdrawn += moved
+        if not ok and not allow_partial:
+            break
+
+    success = completed == len(requests) and total_withdrawn > 0
+    payload = {
+        "success": success,
+        "tool": subtool,
+        "message": (
+            "Withdrew {} bank item{} across {} request{}.".format(
+                total_withdrawn,
+                "" if total_withdrawn == 1 else "s",
+                completed,
+                "" if completed == 1 else "s",
+            )
+            if success else
+            "Batch bank withdraw incomplete: {}".format(failed_message or "no matching bank item was withdrawn")
+        ),
+        "withdrawn": completed,
+        "withdrawnAmount": total_withdrawn,
+        "items": summaries,
+    }
+    if subtool.endswith("_XXS"):
+        payload["xxs"] = True
+    else:
+        payload["compact"] = True
+    _copy_compact_state(last_result, payload)
+    return payload
+
+
+def call_withdraw_bank_items_batch(tool_name, arguments=None, profile=""):
+    """Call batch bank withdraw, falling back only for stale live runtimes."""
+    try:
+        result = _call_tool_no_batch(tool_name, arguments or {}, profile=profile)
+        if _looks_like_java_batch_withdraw_result(result) or bool(result.get("success")):
+            return result
+    except RuntimeError:
+        pass
+    return call_withdraw_bank_items_batch_fallback(tool_name, arguments, profile=profile)
+
+
 def call_tool(tool_name, arguments=None, profile=""):
     """Call an rs bridge tool and return the raw JSON response."""
+    if _has_batched_withdraw_args(tool_name, arguments):
+        return call_withdraw_bank_items_batch(tool_name, arguments, profile=profile)
     if os.environ.get("RSBRIDGE_USE_SHELL", "").lower() in ("1", "true", "yes", "on"):
         return call_tool_shell(tool_name, arguments, profile=profile)
     return call_tool_direct(tool_name, arguments, profile=profile)
