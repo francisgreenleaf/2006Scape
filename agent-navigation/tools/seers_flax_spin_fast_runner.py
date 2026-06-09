@@ -49,9 +49,11 @@ GROUND_LADDER = 1747
 UPSTAIRS_LADDER = 1746
 SPIN_BUTTON = 34186
 SERVER_TICK_SECONDS = 0.6
-PICKABLE_GLOBAL_COOLDOWN_TICKS = 1
+PICKABLE_PLAYER_COOLDOWN_SECONDS = 1.8
+PICKABLE_GLOBAL_COOLDOWN_TICKS = 0
 PICKABLE_RESPAWN_TICKS = 5
-PICK_COOLDOWN_BUFFER_SECONDS = 0.05
+PICK_COOLDOWN_BUFFER_SECONDS = 0.08
+PICK_RESPAWN_BUFFER_SECONDS = 0.25
 
 SEERS_BANK = {"x": 2727, "y": 3493, "height": 0}
 FLAX_FIELD = {"x": 2741, "y": 3451, "height": 0}
@@ -79,12 +81,19 @@ LADDER_TO_BANK = [
 ]
 
 
-def flax_respawn_seconds():
-    return PICKABLE_RESPAWN_TICKS * SERVER_TICK_SECONDS + PICK_COOLDOWN_BUFFER_SECONDS
+def flax_respawn_seconds(args=None):
+    buffer_seconds = PICK_RESPAWN_BUFFER_SECONDS
+    if args is not None:
+        buffer_seconds = float(getattr(args, "pick_respawn_buffer_seconds", buffer_seconds))
+    return PICKABLE_RESPAWN_TICKS * SERVER_TICK_SECONDS + buffer_seconds
 
 
 def pick_global_cooldown_seconds(args):
-    return max(0.0, float(args.pick_global_cooldown_ticks) * SERVER_TICK_SECONDS + float(args.pick_cooldown_buffer_seconds))
+    explicit_seconds = float(getattr(args, "pick_player_cooldown_seconds", 0.0) or 0.0)
+    if explicit_seconds <= 0.0:
+        legacy_ticks = int(getattr(args, "pick_global_cooldown_ticks", 0) or 0)
+        explicit_seconds = float(legacy_ticks) * SERVER_TICK_SECONDS if legacy_ticks > 0 else PICKABLE_PLAYER_COOLDOWN_SECONDS
+    return max(0.0, explicit_seconds + float(args.pick_cooldown_buffer_seconds))
 
 
 def utc_now():
@@ -318,7 +327,7 @@ def maybe_run(args, handle, reason, player):
     return updated
 
 
-def walk_tile(args, handle, reason, destination, player=None, stop_distance=0, max_ticks=80):
+def walk_tile(args, handle, reason, destination, player=None, stop_distance=0, max_ticks=80, max_walk_distance=96):
     player = player or observe(args)
     safety_check(player)
     if distance(tile(player), destination) <= stop_distance:
@@ -339,7 +348,7 @@ def walk_tile(args, handle, reason, destination, player=None, stop_distance=0, m
             "height": int(destination.get("height", 0) or 0),
             "stopDistance": int(stop_distance),
             "maxTicks": int(max_ticks),
-            "maxWalkDistance": 96,
+            "maxWalkDistance": int(max_walk_distance),
             "stopOnCombat": True,
             "stopOnStall": True,
         }, profile=args.profile)
@@ -369,13 +378,45 @@ def walk_tile(args, handle, reason, destination, player=None, stop_distance=0, m
     return player
 
 
-def walk_path(args, handle, reason, path, player=None, stop_distance_last=0):
+def path_walk_ticks(player, destination):
+    d = distance(tile(player), destination)
+    return max(18, min(120, int(d * 3) + 12))
+
+
+def walk_path_sequential(args, handle, reason, path, player=None, stop_distance_last=0):
     player = player or observe(args)
     for index, destination in enumerate(path, start=1):
         stop_distance = stop_distance_last if index == len(path) else 1
         player = walk_tile(args, handle, "{}_{}".format(reason, index), destination, player=player,
                            stop_distance=stop_distance)
     return player
+
+
+def walk_path(args, handle, reason, path, player=None, stop_distance_last=0):
+    player = player or observe(args)
+    if not path:
+        return player
+    if not bool(getattr(args, "direct_route_paths", True)) or len(path) == 1:
+        return walk_path_sequential(args, handle, reason, path, player=player, stop_distance_last=stop_distance_last)
+    final_destination = path[-1]
+    write_event(handle, "walk_path_direct_plan", {
+        "reason": reason,
+        "waypoints": path,
+        "destination": final_destination,
+        "player": compact(player),
+    })
+    try:
+        return walk_tile(args, handle, reason + "_direct", final_destination, player=player,
+                         stop_distance=stop_distance_last, max_ticks=path_walk_ticks(player, final_destination))
+    except RuntimeError as exc:
+        player = observe(args)
+        write_event(handle, "walk_path_direct_fallback", {
+            "reason": reason,
+            "error": str(exc),
+            "waypoints": path,
+            "player": compact(player),
+        })
+        return walk_path_sequential(args, handle, reason, path, player=player, stop_distance_last=stop_distance_last)
 
 
 def ladder_transition(args, handle, reason, object_id, object_tile, expected_height, player=None):
@@ -501,20 +542,18 @@ def route_to_flax(args, handle, player=None):
     found = nearest_flax(args, handle, player, "to_flax_initial")
     if found.get("success"):
         return move_to_flax_interaction(args, handle, player, found, "to_flax_initial_target")
-    for index, destination in enumerate(BANK_TO_FLAX, start=1):
-        try:
-            player = walk_tile(args, handle, "to_flax_{}".format(index), destination, player=player,
-                               stop_distance=1 if index < len(BANK_TO_FLAX) else 2)
-        except RuntimeError:
-            player = observe(args)
-            found = nearest_flax(args, handle, player, "to_flax_after_oscillation_{}".format(index))
-            if found.get("success"):
-                return move_to_flax_interaction(args, handle, player, found,
-                                                "to_flax_after_oscillation_{}_target".format(index))
-            raise
-        found = nearest_flax(args, handle, player, "to_flax_after_{}".format(index))
+    try:
+        player = walk_path(args, handle, "to_flax", BANK_TO_FLAX + [FLAX_PICK_TILE], player=player,
+                           stop_distance_last=1)
+    except RuntimeError:
+        player = observe(args)
+        found = nearest_flax(args, handle, player, "to_flax_after_direct_failure")
         if found.get("success"):
-            return move_to_flax_interaction(args, handle, player, found, "to_flax_after_{}_target".format(index))
+            return move_to_flax_interaction(args, handle, player, found, "to_flax_after_direct_failure_target")
+        raise
+    found = nearest_flax(args, handle, player, "to_flax_after_direct")
+    if found.get("success"):
+        return move_to_flax_interaction(args, handle, player, found, "to_flax_after_direct_target")
     return player
 
 
@@ -558,24 +597,48 @@ def nearest_flax(args, handle, player, reason):
     return result
 
 
-def choose_cached_flax(player, objects, cooldowns, pick_radius):
-    now = time.monotonic()
+def flax_key(obj):
+    key = obj.get("key")
+    if key:
+        return key
+    try:
+        return tile_string(compact_tile(obj))
+    except RuntimeError:
+        return ""
+
+
+def cached_flax_candidate(player, obj, cooldowns, pick_radius, now=None):
+    if not obj:
+        return None
+    now = time.monotonic() if now is None else now
     player_tile = tile(player)
+    obj_tile = compact_tile(obj)
+    if int(obj_tile.get("height", 0)) != int(player_tile.get("height", 0)):
+        return None
+    key = flax_key(obj)
+    if cooldowns.get(key, 0.0) > now:
+        return None
+    d = distance(player_tile, obj_tile)
+    if d > int(pick_radius):
+        return None
+    candidate = dict(obj)
+    candidate["key"] = key
+    candidate["distance"] = int(d)
+    return candidate
+
+
+def choose_cached_flax(player, objects, cooldowns, pick_radius, preferred=None):
+    now = time.monotonic()
+    preferred_candidate = cached_flax_candidate(player, preferred, cooldowns, pick_radius, now=now)
+    if preferred_candidate:
+        preferred_candidate["preferred"] = True
+        return preferred_candidate
     candidates = []
     for obj in objects:
-        obj_tile = compact_tile(obj)
-        if int(obj_tile.get("height", 0)) != int(player_tile.get("height", 0)):
+        candidate = cached_flax_candidate(player, obj, cooldowns, pick_radius, now=now)
+        if not candidate:
             continue
-        key = tile_string(obj_tile)
-        if cooldowns.get(key, 0.0) > now:
-            continue
-        d = distance(player_tile, obj_tile)
-        if d > int(pick_radius):
-            continue
-        candidate = dict(obj)
-        candidate["key"] = key
-        candidate["distance"] = int(d)
-        candidates.append((d, key, candidate))
+        candidates.append((candidate["distance"], candidate["key"], candidate))
     if not candidates:
         return None
     candidates.sort(key=lambda item: (item[0], item[1]))
@@ -583,14 +646,9 @@ def choose_cached_flax(player, objects, cooldowns, pick_radius):
 
 
 def cooldown_flax(args, cooldowns, obj, seconds=None):
-    key = obj.get("key")
-    if not key:
-        try:
-            key = tile_string(compact_tile(obj))
-        except RuntimeError:
-            key = ""
+    key = flax_key(obj)
     if key:
-        duration = flax_respawn_seconds() if seconds is None else float(seconds)
+        duration = flax_respawn_seconds(args) if seconds is None else float(seconds)
         cooldowns[key] = time.monotonic() + duration
         return duration
     return 0.0
@@ -624,6 +682,7 @@ def pick_inventory(args, handle, player=None):
     no_progress = 0
     known_flax = cached_flax_objects()
     known_cooldowns = {}
+    active_flax = None
     last_productive_pick_at = 0.0
     while int(player.get("freeInventorySlots", player.get("freeSlots", 0)) or 0) > 0:
         safety_check(player)
@@ -633,8 +692,9 @@ def pick_inventory(args, handle, player=None):
         before = count(player, FLAX)
         player, timer_wait_ticks = wait_for_pick_global_cooldown(args, handle, player, last_productive_pick_at)
         find_started = time.monotonic()
-        obj = choose_cached_flax(player, known_flax, known_cooldowns, args.flax_cache_pick_radius)
-        source = "cached_flax"
+        obj = choose_cached_flax(player, known_flax, known_cooldowns, args.flax_cache_pick_radius,
+                                 preferred=active_flax)
+        source = "preferred_cached_flax" if obj and obj.get("preferred") else "cached_flax"
         found = {"success": True, "message": "Selected cached flax object.", "object": obj}
         if not obj:
             found = nearest_flax(args, handle, player, "pick")
@@ -676,15 +736,22 @@ def pick_inventory(args, handle, player=None):
         picked += gained
         no_progress = 0 if gained > 0 else no_progress + 1
         plant_cooldown_seconds = 0.0
-        if source == "cached_flax" and gained > 0:
+        active_key = flax_key(active_flax) if active_flax else ""
+        obj_key = flax_key(obj)
+        cached_source = source in ("cached_flax", "preferred_cached_flax")
+        if gained > 0:
             last_productive_pick_at = click_started
+            if cached_source:
+                active_flax = dict(obj)
+        elif cached_source:
             plant_cooldown_seconds = cooldown_flax(args, known_cooldowns, obj)
-        elif source == "cached_flax" and gained <= 0:
-            plant_cooldown_seconds = cooldown_flax(args, known_cooldowns, obj)
+            if active_key and obj_key == active_key:
+                active_flax = None
         write_event(handle, "pick_flax_click", {
             "attempt": attempts,
             "object": obj,
             "source": source,
+            "activeFlaxKey": flax_key(active_flax) if active_flax else None,
             "findMs": find_ms,
             "clickMs": monotonic_ms(click_started),
             "waitMs": monotonic_ms(wait_started),
@@ -702,6 +769,7 @@ def pick_inventory(args, handle, player=None):
             "sourceAction": "pick_flax",
             "source": source,
             "object": obj,
+            "activeFlaxKey": flax_key(active_flax) if active_flax else None,
             "clickToObservedMs": monotonic_ms(click_started),
             "waitMs": monotonic_ms(wait_started),
             "timerWaitTicks": timer_wait_ticks,
@@ -710,8 +778,6 @@ def pick_inventory(args, handle, player=None):
             "inventoryAfter": after,
             "player": compact(player),
         })
-        if gained <= 0:
-            player = observe(args)
         if no_progress >= args.max_pick_no_progress:
             raise RuntimeError("flax picking made no progress after {} attempts".format(no_progress))
     write_event(handle, "pick_inventory", {
@@ -972,10 +1038,14 @@ def build_parser():
     parser.add_argument("--max-cycles", type=int, default=0, help="0 means run until cooperative stop.")
     parser.add_argument("--min-run-energy", type=int, default=20)
     parser.add_argument("--pick-wait-ticks", type=int, default=3)
+    parser.add_argument("--pick-player-cooldown-seconds", type=float, default=PICKABLE_PLAYER_COOLDOWN_SECONDS,
+                        help="Per-player flax pick lockout from server code; legacy tick flag is used only if this is <= 0.")
     parser.add_argument("--pick-global-cooldown-ticks", type=int, default=PICKABLE_GLOBAL_COOLDOWN_TICKS)
     parser.add_argument("--pick-cooldown-buffer-seconds", type=float, default=PICK_COOLDOWN_BUFFER_SECONDS)
+    parser.add_argument("--pick-respawn-buffer-seconds", type=float, default=PICK_RESPAWN_BUFFER_SECONDS)
     parser.add_argument("--flax-cache-pick-radius", type=int, default=FLAX_CACHE_PICK_RADIUS)
     parser.add_argument("--max-pick-no-progress", type=int, default=5)
+    parser.add_argument("--direct-route-paths", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--spin-ticks-per-item", type=int, default=3)
     parser.add_argument("--spin-startup-ticks", type=int, default=0)
     parser.add_argument("--spin-min-wait-ticks", type=int, default=3)
