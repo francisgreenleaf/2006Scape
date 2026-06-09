@@ -196,6 +196,14 @@ For one-off supply questions, call `bank_item_count_XS` instead of full
 mixed `items` array and returns exact bank amount plus inventory/equipment
 amounts for the matched canonical item ids.
 
+For mixed bank withdrawals with different quantities, prefer one compact
+`withdraw_bank_items_XS` call with an `items` array, for example
+`{"items":[{"itemId":440,"amount":9},{"itemId":453,"amount":18}]}` for a steel
+smelting load. Legacy `itemId`/`itemIds`/`name` plus shared `amount` calls still
+work, but `itemIds` deliberately means "first matching item with this shared
+amount", not different quantities per id. Repo-side Python has a stale-runtime
+fallback until the live server is restarted with the Java batch support.
+
 Do not loop over the same bank item several times unless the bridge returns a
 real partial-move failure. For the current cow trip loadout, run this only when
 already in a bank area:

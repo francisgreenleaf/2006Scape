@@ -729,6 +729,8 @@ public class AgentToolService {
         copyIfPresent(result, compact, "depositedAmount");
         copyIfPresent(result, compact, "withdrawn");
         copyIfPresent(result, compact, "withdrawnAmount");
+        copyIfPresent(result, compact, "requested");
+        copyIfPresent(result, compact, "items");
         copyIfPresent(result, compact, "unequipped");
         copyIfPresent(result, compact, "equipped");
         copyIfPresent(result, compact, "dropped");
@@ -812,6 +814,8 @@ public class AgentToolService {
         copyIfPresent(result, compact, "depositedAmount");
         copyIfPresent(result, compact, "withdrawn");
         copyIfPresent(result, compact, "withdrawnAmount");
+        copyIfPresent(result, compact, "requested");
+        copyIfPresent(result, compact, "items");
         copyIfPresent(result, compact, "unequipped");
         copyIfPresent(result, compact, "equipped");
         copyIfPresent(result, compact, "dropped");
@@ -4241,15 +4245,115 @@ public class AgentToolService {
         SkillHandler.resetSkills(player);
         player.getPacketSender().openUpBank();
 
-        String name = normalize(getString(arguments, "name", ""));
+        if (hasWithdrawBankItemBatch(arguments)) {
+            return withdrawBankItemBatch(player, arguments);
+        }
+
+        JsonObject item = withdrawOneBankItem(player, arguments);
+        int withdrawnAmount = getInt(item, "withdrawnAmount", 0);
+        JsonObject result = withdrawnAmount > 0
+                ? success("Withdrew " + withdrawnAmount + " bank item" + (withdrawnAmount == 1 ? "." : "s."))
+                : failure(getString(item, "message", "No matching bank item was withdrawn."));
+        result.addProperty("withdrawn", withdrawnAmount > 0 ? 1 : 0);
+        result.addProperty("withdrawnAmount", withdrawnAmount);
+        if (item.has("itemId")) {
+            result.addProperty("itemId", item.get("itemId").getAsInt());
+        }
+        if (item.has("itemName")) {
+            result.addProperty("itemName", item.get("itemName").getAsString());
+        }
+        addPlayerState(result, player);
+        return result;
+    }
+
+    private static boolean hasWithdrawBankItemBatch(JsonObject arguments) {
+        return hasArray(arguments, "items") || hasArray(arguments, "withdrawals") || hasArray(arguments, "requests");
+    }
+
+    private static JsonArray withdrawBankItemBatchArray(JsonObject arguments) {
+        if (hasArray(arguments, "items")) {
+            return jsonArray(arguments, "items");
+        }
+        if (hasArray(arguments, "withdrawals")) {
+            return jsonArray(arguments, "withdrawals");
+        }
+        return jsonArray(arguments, "requests");
+    }
+
+    private static JsonObject withdrawBankItemBatch(Player player, JsonObject arguments) {
+        JsonArray requests = withdrawBankItemBatchArray(arguments);
+        boolean allowPartial = getBoolean(arguments, "allowPartial", false);
+        int defaultAmount = Math.max(1, getInt(arguments, "amount", 1));
+        JsonArray items = new JsonArray();
+        int completed = 0;
+        int withdrawnAmount = 0;
+        String failedMessage = "";
+
+        for (JsonElement element : requests) {
+            JsonObject itemSummary = new JsonObject();
+            JsonObject request = withdrawBankItemRequest(element, defaultAmount, itemSummary);
+            if (request == null) {
+                itemSummary.addProperty("success", false);
+                itemSummary.addProperty("withdrawnAmount", 0);
+                if (!itemSummary.has("message")) {
+                    itemSummary.addProperty("message", "Invalid batch withdraw item.");
+                }
+                failedMessage = getString(itemSummary, "message", "Invalid batch withdraw item.");
+                items.add(itemSummary);
+                if (!allowPartial) {
+                    break;
+                }
+                continue;
+            }
+
+            int requestedAmount = Math.max(1, getInt(request, "amount", defaultAmount));
+            JsonObject moved = withdrawOneBankItem(player, request);
+            int movedAmount = Math.max(0, getInt(moved, "withdrawnAmount", 0));
+            boolean itemSuccess = getBoolean(moved, "success", false)
+                    && (allowPartial || movedAmount >= requestedAmount);
+            copyIfPresent(moved, itemSummary, "itemId");
+            copyIfPresent(moved, itemSummary, "itemName");
+            itemSummary.addProperty("requested", requestedAmount);
+            itemSummary.addProperty("withdrawnAmount", movedAmount);
+            if (!itemSuccess) {
+                itemSummary.addProperty("success", false);
+                itemSummary.addProperty("message", getString(moved, "message", "No matching bank item was withdrawn."));
+                failedMessage = getString(itemSummary, "message", "No matching bank item was withdrawn.");
+            } else {
+                completed++;
+            }
+            withdrawnAmount += movedAmount;
+            items.add(itemSummary);
+            if (!itemSuccess && !allowPartial) {
+                break;
+            }
+        }
+
+        JsonObject result = completed == requests.size() && withdrawnAmount > 0
+                ? success("Withdrew " + withdrawnAmount + " bank item" + (withdrawnAmount == 1 ? "" : "s")
+                        + " across " + completed + " request" + (completed == 1 ? "." : "s."))
+                : failure("Batch bank withdraw incomplete: "
+                        + (failedMessage.isEmpty() ? "no matching bank item was withdrawn" : failedMessage));
+        result.addProperty("withdrawn", completed);
+        result.addProperty("withdrawnAmount", withdrawnAmount);
+        result.addProperty("requested", requests.size());
+        result.add("items", items);
+        addPlayerState(result, player);
+        return result;
+    }
+
+    private static JsonObject withdrawOneBankItem(Player player, JsonObject arguments) {
+        String name = normalize(getString(arguments, "name", getString(arguments, "item", "")));
         int amount = Math.max(1, getInt(arguments, "amount", 1));
         List<Integer> itemIds = getIntList(arguments, "itemIds");
         int requestedId = getInt(arguments, "itemId", -1);
         if (requestedId >= 0) {
             itemIds.add(requestedId);
         }
-        int withdrawn = 0;
-        int withdrawnAmount = 0;
+        JsonObject result = new JsonObject();
+        result.addProperty("success", false);
+        result.addProperty("requested", amount);
+        result.addProperty("withdrawnAmount", 0);
         for (int i = 0; i < player.bankItems.length; i++) {
             int storedId = player.bankItems[i];
             if (!hasPositiveStoredItem(storedId, player.bankItemsN[i])) {
@@ -4270,17 +4374,77 @@ public class AgentToolService {
             player.getItemAssistant().fromBank(itemId, i, Math.min(amount, Math.max(1, player.bankItemsN[i])));
             int moved = countInventoryItem(player, itemId) - before;
             if (moved > 0) {
-                withdrawn++;
-                withdrawnAmount += moved;
+                result.addProperty("success", true);
+                result.addProperty("itemId", itemId);
+                result.addProperty("itemName", DeprecatedItems.getItemName(itemId));
+                result.addProperty("withdrawnAmount", moved);
+                result.addProperty("message", "Withdrew " + moved + " bank item" + (moved == 1 ? "." : "s."));
+                return result;
             }
             break;
         }
-        JsonObject result = withdrawn > 0 ? success("Withdrew " + withdrawnAmount + " bank item" + (withdrawnAmount == 1 ? "." : "s."))
-                : failure("No matching bank item was withdrawn.");
-        result.addProperty("withdrawn", withdrawn);
-        result.addProperty("withdrawnAmount", withdrawnAmount);
-        addPlayerState(result, player);
+        result.addProperty("message", "No matching bank item was withdrawn.");
         return result;
+    }
+
+    private static JsonObject withdrawBankItemRequest(JsonElement element, int defaultAmount, JsonObject summary) {
+        JsonObject request = new JsonObject();
+        int amount = defaultAmount;
+        if (element == null || element.isJsonNull()) {
+            summary.addProperty("message", "Batch withdraw item was null.");
+            return null;
+        }
+        if (element.isJsonPrimitive()) {
+            try {
+                int itemId = element.getAsInt();
+                request.addProperty("itemId", itemId);
+                request.addProperty("amount", amount);
+                summary.addProperty("itemId", itemId);
+                return request;
+            } catch (RuntimeException ignored) {
+                summary.addProperty("message", "Primitive batch withdraw item must be an item id.");
+                return null;
+            }
+        }
+        if (element.isJsonArray()) {
+            JsonArray pair = element.getAsJsonArray();
+            if (pair.size() < 2 || !pair.get(0).isJsonPrimitive() || !pair.get(1).isJsonPrimitive()) {
+                summary.addProperty("message", "Array batch withdraw item must be [itemId, amount].");
+                return null;
+            }
+            try {
+                int itemId = pair.get(0).getAsInt();
+                amount = Math.max(1, pair.get(1).getAsInt());
+                request.addProperty("itemId", itemId);
+                request.addProperty("amount", amount);
+                summary.addProperty("itemId", itemId);
+                return request;
+            } catch (RuntimeException ignored) {
+                summary.addProperty("message", "Array batch withdraw item must use numeric itemId and amount.");
+                return null;
+            }
+        }
+        if (!element.isJsonObject()) {
+            summary.addProperty("message", "Unsupported batch withdraw item shape.");
+            return null;
+        }
+
+        JsonObject item = element.getAsJsonObject();
+        amount = Math.max(1, getInt(item, "amount", getInt(item, "count", getInt(item, "quantity", defaultAmount))));
+        int itemId = getInt(item, "itemId", getInt(item, "id", -1));
+        String name = getString(item, "name", getString(item, "item", ""));
+        if (itemId >= 0) {
+            request.addProperty("itemId", itemId);
+            summary.addProperty("itemId", itemId);
+        } else if (!name.trim().isEmpty()) {
+            request.addProperty("name", name);
+            summary.addProperty("name", name);
+        } else {
+            summary.addProperty("message", "Batch withdraw object must include itemId/id or name/item.");
+            return null;
+        }
+        request.addProperty("amount", amount);
+        return request;
     }
 
     static boolean hasPositiveStoredItem(int storedId, int amount) {
