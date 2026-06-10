@@ -6822,6 +6822,10 @@
     "id": 144,
     "items": [
       {
+        "itemId": 4,
+        "itemAmount": 100
+      },
+      {
         "itemId": 6,
         "itemAmount": 100
       },

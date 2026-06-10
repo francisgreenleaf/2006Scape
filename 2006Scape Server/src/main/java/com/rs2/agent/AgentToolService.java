@@ -31,6 +31,7 @@ import com.rs2.game.content.consumables.Food;
 import com.rs2.game.content.consumables.Kebabs;
 import com.rs2.game.content.custom.CustomContent;
 import com.rs2.game.content.custom.shops.CustomShops;
+import com.rs2.game.content.combat.range.DwarfCannon;
 import com.rs2.game.content.combat.magic.MagicData;
 import com.rs2.game.content.skills.SkillHandler;
 import com.rs2.game.content.skills.cooking.Cooking;
@@ -177,6 +178,10 @@ public class AgentToolService {
     private static final int[] COOKING_OBJECT_IDS = {
             114, 2728, 2729, 2730, 2731, StaticObjectList.FIRE, 2859, 3039, 4172,
             5275, 8750, 9682, 12102, 13539, 13540, 13541, 13542, 13543, 13544, 14919
+    };
+    private static final int[] CANNONBALL_FURNACE_OBJECT_IDS = {
+            14921, 9390, 2781, 2785, 2966, 3294, 3413, 4304, 4305, 6189, 6190,
+            11009, 11010, 11666, 12100, 12809
     };
     private static final String[] SKILL_NAMES = {"attack", "defence", "strength", "hitpoints", "ranged",
             "prayer", "magic", "cooking", "woodcutting", "fletching", "fishing", "firemaking", "crafting",
@@ -1166,6 +1171,7 @@ public class AgentToolService {
         boolean openedCookingInterface = false;
         boolean handledCustomContent = false;
         boolean openedSpinningInterface = false;
+        boolean startedCannonballMaking = false;
         if (isCookingObject(objectId) && isRawCookableFood(item.itemId)) {
             openedCookingInterface = Cooking.startCooking(player, item.itemId, objectId);
             if (!openedCookingInterface && !player.playerIsCooking) {
@@ -1185,6 +1191,9 @@ public class AgentToolService {
         } else if (isSpinningWheelItemOnObject(item.itemId, objectId)) {
             Spinning.showSpinning(player);
             openedSpinningInterface = true;
+        } else if (isCannonballItemOnFurnace(item.itemId, objectId)) {
+            DwarfCannon.makeBall(player);
+            startedCannonballMaking = player.isSmithing;
         } else {
             UseItem.itemOnObject(player, objectId, x, y, item.itemId);
         }
@@ -1198,6 +1207,7 @@ public class AgentToolService {
         result.addProperty("openedCookingInterface", openedCookingInterface);
         result.addProperty("handledCustomContent", handledCustomContent);
         result.addProperty("openedSpinningInterface", openedSpinningInterface);
+        result.addProperty("startedCannonballMaking", startedCannonballMaking);
         addPlayerState(result, player);
         return result;
     }
@@ -1895,6 +1905,18 @@ public class AgentToolService {
 
     private static boolean isSpinningWheelItemOnObject(int itemId, int objectId) {
         return objectId == 2644 && (itemId == 1737 || itemId == 1779);
+    }
+
+    private static boolean isCannonballItemOnFurnace(int itemId, int objectId) {
+        if (itemId != StaticItemList.STEEL_BAR && itemId != StaticItemList.AMMO_MOULD) {
+            return false;
+        }
+        for (int furnaceObjectId : CANNONBALL_FURNACE_OBJECT_IDS) {
+            if (objectId == furnaceObjectId) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void handleSpinningButton(Player player, int buttonId) {

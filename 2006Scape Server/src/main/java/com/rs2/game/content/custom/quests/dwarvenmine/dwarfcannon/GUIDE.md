@@ -18,7 +18,7 @@ Agent-facing guide for the custom `Dwarf Cannon` quest.
 | --- | ---: | --- |
 | Nulodion | `209` | Custom quest start, reminder, recovery, and completion handler. |
 | Cannonball | `2` | Proof item for quest completion and the quest reward icon. |
-| Ammo mould | `4` | Required to make cannonballs. |
+| Ammo mould | `4` | Sold by Nulodion and required to make cannonballs. |
 | Steel bar | `2353` | Required to make cannonballs. |
 | Cannon base | `6` | Part returned by the recovery dialogue. |
 | Cannon stand | `8` | Part returned by the recovery dialogue. |
@@ -50,7 +50,7 @@ Any of those should work as long as the player has both an ammo mould and a stee
 
 4. Buy cannon parts if needed.
    - Nulodion can open shop `144` from the dialogue path at any time.
-   - The shop stocks the four cannon parts.
+   - The shop stocks the ammo mould and the four cannon parts.
 
 5. Recover a lost cannon if needed.
    - If the player has `lostCannon = true`, Nulodion can return the four parts.
