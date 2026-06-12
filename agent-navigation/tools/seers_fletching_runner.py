@@ -380,6 +380,28 @@ def fletching_target_reached(player, args):
     return args.target_fletching_level > 0 and compact_player(player)["fletchingLevel"] >= args.target_fletching_level
 
 
+def fletch_snapshot(player, choice=None):
+    product_id = choice["productId"] if choice else None
+    log_id = choice["logId"] if choice else None
+    return {
+        "freeSlots": int(player.get("freeInventorySlots", player.get("freeSlots", 0)) or 0),
+        "fletchingXp": compact_player(player)["fletchingXp"],
+        "logs": fletchable_log_count(player),
+        "products": product_count(player),
+        "targetLogs": count_inventory_item(player, log_id) if log_id else 0,
+        "targetProducts": count_inventory_item(player, product_id) if product_id else 0,
+    }
+
+
+def chop_snapshot(player):
+    compact = compact_player(player)
+    return {
+        "freeSlots": compact["freeSlots"],
+        "logs": fletchable_log_count(player),
+        "woodcuttingXp": compact["woodcuttingXp"],
+    }
+
+
 def legacy_fletch_until_empty(args, target_level=True):
     payload = {"maxTicks": args.fletch_ticks, "legacyCompatibility": True}
     if target_level:
@@ -391,10 +413,11 @@ def legacy_fletch_until_empty(args, target_level=True):
 
 def primitive_fletch_until_empty(player, args, handle, reason):
     total_ticks = 0
-    rounds = 0
+    attempts = 0
+    no_progress_attempts = 0
     last_result = {"success": True, "player": player, "batchStatus": "not_started", "batchTicks": 0}
-    while rounds < 8 and total_ticks < args.fletch_ticks:
-        rounds += 1
+    while total_ticks < args.fletch_ticks:
+        attempts += 1
         if fletching_target_reached(player, args):
             last_result = {"success": True, "player": player, "batchStatus": "target_level_reached"}
             break
@@ -410,7 +433,9 @@ def primitive_fletch_until_empty(player, args, handle, reason):
                 "batchStatus": "blocked",
             }
             break
-        round_started = time.monotonic()
+        attempt_started = time.monotonic()
+        before = fletch_snapshot(player, choice)
+        logs_to_cut = max(1, before["targetLogs"])
         use_started = time.monotonic()
         use_result = call_tool("use_item_on_item", {
             "itemId": KNIFE_ID,
@@ -425,51 +450,101 @@ def primitive_fletch_until_empty(player, args, handle, reason):
         clicked_player = bridge._player_from_or(button_result, bridge._player_from_or(use_result, player))
         write_event(handle, "primitive_fletch_start", {
             "reason": reason,
-            "round": rounds,
+            "attempt": attempts,
             "choice": choice,
             "useSuccess": bool(use_result.get("success")),
+            "useMessage": use_result.get("message"),
             "buttonSuccess": bool(button_result.get("success")),
+            "buttonMessage": button_result.get("message"),
             "useMs": use_ms,
             "buttonMs": button_ms,
+            "before": before,
             "player": compact_player(clicked_player),
             "logs": fletchable_log_count(clicked_player),
             "products": product_count(clicked_player),
         })
-        wait_ticks = max(1, min(250, args.fletch_ticks - total_ticks))
-        wait_started = time.monotonic()
-        wait_result = call_tool("wait_until_idle_XS", {
-            "maxTicks": wait_ticks,
-            "movement": True,
-            "skilling": True,
-            "combat": False,
-        })
-        wait_ms = int((time.monotonic() - wait_started) * 1000)
-        player = bridge._player_from_or(
-            wait_result,
-            bridge._player_from_or(button_result, bridge._player_from_or(use_result, player)),
-        )
-        total_ticks += int(wait_result.get("batchTicks", wait_ticks) or wait_ticks)
-        last_result = wait_result
+        expected_ticks = max(3, min(args.fletch_ticks - total_ticks, logs_to_cut * 3 + 3))
+        remaining_ticks = expected_ticks
+        wait_chunks = []
+        wait_ms = 0
+        wait_result = {}
+        early_no_progress = False
+        player = clicked_player
+        while remaining_ticks > 0:
+            chunk = min(25, remaining_ticks)
+            wait_started = time.monotonic()
+            wait_result = call_tool("wait_ticks_XS", {"ticks": chunk})
+            chunk_ms = int((time.monotonic() - wait_started) * 1000)
+            wait_ms += chunk_ms
+            player = bridge._player_from_or(wait_result, player)
+            chunk_after = fletch_snapshot(player, choice)
+            chunk_progressed = (
+                chunk_after["targetLogs"] != before["targetLogs"]
+                or chunk_after["targetProducts"] != before["targetProducts"]
+                or chunk_after["fletchingXp"] != before["fletchingXp"]
+            )
+            wait_chunks.append({
+                "requested": chunk,
+                "waitedTicks": wait_result.get("waitedTicks"),
+                "serverTick": wait_result.get("serverTick"),
+                "wallMs": chunk_ms,
+                "after": chunk_after,
+                "progressed": chunk_progressed,
+            })
+            total_ticks += max(1, int(wait_result.get("waitedTicks", chunk) or chunk))
+            remaining_ticks -= chunk
+            if not wait_result.get("success", False):
+                break
+            if not chunk_progressed and chunk >= args.fletch_no_progress_chunk_ticks:
+                early_no_progress = True
+                wait_result = dict(wait_result)
+                wait_result["batchStatus"] = "early_no_progress"
+                break
+        after = fletch_snapshot(player, choice)
+        logs_cut = max(0, before["targetLogs"] - after["targetLogs"])
+        products_made = max(0, after["targetProducts"] - before["targetProducts"])
+        xp_gained = max(0, after["fletchingXp"] - before["fletchingXp"])
+        if logs_cut > 0 or products_made > 0 or xp_gained > 0:
+            no_progress_attempts = 0
+        else:
+            no_progress_attempts += 1
+        last_result = dict(wait_result)
         last_result["player"] = player
         last_result["fletchingMode"] = "primitive_script"
         last_result["fletchingChoice"] = dict(choice)
+        if no_progress_attempts >= 2:
+            last_result["success"] = False
+            last_result["batchStatus"] = "no_progress"
         write_event(handle, "primitive_fletch_round", {
             "reason": reason,
-            "round": rounds,
+            "attempt": attempts,
             "choice": choice,
             "useSuccess": bool(use_result.get("success")),
+            "useMessage": use_result.get("message"),
             "buttonSuccess": bool(button_result.get("success")),
+            "buttonMessage": button_result.get("message"),
             "waitStatus": wait_result.get("batchStatus"),
             "useMs": use_ms,
             "buttonMs": button_ms,
             "waitMs": wait_ms,
-            "roundMs": int((time.monotonic() - round_started) * 1000),
+            "attemptMs": int((time.monotonic() - attempt_started) * 1000),
+            "expectedTicks": expected_ticks,
+            "earlyNoProgress": early_no_progress,
+            "waitChunks": wait_chunks,
+            "before": before,
+            "after": after,
+            "logsCut": logs_cut,
+            "productsMade": products_made,
+            "xpGained": xp_gained,
+            "noProgressAttempts": no_progress_attempts,
             "player": compact_player(player),
             "logs": fletchable_log_count(player),
             "products": product_count(player),
         })
         if not wait_result.get("success", False):
             last_result["batchStatus"] = wait_result.get("batchStatus", "blocked")
+            break
+        if no_progress_attempts >= 2:
             break
         if fletching_target_reached(player, args):
             last_result["batchStatus"] = "target_level_reached"
@@ -560,21 +635,66 @@ def primitive_chop_until_inventory_full(tree, args, handle, reason, player=None)
             "player": compact_player(clicked_player),
             "logs": fletchable_log_count(clicked_player),
         })
+        before = chop_snapshot(player)
         wait_ticks = min(args.chop_round_ticks, max(1, args.chop_ticks - total_ticks))
-        wait_started = time.monotonic()
-        wait_result = call_tool("wait_until_idle_XS", {
-            "maxTicks": wait_ticks,
-            "movement": True,
-            "skilling": True,
-            "combat": False,
-        })
-        wait_ms = int((time.monotonic() - wait_started) * 1000)
-        player = bridge._player_from_or(wait_result, bridge._player_from_or(interact_result, player))
-        total_ticks += max(1, int(wait_result.get("batchTicks", wait_ticks) or wait_ticks))
+        remaining_ticks = wait_ticks
+        wait_chunks = []
+        wait_ms = 0
+        round_wait_ticks = 0
+        wait_result = {}
+        stale_chunks = 0
+        stale_break_reason = ""
+        last_chunk_snapshot = before
+        player = clicked_player
+        while remaining_ticks > 0:
+            chunk = min(25, remaining_ticks)
+            wait_started = time.monotonic()
+            wait_result = call_tool("wait_ticks_XS", {"ticks": chunk})
+            chunk_ms = int((time.monotonic() - wait_started) * 1000)
+            wait_ms += chunk_ms
+            player = bridge._player_from_or(wait_result, player)
+            waited_ticks = max(1, int(wait_result.get("waitedTicks", chunk) or chunk))
+            total_ticks += waited_ticks
+            round_wait_ticks += waited_ticks
+            chunk_after = chop_snapshot(player)
+            chunk_progressed = (
+                chunk_after["logs"] != last_chunk_snapshot["logs"]
+                or chunk_after["woodcuttingXp"] != last_chunk_snapshot["woodcuttingXp"]
+                or chunk_after["freeSlots"] != last_chunk_snapshot["freeSlots"]
+            )
+            if chunk_progressed:
+                stale_chunks = 0
+            else:
+                stale_chunks += 1
+            wait_chunks.append({
+                "requested": chunk,
+                "waitedTicks": wait_result.get("waitedTicks"),
+                "serverTick": wait_result.get("serverTick"),
+                "wallMs": chunk_ms,
+                "after": chunk_after,
+                "progressed": chunk_progressed,
+                "staleChunks": stale_chunks,
+            })
+            last_chunk_snapshot = chunk_after
+            remaining_ticks -= chunk
+            if not wait_result.get("success", False):
+                break
+            if chunk_after["freeSlots"] < 1:
+                wait_result = dict(wait_result)
+                wait_result["batchStatus"] = "inventory_full"
+                break
+            if stale_chunks >= args.chop_stale_chunks:
+                wait_result = dict(wait_result)
+                stale_break_reason = "stale_after_progress" if chunk_after["logs"] > before["logs"] else "stale_no_progress"
+                wait_result["batchStatus"] = stale_break_reason
+                break
         rounds += 1
+        after = chop_snapshot(player)
+        logs_gained = max(0, after["logs"] - before["logs"])
+        xp_gained = max(0, after["woodcuttingXp"] - before["woodcuttingXp"])
         last_result = wait_result
         last_result["player"] = player
-        last_result["batchStatus"] = wait_result.get("batchStatus", "round_complete")
+        last_result["batchStatus"] = "round_complete"
         write_event(handle, "primitive_chop_round", {
             "reason": reason,
             "round": rounds,
@@ -585,7 +705,15 @@ def primitive_chop_until_inventory_full(tree, args, handle, reason, player=None)
             "findMs": find_ms,
             "interactMs": interact_ms,
             "waitMs": wait_ms,
+            "waitTicks": wait_ticks,
+            "actualWaitTicks": round_wait_ticks,
+            "staleBreakReason": stale_break_reason,
+            "waitChunks": wait_chunks,
             "roundMs": int((time.monotonic() - round_started) * 1000),
+            "before": before,
+            "after": after,
+            "logsGained": logs_gained,
+            "xpGained": xp_gained,
             "player": compact_player(player),
             "logs": fletchable_log_count(player),
         })
@@ -898,16 +1026,31 @@ def bank_products_if_needed(player, args, handle, reason):
         return player
     route_to(args.bank, args, handle, "bank_products")
     player = observe()
+    before = {
+        "products": product_count(player),
+        "notedProducts": noted_product_count(player),
+        "logs": fletchable_log_count(player),
+        "freeSlots": compact_player(player)["freeSlots"],
+    }
     deposited = call_tool("deposit_inventory_items", {
         "itemIds": sorted(FLETCHING_PRODUCT_IDS | {noted_item_id(item_id) for item_id in FLETCHING_PRODUCT_IDS}),
         "amount": product_count(player) + noted_product_count(player),
     })
+    after_player = deposited["player"]
+    after = {
+        "products": product_count(after_player),
+        "notedProducts": noted_product_count(after_player),
+        "logs": fletchable_log_count(after_player),
+        "freeSlots": compact_player(after_player)["freeSlots"],
+    }
     write_event(handle, "bank_products", {
         "reason": reason,
+        "before": before,
+        "after": after,
         "depositedAmount": deposited.get("depositedAmount", 0),
-        "player": compact_player(deposited["player"]),
+        "player": compact_player(after_player),
     })
-    return close_interfaces_if_needed(deposited["player"], handle, "after_bank_products", force=True)
+    return close_interfaces_if_needed(after_player, handle, "after_bank_products", force=True)
 
 
 def bank_bird_nests_if_needed(player, args, handle, reason):
@@ -1155,8 +1298,12 @@ def main(argv=None):
     parser.add_argument("--tree-max-distance", type=int, default=40)
     parser.add_argument("--chop-ticks", type=int, default=900)
     parser.add_argument("--chop-round-ticks", type=int, default=120,
-                        help="Maximum wait per tree click; wait_until_idle still returns early on tree depletion.")
+                        help="Maximum wait per tree click.")
+    parser.add_argument("--chop-stale-chunks", type=int, default=2,
+                        help="Re-click a tree after this many 25-tick chunks without log, XP, or inventory progress.")
     parser.add_argument("--fletch-ticks", type=int, default=900)
+    parser.add_argument("--fletch-no-progress-chunk-ticks", type=int, default=25,
+                        help="Retry fletching if this first wait chunk produces no log, product, or XP progress.")
     parser.add_argument("--legacy-fletch-tool", action="store_true",
                         help="Use the legacy server-side fletch_logs_until_inventory_empty tool instead of primitives.")
     parser.add_argument("--legacy-fletch-fallback", action=argparse.BooleanOptionalAction, default=False,
@@ -1299,9 +1446,24 @@ def main(argv=None):
             player = ensure_run(player, args.min_run_energy, handle)
 
             if fletchable_log_count(player) > 0:
-                player = close_interfaces_if_needed(player, handle, "before_fletch")
+                player = close_interfaces_if_needed(player, handle, "before_fletch", force=True)
                 result = fletch_until_empty(player, args, handle, "cycle")
                 player = result["player"]
+                if not result.get("success", True) or result.get("batchStatus") == "no_progress":
+                    write_event(handle, "blocked", {
+                        "reason": "fletch_no_progress",
+                        "cycle": cycle,
+                        "resultStatus": result.get("batchStatus"),
+                        "player": compact_player(player),
+                        "logs": fletchable_log_count(player),
+                        "products": product_count(player),
+                    })
+                    write_status(args, "blocked", player, {
+                        "reason": "fletch_no_progress",
+                        "cycle": cycle,
+                        "runLog": str(run_path),
+                    })
+                    return 2
                 player = pickup_nearby_bird_nests(args, handle, "after_fletch")
                 player = bank_bird_nests_if_needed(player, args, handle, "after_fletch")
                 if args.bank_products:
@@ -1408,9 +1570,22 @@ def main(argv=None):
         if args.bank_products:
             player = bank_products_if_needed(player, args, handle, "final_start")
         if fletchable_log_count(player) > 0:
-            player = close_interfaces_if_needed(player, handle, "final_before_fletch")
+            player = close_interfaces_if_needed(player, handle, "final_before_fletch", force=True)
             result = fletch_until_empty(player, args, handle, "final")
             player = result["player"]
+            if not result.get("success", True) or result.get("batchStatus") == "no_progress":
+                write_event(handle, "blocked", {
+                    "reason": "final_fletch_no_progress",
+                    "resultStatus": result.get("batchStatus"),
+                    "player": compact_player(player),
+                    "logs": fletchable_log_count(player),
+                    "products": product_count(player),
+                })
+                write_status(args, "blocked", player, {
+                    "reason": "final_fletch_no_progress",
+                    "runLog": str(run_path),
+                })
+                return 2
             player = pickup_nearby_bird_nests(args, handle, "final_after_fletch")
             player = bank_bird_nests_if_needed(player, args, handle, "final_after_fletch")
             if args.bank_products:
