@@ -354,12 +354,28 @@ def string_command(args, target):
 def choose_phase(args, counts, forced):
     if forced in ("yew", "flax", "string"):
         return forced
-    possible = compact_counts(counts)["possibleCompleteBows"]
+    compact = compact_counts(counts)
+    if compact["carriedYewLogs"] > 0:
+        return "yew"
+    possible = compact["possibleCompleteBows"]
     if possible >= int(args.min_stringing_bows):
         return "string"
     if counts[BOW_STRING]["total"] < int(args.min_bowstrings_before_yew):
         return "flax"
     return "yew"
+
+
+def phase_reason(args, counts, forced):
+    if forced in ("yew", "flax", "string"):
+        return "forced_{}".format(forced)
+    compact = compact_counts(counts)
+    if compact["carriedYewLogs"] > 0:
+        return "carried_yew_logs"
+    if compact["possibleCompleteBows"] >= int(args.min_stringing_bows):
+        return "complete_bow_inputs_ready"
+    if counts[BOW_STRING]["total"] < int(args.min_bowstrings_before_yew):
+        return "low_bowstrings"
+    return "need_yew_materials"
 
 
 def run_loop(args):
@@ -382,11 +398,13 @@ def run_loop(args):
                 return 0
             cycles += 1
             counts = material_counts(args.profile)
+            reason = phase_reason(args, counts, forced)
             phase = choose_phase(args, counts, forced)
             forced = "auto"
             write_jsonl(handle, "cycle_start", {
                 "cycle": cycles,
                 "selectedPhase": phase,
+                "phaseReason": reason,
                 "counts": compact_counts(counts),
             })
             if phase == "string":
