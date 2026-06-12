@@ -80,6 +80,9 @@ public class ObjectsActions {
         if (player.getPyramidAgility().pyramidCourse(objectType)) {
             return;
         }
+        if (player.getBrimhavenAgility().brimhavenCourse(objectType)) {
+            return;
+        }
         if (player.getApeAtollAgility().apeAtollCourse(objectType)) {
             return;
         }

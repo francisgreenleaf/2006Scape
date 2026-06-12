@@ -24272,5 +24272,25 @@
     "id": 3123,
     "walk": 1,
     "height": 0
+  },
+  {
+    "maxHit": 0,
+    "strength": 0,
+    "attack": 0,
+    "x": 2809,
+    "y": 3193,
+    "id": 437,
+    "walk": 0,
+    "height": 0
+  },
+  {
+    "maxHit": 0,
+    "strength": 0,
+    "attack": 0,
+    "x": 2805,
+    "y": 3193,
+    "id": 1055,
+    "walk": 0,
+    "height": 0
   }
 ]
