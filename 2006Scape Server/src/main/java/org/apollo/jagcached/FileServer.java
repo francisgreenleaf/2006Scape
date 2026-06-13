@@ -5,6 +5,9 @@ import java.io.IOException;
 import java.net.BindException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -64,7 +67,7 @@ public final class FileServer {
 	 * Starts the file server.
 	 * @throws Exception if an error occurs.
 	 */
-	public SocketAddress service = new InetSocketAddress((Constants.WORLD == 1) ? 43594 : 43596 + Constants.WORLD);
+	public SocketAddress service = bindAddress(Constants.GAME_BIND_HOST, gamePort());
 
 	public void start() throws Exception {
 		if (!new File(Constants.FILE_SYSTEM_DIR).exists())
@@ -92,10 +95,12 @@ public final class FileServer {
 		logger.info("Starting services...");
 		
 		init();
-		SocketAddress http = new InetSocketAddress(Constants.HTTP_PORT);
-		SocketAddress jaggrab = new InetSocketAddress(Constants.JAGGRAB_PORT);
+		List<SocketAddress> serviceAddresses = bindAddresses(Constants.GAME_BIND_HOSTS, Constants.GAME_BIND_HOST, gamePort());
+		List<SocketAddress> httpAddresses = bindAddresses(Constants.HTTP_BIND_HOSTS, Constants.HTTP_BIND_HOST, Constants.HTTP_PORT);
+		List<SocketAddress> jaggrabAddresses = bindAddresses(Constants.JAGGRAB_BIND_HOSTS, Constants.JAGGRAB_BIND_HOST, Constants.JAGGRAB_PORT);
+		service = serviceAddresses.get(0);
 
-		bind(service, http, jaggrab);
+		bind(serviceAddresses, httpAddresses, jaggrabAddresses);
 		
 		logger.info("Ready for connections.");
 	}
@@ -138,20 +143,50 @@ public final class FileServer {
 	 * @throws BindException If the ServerBootstrap fails to bind to the SocketAddress.
 	 */
 	public void bind(SocketAddress service, SocketAddress http, SocketAddress jaggrab) throws IOException {
-		logger.fine("Binding service listener to address: " + service + "...");
-		bind(serviceBootstrap, service);
+		List<SocketAddress> serviceAddresses = new ArrayList<SocketAddress>();
+		serviceAddresses.add(service);
+		List<SocketAddress> httpAddresses = new ArrayList<SocketAddress>();
+		httpAddresses.add(http);
+		List<SocketAddress> jaggrabAddresses = new ArrayList<SocketAddress>();
+		jaggrabAddresses.add(jaggrab);
+		bind(serviceAddresses, httpAddresses, jaggrabAddresses);
+	}
+
+	/**
+	 * Binds the server to one or more configured addresses.
+	 *
+	 * @param serviceAddresses The service addresses to bind to.
+	 * @param httpAddresses The HTTP addresses to bind to.
+	 * @param jaggrabAddresses The JAGGRAB addresses to bind to.
+	 * @throws BindException If a ServerBootstrap fails to bind to any required SocketAddress.
+	 */
+	public void bind(List<SocketAddress> serviceAddresses, List<SocketAddress> httpAddresses,
+			List<SocketAddress> jaggrabAddresses) throws IOException {
+		bindAll(serviceBootstrap, serviceAddresses, "service");
 		if (Constants.FILE_SERVER) {
 			try {
-				logger.fine("Binding HTTP listener to address: " + http + "...");
-				bind(httpBootstrap, http);
+				bindAll(httpBootstrap, httpAddresses, "HTTP");
 			} catch (IOException cause) {
+				if (httpBindFailureIsFatal()) {
+					throw new IOException("Unable to bind the HTTP cache listener in external-player mode.", cause);
+				}
 				logger.log(Level.WARNING, "Unable to bind to HTTP - JAGGRAB will be used as a fallback.", cause);
 			}
 	
-			logger.fine("Binding JAGGRAB listener to address: " + jaggrab + "...");
-			bind(jaggrabBootstrap, jaggrab);
+			bindAll(jaggrabBootstrap, jaggrabAddresses, "JAGGRAB");
 		}
 		logger.info("Ready for connections.");
+	}
+
+	static boolean httpBindFailureIsFatal() {
+		return Constants.EXTERNAL_PLAYERS_ENABLED;
+	}
+
+	private void bindAll(ServerBootstrap bootstrap, List<SocketAddress> addresses, String label) throws IOException {
+		for (SocketAddress address : addresses) {
+			logger.fine("Binding " + label + " listener to address: " + address + "...");
+			bind(bootstrap, address);
+		}
 	}
 	
 	/**
@@ -168,5 +203,35 @@ public final class FileServer {
 			throw new IOException("Failed to bind to " + address, cause);
 		}
 	}
-	
+
+	static SocketAddress bindAddress(String host, int port) {
+		if (host == null || host.trim().isEmpty() || "*".equals(host.trim())) {
+			return new InetSocketAddress(port);
+		}
+		return new InetSocketAddress(host.trim(), port);
+	}
+
+	static List<SocketAddress> bindAddresses(String[] hosts, String fallbackHost, int port) {
+		LinkedHashSet<String> uniqueHosts = new LinkedHashSet<String>();
+		if (hosts != null) {
+			for (String host : hosts) {
+				if (host != null && !host.trim().isEmpty()) {
+					uniqueHosts.add(host.trim());
+				}
+			}
+		}
+		if (uniqueHosts.isEmpty()) {
+			uniqueHosts.add(fallbackHost);
+		}
+		ArrayList<SocketAddress> addresses = new ArrayList<SocketAddress>();
+		for (String host : uniqueHosts) {
+			addresses.add(bindAddress(host, port));
+		}
+		return addresses;
+	}
+
+	static int gamePort() {
+		return Constants.GAME_PORT > 0 ? Constants.GAME_PORT : ((Constants.WORLD == 1) ? 43594 : 43596 + Constants.WORLD);
+	}
+
 }

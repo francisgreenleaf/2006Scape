@@ -54,6 +54,41 @@ launcher_maven() {
         /usr/local/bin/mvn
 }
 
+launcher_docker() {
+    launcher_find_command DOCKER_BIN docker \
+        /Applications/Docker.app/Contents/Resources/bin/docker \
+        /opt/homebrew/bin/docker \
+        /usr/local/bin/docker
+}
+
+launcher_docker_compose() {
+    local docker_bin
+    docker_bin="$(launcher_docker)" || return 127
+
+    local docker_bin_dir
+    docker_bin_dir="$(dirname "$docker_bin")"
+
+    # Docker Desktop for macOS may bundle the CLI, credential helper, and Compose
+    # plugin without adding them to non-interactive shells used by Codex.
+    local desktop_plugin_dir="/Applications/Docker.app/Contents/Resources/cli-plugins"
+    local compose_env_path="$docker_bin_dir:$PATH"
+    if PATH="$compose_env_path" "$docker_bin" compose version >/dev/null 2>&1; then
+        PATH="$compose_env_path" "$docker_bin" compose "$@"
+        return $?
+    fi
+    if [[ -x "$desktop_plugin_dir/docker-compose" ]]; then
+        PATH="$compose_env_path" DOCKER_CLI_PLUGIN_EXTRA_DIRS="$desktop_plugin_dir" "$docker_bin" compose "$@"
+        return $?
+    fi
+    if command -v docker-compose >/dev/null 2>&1; then
+        command docker-compose "$@"
+        return $?
+    fi
+
+    echo "Could not find Docker Compose. Install Docker Desktop or set DOCKER_BIN to a Docker CLI with Compose support." >&2
+    return 127
+}
+
 launcher_abs_path() {
     local path="$1"
     local dir

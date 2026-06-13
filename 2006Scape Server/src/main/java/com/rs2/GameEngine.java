@@ -46,6 +46,7 @@ import com.rs2.game.shops.ShopHandler;
 import com.rs2.integrations.PlayersOnlineWebsite;
 import com.rs2.integrations.RegisteredAccsWebsite;
 import com.rs2.integrations.discord.DiscordActivity;
+import com.rs2.integrations.discord.DiscordAgentTransport;
 import com.rs2.integrations.discord.JavaCord;
 import com.rs2.util.HostBlacklist;
 import com.rs2.util.PerformanceLogger;
@@ -153,7 +154,10 @@ public class GameEngine {
 							ConfigLoader.loadSettings(args[++i]);
 							System.out.println("Loaded Config File " + args[i]);
 						} catch (IOException e) {
-							System.out.println("Config File Not Found");
+							System.err.println("Failed to load or validate config file: " + args[i]);
+							System.err.println(e.getMessage());
+							System.exit(1);
+							return;
 						}
 						break;
 				}
@@ -186,8 +190,9 @@ public class GameEngine {
 		/**
 		 * Start Integration Services
 		 **/
-		ConfigLoader.loadSecrets();
-		JavaCord.init();
+			ConfigLoader.loadSecrets();
+			JavaCord.init();
+			DiscordAgentTransport.INSTANCE.init();
 
 		/**
 		 * Accepting Connections

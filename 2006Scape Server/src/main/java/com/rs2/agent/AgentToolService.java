@@ -255,6 +255,15 @@ public class AgentToolService {
             }
             return clickInterfaceButton(player, arguments);
         }
+        if ("agent_chat_send".equals(tool)) {
+            return agentChatSend(player, arguments);
+        }
+        if ("agent_chat_read".equals(tool)) {
+            return agentChatRead(player, arguments);
+        }
+        if ("agent_chat_status".equals(tool)) {
+            return agentChatStatus(player, arguments);
+        }
         if (!canAct(player)) {
             return failure("The player cannot act right now.");
         }
@@ -1121,6 +1130,85 @@ public class AgentToolService {
         result.addProperty("effects", effects);
         addPlayerState(result, player);
         return result;
+    }
+
+    private static JsonObject agentChatSend(Player player, JsonObject arguments) {
+        try {
+            AgentChatService.AgentChatMessage message = AgentChatService.INSTANCE.sendFromAgent(player, arguments);
+            if (getBoolean(arguments, "alsoPublic", false)) {
+                JsonObject publicArguments = new JsonObject();
+                publicArguments.addProperty("message", message.text);
+                sendPublicChat(player, publicArguments);
+            }
+            JsonObject result = success("Agent chat message sent.");
+            result.addProperty("compact", true);
+            result.addProperty("tool", "agent_chat_send_XS");
+            result.addProperty("messageId", message.id);
+            result.addProperty("channel", message.channel);
+            result.addProperty("toType", message.toType);
+            result.addProperty("toName", message.toName);
+            result.addProperty("deliveredCount", message.deliveredTo.size());
+            result.addProperty("undeliveredCount", message.undeliveredTo.size());
+            result.addProperty("deliveryPending", AgentChatService.INSTANCE.isDeliveryPending(message));
+            result.add("deliveredTo", deliveredToJson(message));
+            result.add("undeliveredTo", undeliveredToJson(message));
+            result.add("player", criticalPlayerState(player));
+            return result;
+        } catch (IllegalArgumentException e) {
+            return failure(e.getMessage());
+        }
+    }
+
+    private static JsonObject agentChatRead(Player player, JsonObject arguments) {
+        long sinceId = getLong(arguments, "sinceId", getLong(arguments, "afterId", 0L));
+        int limit = clamp(getInt(arguments, "limit", 10), 1, 50);
+        String channel = getString(arguments, "channel", "agent");
+        JsonArray messages = AgentChatService.INSTANCE.recentFor(player, sinceId, channel, limit);
+        JsonObject result = success("Agent chat messages read.");
+        result.addProperty("compact", true);
+        result.addProperty("tool", "agent_chat_read_XS");
+        result.addProperty("channel", channel == null || channel.trim().isEmpty() ? "agent" : channel.trim().toLowerCase(Locale.US));
+        result.addProperty("sinceId", sinceId);
+        result.addProperty("count", messages.size());
+        result.addProperty("lastId", AgentChatService.INSTANCE.lastId());
+        result.add("messages", messages);
+        result.add("player", criticalPlayerState(player));
+        return result;
+    }
+
+    private static JsonObject agentChatStatus(Player player, JsonObject arguments) {
+        long sinceId = getLong(arguments, "sinceId", getLong(arguments, "afterId", 0L));
+        String channel = getString(arguments, "channel", "agent");
+        JsonObject result = success("Agent chat status.");
+        result.addProperty("compact", true);
+        result.addProperty("tool", "agent_chat_status_XS");
+        result.addProperty("channel", channel == null || channel.trim().isEmpty() ? "agent" : channel.trim().toLowerCase(Locale.US));
+        result.addProperty("lastId", AgentChatService.INSTANCE.lastId());
+        result.addProperty("unread", AgentChatService.INSTANCE.unreadCountFor(player, sinceId, channel));
+        result.addProperty("backlogSize", AgentChatService.INSTANCE.backlogSize());
+        result.add("transport", AgentChatService.INSTANCE.transportStatus());
+        result.add("player", criticalPlayerState(player));
+        return result;
+    }
+
+    private static JsonArray deliveredToJson(AgentChatService.AgentChatMessage message) {
+        JsonArray delivered = new JsonArray();
+        synchronized (message.deliveredTo) {
+            for (String playerName : message.deliveredTo) {
+                delivered.add(playerName);
+            }
+        }
+        return delivered;
+    }
+
+    private static JsonArray undeliveredToJson(AgentChatService.AgentChatMessage message) {
+        JsonArray undelivered = new JsonArray();
+        synchronized (message.undeliveredTo) {
+            for (String playerName : message.undeliveredTo) {
+                undelivered.add(playerName);
+            }
+        }
+        return undelivered;
     }
 
     private static JsonObject useItemOnItem(Player player, JsonObject arguments) {
@@ -6788,6 +6876,16 @@ public class AgentToolService {
         if (object != null && object.has(name) && object.get(name).isJsonPrimitive()) {
             try {
                 return object.get(name).getAsInt();
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return fallback;
+    }
+
+    private static long getLong(JsonObject object, String name, long fallback) {
+        if (object != null && object.has(name) && object.get(name).isJsonPrimitive()) {
+            try {
+                return object.get(name).getAsLong();
             } catch (NumberFormatException ignored) {
             }
         }

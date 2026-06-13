@@ -4,10 +4,16 @@ import com.google.gson.JsonObject;
 import com.rs2.Constants;
 import com.rs2.game.content.quests.QuestAssistant;
 import com.rs2.game.players.Player;
+import com.rs2.game.players.PlayerHandler;
 import org.apollo.cache.def.ItemDefinition;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
@@ -17,6 +23,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class AgentActionServiceTest {
+
+    @Rule
+    public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
     @BeforeClass
     public static void seedGearMoneyItemDefinitionValuesWhenDefinitionsExist() {
@@ -94,6 +103,137 @@ public class AgentActionServiceTest {
         JsonObject result = task.get(1, TimeUnit.SECONDS);
         assertTrue(result.get("success").getAsBoolean());
         assertEquals(7, result.get("value").getAsInt());
+    }
+
+    @Test
+    public void actionQueueRejectsSubmissionsAtCapacityAndDrainsSlots() throws Exception {
+        final AgentActionService service = new AgentActionService();
+        List<FutureTask<JsonObject>> tasks = new ArrayList<FutureTask<JsonObject>>();
+        for (int i = 0; i < AgentActionService.MAX_PENDING_ACTIONS; i++) {
+            final int value = i;
+            FutureTask<JsonObject> task = new FutureTask<JsonObject>(new Callable<JsonObject>() {
+                @Override
+                public JsonObject call() {
+                    return service.submitAfterGameTicks(25, new Callable<JsonObject>() {
+                        @Override
+                        public JsonObject call() {
+                            JsonObject result = AgentToolService.success("processed");
+                            result.addProperty("value", value);
+                            return result;
+                        }
+                    });
+                }
+            });
+            tasks.add(task);
+            Thread thread = new Thread(task, "AgentActionServiceCapacityTest");
+            thread.start();
+        }
+
+        for (int i = 0; i < 200 && service.pendingActionCountForTests() < AgentActionService.MAX_PENDING_ACTIONS; i++) {
+            Thread.sleep(5L);
+        }
+        assertEquals(AgentActionService.MAX_PENDING_ACTIONS, service.pendingActionCountForTests());
+
+        JsonObject rejected = service.submitOnGameTick("test", new Callable<JsonObject>() {
+            @Override
+            public JsonObject call() {
+                return AgentToolService.success("should not run");
+            }
+        });
+        assertFalse(rejected.get("success").getAsBoolean());
+        assertTrue(rejected.get("message").getAsString().contains("queue is full"));
+
+        for (int i = 0; i < 30; i++) {
+            service.processPendingActions();
+        }
+        for (FutureTask<JsonObject> task : tasks) {
+            assertTrue(task.get(1, TimeUnit.SECONDS).get("success").getAsBoolean());
+        }
+        assertEquals(0, service.pendingActionCountForTests());
+    }
+
+    @Test
+    public void gameTickDrainsPendingAgentChatPlayerDeliveries() {
+        Player gem = testPlayer(11, "MrGem");
+        gem.disconnected = false;
+        gem.isActive = true;
+        PlayerHandler.players[11] = gem;
+        try {
+            AgentChatService.AgentChatMessage message = AgentChatService.INSTANCE.send(
+                    "discord", "DiscordUser", "MrFlame", "player", "MrGem", "agent", "hello player", true);
+
+            assertEquals(0, message.deliveredTo.size());
+
+            AgentActionService.INSTANCE.processPendingActions();
+
+            assertEquals(1, message.deliveredTo.size());
+            assertEquals("MrGem", message.deliveredTo.get(0));
+        } finally {
+            PlayerHandler.players[11] = null;
+        }
+    }
+
+    @Test
+    public void submittedAgentChatXsToolsResolveThroughSessionQueue() throws Exception {
+        File logDirectory = temporaryFolder.newFolder("agent-action-chat-xs");
+        Player previousFlame = PlayerHandler.players[32];
+        Player previousGem = PlayerHandler.players[33];
+        Player flame = testPlayer(32, "MrFlame");
+        Player gem = testPlayer(33, "MrGem");
+        flame.disconnected = false;
+        flame.isActive = true;
+        gem.disconnected = false;
+        gem.isActive = true;
+        PlayerHandler.players[32] = flame;
+        PlayerHandler.players[33] = gem;
+        String flameToken = null;
+        String gemToken = null;
+        try {
+            AgentSessionLog.INSTANCE.setLogDirectoryForTests(logDirectory);
+            flameToken = AgentSessionManager.INSTANCE.registerClaim(flame, "action-chat-xs-flame");
+            gemToken = AgentSessionManager.INSTANCE.registerClaim(gem, "action-chat-xs-gem");
+            assertTrue(AgentSessionManager.INSTANCE.consumeClaim("action-chat-xs-flame").isSuccess());
+            assertTrue(AgentSessionManager.INSTANCE.consumeClaim("action-chat-xs-gem").isSuccess());
+
+            JsonObject sendArgs = new JsonObject();
+            sendArgs.addProperty("message", "queued xs chat");
+            sendArgs.addProperty("agent", "MrGem");
+            sendArgs.addProperty("channel", "queued-xs");
+
+            JsonObject sendResult = submitToolAndProcess(flameToken, "agent_chat_send_XS", sendArgs);
+
+            assertTrue(sendResult.get("success").getAsBoolean());
+            assertEquals("agent_chat_send_XS", sendResult.get("tool").getAsString());
+            assertEquals("agent", sendResult.get("toType").getAsString());
+            assertEquals("MrGem", sendResult.get("toName").getAsString());
+
+            JsonObject readArgs = new JsonObject();
+            readArgs.addProperty("channel", "queued-xs");
+            readArgs.addProperty("sinceId", 0);
+            readArgs.addProperty("limit", 5);
+
+            JsonObject statusResult = submitToolAndProcess(gemToken, "agent_chat_status_XS", readArgs);
+            JsonObject readResult = submitToolAndProcess(gemToken, "agent_chat_read_XS", readArgs);
+
+            assertTrue(statusResult.get("success").getAsBoolean());
+            assertEquals("agent_chat_status_XS", statusResult.get("tool").getAsString());
+            assertEquals(1, statusResult.get("unread").getAsInt());
+            assertTrue(readResult.get("success").getAsBoolean());
+            assertEquals("agent_chat_read_XS", readResult.get("tool").getAsString());
+            assertEquals(1, readResult.get("count").getAsInt());
+            assertEquals("queued xs chat",
+                    readResult.getAsJsonArray("messages").get(0).getAsJsonObject().get("text").getAsString());
+        } finally {
+            if (flameToken != null) {
+                AgentSessionManager.INSTANCE.invalidate(flameToken, "test");
+            }
+            if (gemToken != null) {
+                AgentSessionManager.INSTANCE.invalidate(gemToken, "test");
+            }
+            AgentSessionLog.INSTANCE.resetLogDirectoryForTests();
+            PlayerHandler.players[32] = previousFlame;
+            PlayerHandler.players[33] = previousGem;
+        }
     }
 
     @Test
@@ -1543,6 +1683,24 @@ public class AgentActionServiceTest {
         Player player = new TestPlayer(playerId);
         player.playerName = playerName;
         return player;
+    }
+
+    private static JsonObject submitToolAndProcess(final String token, final String tool, final JsonObject arguments)
+            throws Exception {
+        FutureTask<JsonObject> task = new FutureTask<JsonObject>(new Callable<JsonObject>() {
+            @Override
+            public JsonObject call() {
+                return AgentActionService.INSTANCE.submitTool(token, tool, arguments);
+            }
+        });
+        Thread thread = new Thread(task, "AgentActionServiceSubmitToolTest");
+        thread.start();
+
+        for (int i = 0; i < 50 && !task.isDone(); i++) {
+            AgentActionService.INSTANCE.processPendingActions();
+            Thread.sleep(10L);
+        }
+        return task.get(1, TimeUnit.SECONDS);
     }
 
     private static class TestPlayer extends Player {

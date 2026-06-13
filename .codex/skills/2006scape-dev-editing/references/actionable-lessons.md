@@ -18,6 +18,20 @@ These notes are repo-specific operational memory from actual agent experience. A
 - **Use instead:** Inspect the root `pom.xml` module names before using `-pl`; this repo's server module selector is `-pl '2006Scape Server'`. Running focused Maven commands from the module directory is also valid.
 - **Validation:** The focused command should reach test execution rather than failing during Maven project selection.
 
+### Package from a clean target when archive creation stalls
+
+- **Observed:** `scripts/validate-network-auth-chat.sh` passed focused tests and the full Maven test suite, then hung inside `mvn -q -DskipTests package` while Maven's jar archiver waited on stale duplicate numbered `.class` files under `2006Scape Server/target/classes`.
+- **Cause:** The package step reused an old target directory containing generated/stale class artifacts that did not exist in source.
+- **Use instead:** For branch-level package proof, run `mvn -q clean -DskipTests package` or make wrapper validators clean before packaging so the jar is built from current source output only.
+- **Validation:** The clean package command should complete quickly and leave `2006Scape Server/target/server-1.0-jar-with-dependencies.jar` rebuilt.
+
+### Clean before full-suite validation after focused Maven runs
+
+- **Observed:** After focused module tests, `scripts/validate-network-auth-chat.sh` failed at the later full `mvn test` step with missing `com.rs2.game.players.Player` and `PacketType` symbols even though `Player.java` still existed and compiled in a focused clean server compile.
+- **Cause:** The full-suite step reused an incomplete/stale `target/classes` tree left by earlier Maven invocations; `Client.class` existed but superclass `Player.class` did not.
+- **Use instead:** In validation wrappers that run focused Maven checks before a broad suite, make the broad suite `mvn -q clean test` instead of plain `mvn -q test`.
+- **Validation:** `scripts/validate-network-auth-chat.sh` should run the full Maven suite from a clean target and no longer fail from missing inherited `Player` fields.
+
 ### Check interaction tiles before treating a gate click as proof
 
 - **Observed:** The Barbarian Outpost gate and pipe could be clicked, but the player would sometimes remain in place because the handler only recognized a narrow set of exact coordinates.
@@ -296,3 +310,17 @@ These notes are repo-specific operational memory from actual agent experience. A
 - **Cause:** `AgentActionService` clamps `wait_ticks` requests to `1..25` ticks, so a single long wait can return early while production is still active.
 - **Use instead:** Chunk exact production waits into 25-tick-or-smaller `wait_ticks_XS` calls, log each chunk's wall time, and only use `wait_until_idle_XS` as a verified fallback. Avoid separate bank-open calls when the next deposit/withdraw primitive already opens the bank.
 - **Validation:** A two-cycle Mrwood yew-longbow stringing proof completed `14` bows per cycle with `25+17` tick chunks, no fallback wait, final deposits containing only item `855`, and a steady-state cycle of `28.2s` / about `1,787` bows per hour.
+
+### Use launcher Docker discovery for Java 8 validation on macOS
+
+- **Observed:** Docker Desktop was installed, but `docker compose run --rm rsps-2006scape-build` failed in the Codex shell because `docker` was not on `PATH`; using the bundled Docker CLI then failed to pull because `docker-credential-desktop` was also not on `PATH`.
+- **Cause:** Docker Desktop for macOS can bundle the CLI, Compose plugin, and credential helper under `/Applications/Docker.app/Contents/Resources/` without exposing them to non-interactive shells.
+- **Use instead:** Run `RUN_DOCKER_BUILD=1 scripts/validate-network-auth-chat.sh`; it calls `launcher_docker_compose`, which discovers Docker Desktop's bundled CLI/plugin and prepends the credential-helper directory when needed. If calling launcher functions directly, invoke them through Bash, for example `bash -lc 'source scripts/lib/launcher-common.sh && launcher_docker_compose run --rm rsps-2006scape-build'`; sourcing Bash helpers from the default zsh shell can fail with `bad substitution`.
+- **Validation:** `bash -lc 'source scripts/lib/launcher-common.sh; launcher_docker_compose version'` returned Docker Compose v5.1.4, and `RUN_DOCKER_BUILD=1 scripts/validate-network-auth-chat.sh` completed the Docker Java 8 build successfully.
+
+### Test final deployment proof with non-placeholder fixtures
+
+- **Observed:** After `--require-full-proof` was hardened to reject source/test-only allowances, `scripts/validate-network-auth-chat.sh` failed because its partial-proof smoke still used the tracked sample config with `--allow-placeholder-network-config`.
+- **Cause:** The smoke conflated two cases: a final-proof report that is missing live evidence, and a source-validation report that needs placeholder allowances.
+- **Use instead:** Exercise missing-live-proof behavior with a temporary non-placeholder package/config, and keep placeholder/source-only allowance rejection as a separate expected-failure assertion.
+- **Validation:** `RUN_DOCKER_BUILD=1 scripts/validate-network-auth-chat.sh` passed after the partial-proof smoke used the generated `client_tls_tunnel` fixture and the placeholder allowance check stayed separate.

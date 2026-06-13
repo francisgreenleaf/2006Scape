@@ -1,0 +1,4 @@
+interface:
+  display_name: "2006Scape External Deployment"
+  short_description: "Package and prove external 2006Scape deploys"
+  default_prompt: "Use $2006scape-external-deployment to prepare, validate, or prove an external-player 2006Scape deployment."
