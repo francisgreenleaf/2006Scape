@@ -37,6 +37,7 @@ python3 agent-navigation/tools/script_registry.py search "client"
 python3 agent-navigation/tools/script_registry.py search "tls tunnel"
 python3 agent-navigation/tools/script_registry.py search "proof"
 scripts/preflight-external-config.py "2006Scape Server/ServerConfig.External.Sample.json"
+scripts/preflight-external-config.py "2006Scape Server/ServerConfig.ClientTlsTunnel.Sample.json"
 scripts/validate-network-auth-chat.sh
 ```
 
@@ -87,6 +88,8 @@ Manifest-owned proof-note file paths are resolved relative to the manifest file 
 After the final readiness report is generated, use `scripts/package-deployment-proof.py` only for non-secret handoff evidence. Prefer `--prepared-dir dist/external-deployment` for the normal `prepare-external-deployment.py` output; it resolves the prepared readiness report, JSON report, client metadata, server-deployment metadata, and copied `deployment-proof-manifest.json` when present. It bundles readiness Markdown/JSON, the filled proof manifest, proof notes, and selected client/server metadata, but deliberately excludes runtime-data backup archives, `data/characters`, `data/accounts`, `data/secrets.json`, passwords, bridge tokens, and Discord bot tokens.
 
 Use `--allow-placeholder-network-config`, `--allow-placeholder-discord-secrets`, or `--allow-empty-accounts` only for tracked sample/source validation. Do not combine source/test-only allowances with `--require-full-proof`.
+
+Use `2006Scape Server/ServerConfig.External.Sample.json` for the simplest `direct_tcp` source sample and `2006Scape Server/ServerConfig.ClientTlsTunnel.Sample.json` for the paired stunnel source sample. The TLS tunnel sample keeps Java listeners on loopback and uses `REPLACE_WITH_PUBLIC_TLS_HOST` for the public stunnel endpoint; replace it before real packaging. `CLIENT_ALLOW_PLACEHOLDER_NETWORK_CONFIG=1` is only for source validation of placeholder samples.
 
 Client manifests include `source_server_config_sha256`; package and verify from the same final config file so the verifier can reject stale or mismatched client artifacts, unexpected files, symlinked client package paths, and symlink-type zip entries. For `client_tls_tunnel`, `prepare-external-deployment.py` also renders operator-side stunnel templates and passes them to readiness verification with `--client-tls-tunnel-dir`; lower-level verifier/report calls should include that directory when it exists. The operator-side stunnel accept host comes from `client_tls_tunnel_server_accept_host` or `public_game_host`; use a real non-placeholder, non-wildcard host because wildcard can collide with the loopback Java game/cache listeners on the same ports. If `--tls-sni-host` is supplied, it must be the real certificate hostname, not a placeholder, loopback host, or wildcard.
 

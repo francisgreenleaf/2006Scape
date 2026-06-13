@@ -2,7 +2,7 @@
 
 This is the short path for a first regular-player external test. Use this when you want to get one remote 2006Scape server, one local client, and one external client online safely without reading the full design document first.
 
-For the simplest live test, use the tracked `direct_tcp` sample. It exposes the legacy game/cache sockets as plaintext TCP to the configured public host, so keep PBKDF2 account auth enabled, open only the required game/cache ports in the host firewall, and keep the Codex agent bridge loopback-only. If you need encrypted/private external traffic instead, use Tailscale, WireGuard, a VPN, or `client_tls_tunnel`.
+For the simplest live test, use the tracked `direct_tcp` sample. It exposes the legacy game/cache sockets as plaintext TCP to the configured public host, so keep PBKDF2 account auth enabled, open only the required game/cache ports in the host firewall, and keep the Codex agent bridge loopback-only. If you need encrypted/private external traffic instead, use Tailscale, WireGuard, a VPN, or start from `2006Scape Server/ServerConfig.ClientTlsTunnel.Sample.json` for the paired stunnel path.
 
 ## What This Sets Up
 
@@ -27,7 +27,7 @@ Do not expose the agent bridge. It must stay loopback-only, normally `127.0.0.1:
 
 ## 1. Create The External Config
 
-From the repo root on the server:
+From the repo root on the server, copy the direct public sample:
 
 ```sh
 cp "2006Scape Server/ServerConfig.External.Sample.json" "2006Scape Server/ServerConfig.json"
@@ -50,6 +50,15 @@ Set these values for the default `direct_tcp` path:
 - `agent_bridge_bind_host`: `127.0.0.1`.
 
 For Tailscale/WireGuard/VPN/client TLS tunnel instead, use the relevant private host/bind values, set that `external_transport_mode`, set `require_secure_external_transport=true`, and set `secure_external_transport_confirmed=true`.
+
+For the tracked client TLS tunnel sample instead:
+
+```sh
+cp "2006Scape Server/ServerConfig.ClientTlsTunnel.Sample.json" "2006Scape Server/ServerConfig.json"
+$EDITOR "2006Scape Server/ServerConfig.json"
+```
+
+Replace `REPLACE_WITH_PUBLIC_TLS_HOST` with the public DNS name that has the TLS certificate and stunnel listener. In this mode the Java game/cache listeners stay loopback-only, packaged clients connect to `127.0.0.1`, and players must run the bundled `client-tls-tunnel/stunnel-client.conf` before launching the Java client.
 
 Then preflight:
 

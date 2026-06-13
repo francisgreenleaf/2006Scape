@@ -124,8 +124,10 @@ sed -n '1,260p' docs/external-deployment-quickstart.md
 sed -n '1,260p' docs/network-auth-agent-chat-design.md
 sed -n '1,260p' docs/deployment-networking.md
 scripts/preflight-external-config.py "2006Scape Server/ServerConfig.External.Sample.json"
+scripts/preflight-external-config.py "2006Scape Server/ServerConfig.ClientTlsTunnel.Sample.json"
 scripts/validate-network-auth-chat.sh
 CLIENT_SERVER_CONFIG="2006Scape Server/ServerConfig.External.Sample.json" scripts/package-client.sh
+CLIENT_SERVER_CONFIG="2006Scape Server/ServerConfig.ClientTlsTunnel.Sample.json" CLIENT_ALLOW_PLACEHOLDER_NETWORK_CONFIG=1 scripts/package-client.sh
 # Packaged launchers/checkers must keep Java-missing guidance, transport-specific setup text, operator-provided-login guidance, no-password-reuse warnings, external transport metadata, setup-check TCP diagnostics, `source_server_config_sha256`, `-no-java-warnings`, executable macOS/Linux scripts, and CRLF Windows `.bat` line endings for external testers. `direct_tcp` packages connect to `public_game_host` over plaintext TCP; `client_tls_tunnel` packages connect to loopback and prepare/readiness should include `--client-tls-tunnel-dir` so operator-side stunnel templates are verified too. The server-side stunnel accept host and any `--tls-sni-host` certificate override must be specific/non-wildcard/non-placeholder so they do not collide with loopback Java listeners or ship unusable tunnel configs.
 scripts/prepare-external-deployment.py --config "2006Scape Server/ServerConfig.External.Sample.json" --allow-empty-accounts --allow-placeholder-network-config
 # Manual CLIENT_SERVER_HOST overrides for non-local packages require CLIENT_SECURE_TRANSPORT (`direct_tcp`, `tailscale`, `wireguard`, `vpn`, or `client_tls_tunnel`); wildcard client hosts are rejected.

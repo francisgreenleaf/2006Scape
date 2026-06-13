@@ -86,6 +86,7 @@ Implementation scope:
 - Add sample configs:
   - `ServerConfig.Local.json` or document current local default.
   - `ServerConfig.External.Sample.json` with explicit public/server settings.
+  - `ServerConfig.ClientTlsTunnel.Sample.json` with loopback Java listeners and a public stunnel endpoint placeholder.
 - Update Docker Compose or add a deployment compose file that only publishes intended ports.
 - Keep login-path host decisions on numeric remote addresses from the login decoder. Do not use reverse DNS during login for blacklist or rate-limit keys.
 - Normalize blacklist entries and lookups by trimming and lowercasing; ignore blank/comment lines so external IP/private-host entries are predictable.
@@ -368,7 +369,9 @@ The first implementation batch in this worktree follows this staged plan before 
 
 `ServerConfig.Sample.json` stays local-first. It binds game, HTTP cache, and JAGGRAB to `127.0.0.1`.
 
-`ServerConfig.External.Sample.json` is the external deployment starting point. It binds the game, HTTP cache, and JAGGRAB services to `127.0.0.1` plus `REPLACE_WITH_PUBLIC_INTERFACE_IP`, sets `public_game_host` to `server.example.com`, enables external-player intent, and uses `external_transport_mode=direct_tcp` with explicit plaintext acknowledgement fields. Replace those placeholders with the real public interface address and DNS name or public IP before a real deployment. If using Tailscale, WireGuard, VPN, or `client_tls_tunnel` instead, replace the same fields with the selected private/tunnel values and set the secure transport acknowledgement fields.
+`ServerConfig.External.Sample.json` is the direct public deployment starting point. It binds the game, HTTP cache, and JAGGRAB services to `127.0.0.1` plus `REPLACE_WITH_PUBLIC_INTERFACE_IP`, sets `public_game_host` to `server.example.com`, enables external-player intent, and uses `external_transport_mode=direct_tcp` with explicit plaintext acknowledgement fields. Replace those placeholders with the real public interface address and DNS name or public IP before a real deployment.
+
+`ServerConfig.ClientTlsTunnel.Sample.json` is the tracked encrypted-path starting point. It keeps game/cache listeners on `127.0.0.1`, sets `external_transport_mode=client_tls_tunnel`, sets secure-transport acknowledgements, and uses `REPLACE_WITH_PUBLIC_TLS_HOST` for both `public_game_host` and the server-side stunnel accept host. Replace that placeholder with the real certificate hostname before packaging for players. Source validation may use `--allow-placeholder-network-config` or `CLIENT_ALLOW_PLACEHOLDER_NETWORK_CONFIG=1`; real deployments must not.
 
 The plural bind arrays let a remote server accept local same-host client connections and external client connections at the same time without binding every public interface. If a deployment deliberately uses `0.0.0.0`, bind wildcard alone for that listener, keep it behind a host firewall or private network, set `wildcard_bind_confirmed=true`, and acknowledge that choice in the preflight/package/verify commands.
 

@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<defs><linearGradient id="top" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0d1824"/><stop offset="1" stop-color="#0b1118"/></linearGradient></defs>
+<rect width="1600" height="900" fill="url(#top)"/>
+<line x1="0" y1="0" x2="0" y2="900" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="80" y1="0" x2="80" y2="900" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="160" y1="0" x2="160" y2="900" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="240" y1="0" x2="240" y2="900" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="320" y1="0" x2="320" y2="900" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="400" y1="0" x2="400" y2="900" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="480" y1="0" x2="480" y2="900" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="560" y1="0" x2="560" y2="900" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="640" y1="0" x2="640" y2="900" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="720" y1="0" x2="720" y2="900" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="800" y1="0" x2="800" y2="900" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="880" y1="0" x2="880" y2="900" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="960" y1="0" x2="960" y2="900" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="1040" y1="0" x2="1040" y2="900" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="1120" y1="0" x2="1120" y2="900" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="1200" y1="0" x2="1200" y2="900" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="1280" y1="0" x2="1280" y2="900" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="1360" y1="0" x2="1360" y2="900" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="1440" y1="0" x2="1440" y2="900" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="1520" y1="0" x2="1520" y2="900" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="1600" y1="0" x2="1600" y2="900" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="0" y1="0" x2="1600" y2="0" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="0" y1="80" x2="1600" y2="80" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="0" y1="160" x2="1600" y2="160" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="0" y1="240" x2="1600" y2="240" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="0" y1="320" x2="1600" y2="320" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="0" y1="400" x2="1600" y2="400" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="0" y1="480" x2="1600" y2="480" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="0" y1="560" x2="1600" y2="560" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="0" y1="640" x2="1600" y2="640" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="0" y1="720" x2="1600" y2="720" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="0" y1="800" x2="1600" y2="800" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<line x1="0" y1="880" x2="1600" y2="880" stroke="#17202b" stroke-width="1" stroke-linecap="round"/>
+<rect x="56" y="48" width="1488" height="120" rx="28" fill="#0f1722" stroke="#31435a" stroke-width="2"/>
+<text x="88" y="105" font-family="Avenir, Helvetica, Arial, sans-serif" font-size="50" font-weight="800" fill="#e6edf3" text-anchor="start">Deployment proof and external-player safety</text>
+<text x="90" y="145" font-family="Avenir, Helvetica, Arial, sans-serif" font-size="24" font-weight="400" fill="#94a3b8" text-anchor="start">Source validation plus deploy-time proof lets public access be reviewed before real players connect.</text>
+<text x="90" y="245" font-family="Avenir, Helvetica, Arial, sans-serif" font-size="31" font-weight="800" fill="#f2cc60" text-anchor="start">Transport modes</text>
+<text x="480" y="245" font-family="Avenir, Helvetica, Arial, sans-serif" font-size="31" font-weight="800" fill="#f2cc60" text-anchor="start">Auth and secrets</text>
+<text x="870" y="245" font-family="Avenir, Helvetica, Arial, sans-serif" font-size="31" font-weight="800" fill="#f2cc60" text-anchor="start">Agent surface</text>
+<text x="1240" y="245" font-family="Avenir, Helvetica, Arial, sans-serif" font-size="31" font-weight="800" fill="#f2cc60" text-anchor="start">Proof tooling</text>
+<rect x="78" y="280" width="320" height="360" rx="22" fill="#121c28" stroke="#31435a" stroke-width="2"/>
+<rect x="102" y="309" width="272" height="46" rx="12" fill="#0d1520" stroke="#28384a" stroke-width="1"/>
+<text x="122" y="338" font-family="Avenir, Helvetica, Arial, sans-serif" font-size="20" font-weight="400" fill="#e6edf3" text-anchor="start">[pass] direct_tcp explicit ack</text>
+<rect x="102" y="379" width="272" height="46" rx="12" fill="#0d1520" stroke="#28384a" stroke-width="1"/>
+<text x="122" y="408" font-family="Avenir, Helvetica, Arial, sans-serif" font-size="20" font-weight="400" fill="#e6edf3" text-anchor="start">[pass] client_tls_tunnel sample</text>
+<rect x="102" y="449" width="272" height="46" rx="12" fill="#0d1520" stroke="#28384a" stroke-width="1"/>
+<text x="122" y="478" font-family="Avenir, Helvetica, Arial, sans-serif" font-size="20" font-weight="400" fill="#e6edf3" text-anchor="start">[pass] VPN/private modes</text>
+<rect x="102" y="519" width="272" height="46" rx="12" fill="#0d1520" stroke="#28384a" stroke-width="1"/>
+<text x="122" y="548" font-family="Avenir, Helvetica, Arial, sans-serif" font-size="20" font-weight="400" fill="#e6edf3" text-anchor="start">[pass] bind-host preflight</text>
+<rect x="468" y="280" width="320" height="360" rx="22" fill="#121c28" stroke="#31435a" stroke-width="2"/>
+<rect x="492" y="309" width="272" height="46" rx="12" fill="#0d1520" stroke="#28384a" stroke-width="1"/>
+<text x="512" y="338" font-family="Avenir, Helvetica, Arial, sans-serif" font-size="20" font-weight="400" fill="#e6edf3" text-anchor="start">[pass] PBKDF2 accounts</text>
+<rect x="492" y="379" width="272" height="46" rx="12" fill="#0d1520" stroke="#28384a" stroke-width="1"/>
+<text x="512" y="408" font-family="Avenir, Helvetica, Arial, sans-serif" font-size="20" font-weight="400" fill="#e6edf3" text-anchor="start">[pass] auto-create disabled</text>
+<rect x="492" y="449" width="272" height="46" rx="12" fill="#0d1520" stroke="#28384a" stroke-width="1"/>
+<text x="512" y="478" font-family="Avenir, Helvetica, Arial, sans-serif" font-size="20" font-weight="400" fill="#e6edf3" text-anchor="start">[pass] legacy fallback off</text>
+<rect x="492" y="519" width="272" height="46" rx="12" fill="#0d1520" stroke="#28384a" stroke-width="1"/>
+<text x="512" y="548" font-family="Avenir, Helvetica, Arial, sans-serif" font-size="20" font-weight="400" fill="#e6edf3" text-anchor="start">[pass] Discord tokens ignored</text>
+<rect x="858" y="280" width="320" height="360" rx="22" fill="#121c28" stroke="#31435a" stroke-width="2"/>
+<rect x="882" y="309" width="272" height="46" rx="12" fill="#0d1520" stroke="#28384a" stroke-width="1"/>
+<text x="902" y="338" font-family="Avenir, Helvetica, Arial, sans-serif" font-size="20" font-weight="400" fill="#e6edf3" text-anchor="start">[pass] bridge loopback only</text>
+<rect x="882" y="379" width="272" height="46" rx="12" fill="#0d1520" stroke="#28384a" stroke-width="1"/>
+<text x="902" y="408" font-family="Avenir, Helvetica, Arial, sans-serif" font-size="20" font-weight="400" fill="#e6edf3" text-anchor="start">[pass] chat backlog service</text>
+<rect x="882" y="449" width="272" height="46" rx="12" fill="#0d1520" stroke="#28384a" stroke-width="1"/>
+<text x="902" y="478" font-family="Avenir, Helvetica, Arial, sans-serif" font-size="20" font-weight="400" fill="#e6edf3" text-anchor="start">[pass] per-agent bots</text>
+<rect x="882" y="519" width="272" height="46" rx="12" fill="#0d1520" stroke="#28384a" stroke-width="1"/>
+<text x="902" y="548" font-family="Avenir, Helvetica, Arial, sans-serif" font-size="20" font-weight="400" fill="#e6edf3" text-anchor="start">[pass] player command routing</text>
+<rect x="1228" y="280" width="300" height="360" rx="22" fill="#121c28" stroke="#31435a" stroke-width="2"/>
+<rect x="1252" y="309" width="252" height="46" rx="12" fill="#0d1520" stroke="#28384a" stroke-width="1"/>
+<text x="1272" y="338" font-family="Avenir, Helvetica, Arial, sans-serif" font-size="20" font-weight="400" fill="#e6edf3" text-anchor="start">[pass] full Maven tests</text>
+<rect x="1252" y="379" width="252" height="46" rx="12" fill="#0d1520" stroke="#28384a" stroke-width="1"/>
+<text x="1272" y="408" font-family="Avenir, Helvetica, Arial, sans-serif" font-size="20" font-weight="400" fill="#e6edf3" text-anchor="start">[pass] isolated smoke</text>
+<rect x="1252" y="449" width="252" height="46" rx="12" fill="#0d1520" stroke="#28384a" stroke-width="1"/>
+<text x="1272" y="478" font-family="Avenir, Helvetica, Arial, sans-serif" font-size="20" font-weight="400" fill="#e6edf3" text-anchor="start">[pass] client manifest</text>
+<rect x="1252" y="519" width="252" height="46" rx="12" fill="#0d1520" stroke="#28384a" stroke-width="1"/>
+<text x="1272" y="548" font-family="Avenir, Helvetica, Arial, sans-serif" font-size="20" font-weight="400" fill="#e6edf3" text-anchor="start">[pass] deployment verifier</text>
+<rect x="118" y="705" width="1364" height="96" rx="18" fill="#0d1117" stroke="#30363d" stroke-width="2"/>
+<text x="150" y="746" font-family="Menlo, Courier, monospace" font-size="25" font-weight="400" fill="#7ee787" text-anchor="start">scripts/validate-network-auth-chat.sh</text>
+<text x="150" y="778" font-family="Menlo, Courier, monospace" font-size="21" font-weight="400" fill="#94a3b8" text-anchor="start">-&gt; config preflight, focused tests, full suite, clean package, isolated smoke, Discord probes</text>
+</svg>

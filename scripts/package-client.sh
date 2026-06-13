@@ -505,10 +505,16 @@ If this package uses direct_tcp, no VPN/tunnel is expected; the game/cache proto
 EOF
 
 if [[ "$(lowercase "$SECURE_TRANSPORT")" == "client_tls_tunnel" ]]; then
-    python3 "$SCRIPT_DIR/render-client-tls-tunnel-config.py" \
-        --config "$SERVER_CONFIG" \
-        --output-dir "$DIST_DIR/client-tls-tunnel" \
+    TUNNEL_RENDER_ARGS=(
+        --config "$SERVER_CONFIG"
+        --output-dir "$DIST_DIR/client-tls-tunnel"
         --client-only
+    )
+    if [[ "${CLIENT_ALLOW_PLACEHOLDER_NETWORK_CONFIG:-0}" == "1" ]]; then
+        TUNNEL_RENDER_ARGS+=(--allow-placeholder-network-config)
+    fi
+    python3 "$SCRIPT_DIR/render-client-tls-tunnel-config.py" \
+        "${TUNNEL_RENDER_ARGS[@]}"
 fi
 
 JAR_SHA256="$(shasum -a 256 "$DIST_DIR/2006scape-client.jar" | awk '{print $1}')"

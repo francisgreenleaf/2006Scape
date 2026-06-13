@@ -398,6 +398,8 @@ def main():
         package_env["SKIP_BUILD"] = "1"
     if args.allow_wildcard_bind:
         package_env["CLIENT_ALLOW_WILDCARD_BIND"] = "1"
+    if args.allow_placeholder_network_config:
+        package_env["CLIENT_ALLOW_PLACEHOLDER_NETWORK_CONFIG"] = "1"
 
     run(["scripts/package-client.sh"], env=package_env)
 

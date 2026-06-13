@@ -42,11 +42,26 @@ if b"\r\n" not in data or b"\n" in data.replace(b"\r\n", b""):
 PY
 }
 
+assert_repo_visible_sample_config() {
+    local path="$1"
+    if [[ ! -f "$path" ]]; then
+        echo "tracked sample config is missing: $path" >&2
+        exit 1
+    fi
+    if git check-ignore -q -- "$path"; then
+        echo "sample config is still ignored by git and will not be tracked: $path" >&2
+        exit 1
+    fi
+}
+
 echo "Checking whitespace in changed files..."
 git diff --check
 
-echo "Preflighting tracked external-player config..."
+echo "Preflighting tracked external-player configs..."
+assert_repo_visible_sample_config "2006Scape Server/ServerConfig.External.Sample.json"
+assert_repo_visible_sample_config "2006Scape Server/ServerConfig.ClientTlsTunnel.Sample.json"
 scripts/preflight-external-config.py "2006Scape Server/ServerConfig.External.Sample.json"
+scripts/preflight-external-config.py "2006Scape Server/ServerConfig.ClientTlsTunnel.Sample.json" | grep -q "ok: external-player config passed preflight"
 
 echo "Checking local Docker Compose server ports stay loopback-only..."
 if grep -q '^version:' docker-compose.yml; then
@@ -760,6 +775,13 @@ grep -q "direct_tcp" docs/network-auth-agent-chat-design.md
 grep -q "direct_tcp" .codex/skills/2006scape/SKILL.md
 grep -q "direct_tcp" .codex/skills/2006scape-external-deployment/SKILL.md
 grep -q "direct_tcp" .codex/skills/2006scape-agent-bridge-dev/SKILL.md
+grep -q "ServerConfig.ClientTlsTunnel.Sample.json" README.md
+grep -q "ServerConfig.ClientTlsTunnel.Sample.json" AGENTS.md
+grep -q "ServerConfig.ClientTlsTunnel.Sample.json" docs/external-deployment-quickstart.md
+grep -q "ServerConfig.ClientTlsTunnel.Sample.json" docs/deployment-networking.md
+grep -q "ServerConfig.ClientTlsTunnel.Sample.json" docs/network-auth-agent-chat-design.md
+grep -q "ServerConfig.ClientTlsTunnel.Sample.json" .codex/skills/2006scape/SKILL.md
+grep -q "ServerConfig.ClientTlsTunnel.Sample.json" .codex/skills/2006scape-external-deployment/SKILL.md
 grep -q 'Recommended MVP: use `direct_tcp`' docs/network-auth-agent-chat-design.md
 grep -q '`direct_tcp` account-auth external defaults' docs/network-auth-agent-chat-design.md
 grep -q "direct_tcp_external_transport_confirmed" README.md
@@ -1607,6 +1629,26 @@ except SystemExit as exc:
 else:
     raise AssertionError("verify_network_placeholders accepted placeholder client_tls_tunnel_server_accept_host")
 PY
+CLIENT_SERVER_CONFIG="2006Scape Server/ServerConfig.ClientTlsTunnel.Sample.json" \
+CLIENT_DIST_DIR="$TMP_DIR/tracked-client-tls-tunnel-client" \
+CLIENT_ARCHIVE_PATH="$TMP_DIR/tracked-client-tls-tunnel-client.zip" \
+CLIENT_ALLOW_PLACEHOLDER_NETWORK_CONFIG=1 \
+SKIP_BUILD=1 \
+    scripts/package-client.sh
+grep -q "server.host=127.0.0.1" "$TMP_DIR/tracked-client-tls-tunnel-client/client.properties"
+grep -q "public_game_host=REPLACE_WITH_PUBLIC_TLS_HOST" "$TMP_DIR/tracked-client-tls-tunnel-client/MANIFEST.txt"
+grep -q "expected_external_transport=client_tls_tunnel" "$TMP_DIR/tracked-client-tls-tunnel-client/MANIFEST.txt"
+grep -q "checkHost = REPLACE_WITH_PUBLIC_TLS_HOST" "$TMP_DIR/tracked-client-tls-tunnel-client/client-tls-tunnel/stunnel-client.conf"
+if CLIENT_SERVER_CONFIG="2006Scape Server/ServerConfig.ClientTlsTunnel.Sample.json" \
+    CLIENT_DIST_DIR="$TMP_DIR/tracked-client-tls-tunnel-strict" \
+    CLIENT_ARCHIVE_PATH="$TMP_DIR/tracked-client-tls-tunnel-strict.zip" \
+    SKIP_BUILD=1 \
+    scripts/package-client.sh > "$TMP_DIR/tracked-client-tls-tunnel-strict.out" 2>&1; then
+    echo "package-client.sh unexpectedly accepted placeholder client_tls_tunnel sample without source-validation allowance." >&2
+    cat "$TMP_DIR/tracked-client-tls-tunnel-strict.out" >&2
+    exit 1
+fi
+grep -q "public_game_host still contains a placeholder network value" "$TMP_DIR/tracked-client-tls-tunnel-strict.out"
 cp -R "$TMP_DIR/client-tls-tunnel-templates" "$TMP_DIR/broken-client-tls-tunnel-templates"
 printf 'broken\n' > "$TMP_DIR/broken-client-tls-tunnel-templates/stunnel-server.conf"
 if scripts/verify-external-deployment.py \
