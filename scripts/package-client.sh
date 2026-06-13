@@ -224,10 +224,12 @@ EOF
         client_tls_tunnel)
             cat <<EOF
 Transport setup:
-  Start the bundled client-side tunnel before launching the Java client:
-    stunnel client-tls-tunnel/stunnel-client.conf
-  Leave stunnel running. The Java client connects locally to $SERVER_HOST, and
-  stunnel carries that traffic over TLS to $PUBLIC_GAME_HOST.
+  The packaged launchers try to start the bundled client-side stunnel config
+  automatically when stunnel is installed:
+    client-tls-tunnel/stunnel-client.conf
+  The Java client connects locally to $SERVER_HOST, and stunnel carries that
+  traffic over TLS to $PUBLIC_GAME_HOST. If the automatic start fails, start
+  the tunnel manually with: stunnel client-tls-tunnel/stunnel-client.conf
 EOF
             ;;
         direct_tcp)
@@ -280,25 +282,162 @@ cat > "$DIST_DIR/run-macos-linux.sh" <<'EOF'
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROPERTIES="$DIR/client.properties"
+
+read_prop() {
+    local key="$1"
+    awk -F= -v key="$key" '$1 == key {print substr($0, length($1) + 2); exit}' "$PROPERTIES"
+}
+
+tcp_check_quiet() {
+    local host="$1"
+    local port="$2"
+    if [[ -z "$host" || -z "$port" ]]; then
+        return 1
+    fi
+    if command -v nc >/dev/null 2>&1; then
+        nc -G 1 -z "$host" "$port" >/dev/null 2>&1 || nc -w 1 -z "$host" "$port" >/dev/null 2>&1
+        return $?
+    fi
+    (echo >"/dev/tcp/$host/$port") >/dev/null 2>&1
+}
+
+wait_for_tunnel() {
+    local host="$1"
+    local port="$2"
+    local attempt
+    for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+        if tcp_check_quiet "$host" "$port"; then
+            return 0
+        fi
+        sleep 1
+    done
+    return 1
+}
+
+STUNNEL_PID=""
+
+cleanup_tunnel() {
+    if [[ -n "$STUNNEL_PID" ]]; then
+        kill "$STUNNEL_PID" >/dev/null 2>&1 || true
+        wait "$STUNNEL_PID" >/dev/null 2>&1 || true
+    fi
+}
+
+start_client_tls_tunnel_if_needed() {
+    local host="$1"
+    local port="$2"
+    local config="$DIR/client-tls-tunnel/stunnel-client.conf"
+    if tcp_check_quiet "$host" "$port"; then
+        echo "Client TLS tunnel is already reachable at $host:$port."
+        return 0
+    fi
+    if [[ ! -f "$config" ]]; then
+        echo "This package uses client_tls_tunnel, but $config is missing." >&2
+        exit 1
+    fi
+    if ! command -v stunnel >/dev/null 2>&1; then
+        echo "This package uses client_tls_tunnel, but stunnel was not found on PATH." >&2
+        echo "Install stunnel, or start the tunnel manually before launching:" >&2
+        echo "  stunnel \"$config\"" >&2
+        exit 1
+    fi
+    echo "Starting stunnel for encrypted 2006Scape transport..."
+    stunnel "$config" &
+    STUNNEL_PID="$!"
+    trap cleanup_tunnel EXIT INT TERM
+    if ! wait_for_tunnel "$host" "$port"; then
+        echo "stunnel did not open $host:$port in time. Check client-tls-tunnel/stunnel-client.conf and server reachability." >&2
+        exit 1
+    fi
+}
+
 if ! command -v java >/dev/null 2>&1; then
     echo "Java is required to run 2006Scape." >&2
     echo "Install Java 8 or newer, then run this launcher again." >&2
     exit 1
 fi
-exec java -jar "$DIR/2006scape-client.jar" -no-java-warnings -client-config "$DIR/client.properties" "$@"
+if [[ ! -f "$PROPERTIES" ]]; then
+    echo "Missing client.properties next to this launcher." >&2
+    exit 1
+fi
+
+SERVER_HOST="$(read_prop server.host)"
+SERVER_PORT="$(read_prop server.port)"
+TRANSPORT="$(read_prop secure.transport)"
+
+if [[ "$(printf '%s' "$TRANSPORT" | tr '[:upper:]' '[:lower:]')" == "client_tls_tunnel" ]]; then
+    start_client_tls_tunnel_if_needed "$SERVER_HOST" "$SERVER_PORT"
+fi
+
+set +e
+java -jar "$DIR/2006scape-client.jar" -no-java-warnings -client-config "$PROPERTIES" "$@"
+status=$?
+set -e
+exit "$status"
 EOF
 chmod +x "$DIST_DIR/run-macos-linux.sh"
 
 {
     printf '%s\r\n' '@echo off'
+    printf '%s\r\n' 'setlocal EnableExtensions'
     printf '%s\r\n' 'set DIR=%~dp0'
+    printf '%s\r\n' 'set PROPERTIES=%DIR%client.properties'
     printf '%s\r\n' 'where java >nul 2>nul'
     printf '%s\r\n' 'if errorlevel 1 ('
     printf '%s\r\n' '    echo Java is required to run 2006Scape.'
     printf '%s\r\n' '    echo Install Java 8 or newer, then run this launcher again.'
     printf '%s\r\n' '    exit /b 1'
     printf '%s\r\n' ')'
-    printf '%s\r\n' 'java -jar "%DIR%2006scape-client.jar" -no-java-warnings -client-config "%DIR%client.properties" %*'
+    printf '%s\r\n' 'if not exist "%PROPERTIES%" ('
+    printf '%s\r\n' '    echo Missing client.properties next to this launcher.'
+    printf '%s\r\n' '    exit /b 1'
+    printf '%s\r\n' ')'
+    printf '%s\r\n' 'for /f "usebackq tokens=1,* delims==" %%A in ("%PROPERTIES%") do ('
+    printf '%s\r\n' '    if "%%A"=="server.host" set SERVER_HOST=%%B'
+    printf '%s\r\n' '    if "%%A"=="server.port" set SERVER_PORT=%%B'
+    printf '%s\r\n' '    if "%%A"=="secure.transport" set TRANSPORT=%%B'
+    printf '%s\r\n' ')'
+    printf '%s\r\n' 'if /I "%TRANSPORT%"=="client_tls_tunnel" call :ensuretunnel'
+    printf '%s\r\n' 'if errorlevel 1 exit /b 1'
+    printf '%s\r\n' 'java -jar "%DIR%2006scape-client.jar" -no-java-warnings -client-config "%PROPERTIES%" %*'
+    printf '%s\r\n' 'exit /b %ERRORLEVEL%'
+    printf '%s\r\n' ':ensuretunnel'
+    printf '%s\r\n' 'set TUNNEL_CONFIG=%DIR%client-tls-tunnel\stunnel-client.conf'
+    printf '%s\r\n' 'if not exist "%TUNNEL_CONFIG%" ('
+    printf '%s\r\n' '    echo This package uses client_tls_tunnel, but %TUNNEL_CONFIG% is missing.'
+    printf '%s\r\n' '    exit /b 1'
+    printf '%s\r\n' ')'
+    printf '%s\r\n' 'call :tcpcheckquiet "%SERVER_HOST%" "%SERVER_PORT%"'
+    printf '%s\r\n' 'if not errorlevel 1 ('
+    printf '%s\r\n' '    echo Client TLS tunnel is already reachable at %SERVER_HOST%:%SERVER_PORT%.'
+    printf '%s\r\n' '    exit /b 0'
+    printf '%s\r\n' ')'
+    printf '%s\r\n' 'where stunnel >nul 2>nul'
+    printf '%s\r\n' 'if errorlevel 1 ('
+    printf '%s\r\n' '    echo This package uses client_tls_tunnel, but stunnel was not found on PATH.'
+    printf '%s\r\n' '    echo Install stunnel, or start the tunnel manually before launching:'
+    printf '%s\r\n' '    echo   stunnel "%TUNNEL_CONFIG%"'
+    printf '%s\r\n' '    exit /b 1'
+    printf '%s\r\n' ')'
+    printf '%s\r\n' 'echo Starting stunnel for encrypted 2006Scape transport...'
+    printf '%s\r\n' 'start "2006Scape stunnel" /min stunnel "%TUNNEL_CONFIG%"'
+    printf '%s\r\n' 'for /L %%I in (1,1,15) do ('
+    printf '%s\r\n' '    call :tcpcheckquiet "%SERVER_HOST%" "%SERVER_PORT%"'
+    printf '%s\r\n' '    if not errorlevel 1 exit /b 0'
+    printf '%s\r\n' '    ping -n 2 127.0.0.1 >nul'
+    printf '%s\r\n' ')'
+    printf '%s\r\n' 'echo stunnel did not open %SERVER_HOST%:%SERVER_PORT% in time. Check client-tls-tunnel\stunnel-client.conf and server reachability.'
+    printf '%s\r\n' 'exit /b 1'
+    printf '%s\r\n' ':tcpcheckquiet'
+    printf '%s\r\n' 'set HOST=%~1'
+    printf '%s\r\n' 'set PORT=%~2'
+    printf '%s\r\n' 'if "%HOST%"=="" exit /b 1'
+    printf '%s\r\n' 'if "%PORT%"=="" exit /b 1'
+    printf '%s\r\n' 'where powershell >nul 2>nul'
+    printf '%s\r\n' 'if errorlevel 1 exit /b 1'
+    printf '%s\r\n' 'powershell -NoProfile -ExecutionPolicy Bypass -Command "$client = New-Object Net.Sockets.TcpClient; try { $async = $client.BeginConnect(''%HOST%'', [int]''%PORT%'', $null, $null); if (-not $async.AsyncWaitHandle.WaitOne(1500, $false)) { throw ''timeout'' }; $client.EndConnect($async); exit 0 } catch { exit 1 } finally { $client.Close() }"'
+    printf '%s\r\n' 'exit /b %ERRORLEVEL%'
 } > "$DIST_DIR/run-windows.bat"
 
 cat > "$DIST_DIR/check-setup-macos-linux.sh" <<'EOF'
@@ -475,6 +614,8 @@ Check setup:
 Run:
   macOS/Linux: ./run-macos-linux.sh
   Windows: double-click run-windows.bat or run it from Command Prompt.
+  For client_tls_tunnel packages, the launchers try to start the bundled
+  stunnel config automatically when stunnel is installed.
 
 Java:
   Install Java 8 or newer first. The launchers print a short error if Java
@@ -500,7 +641,8 @@ Login:
   the legacy game/cache protocol is plaintext to the public host.
 
 Edit client.properties only if the server host or ports change.
-If this package uses Tailscale, WireGuard, VPN, or client_tls_tunnel, connect that transport first.
+If this package uses Tailscale, WireGuard, or VPN, connect that transport first.
+If this package uses client_tls_tunnel, the launcher starts stunnel when it can; otherwise start it manually first.
 If this package uses direct_tcp, no VPN/tunnel is expected; the game/cache protocol is plaintext to the public host.
 EOF
 

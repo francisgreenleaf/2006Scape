@@ -77,7 +77,7 @@ python3 agent-navigation/tools/script_registry.py run server deployment files --
 python3 agent-navigation/tools/script_registry.py run network proof -- --config "2006Scape Server/ServerConfig.json"
 python3 agent-navigation/tools/script_registry.py run deployment readiness -- --config "2006Scape Server/ServerConfig.json" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --client-tls-tunnel-dir dist/client-tls-tunnel-operator
 python3 agent-navigation/tools/script_registry.py show deployment_readiness_status --json
-python3 agent-navigation/tools/script_registry.py run deployment_readiness_status -- --prepared-dir dist/external-deployment
+python3 agent-navigation/tools/script_registry.py run deployment_readiness_status -- --prepared-dir dist/external-deployment --show-next-commands
 python3 agent-navigation/tools/script_registry.py run proof manifest check -- dist/external-deployment/deployment-proof-manifest.json --require-full-proof
 python3 agent-navigation/tools/script_registry.py run concurrent login proof -- --external-host HOST --external-username EXTERNAL_TEST --external-password-env EXTERNAL_PASSWORD --local-username LOCAL_TEST --local-password-env LOCAL_PASSWORD
 python3 agent-navigation/tools/script_registry.py run agent chat log proof -- --text-contains MARKER --from-type discord --from-bot false --channel agent

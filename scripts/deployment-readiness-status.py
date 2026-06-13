@@ -3,6 +3,7 @@
 
 import argparse
 import json
+import shlex
 import sys
 from pathlib import Path
 
@@ -54,14 +55,212 @@ def externally_ready(data, require_discord=False):
     return proof_status in FULL_PROOF_STATUSES
 
 
-def summarize(data, path, require_discord=False):
+def shell_join(argv):
+    return " ".join(shlex.quote(str(part)) for part in argv if str(part))
+
+
+def report_input(data, name, default):
+    inputs = data.get("inputs", {})
+    if not isinstance(inputs, dict):
+        return default
+    value = inputs.get(name)
+    if isinstance(value, str) and value.strip():
+        return value
+    return default
+
+
+def coverage_status(data, requirement):
+    coverage = data.get("proofCoverage", [])
+    if not isinstance(coverage, list):
+        return ""
+    for item in coverage:
+        if isinstance(item, dict) and item.get("requirement") == requirement:
+            return str(item.get("status") or "")
+    return ""
+
+
+def command_entry(label, why, command):
+    return {
+        "label": label,
+        "why": why,
+        "command": command,
+    }
+
+
+def readiness_base_args(data, readiness_json_path):
+    config = report_input(data, "config", "2006Scape Server/ServerConfig.json")
+    client_dist = report_input(data, "clientDist", "dist/2006scape-client")
+    archive = report_input(data, "archive", "")
+    server_dir = report_input(data, "serverDeploymentDir", "")
+    tls_dir = report_input(data, "clientTlsTunnelDir", "")
+    argv = [
+        "scripts/deployment-readiness-report.py",
+        "--config", config,
+        "--client-dist", client_dist,
+    ]
+    if archive:
+        argv.extend(["--archive", archive])
+    if server_dir:
+        argv.extend(["--server-deployment-dir", server_dir])
+    if tls_dir:
+        argv.extend(["--client-tls-tunnel-dir", tls_dir])
+    argv.extend(["--json-output", str(readiness_json_path)])
+    return argv
+
+
+def build_next_commands(data, readiness_json_path, require_discord=False):
+    if externally_ready(data, require_discord):
+        return []
+
+    config = report_input(data, "config", "2006Scape Server/ServerConfig.json")
+    server_dir = report_input(data, "serverDeploymentDir", "dist/server-deployment")
+    secrets = report_input(data, "secrets", "2006Scape Server/data/secrets.json")
+    base = readiness_base_args(data, readiness_json_path)
+    commands = []
+
+    live_status = coverage_status(data, "Public reachability and bridge non-exposure")
+    external_login_status = coverage_status(data, "External PBKDF2 game-protocol login")
+    concurrent_status = coverage_status(data, "Concurrent external plus same-host local protocol login")
+    rejection_status = coverage_status(data, "Fail-closed login cases")
+    if live_status != "REQUESTED":
+        commands.append(command_entry(
+            "Preview public network path",
+            "Checks public game/cache reachability plus agent-bridge non-exposure without logging in.",
+            shell_join(["scripts/probe-deployment-network.py", "--config", config]),
+        ))
+    if (live_status != "REQUESTED"
+            or external_login_status != "REQUESTED"
+            or concurrent_status != "REQUESTED"
+            or rejection_status != "REQUESTED"):
+        live_args = list(base)
+        live_args.extend([
+            "--live",
+            "--live-login-username", "EXTERNAL_TEST",
+            "--live-login-password-env", "EXTERNAL_PASSWORD",
+            "--live-local-login-username", "LOCAL_TEST",
+            "--live-local-login-password-env", "LOCAL_PASSWORD",
+            "--live-reject-login-username", "REJECT_TEST",
+            "--live-reject-login-password-env", "REJECT_PASSWORD",
+            "--live-reject-login-expected-statuses", "3,4",
+        ])
+        commands.append(command_entry(
+            "Record live network/auth proof",
+            "Run after the remote server is intentionally running; password values stay in environment variables.",
+            "EXTERNAL_PASSWORD='...' LOCAL_PASSWORD='...' REJECT_PASSWORD='...' {}".format(shell_join(live_args)),
+        ))
+
+    if coverage_status(data, "Runtime data backup before remote replacement/restart") != "MANUAL_PROOF_RECORDED":
+        commands.append(command_entry(
+            "Back up deployed runtime data",
+            "Run on the deployed host before replacing files or restarting into new bits.",
+            shell_join(["scripts/backup-runtime-data.py", "--data-dir", "2006Scape Server/data"]),
+        ))
+
+    if coverage_status(data, "Desktop client coexistence") != "MANUAL_PROOF_RECORDED":
+        commands.append(command_entry(
+            "Write desktop-client coexistence proof",
+            "Run after one same-host Java client and one external Java client are online together.",
+            shell_join([
+                "scripts/write-desktop-client-proof.py",
+                "--config", config,
+                "--same-host-client", "LOCAL_PLAYER",
+                "--external-client", "EXTERNAL_PLAYER",
+                "--transport", "TRANSPORT",
+                "--public-host", "PUBLIC_HOST",
+                "--evidence", "PATH_TO_SCREENSHOT_OR_LOG",
+                "--output", "dist/external-deployment/desktop-client-proof.md",
+            ]),
+        ))
+
+    if coverage_status(data, "Agent-to-player chat delivery") != "DELIVERY_LOG_PROOF_REQUESTED":
+        commands.append(command_entry(
+            "Verify direct agent/player chat delivery",
+            "Run after sending one unique structured marker to an online player.",
+            shell_join([
+                "scripts/verify-agent-chat-log.py",
+                "--event", "agent_chat_player_delivery",
+                "--text-contains", "CHAT_MARKER",
+                "--to-type", "player",
+                "--to-name", "PLAYER",
+                "--delivered-to", "PLAYER",
+                "--no-undelivered",
+                "--channel", "agent",
+            ]),
+        ))
+
+    discord_statuses = [
+        coverage_status(data, "Discord bot auth and channel reachability"),
+        coverage_status(data, "Discord-to-server chat ingestion"),
+        coverage_status(data, "Blocked Discord routing filters"),
+        coverage_status(data, "Server-to-Discord chat mirroring"),
+    ]
+    discord_needed = require_discord or any(status.startswith("MISSING_REQUIRED") for status in discord_statuses)
+    if discord_needed and coverage_status(data, "Discord bot auth and channel reachability") != "REQUESTED":
+        commands.append(command_entry(
+            "Verify Discord bot/channel reachability",
+            "Run with the real ignored secrets file; this does not post messages by default.",
+            shell_join(["scripts/probe-discord-agent-bots.py", "--secrets", secrets]),
+        ))
+    if discord_needed and coverage_status(data, "Discord-to-server chat ingestion") != "LOG_PROOF_REQUESTED":
+        commands.append(command_entry(
+            "Verify Discord-to-server chat ingestion",
+            "Run after a real human/non-bot Discord message with a unique marker.",
+            shell_join([
+                "scripts/verify-agent-chat-log.py",
+                "--text-contains", "DISCORD_TO_SERVER_MARKER",
+                "--from-type", "discord",
+                "--from-bot", "false",
+                "--channel", "agent",
+            ]),
+        ))
+    if discord_needed and coverage_status(data, "Blocked Discord routing filters") == "MISSING_REQUIRED_FOR_CONFIGURED_FILTERS":
+        commands.append(command_entry(
+            "Verify blocked Discord routing absence",
+            "Run after sending a blocked human/non-bot Discord marker.",
+            shell_join([
+                "scripts/verify-agent-chat-log.py",
+                "--text-contains", "BLOCKED_MARKER",
+                "--from-type", "discord",
+                "--from-bot", "false",
+                "--channel", "agent",
+                "--expect-absent",
+            ]),
+        ))
+    if discord_needed and coverage_status(data, "Server-to-Discord chat mirroring") != "DISCORD_MESSAGE_PROOF_REQUESTED":
+        commands.append(command_entry(
+            "Verify server-to-Discord mirroring",
+            "Run after sending one in-game or agent marker that should mirror to Discord.",
+            shell_join([
+                "scripts/verify-discord-channel-message.py",
+                "--text-contains", "SERVER_TO_DISCORD_MARKER",
+                "--agent", "PROFILE",
+            ]),
+        ))
+
+    manifest = "dist/external-deployment/deployment-proof-manifest.json"
+    template = "{}/proof-templates/deployment-proof-manifest.json".format(server_dir.rstrip("/"))
+    final_args = list(base)
+    final_args.extend(["--proof-manifest", manifest, "--require-full-proof"])
+    commands.append(command_entry(
+        "Check final proof manifest and rerun final readiness",
+        "Use after filling proof paths, usernames, markers, and password environment-variable names.",
+        "{}\n{}\n{}".format(
+            shell_join(["cp", template, manifest]),
+            shell_join(["scripts/check-deployment-proof-manifest.py", manifest, "--config", config, "--require-full-proof", "--check-files"]),
+            shell_join(final_args),
+        ),
+    ))
+    return commands
+
+
+def summarize(data, path, require_discord=False, include_next_commands=False):
     coverage = data.get("proofCoverage", [])
     if not isinstance(coverage, list):
         coverage = []
     remaining = data.get("remainingLiveProof", [])
     if not isinstance(remaining, list):
         remaining = []
-    return {
+    summary = {
         "readinessJson": str(path),
         "status": data.get("status"),
         "deploymentProofStatus": data.get("deploymentProofStatus"),
@@ -74,6 +273,9 @@ def summarize(data, path, require_discord=False):
         "remainingLiveProof": remaining,
         "proofCoverage": coverage,
     }
+    if include_next_commands:
+        summary["nextCommands"] = build_next_commands(data, path, require_discord)
+    return summary
 
 
 def print_human(summary, show_covered=False):
@@ -106,6 +308,13 @@ def print_human(summary, show_covered=False):
             detail = row.get("detail", "")
             suffix = " ({})".format(detail) if detail else ""
             print("- {}: {}{}".format(requirement, status, suffix))
+    next_commands = summary.get("nextCommands", [])
+    if next_commands:
+        print("nextCommands:")
+        for item in next_commands:
+            print("- {}: {}".format(item["label"], item["why"]))
+            for line in item["command"].splitlines():
+                print("  {}".format(line))
 
 
 def main(argv=None):
@@ -120,6 +329,8 @@ def main(argv=None):
             help="Print a machine-readable summary.")
     parser.add_argument("--show-covered", action="store_true",
             help="Include proof-coverage rows that are already recorded, not only missing/manual/final-gate rows.")
+    parser.add_argument("--show-next-commands", action="store_true",
+            help="Print read-only command templates for missing live/manual proof categories.")
     parser.add_argument("--require-discord", action="store_true",
             help="Treat Discord round-trip proof as required even when the readiness report says Discord proof was not requested.")
     parser.add_argument("--fail-if-not-ready", action="store_true",
@@ -128,7 +339,7 @@ def main(argv=None):
 
     path = resolve_readiness_json(args)
     data = load_report(path)
-    summary = summarize(data, path, args.require_discord)
+    summary = summarize(data, path, args.require_discord, args.show_next_commands)
     if args.json:
         print(json.dumps(summary, indent=2, sort_keys=True))
     else:

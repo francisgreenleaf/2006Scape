@@ -201,9 +201,11 @@ over TLS 1.2 or newer to {public_host}. {cache_line}
 
 Player setup:
 1. Install stunnel.
-2. Start the tunnel from this folder:
+2. Normally use the packaged 2006Scape launcher; it starts this stunnel config
+   automatically when stunnel is installed.
+3. If you need to start the tunnel manually, run this from this folder:
      stunnel stunnel-client.conf
-3. Leave stunnel running, then launch the 2006Scape client.
+4. Leave stunnel running, then launch the 2006Scape client.
 
 Expected endpoints:
 - local client endpoint: {client_host}

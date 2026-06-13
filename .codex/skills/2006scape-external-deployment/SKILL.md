@@ -56,7 +56,7 @@ For a real config, use the prepare wrapper first:
 ```sh
 scripts/preflight-external-config.py "2006Scape Server/ServerConfig.json"
 scripts/prepare-external-deployment.py --config "2006Scape Server/ServerConfig.json"
-scripts/deployment-readiness-status.py --prepared-dir dist/external-deployment
+scripts/deployment-readiness-status.py --prepared-dir dist/external-deployment --show-next-commands
 ```
 
 Lower-level commands:
@@ -70,7 +70,7 @@ scripts/deployment-readiness-report.py --config "2006Scape Server/ServerConfig.j
 
 Use `--json-output PATH` when automation or handoff records need machine-readable `status`, `deploymentProofStatus`, command summaries, proof coverage, and remaining live-proof items alongside the Markdown report. `prepare-external-deployment.py` passes this flag through when supplied.
 
-Use `scripts/deployment-readiness-status.py --readiness-json PATH` or `--prepared-dir dist/external-deployment` when you only need to reread an existing JSON report and see whether `externallyReady` is proven. It is read-only and does not rerun preflight, probes, packaging, startup, shutdown, or restart. Add `--fail-if-not-ready` only in wrappers that should exit non-zero until the report has full live proof.
+Use `scripts/deployment-readiness-status.py --readiness-json PATH` or `--prepared-dir dist/external-deployment` when you only need to reread an existing JSON report and see whether `externallyReady` is proven. Add `--show-next-commands` to print command templates for the missing live/manual proof categories from that JSON. It is read-only and does not rerun preflight, probes, packaging, startup, shutdown, or restart. Add `--fail-if-not-ready` only in wrappers that should exit non-zero until the report has full live proof.
 
 For collected live/manual proof, prefer a JSON manifest over a very long final command:
 
@@ -93,7 +93,7 @@ Use `2006Scape Server/ServerConfig.External.Sample.json` for the simplest `direc
 
 Client manifests include `source_server_config_sha256`; package and verify from the same final config file so the verifier can reject stale or mismatched client artifacts, unexpected files, symlinked client package paths, and symlink-type zip entries. For `client_tls_tunnel`, `prepare-external-deployment.py` also renders operator-side stunnel templates and passes them to readiness verification with `--client-tls-tunnel-dir`; lower-level verifier/report calls should include that directory when it exists. The operator-side stunnel accept host comes from `client_tls_tunnel_server_accept_host` or `public_game_host`; use a real non-placeholder, non-wildcard host because wildcard can collide with the loopback Java game/cache listeners on the same ports. If `--tls-sni-host` is supplied, it must be the real certificate hostname, not a placeholder, loopback host, or wildcard.
 
-Packaged client README text must stay player-facing: Java install guidance, setup-check commands, transport setup, operator-provided username/password guidance, and a no-password-reuse warning. The package includes `check-setup-macos-linux.sh` and `check-setup-windows.bat` so players can verify Java, print `client.properties`, and attempt TCP checks without logging in or changing server state. This matters most for `direct_tcp`, where regular players do not need a VPN/tunnel but the legacy game/cache protocol is plaintext to the public host.
+Packaged client README text must stay player-facing: Java install guidance, setup-check commands, transport setup, operator-provided username/password guidance, and a no-password-reuse warning. The package includes `check-setup-macos-linux.sh` and `check-setup-windows.bat` so players can verify Java, print `client.properties`, and attempt TCP checks without logging in or changing server state. For `client_tls_tunnel`, packaged launchers must try to start the bundled player-side stunnel config automatically when `stunnel` is installed and still show a clear manual fallback when it is not. This matters most for `direct_tcp`, where regular players do not need a VPN/tunnel but the legacy game/cache protocol is plaintext to the public host.
 
 The browser-client investigation is settled for this MVP: Java applet mode is not viable in modern browsers, and the current client depends on AWT/Swing plus raw game/cache sockets. Do not spend MVP implementation time trying to revive applet/browser play; treat it as a separate future web-client, protocol-adapter, WebAssembly, or streaming project.
 

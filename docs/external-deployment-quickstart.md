@@ -58,7 +58,7 @@ cp "2006Scape Server/ServerConfig.ClientTlsTunnel.Sample.json" "2006Scape Server
 $EDITOR "2006Scape Server/ServerConfig.json"
 ```
 
-Replace `REPLACE_WITH_PUBLIC_TLS_HOST` with the public DNS name that has the TLS certificate and stunnel listener. In this mode the Java game/cache listeners stay loopback-only, packaged clients connect to `127.0.0.1`, and players must run the bundled `client-tls-tunnel/stunnel-client.conf` before launching the Java client.
+Replace `REPLACE_WITH_PUBLIC_TLS_HOST` with the public DNS name that has the TLS certificate and stunnel listener. In this mode the Java game/cache listeners stay loopback-only and packaged clients connect to `127.0.0.1`; the packaged launchers try to start the bundled `client-tls-tunnel/stunnel-client.conf` automatically when `stunnel` is installed, and the README still gives the manual command as a fallback.
 
 Then preflight:
 
@@ -120,7 +120,7 @@ Open the readiness report and check:
 
 That means the artifacts are statically valid but not live-proven yet.
 
-Before a player launches the client, have them run the package's setup checker for their OS if anything is unclear. It verifies Java, prints the packaged `client.properties`, and attempts game/cache TCP checks without logging in or changing server state.
+Before a player launches the client, have them run the package's setup checker for their OS if anything is unclear. It verifies Java, prints the packaged `client.properties`, and attempts game/cache TCP checks without logging in or changing server state. In `client_tls_tunnel` mode the launcher manages stunnel when possible, but the setup checker still expects the local tunnel endpoint to be reachable.
 
 ## 4. Back Up Runtime Data
 
@@ -293,6 +293,7 @@ To re-check status later without rerunning probes or touching runtime:
 
 ```sh
 scripts/deployment-readiness-status.py --prepared-dir dist/external-deployment
+scripts/deployment-readiness-status.py --prepared-dir dist/external-deployment --show-next-commands
 scripts/deployment-readiness-status.py --prepared-dir dist/external-deployment --fail-if-not-ready
 ```
 

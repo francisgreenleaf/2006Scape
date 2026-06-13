@@ -703,6 +703,26 @@ def verify_client_package_text(config, client_dist):
         public_host = string_value(config, "public_game_host")
         game_port = int_value(config, "game_port", 43594)
         require_text(
+            client_dist / "run-macos-linux.sh",
+            "macOS/Linux launcher",
+            "Starting stunnel for encrypted 2006Scape transport",
+        )
+        require_text(
+            client_dist / "run-windows.bat",
+            "Windows launcher",
+            "Starting stunnel for encrypted 2006Scape transport",
+        )
+        require_text(
+            client_dist / "README.txt",
+            "client README",
+            "the launchers try to start the bundled",
+        )
+        require_text(
+            client_dist / "client-tls-tunnel" / "README.txt",
+            "client TLS tunnel README",
+            "it starts this stunnel config",
+        )
+        require_text(
             client_dist / "client-tls-tunnel" / "README.txt",
             "client TLS tunnel README",
             "The Java client still speaks plaintext to {}".format(expected_host),

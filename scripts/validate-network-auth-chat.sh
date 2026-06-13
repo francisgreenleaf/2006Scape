@@ -73,7 +73,7 @@ grep -q "127.0.0.1:43595:43595" docker-compose.yml
 grep -q "127.0.0.1:8080:8080" docker-compose.yml
 
 echo "Running focused server tests for network/auth/chat/Discord..."
-"$MAVEN_BIN" -q -pl "2006Scape Server" \
+"$MAVEN_BIN" -q -pl "2006Scape Server" clean \
     -Dtest=AccountAuthServiceTest,LoginSessionPasswordHandlingTest,CommandsPasswordPolicyTest,AgentChatServiceTest,AgentActionServiceTest,AgentBridgeServerTest,AgentToolServiceTest,AgentSessionManagerTest,ConfigLoaderNetworkTest,ConfigLoaderSecretsTest,FileServerNetworkConfigTest,DiscordAgentTransportTest \
     test
 
@@ -967,6 +967,15 @@ grep -q "scripts/deployment-readiness-status.py" docs/external-deployment-quicks
 grep -q "scripts/deployment-readiness-status.py" docs/network-auth-agent-chat-design.md
 grep -q "scripts/deployment-readiness-status.py" .codex/skills/2006scape/SKILL.md
 grep -q "scripts/deployment-readiness-status.py" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q -- "--show-next-commands" README.md
+grep -q -- "--show-next-commands" AGENTS.md
+grep -q -- "--show-next-commands" docs/deployment-networking.md
+grep -q -- "--show-next-commands" docs/external-deployment-quickstart.md
+grep -q -- "--show-next-commands" docs/network-auth-agent-chat-design.md
+grep -q -- "--show-next-commands" .codex/skills/2006scape/SKILL.md
+grep -q -- "--show-next-commands" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q -- "--show-next-commands" .codex/skills/2006scape-script-registry/SKILL.md
+python3 agent-navigation/tools/script_registry.py show deployment_readiness_status --json | grep -q -- "--show-next-commands"
 grep -q -- "--proof-manifest" agent-navigation/data/script_registry.json
 grep -q "operator-provided-login guidance" .codex/skills/2006scape/SKILL.md
 grep -q "operator-provided username/password guidance" .codex/skills/2006scape-external-deployment/SKILL.md
@@ -1574,12 +1583,17 @@ grep -q "public_game_host=tls.example.net" "$TMP_DIR/client-tls-tunnel-client/MA
 grep -Eq '^source_server_config_sha256=[0-9a-f]{64}$' "$TMP_DIR/client-tls-tunnel-client/MANIFEST.txt"
 grep -q "secure.transport=client_tls_tunnel" "$TMP_DIR/client-tls-tunnel-client/client.properties"
 grep -q "Transport setup:" "$TMP_DIR/client-tls-tunnel-client/README.txt"
+grep -q "launchers try to start the bundled" "$TMP_DIR/client-tls-tunnel-client/README.txt"
 grep -q "stunnel client-tls-tunnel/stunnel-client.conf" "$TMP_DIR/client-tls-tunnel-client/README.txt"
-grep -q "stunnel carries that traffic over TLS to tls.example.net" "$TMP_DIR/client-tls-tunnel-client/README.txt"
+grep -q "stunnel carries that" "$TMP_DIR/client-tls-tunnel-client/README.txt"
+grep -q "traffic over TLS to tls.example.net" "$TMP_DIR/client-tls-tunnel-client/README.txt"
 grep -q "Use the username and password provided by the server operator" "$TMP_DIR/client-tls-tunnel-client/README.txt"
 grep -q "Do not use a RuneScape.com password or reuse passwords from other services" "$TMP_DIR/client-tls-tunnel-client/README.txt"
+grep -q "Starting stunnel for encrypted 2006Scape transport" "$TMP_DIR/client-tls-tunnel-client/run-macos-linux.sh"
+grep -q "Starting stunnel for encrypted 2006Scape transport" "$TMP_DIR/client-tls-tunnel-client/run-windows.bat"
 test -f "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/README.txt"
 test -f "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/stunnel-client.conf"
+grep -q "it starts this stunnel config" "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/README.txt"
 grep -q "The Java client still speaks plaintext to 127.0.0.1" "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/README.txt"
 grep -q "TLS 1.2 or newer" "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/README.txt"
 grep -q "sslVersionMin = TLSv1.2" "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/stunnel-client.conf"
@@ -2656,6 +2670,18 @@ grep -q "deploymentProofStatus: STATIC_CHECKS_PASS_NEEDS_LIVE_PROOF" "$TMP_DIR/d
 grep -q "externallyReady: no" "$TMP_DIR/deployment-readiness-status.out"
 grep -q "remainingLiveProofCount:" "$TMP_DIR/deployment-readiness-status.out"
 grep -q "public reachability plus bridge non-exposure" "$TMP_DIR/deployment-readiness-status.out"
+if grep -q "nextCommands:" "$TMP_DIR/deployment-readiness-status.out"; then
+    echo "deployment-readiness-status.py printed next commands without --show-next-commands." >&2
+    exit 1
+fi
+scripts/deployment-readiness-status.py \
+    --readiness-json "$TMP_DIR/deployment-readiness-report.json" \
+    --show-next-commands > "$TMP_DIR/deployment-readiness-status-next.out"
+grep -q "nextCommands:" "$TMP_DIR/deployment-readiness-status-next.out"
+grep -q "Record live network/auth proof" "$TMP_DIR/deployment-readiness-status-next.out"
+grep -q -- "--live-login-username EXTERNAL_TEST" "$TMP_DIR/deployment-readiness-status-next.out"
+grep -q -- "--live-reject-login-expected-statuses 3,4" "$TMP_DIR/deployment-readiness-status-next.out"
+grep -q "scripts/check-deployment-proof-manifest.py" "$TMP_DIR/deployment-readiness-status-next.out"
 scripts/deployment-readiness-status.py \
     --readiness-json "$TMP_DIR/deployment-readiness-report.json" \
     --json > "$TMP_DIR/deployment-readiness-status.json"
@@ -2668,6 +2694,24 @@ data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 assert data["externallyReady"] is False, data
 assert data["deploymentProofStatus"] == "STATIC_CHECKS_PASS_NEEDS_LIVE_PROOF", data
 assert data["remainingLiveProofCount"] > 0, data
+assert "nextCommands" not in data, data
+PY
+scripts/deployment-readiness-status.py \
+    --readiness-json "$TMP_DIR/deployment-readiness-report.json" \
+    --show-next-commands \
+    --json > "$TMP_DIR/deployment-readiness-status-next.json"
+python3 - "$TMP_DIR/deployment-readiness-status-next.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+commands = data.get("nextCommands")
+assert isinstance(commands, list) and commands, data
+labels = {command["label"] for command in commands}
+assert "Record live network/auth proof" in labels, labels
+assert "Check final proof manifest and rerun final readiness" in labels, labels
+assert any("--live-login-username EXTERNAL_TEST" in command["command"] for command in commands), commands
 PY
 if scripts/deployment-readiness-status.py \
     --readiness-json "$TMP_DIR/deployment-readiness-report.json" \

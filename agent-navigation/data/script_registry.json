@@ -1651,7 +1651,7 @@
       "name": "Deployment Readiness Status",
       "path": "scripts/deployment-readiness-status.py",
       "kind": "deployment_tool",
-      "description": "Reads an existing deployment-readiness JSON report and prints the command status, deploymentProofStatus, externallyReady decision, proof coverage, and remaining live-proof items without running probes or touching runtime.",
+      "description": "Reads an existing deployment-readiness JSON report and prints the command status, deploymentProofStatus, externallyReady decision, proof coverage, remaining live-proof items, and optional next-command templates without running probes or touching runtime.",
       "aliases": [
         "deployment readiness status",
         "readiness status",
@@ -1668,6 +1668,7 @@
       ],
       "examples": [
         "python3 agent-navigation/tools/script_registry.py run deployment_readiness_status -- --prepared-dir dist/external-deployment",
+        "python3 scripts/deployment-readiness-status.py --prepared-dir dist/external-deployment --show-next-commands",
         "python3 scripts/deployment-readiness-status.py --readiness-json dist/deployment-readiness-report.json --fail-if-not-ready",
         "python3 scripts/deployment-readiness-status.py --prepared-dir dist/external-deployment --json"
       ]
