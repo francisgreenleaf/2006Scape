@@ -4,6 +4,7 @@
 import argparse
 import datetime as _datetime
 import hashlib
+import json
 import os
 import tarfile
 from pathlib import Path
@@ -117,7 +118,43 @@ def sha256_file(path):
     return digest.hexdigest()
 
 
-def write_proof(proof_path, data_dir, archive_path, timestamp, digest, file_count, directory_count):
+def proof_manifest_value(proof_path, manifest_path):
+    resolved_proof = proof_path.resolve()
+    manifest_parent = manifest_path.parent.resolve()
+    try:
+        return str(resolved_proof.relative_to(manifest_parent))
+    except ValueError:
+        return str(resolved_proof)
+
+
+def read_proof_manifest(manifest_path):
+    manifest_path = Path(manifest_path)
+    reject_symlinked_output_path(manifest_path, "proof manifest")
+    if not manifest_path.is_file():
+        fail("proof manifest is missing or not a regular file: {}".format(manifest_path))
+    try:
+        data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        fail("proof manifest is not valid JSON: {}: {}".format(manifest_path, exc))
+    if not isinstance(data, dict):
+        fail("proof manifest must contain a JSON object: {}".format(manifest_path))
+    return data
+
+
+def write_proof_manifest(manifest_path, proof_path):
+    manifest_path = Path(manifest_path)
+    data = read_proof_manifest(manifest_path)
+    value = proof_manifest_value(proof_path, manifest_path)
+    data["runtime_data_backup_proof_file"] = value
+    manifest_path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return value
+
+
+def write_proof(proof_path, data_dir, archive_path, timestamp, digest, file_count, directory_count,
+        proof_manifest=""):
+    manifest_arg = ""
+    if proof_manifest:
+        manifest_arg = " --proof-manifest {}".format(repr(str(proof_manifest)))
     proof_path.parent.mkdir(parents=True, exist_ok=True)
     text = """# Runtime Data Backup Proof
 
@@ -132,7 +169,7 @@ def write_proof(proof_path, data_dir, archive_path, timestamp, digest, file_coun
 - directories: {directory_count}
 - runtime: not started, stopped, or restarted
 - readiness argument: --runtime-data-backup-proof-file {proof}
-- command: scripts/backup-runtime-data.py --data-dir {data_dir_q} --archive {archive_q} --proof-file {proof_q}
+- command: scripts/backup-runtime-data.py --data-dir {data_dir_q} --archive {archive_q} --proof-file {proof_q}{manifest_arg}
 """.format(
         archive=archive_path,
         archive_q=repr(str(archive_path)),
@@ -142,6 +179,7 @@ def write_proof(proof_path, data_dir, archive_path, timestamp, digest, file_coun
         digest=digest,
         directory_count=directory_count,
         file_count=file_count,
+        manifest_arg=manifest_arg,
         proof=proof_path,
         proof_q=repr(str(proof_path)),
         timestamp=timestamp.isoformat().replace("+00:00", "Z"),
@@ -162,6 +200,9 @@ def main():
             help="Explicit archive path. Defaults under --output-dir with a UTC timestamp.")
     parser.add_argument("--proof-file", default="",
             help="Explicit proof-note path. Defaults under --output-dir with a UTC timestamp.")
+    parser.add_argument("--proof-manifest", default="",
+            help=("Optional existing deployment-proof-manifest JSON to update with the generated "
+                  "runtime_data_backup_proof_file path. Other manifest fields are preserved."))
     args = parser.parse_args()
 
     timestamp = utc_now()
@@ -175,13 +216,31 @@ def main():
     reject_symlinked_output_path(proof_path, "proof")
     if archive_path.resolve() == proof_path.resolve():
         fail("--archive and --proof-file must be different paths")
+    proof_manifest_path = Path(args.proof_manifest) if args.proof_manifest else None
+    if proof_manifest_path:
+        read_proof_manifest(proof_manifest_path)
 
     file_count, directory_count = write_archive(data_dir, sources, archive_path)
     digest = sha256_file(archive_path)
-    write_proof(proof_path, data_dir, archive_path, timestamp, digest, file_count, directory_count)
+    write_proof(
+        proof_path,
+        data_dir,
+        archive_path,
+        timestamp,
+        digest,
+        file_count,
+        directory_count,
+        proof_manifest=args.proof_manifest,
+    )
+    manifest_value = ""
+    if proof_manifest_path:
+        manifest_value = write_proof_manifest(proof_manifest_path, proof_path)
 
     print("archive: {}".format(archive_path))
     print("proof: {}".format(proof_path))
+    if args.proof_manifest:
+        print("proof manifest: {}".format(args.proof_manifest))
+        print("manifest runtime_data_backup_proof_file: {}".format(manifest_value))
     print("sha256: {}".format(digest))
     print("runtime: not started, stopped, or restarted")
     return 0

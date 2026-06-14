@@ -941,6 +941,7 @@ def verify_server_deployment(config, server_deployment_dir):
     require_text(readme, "server deployment README", "proof-templates/runtime-data-backup-proof.md")
     require_text(readme, "server deployment README", "--proof-manifest")
     require_text(readme, "server deployment README", "scripts/check-deployment-proof-manifest.py deployment-proof-manifest.json")
+    require_text(readme, "server deployment README", "--secrets")
     require_text(readme, "server deployment README", "--check-files --check-env")
     require_text(readme, "server deployment README", "runtime-backup archive/checksum")
     require_text(readme, "server deployment README", "## Live Chat Proof")

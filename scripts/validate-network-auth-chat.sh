@@ -1754,7 +1754,7 @@ grep -q "proof-templates/deployment-proof-manifest.json" "$TMP_DIR/prepared-clie
 grep -q "proof-templates/desktop-client-proof.md" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
 grep -q "proof-templates/runtime-data-backup-proof.md" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
 grep -q -- "--proof-manifest" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
-grep -q "scripts/check-deployment-proof-manifest.py deployment-proof-manifest.json --config ServerConfig.json --require-full-proof --check-files --check-env" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
+grep -q "scripts/check-deployment-proof-manifest.py deployment-proof-manifest.json --config ServerConfig.json --secrets '/opt/2006scape/2006Scape Server/data/secrets.json' --require-full-proof --check-files --check-env" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
 grep -q "validates desktop proof evidence and runtime-backup archive/checksum details" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
 grep -q "Final-gate manifests must keep \`require_full_proof:true\`" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
 grep -q "Relative proof-note paths in the manifest are resolved from the manifest file's directory" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
@@ -2181,7 +2181,7 @@ grep -q "backup archive sha256" "$TMP_DIR/sample-server-deployment/README.md"
 grep -q "## Live Chat Proof" "$TMP_DIR/sample-server-deployment/README.md"
 grep -q "proof-templates/deployment-proof-manifest.json" "$TMP_DIR/sample-server-deployment/README.md"
 grep -q -- "--proof-manifest" "$TMP_DIR/sample-server-deployment/README.md"
-grep -q "scripts/check-deployment-proof-manifest.py deployment-proof-manifest.json --config ServerConfig.json --require-full-proof --check-files --check-env" "$TMP_DIR/sample-server-deployment/README.md"
+grep -q "scripts/check-deployment-proof-manifest.py deployment-proof-manifest.json --config ServerConfig.json --secrets '/opt/2006scape/2006Scape Server/data/secrets.json' --require-full-proof --check-files --check-env" "$TMP_DIR/sample-server-deployment/README.md"
 grep -q "validates desktop proof evidence and runtime-backup archive/checksum details" "$TMP_DIR/sample-server-deployment/README.md"
 grep -q "Final-gate manifests must keep \`require_full_proof:true\`" "$TMP_DIR/sample-server-deployment/README.md"
 grep -q "Relative proof-note paths in the manifest are resolved from the manifest file's directory" "$TMP_DIR/sample-server-deployment/README.md"
@@ -2413,6 +2413,42 @@ if os.name == "posix":
         if mode != 0o600:
             raise SystemExit("{} should be owner-only 0600, got {:03o}".format(filename, mode))
 PY
+cat > "$TMP_DIR/runtime-data-proof-manifest.json" <<'EOF'
+{
+  "live": true,
+  "runtime_data_backup_proof_file": "PATH_TO_RUNTIME_DATA_BACKUP_PROOF.md",
+  "live_login_username": "ExternalTest"
+}
+EOF
+scripts/backup-runtime-data.py \
+    --data-dir "$RUNTIME_DATA_TMP" \
+    --archive "$TMP_DIR/runtime-data-backup-manifest.tgz" \
+    --proof-file "$TMP_DIR/runtime-data-backup-proof-manifest.md" \
+    --proof-manifest "$TMP_DIR/runtime-data-proof-manifest.json" > "$TMP_DIR/runtime-data-backup-manifest.out"
+grep -q "proof manifest: $TMP_DIR/runtime-data-proof-manifest.json" "$TMP_DIR/runtime-data-backup-manifest.out"
+grep -q "manifest runtime_data_backup_proof_file: runtime-data-backup-proof-manifest.md" "$TMP_DIR/runtime-data-backup-manifest.out"
+python3 - "$TMP_DIR/runtime-data-proof-manifest.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+assert data["runtime_data_backup_proof_file"] == "runtime-data-backup-proof-manifest.md", data
+assert data["live"] is True, data
+assert data["live_login_username"] == "ExternalTest", data
+PY
+ln -s "$TMP_DIR/runtime-data-proof-manifest.json" "$TMP_DIR/runtime-data-proof-manifest-link.json"
+if scripts/backup-runtime-data.py \
+    --data-dir "$RUNTIME_DATA_TMP" \
+    --archive "$TMP_DIR/runtime-data-backup-symlink-manifest.tgz" \
+    --proof-file "$TMP_DIR/runtime-data-backup-symlink-manifest.md" \
+    --proof-manifest "$TMP_DIR/runtime-data-proof-manifest-link.json" > "$TMP_DIR/runtime-data-backup-symlink-manifest.out" 2>&1; then
+    echo "backup-runtime-data.py unexpectedly accepted a symlinked proof manifest path." >&2
+    exit 1
+fi
+grep -q "refusing to write proof manifest through symlink path" "$TMP_DIR/runtime-data-backup-symlink-manifest.out"
+test ! -e "$TMP_DIR/runtime-data-backup-symlink-manifest.tgz"
+test ! -e "$TMP_DIR/runtime-data-backup-symlink-manifest.md"
 RUNTIME_BACKUP_DEFAULT_OUT="$TMP_DIR/runtime-data-default-output"
 scripts/backup-runtime-data.py \
     --data-dir "$RUNTIME_DATA_TMP" \
@@ -2712,6 +2748,34 @@ labels = {command["label"] for command in commands}
 assert "Record live network/auth proof" in labels, labels
 assert "Check final proof manifest and rerun final readiness" in labels, labels
 assert any("--live-login-username EXTERNAL_TEST" in command["command"] for command in commands), commands
+final_commands = [command["command"] for command in commands if command["label"] == "Check final proof manifest and rerun final readiness"]
+assert final_commands, commands
+final_command = final_commands[0]
+assert "--accounts-dir" in final_command, final_command
+assert "--secrets" in final_command, final_command
+assert "scripts/check-deployment-proof-manifest.py" in final_command, final_command
+assert "test -f" in final_command, final_command
+assert "|| cp" in final_command, final_command
+assert final_command.index("test -f") < final_command.index("scripts/check-deployment-proof-manifest.py"), final_command
+PY
+mkdir -p "$TMP_DIR/prepared-status"
+cp "$TMP_DIR/deployment-readiness-report.json" "$TMP_DIR/prepared-status/deployment-readiness-report.json"
+scripts/deployment-readiness-status.py \
+    --prepared-dir "$TMP_DIR/prepared-status" \
+    --show-next-commands \
+    --json > "$TMP_DIR/deployment-readiness-status-prepared-next.json"
+python3 - "$TMP_DIR/deployment-readiness-status-prepared-next.json" "$TMP_DIR/prepared-status/deployment-proof-manifest.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+manifest_path = sys.argv[2]
+commands = data.get("nextCommands")
+assert isinstance(commands, list) and commands, data
+final_commands = [command["command"] for command in commands if command["label"] == "Check final proof manifest and rerun final readiness"]
+assert final_commands, commands
+assert manifest_path in final_commands[0], final_commands[0]
 PY
 if scripts/deployment-readiness-status.py \
     --readiness-json "$TMP_DIR/deployment-readiness-report.json" \
@@ -3845,6 +3909,28 @@ if scripts/verify-external-deployment.py \
     exit 1
 fi
 grep -q "server deployment README is missing required text" "$TMP_DIR/broken-server-deployment-verify.out"
+
+cp -R "$TMP_DIR/sample-server-deployment" "$TMP_DIR/broken-server-deployment-readme-secrets"
+python3 - "$TMP_DIR/broken-server-deployment-readme-secrets/README.md" <<'PY'
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+text = text.replace(" --secrets '/opt/2006scape/2006Scape Server/data/secrets.json'", "")
+path.write_text(text, encoding="utf-8")
+PY
+if scripts/verify-external-deployment.py \
+    --config "2006Scape Server/ServerConfig.External.Sample.json" \
+    --client-dist "$TMP_DIR/2006scape-client-from-config" \
+    --server-deployment-dir "$TMP_DIR/broken-server-deployment-readme-secrets" \
+    --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
+    --allow-placeholder-network-config > "$TMP_DIR/broken-server-deployment-readme-secrets-verify.out" 2>&1; then
+    echo "verify-external-deployment.py unexpectedly accepted a server deployment README without proof-manifest --secrets guidance." >&2
+    cat "$TMP_DIR/broken-server-deployment-readme-secrets-verify.out" >&2
+    exit 1
+fi
+grep -q "server deployment README is missing required text" "$TMP_DIR/broken-server-deployment-readme-secrets-verify.out"
 
 cp -R "$TMP_DIR/sample-server-deployment" "$TMP_DIR/broken-server-deployment-proof-manifest"
 python3 - "$TMP_DIR/broken-server-deployment-proof-manifest/proof-templates/deployment-proof-manifest.json" <<'PY'

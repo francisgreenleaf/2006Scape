@@ -402,7 +402,7 @@ def readme_text(config, args):
         shell_command("sudo", "test", "!", "-L", characters_dir),
         "```",
         "",
-        "The helper writes owner-only archive/proof files on POSIX systems and records that it did not start, stop, or restart the runtime. Pass the generated `runtime-data-backup-proof-*.md` file to `scripts/deployment-readiness-report.py --runtime-data-backup-proof-file`.",
+        "The helper writes owner-only archive/proof files on POSIX systems and records that it did not start, stop, or restart the runtime. Pass the generated `runtime-data-backup-proof-*.md` file to `scripts/deployment-readiness-report.py --runtime-data-backup-proof-file`, or add `--proof-manifest deployment-proof-manifest.json` when a copied final proof manifest already exists.",
         "Readiness validation rejects symlinked proof notes, verifies owner-only proof/archive modes where supported, and checks the proof's archive path, `backup archive sha256`, and required runtime-data entries, so keep the archive beside the proof or provide an absolute archive path.",
         "",
         "Treat local development character saves as separate data. Copy them to the remote host only when that is intentional.",
@@ -410,21 +410,23 @@ def readme_text(config, args):
         "## Proof Note Templates",
         "",
         "The files under `proof-templates/` are not evidence until every placeholder is replaced with real deployment details.",
-        "`deployment-proof-manifest.json` lets operators keep the final readiness proof flags in one file; pass it with `scripts/deployment-readiness-report.py --proof-manifest proof-templates/deployment-proof-manifest.json` after replacing placeholders.",
+        "`deployment-proof-manifest.json` lets operators keep the final readiness proof flags in one file. Copy `proof-templates/deployment-proof-manifest.json` to `deployment-proof-manifest.json`, edit the copy, and pass the copy with `scripts/deployment-readiness-report.py --proof-manifest deployment-proof-manifest.json`.",
         "Keep only password environment-variable names in the manifest, never password values or Discord tokens.",
         "For final readiness, copy the template before editing it, then run the proof-manifest checker before the heavier readiness/prep command:",
         "",
         "```sh",
         "cp proof-templates/deployment-proof-manifest.json deployment-proof-manifest.json",
         "$EDITOR deployment-proof-manifest.json",
-        "scripts/check-deployment-proof-manifest.py deployment-proof-manifest.json --config ServerConfig.json --require-full-proof --check-files --check-env",
+        shell_command("scripts/check-deployment-proof-manifest.py", "deployment-proof-manifest.json",
+                      "--config", "ServerConfig.json", "--secrets", secrets_path,
+                      "--require-full-proof", "--check-files", "--check-env"),
         "```",
         "",
         "With `--check-files`, the checker validates desktop proof evidence and runtime-backup archive/checksum details, not just path existence.",
         "Final-gate manifests must keep `require_full_proof:true` in the copied manifest itself so handoff evidence stays self-describing.",
         "Relative proof-note paths in the manifest are resolved from the manifest file's directory, so keep completed proof notes beside `deployment-proof-manifest.json` or use absolute paths.",
         "Keep `live_reject_login_expected_statuses` in the final manifest, normally `3,4`, so fail-closed login proof pins the accepted rejection status codes instead of treating any rejection-looking response as enough.",
-        "After filling them in, pass the completed copies to `scripts/deployment-readiness-report.py` with `--desktop-client-proof-file` and `--runtime-data-backup-proof-file`.",
+        "After filling them in, pass the completed copies to `scripts/deployment-readiness-report.py` with `--desktop-client-proof-file` and `--runtime-data-backup-proof-file`, or let `scripts/backup-runtime-data.py --proof-manifest deployment-proof-manifest.json` fill the runtime-backup proof field after the backup runs.",
         "Desktop client proof must include an `evidence` path to a real non-symlink screenshot/log file; readiness validation checks that file exists and is not empty.",
         "After observing one same-host Java client and one external Java client online together, prefer `scripts/write-desktop-client-proof.py --same-host-client LOCAL --external-client EXTERNAL --transport TRANSPORT --public-host HOST --evidence PATH` to write the desktop proof note. It validates the existing evidence file and does not start, stop, restart, log in, or probe runtime.",
         "After the final readiness report is written, `scripts/package-deployment-proof.py` can package non-secret handoff evidence from the readiness Markdown/JSON, filled proof manifest, proof notes, and selected client/server metadata while excluding runtime backup archives, character saves, account records, secrets, passwords, bridge tokens, and Discord bot tokens.",
@@ -481,7 +483,7 @@ def runtime_data_backup_proof_template_text(args):
 - backup archive sha256: BACKUP_ARCHIVE_SHA256
 - runtime: not started, stopped, or restarted
 - readiness argument: --runtime-data-backup-proof-file PROOF_FILE
-- command: sudo -u {service_user} {install_root}/scripts/backup-runtime-data.py --data-dir {server_data_dir_q} --archive BACKUP_ARCHIVE --proof-file PROOF_FILE
+- command: sudo -u {service_user} {install_root}/scripts/backup-runtime-data.py --data-dir {server_data_dir_q} --archive BACKUP_ARCHIVE --proof-file PROOF_FILE --proof-manifest deployment-proof-manifest.json
 
 Replace every placeholder before passing this file to `scripts/deployment-readiness-report.py --runtime-data-backup-proof-file`.
 """.format(

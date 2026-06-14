@@ -93,6 +93,8 @@ def readiness_base_args(data, readiness_json_path):
     archive = report_input(data, "archive", "")
     server_dir = report_input(data, "serverDeploymentDir", "")
     tls_dir = report_input(data, "clientTlsTunnelDir", "")
+    accounts_dir = report_input(data, "accountsDir", "")
+    secrets = report_input(data, "secrets", "")
     argv = [
         "scripts/deployment-readiness-report.py",
         "--config", config,
@@ -104,8 +106,26 @@ def readiness_base_args(data, readiness_json_path):
         argv.extend(["--server-deployment-dir", server_dir])
     if tls_dir:
         argv.extend(["--client-tls-tunnel-dir", tls_dir])
+    if accounts_dir:
+        argv.extend(["--accounts-dir", accounts_dir])
+    if secrets:
+        argv.extend(["--secrets", secrets])
     argv.extend(["--json-output", str(readiness_json_path)])
     return argv
+
+
+def manifest_path_for(readiness_json_path):
+    path = Path(readiness_json_path)
+    if path.name == PREPARED_READINESS_JSON:
+        return str(path.parent / "deployment-proof-manifest.json")
+    return "dist/external-deployment/deployment-proof-manifest.json"
+
+
+def copy_manifest_template_command(template, manifest):
+    return "{} || {}".format(
+        shell_join(["test", "-f", manifest]),
+        shell_join(["cp", template, manifest]),
+    )
 
 
 def build_next_commands(data, readiness_json_path, require_discord=False):
@@ -116,6 +136,8 @@ def build_next_commands(data, readiness_json_path, require_discord=False):
     server_dir = report_input(data, "serverDeploymentDir", "dist/server-deployment")
     secrets = report_input(data, "secrets", "2006Scape Server/data/secrets.json")
     base = readiness_base_args(data, readiness_json_path)
+    manifest = manifest_path_for(readiness_json_path)
+    template = "{}/proof-templates/deployment-proof-manifest.json".format(server_dir.rstrip("/"))
     commands = []
 
     live_status = coverage_status(data, "Public reachability and bridge non-exposure")
@@ -152,8 +174,15 @@ def build_next_commands(data, readiness_json_path, require_discord=False):
     if coverage_status(data, "Runtime data backup before remote replacement/restart") != "MANUAL_PROOF_RECORDED":
         commands.append(command_entry(
             "Back up deployed runtime data",
-            "Run on the deployed host before replacing files or restarting into new bits.",
-            shell_join(["scripts/backup-runtime-data.py", "--data-dir", "2006Scape Server/data"]),
+            "Run on the deployed host before replacing files or restarting into new bits; updates the copied proof manifest when present.",
+            "{}\n{}".format(
+                copy_manifest_template_command(template, manifest),
+                shell_join([
+                    "scripts/backup-runtime-data.py",
+                    "--data-dir", "2006Scape Server/data",
+                    "--proof-manifest", manifest,
+                ]),
+            ),
         ))
 
     if coverage_status(data, "Desktop client coexistence") != "MANUAL_PROOF_RECORDED":
@@ -237,16 +266,24 @@ def build_next_commands(data, readiness_json_path, require_discord=False):
             ]),
         ))
 
-    manifest = "dist/external-deployment/deployment-proof-manifest.json"
-    template = "{}/proof-templates/deployment-proof-manifest.json".format(server_dir.rstrip("/"))
     final_args = list(base)
     final_args.extend(["--proof-manifest", manifest, "--require-full-proof"])
+    manifest_check_args = [
+        "scripts/check-deployment-proof-manifest.py",
+        manifest,
+        "--config",
+        config,
+        "--require-full-proof",
+        "--check-files",
+    ]
+    if secrets:
+        manifest_check_args.extend(["--secrets", secrets])
     commands.append(command_entry(
         "Check final proof manifest and rerun final readiness",
         "Use after filling proof paths, usernames, markers, and password environment-variable names.",
         "{}\n{}\n{}".format(
-            shell_join(["cp", template, manifest]),
-            shell_join(["scripts/check-deployment-proof-manifest.py", manifest, "--config", config, "--require-full-proof", "--check-files"]),
+            copy_manifest_template_command(template, manifest),
+            shell_join(manifest_check_args),
             shell_join(final_args),
         ),
     ))

@@ -70,18 +70,18 @@ scripts/deployment-readiness-report.py --config "2006Scape Server/ServerConfig.j
 
 Use `--json-output PATH` when automation or handoff records need machine-readable `status`, `deploymentProofStatus`, command summaries, proof coverage, and remaining live-proof items alongside the Markdown report. `prepare-external-deployment.py` passes this flag through when supplied.
 
-Use `scripts/deployment-readiness-status.py --readiness-json PATH` or `--prepared-dir dist/external-deployment` when you only need to reread an existing JSON report and see whether `externallyReady` is proven. Add `--show-next-commands` to print command templates for the missing live/manual proof categories from that JSON. It is read-only and does not rerun preflight, probes, packaging, startup, shutdown, or restart. Add `--fail-if-not-ready` only in wrappers that should exit non-zero until the report has full live proof.
+Use `scripts/deployment-readiness-status.py --readiness-json PATH` or `--prepared-dir dist/external-deployment` when you only need to reread an existing JSON report and see whether `externallyReady` is proven. Add `--show-next-commands` to print command templates for the missing live/manual proof categories from that JSON; the templates preserve the report's config, account, secret, client, and deployment paths, create the proof manifest from the template only when it is missing, and the final manifest check passes `--secrets` so Discord routing-filter requirements are considered. It is read-only and does not rerun preflight, probes, packaging, startup, shutdown, or restart. Add `--fail-if-not-ready` only in wrappers that should exit non-zero until the report has full live proof.
 
 For collected live/manual proof, prefer a JSON manifest over a very long final command:
 
 ```sh
 scripts/deployment-readiness-report.py --config "2006Scape Server/ServerConfig.json" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --proof-manifest PATH
 scripts/prepare-external-deployment.py --config "2006Scape Server/ServerConfig.json" --proof-manifest PATH
-scripts/check-deployment-proof-manifest.py PATH --config "2006Scape Server/ServerConfig.json" --require-full-proof --check-files
+scripts/check-deployment-proof-manifest.py PATH --config "2006Scape Server/ServerConfig.json" --secrets "2006Scape Server/data/secrets.json" --require-full-proof --check-files
 scripts/package-deployment-proof.py --prepared-dir dist/external-deployment
 ```
 
-The generated server bundle includes `server-deployment/proof-templates/deployment-proof-manifest.json`. Copy it, replace placeholders, remove unused Discord fields, and store only password environment-variable names such as `EXTERNAL_PASSWORD`, never password values or Discord tokens. Use `scripts/check-deployment-proof-manifest.py` for a quick structural/full-proof completeness check before running the heavier readiness/prep command. With `--check-files`, it validates desktop proof evidence and runtime-backup archive/checksum details, not just path existence. For final-gate checks, the manifest itself must keep `require_full_proof:true`; do not rely on only the caller's CLI flag to make the proof bundle self-describing. When `prepare-external-deployment.py` is run with `--require-full-proof`, it also runs this check early against the merged manifest plus CLI values, including proof-file, password-env, and `live_reject_login_expected_statuses` presence, before packaging. Unedited placeholder values in the template are rejected before proof checks run. CLI flags override manifest fields for one-off reruns.
+The generated server bundle includes `server-deployment/proof-templates/deployment-proof-manifest.json`. Copy it, replace placeholders, remove unused Discord fields, and store only password environment-variable names such as `EXTERNAL_PASSWORD`, never password values or Discord tokens. Use the full `scripts/check-deployment-proof-manifest.py PATH --config ... --secrets ... --require-full-proof --check-files` form for a quick structural/full-proof completeness check before running the heavier readiness/prep command. With `--check-files`, it validates Discord routing requirements plus desktop proof evidence and runtime-backup archive/checksum details, not just path existence. For final-gate checks, the manifest itself must keep `require_full_proof:true`; do not rely on only the caller's CLI flag to make the proof bundle self-describing. When `prepare-external-deployment.py` is run with `--require-full-proof`, it also runs this check early against the merged manifest plus CLI values, including proof-file, password-env, and `live_reject_login_expected_statuses` presence, before packaging. Unedited placeholder values in the template are rejected before proof checks run. CLI flags override manifest fields for one-off reruns.
 
 Manifest-owned proof-note file paths are resolved relative to the manifest file unless they are absolute or overridden by CLI flags. In the normal `dist/external-deployment/` handoff, keep `deployment-proof-manifest.json`, `desktop-client-proof.md`, and `runtime-data-backup-proof.md` together and use short filenames in the manifest.
 
@@ -103,6 +103,7 @@ Before replacing deployed files, rotating credentials, migrating config, or inte
 
 ```sh
 scripts/backup-runtime-data.py --data-dir "2006Scape Server/data"
+scripts/backup-runtime-data.py --data-dir "2006Scape Server/data" --proof-manifest dist/external-deployment/deployment-proof-manifest.json
 ```
 
 Pass the generated proof note to readiness tooling:
@@ -111,7 +112,7 @@ Pass the generated proof note to readiness tooling:
 scripts/deployment-readiness-report.py --config "2006Scape Server/ServerConfig.json" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --runtime-data-backup-proof-file PATH
 ```
 
-The helper archives `data/characters`, `data/accounts`, and `data/secrets.json`, writes owner-only archive/proof files on POSIX systems, writes a readiness-compatible proof note, refuses symlinked runtime-data paths and symlinked archive/proof output paths, including symlinked output directories or parent directories, and does not start, stop, or restart the runtime. Readiness validation rejects symlinked proof notes, verifies the proof/archive owner-only modes where supported, and checks the proof's archive path, `backup archive sha256`, required tar entries, the no runtime start/stop/restart proof line, and the `readiness argument: --runtime-data-backup-proof-file ...` line, so keep the archive with the proof or use an absolute archive path.
+The optional `--proof-manifest` flag updates only the manifest's `runtime_data_backup_proof_file` with the generated proof-note path; other manifest fields are preserved. The helper archives `data/characters`, `data/accounts`, and `data/secrets.json`, writes owner-only archive/proof files on POSIX systems, writes a readiness-compatible proof note, refuses symlinked runtime-data paths and symlinked archive/proof/manifest output paths, including symlinked output directories or parent directories, and does not start, stop, or restart the runtime. Readiness validation rejects symlinked proof notes, verifies the proof/archive owner-only modes where supported, and checks the proof's archive path, `backup archive sha256`, required tar entries, the no runtime start/stop/restart proof line, and the `readiness argument: --runtime-data-backup-proof-file ...` line, so keep the archive with the proof or use an absolute archive path.
 
 ## Live Proof Gate
 

@@ -130,7 +130,7 @@ Before replacing deployed files, rotating credentials, or restarting into new de
 scripts/backup-runtime-data.py --data-dir "2006Scape Server/data"
 ```
 
-Save the printed proof path. You will pass it to readiness later as `--runtime-data-backup-proof-file`; the readiness report rejects symlinked proof notes, verifies owner-only proof/archive modes where supported, and requires the proof note to record the readiness argument plus the fact that the helper did not start, stop, or restart the runtime.
+Save the printed proof path. You will pass it to readiness later as `--runtime-data-backup-proof-file`; if `deployment-proof-manifest.json` already exists, add `--proof-manifest deployment-proof-manifest.json` to update its `runtime_data_backup_proof_file` field automatically. The readiness report rejects symlinked proof notes, verifies owner-only proof/archive modes where supported, and requires the proof note to record the readiness argument plus the fact that the helper did not start, stop, or restart the runtime.
 
 ## 5. Start Or Restart Intentionally
 
@@ -268,6 +268,7 @@ cp dist/external-deployment/server-deployment/proof-templates/deployment-proof-m
 scripts/check-deployment-proof-manifest.py \
   dist/external-deployment/deployment-proof-manifest.json \
   --config "2006Scape Server/ServerConfig.json" \
+  --secrets "2006Scape Server/data/secrets.json" \
   --require-full-proof \
   --check-files
 scripts/deployment-readiness-report.py \
