@@ -11,7 +11,7 @@ Use this skill for bridge/tool development. Pair it with `2006scape-dev-editing`
 
 Other agents may be using the game. Do not restart the server/client, kill processes, or replace running jars while editing bridge code unless the user explicitly asks for runtime validation. Compile-time validation is not live validation.
 
-Keep tools server-authoritative. HTTP handlers must not mutate gameplay directly; queue or execute through `AgentActionService`, which runs against the claimed player and existing game mechanics. The bridge HTTP server is a bounded localhost control plane with request-body limits plus request and game-tick action backpressure, not a public remote API; do not expose the loopback bridge, which defaults to `127.0.0.1:43610`. Unexpected bridge tool runtime failures should still return compact JSON with `success:false` instead of escaping as raw HTTP handler failures.
+Keep tools server-authoritative. HTTP handlers must not mutate gameplay directly; queue or execute through `AgentActionService`, which runs against the claimed player and existing game mechanics. The bridge HTTP server is a bounded localhost control plane with request-body limits plus request and game-tick action backpressure, not a public remote API; do not expose the loopback bridge, which defaults to `127.0.0.1:43610`. Remote player-agent access must go through an HTTPS gateway that exposes only approved `/agent/*` endpoints and forwards to loopback. Unexpected bridge tool runtime failures should still return compact JSON with `success:false` instead of escaping as raw HTTP handler failures.
 
 Prefer a primitive-first bridge boundary. New gameplay strategies should usually be Python scripts that compose stable primitives such as `use_item_on_item`, `use_item_on_object`, `click_interface_button`, `select_interface_item`, `interact_object`, `interact_npc`, movement, wait, bank, shop, and combat tools. Add Java only when the bridge is missing a reusable gameplay input primitive; do not add a new bespoke Java tool for each skill loop.
 
@@ -30,6 +30,20 @@ Never print or copy bridge tokens. Use `agent-navigation/tools/rs-tool_XS.sh` or
 - `2006Scape Server/src/main/java/com/rs2/agent/AgentKnowledgeBase.java`: built-in landmarks and static gameplay knowledge.
 - `2006Scape Client/src/main/java/CodexAppServerClient.java`: dynamic tool metadata and prompt text exposed to Codex.
 - `2006Scape Client/src/main/java/AgentClientController.java` and `AgentBridgeHttpClient.java`: client-side `/agent` control and claim communication.
+- `agent-navigation/tools/remote_claim.py`: repo-side remote bridge claim helper that writes profile-scoped ignored sessions with `bridgeUrl`.
+- `scripts/render-agent-bridge-gateway-config.py` and `scripts/probe-agent-bridge-gateway.py`: public-safe gateway config and external reachability/non-exposure checks.
+
+## Remote Player-Agent Mode
+
+Local `/agent` behavior uses `http://127.0.0.1:43610` by default. Packaged clients may set `agent.bridge.url=https://AGENT_GATEWAY_HOST` in `client.properties`; `/agent key`, `/agent status`, `/agent stop`, and `/agent <task>` should then claim through that gateway after the player proves ownership over the game connection.
+
+Repo-side Codex control uses:
+
+```sh
+python3 agent-navigation/tools/remote_claim.py --profile PROFILE --bridge-url https://AGENT_GATEWAY_HOST --verify
+```
+
+The helper prints the in-game `::agent claim CODE` command, consumes the claim through `/agent/session/claim`, and writes the ignored profile session file. `rs-tool.sh`, `rs-tool_XS.sh`, `rs-tool_XXS.sh`, `observe_XS.sh`, and `bridge_script.py` must preserve legacy local sessions while honoring session `bridgeUrl` for remote sessions.
 
 ## Tool-Change Checklist
 

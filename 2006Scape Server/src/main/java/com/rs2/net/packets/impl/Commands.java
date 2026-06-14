@@ -56,6 +56,11 @@ public class Commands implements PacketType {
                 }
                 break;
             case "agent":
+                if (arguments.length >= 2 && "claim".equalsIgnoreCase(arguments[0])) {
+                    AgentSessionManager.INSTANCE.registerClaim(player, arguments[1]);
+                    player.getPacketSender().sendMessage("Agent bridge claim registered.");
+                    break;
+                }
             case "agentchat":
                 String agentMessage = joinArguments(arguments);
                 if (agentMessage.trim().isEmpty()) {

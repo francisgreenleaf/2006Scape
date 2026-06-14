@@ -1,6 +1,6 @@
 ---
 name: 2006scape
-description: "Use as the single entry skill for work in $REPO_ROOT, especially when a task broadly mentions 2006Scape or the right specialized workflow is unclear. Provides routing guidance, boundaries, starter commands, and child-skill pointers for runtime/bridge sessions, script discovery, route exploration, route-planner/ML graph development, object transitions, frontier exploration, compact screenshots, gameplay progression, custom quests/shops/gameplay content, profile-scoped character memories/goals, cache maps, map visualization, session logs, bridge-tool development, and general repo editing without preloading every specialized skill body."
+description: "Use as the single entry skill for work in $REPO_ROOT, especially when a task broadly mentions 2006Scape or the right specialized workflow is unclear. Provides routing guidance, boundaries, starter commands, and child-skill pointers for runtime/bridge sessions, remote player-agent mode, script discovery, route exploration, route-planner/ML graph development, object transitions, frontier exploration, compact screenshots, gameplay progression, custom quests/shops/gameplay content, profile-scoped character memories/goals, cache maps, map visualization, session logs, bridge-tool development, and general repo editing without preloading every specialized skill body."
 ---
 
 # 2006Scape
@@ -41,7 +41,7 @@ When a live route fails near a building, door, gate, ladder, or other object blo
 | Custom gameplay content, quests, shop/store stock or price changes, rewards, NPC/object/item interactions, guides, or the customization ledger | `.codex/skills/2006scape-custom-content/SKILL.md` | Read `docs/custom-game-changes.md`, the custom content README, and targeted quest/shop docs | Keep feature code under `com.rs2.game.content.custom`; core hooks generic and minimal; update tests and the ledger |
 | Starting, stopping, relaunching, diagnosing, or claiming the local server/client/bridge runtime | `.codex/skills/2006scape-local-runtime/SKILL.md` | `python3 agent-navigation/tools/runtime_doctor.py status --observe` | Do not kill/restart active runtimes unless asked or clearly stale; keep profile sessions scoped; never print tokens |
 | Adding, debugging, reviewing, or documenting `rs.*` bridge primitives or compatibility tools | `.codex/skills/2006scape-agent-bridge-dev/SKILL.md` | Read `agent-navigation/scripting-primitives.md`, then inspect `AgentActionService`, `AgentToolService`, and `CodexAppServerClient` | Prefer external scripts for strategy; build success is not live proof; restart through `runtime_doctor.py` only when live validation is requested |
-| External-player networking, standalone client packaging, account auth, direct_tcp/secure transport design, deployment readiness, runtime-data backup proof, Discord transport proof, or remote VPS/GCE/Tailscale/WireGuard/client_tls_tunnel setup | `.codex/skills/2006scape-external-deployment/SKILL.md` plus `.codex/skills/2006scape-agent-bridge-dev/SKILL.md` only when changing bridge primitives | For first setup, read `docs/external-deployment-quickstart.md`; use `docs/network-auth-agent-chat-design.md` or `docs/deployment-networking.md` for deeper detail, then inspect `FileServer`, `ConfigLoader`, `Main`, `LoginSession`, `AgentChatService`, and `DiscordAgentTransport` as needed | Keep local dev defaults intact; do not expose `AgentBridgeServer`; source/static checks are not live readiness; restart only for explicit live proof |
+| External-player networking, standalone client packaging, account auth, remote player-agent `/agent` gateway, repo-side remote claims, direct_tcp/secure transport design, deployment readiness, runtime-data backup proof, Discord transport proof, or remote VPS/GCE/Tailscale/WireGuard/client_tls_tunnel setup | `.codex/skills/2006scape-external-deployment/SKILL.md` plus `.codex/skills/2006scape-agent-bridge-dev/SKILL.md` only when changing bridge primitives | For first setup, read `docs/external-deployment-quickstart.md`; for player-agent mode read `docs/player-agent-mode/README.md` and `docs/agent-bridge-gateway.md`; use `docs/network-auth-agent-chat-design.md` or `docs/deployment-networking.md` for deeper detail, then inspect `FileServer`, `ConfigLoader`, `Main`, `AgentBridgeHttpClient`, `LoginSession`, `AgentChatService`, and `DiscordAgentTransport` as needed | Keep local dev defaults intact; do not expose raw `AgentBridgeServer`/`43610`; remote bridge access goes through an HTTPS gateway with approved `/agent/*` endpoints only; source/static checks are not live readiness; restart only for explicit live proof |
 | Live route exploration, route DB edits, hazards, blockers, doors, gates, stairs, trapdoors, or topology from navigation data | `.codex/skills/2006scape-route-agent/SKILL.md` | `agent-navigation/tools/observe_XS.sh`, then prefer `agent-navigation/ml2-routing/route_ml_XS.py define` for A-to-B routing | Use bridge tools only; do not use admin teleports, direct state edits, or visual guesses without evidence |
 | Route-planner implementation, graph semantics, `router.py`, `route_runner.py`, passive trace weighting, reverse edges, coordinate targets, ML/GNN route planning, cache-direct candidates, planner evaluation, route-definition API, or route feedback capture | `.codex/skills/2006scape-route-planner-dev/SKILL.md` | `python3 agent-navigation/ml2-routing/route_ml_XS.py define --from X,Y,H --to PLACE --combat-level N --food N --run-energy N --run-enabled` | Keep learned models explainable and constrained by deterministic safety gates; frontier-only routes are not complete benchmark wins |
 | Doors, gates, ladders, trapdoors, stairs, ships, portals, tolls, or member gates | `.codex/skills/2006scape-object-transitions/SKILL.md` | Observe XS state, identify object id/tile, preview/walk to interaction target, interact once, then prove post-state; use full state only when a proof field is missing | Do not model object transitions as ordinary walk edges or accept a successful click as proof |
@@ -121,12 +121,15 @@ agent-navigation/tools/rs-tool.sh TOOL_NAME 'JSON_ARGS'
 
 # External-player networking/auth/client packaging design
 sed -n '1,260p' docs/external-deployment-quickstart.md
+sed -n '1,260p' docs/player-agent-mode/README.md
+sed -n '1,220p' docs/agent-bridge-gateway.md
 sed -n '1,260p' docs/network-auth-agent-chat-design.md
 sed -n '1,260p' docs/deployment-networking.md
 scripts/preflight-external-config.py "2006Scape Server/ServerConfig.External.Sample.json"
 scripts/preflight-external-config.py "2006Scape Server/ServerConfig.ClientTlsTunnel.Sample.json"
 scripts/validate-network-auth-chat.sh
 CLIENT_SERVER_CONFIG="2006Scape Server/ServerConfig.External.Sample.json" scripts/package-client.sh
+CLIENT_AGENT_BRIDGE_URL=https://AGENT_GATEWAY_HOST CLIENT_SERVER_CONFIG="2006Scape Server/ServerConfig.External.Sample.json" scripts/package-client.sh
 CLIENT_SERVER_CONFIG="2006Scape Server/ServerConfig.ClientTlsTunnel.Sample.json" CLIENT_ALLOW_PLACEHOLDER_NETWORK_CONFIG=1 scripts/package-client.sh
 # Packaged launchers/checkers must keep Java-missing guidance, transport-specific setup text, operator-provided-login guidance, no-password-reuse warnings, external transport metadata, setup-check TCP diagnostics, `source_server_config_sha256`, `-no-java-warnings`, macOS double-click `.command` wrappers, executable macOS/Linux scripts, and CRLF Windows `.bat` line endings for external testers. `direct_tcp` packages connect to `public_game_host` over plaintext TCP; `client_tls_tunnel` packages connect to loopback, include player-side stunnel config, their launchers try to start stunnel automatically when installed, and the macOS/Linux setup checker can start stunnel temporarily for no-login diagnostics. Prepare/readiness should include `--client-tls-tunnel-dir` so operator-side stunnel templates are verified too. The server-side stunnel accept host and any `--tls-sni-host` certificate override must be specific/non-wildcard/non-placeholder so they do not collide with loopback Java listeners or ship unusable tunnel configs.
 scripts/prepare-external-deployment.py --config "2006Scape Server/ServerConfig.External.Sample.json" --allow-empty-accounts --allow-placeholder-network-config
@@ -162,6 +165,9 @@ scripts/deployment-readiness-report.py --config "2006Scape Server/ServerConfig.j
 # Live only after an intentional remote restart; add --live-local-login-* to prove concurrent external/local login, keep --live-local-host on localhost/loopback, and add --live-reject-login-* plus --live-reject-login-expected-statuses 3,4 to prove a pinned rejected account path.
 # Use probe-deployment-network.py first when only public game/cache reachability plus agent bridge non-exposure need isolation; full verifier/readiness still records final deployment proof.
 scripts/probe-deployment-network.py --config "2006Scape Server/ServerConfig.json"
+scripts/render-agent-bridge-gateway-config.py --server-name AGENT_GATEWAY_HOST --output /tmp/2006scape-agent-bridge.nginx.conf
+scripts/probe-agent-bridge-gateway.py --gateway-url https://AGENT_GATEWAY_HOST
+python3 agent-navigation/tools/remote_claim.py --profile PROFILE --bridge-url https://AGENT_GATEWAY_HOST --verify
 EXTERNAL_PASSWORD="throwaway external password" LOCAL_PASSWORD="throwaway local password" scripts/probe-concurrent-logins.py --external-host HOST --external-username EXTERNAL_TEST --external-password-env EXTERNAL_PASSWORD --local-host 127.0.0.1 --local-username LOCAL_TEST --local-password-env LOCAL_PASSWORD
 scripts/verify-agent-chat-log.py --text-contains MARKER --from-type discord --from-bot false --channel agent --proof-manifest dist/external-deployment/deployment-proof-manifest.json
 scripts/verify-agent-chat-log.py --event agent_chat_player_delivery --text-contains MARKER --to-type player --to-name PLAYER --delivered-to PLAYER --no-undelivered --channel agent --proof-manifest dist/external-deployment/deployment-proof-manifest.json
@@ -240,10 +246,12 @@ python3 agent-navigation/tools/script_registry.py search "smithing"
 python3 agent-navigation/tools/script_registry.py search "bank"
 python3 agent-navigation/tools/script_registry.py search "chat"
 python3 agent-navigation/tools/script_registry.py search "backup"
+python3 agent-navigation/tools/script_registry.py search "remote bridge"
 python3 agent-navigation/tools/script_registry.py search "cowhide"
 python3 agent-navigation/tools/script_registry.py search "memory"
 python3 agent-navigation/tools/script_registry.py show route --json
 python3 agent-navigation/tools/script_registry.py show agent_chat_xs --json
+python3 agent-navigation/tools/script_registry.py show remote_claim --json
 python3 agent-navigation/tools/script_registry.py run agility -- --laps 10
 
 # 2006scape-cache-map: static cache-backed map rendering

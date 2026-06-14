@@ -1,11 +1,11 @@
 ---
 name: 2006scape-external-deployment
-description: Use when working in $REPO_ROOT on external-player networking, direct_tcp public transport, encrypted/private transport, PBKDF2 account auth, standalone client packaging, deployment readiness, live proof collection, Discord transport proof, or remote VPS/GCE/Tailscale/WireGuard/client_tls_tunnel deployment artifacts for the network-auth-chat worktree.
+description: Use when working in $REPO_ROOT on external-player networking, direct_tcp public transport, encrypted/private transport, PBKDF2 account auth, standalone client packaging, remote player-agent HTTPS gateway, deployment readiness, live proof collection, Discord transport proof, or remote VPS/GCE/Tailscale/WireGuard/client_tls_tunnel deployment artifacts for the network-auth-chat worktree.
 ---
 
 # 2006Scape External Deployment
 
-Use this skill for the external-player deployment track: network binds, `direct_tcp` public plaintext transport, encrypted/private transport alternatives, account auth, packaged clients, readiness reports, runtime-data backup proof, and Discord transport proof.
+Use this skill for the external-player deployment track: network binds, `direct_tcp` public plaintext transport, encrypted/private transport alternatives, account auth, packaged clients, remote player-agent `/agent` gateway, readiness reports, runtime-data backup proof, and Discord transport proof.
 
 Pair with `2006scape-dev-editing` for code changes. Pair with `2006scape-agent-bridge-dev` only when changing bridge primitives such as `agent_chat_send_XS`, `agent_chat_read_XS`, or `agent_chat_status_XS`.
 
@@ -14,7 +14,7 @@ Pair with `2006scape-dev-editing` for code changes. Pair with `2006scape-agent-b
 - Do not restart, stop, relaunch, or replace the live server/client unless the user explicitly asks for live proof.
 - Source validation is not live readiness. A green build, verifier, or readiness report without live proof still means the deployment is not externally ready.
 - Keep local development defaults intact: local configs stay loopback-first, legacy character-password login stays available locally, and Docker Compose published ports stay loopback-only.
-- Never expose `AgentBridgeServer`; it is a loopback control plane with bearer session tokens, not a public API.
+- Never expose raw `AgentBridgeServer`/`43610`; it is a loopback control plane with bearer session tokens, not a public API. Remote player-agent mode uses an HTTPS gateway that exposes only approved `/agent/*` endpoints.
 - Do not print passwords, bridge tokens, Discord bot tokens, API keys, nonces, or real secret file contents.
 
 ## Read First
@@ -22,6 +22,8 @@ Pair with `2006scape-dev-editing` for code changes. Pair with `2006scape-agent-b
 Load only the file needed for the task:
 
 - `docs/external-deployment-quickstart.md`: short first-live-test path for the default `direct_tcp` deployment.
+- `docs/player-agent-mode/README.md`: packaged-client `/agent` and repo-side remote-claim usage.
+- `docs/agent-bridge-gateway.md` and `docs/config/templates/agent-bridge-gateway.nginx.conf`: public-safe HTTPS gateway render/probe workflow and static Nginx template.
 - `docs/network-auth-agent-chat-design.md`: design, implemented surfaces, requirement matrix, validation plan, and future decisions.
 - `docs/deployment-networking.md`: operator workflow, hosting tradeoffs, `direct_tcp`, Tailscale/WireGuard/VPN/client_tls_tunnel setup, live proof checklist.
 - `README.md`: short operator commands and current project entry points.
@@ -35,6 +37,7 @@ Use this path for edits and static validation that must not disturb the live run
 python3 agent-navigation/tools/script_registry.py search "deployment"
 python3 agent-navigation/tools/script_registry.py search "client"
 python3 agent-navigation/tools/script_registry.py search "tls tunnel"
+python3 agent-navigation/tools/script_registry.py search "remote bridge"
 python3 agent-navigation/tools/script_registry.py search "proof"
 scripts/preflight-external-config.py "2006Scape Server/ServerConfig.External.Sample.json"
 scripts/preflight-external-config.py "2006Scape Server/ServerConfig.ClientTlsTunnel.Sample.json"
@@ -63,6 +66,7 @@ Lower-level commands:
 
 ```sh
 CLIENT_SERVER_CONFIG="2006Scape Server/ServerConfig.json" scripts/package-client.sh
+CLIENT_AGENT_BRIDGE_URL=https://AGENT_GATEWAY_HOST CLIENT_SERVER_CONFIG="2006Scape Server/ServerConfig.json" scripts/package-client.sh
 scripts/render-server-deployment-files.py --config "2006Scape Server/ServerConfig.json" --output-dir dist/server-deployment
 scripts/verify-external-deployment.py --config "2006Scape Server/ServerConfig.json" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment
 scripts/deployment-readiness-report.py --config "2006Scape Server/ServerConfig.json" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --json-output dist/deployment-readiness-report.json
@@ -94,6 +98,16 @@ Use `2006Scape Server/ServerConfig.External.Sample.json` for the simplest `direc
 
 Client manifests include `source_server_config_sha256`; package and verify from the same final config file so the verifier can reject stale or mismatched client artifacts, unexpected files, symlinked client package paths, and symlink-type zip entries. For `client_tls_tunnel`, `prepare-external-deployment.py` also renders operator-side stunnel templates and passes them to readiness verification with `--client-tls-tunnel-dir`; lower-level verifier/report calls should include that directory when it exists. The operator-side stunnel accept host comes from `client_tls_tunnel_server_accept_host` or `public_game_host`; use a real non-placeholder, non-wildcard host because wildcard can collide with the loopback Java game/cache listeners on the same ports. If `--tls-sni-host` is supplied, it must be the real certificate hostname, not a placeholder, loopback host, or wildcard.
 
+For remote player-agent mode, package `agent.bridge.url` with an HTTPS `/agent` gateway:
+
+```sh
+scripts/render-agent-bridge-gateway-config.py --server-name AGENT_GATEWAY_HOST --output /tmp/2006scape-agent-bridge.nginx.conf
+CLIENT_AGENT_BRIDGE_URL=https://AGENT_GATEWAY_HOST CLIENT_SERVER_CONFIG="2006Scape Server/ServerConfig.json" scripts/package-client.sh
+scripts/probe-agent-bridge-gateway.py --gateway-url https://AGENT_GATEWAY_HOST
+```
+
+The gateway proof is separate from public game/cache proof: it must show approved `/agent` endpoints reachable, unapproved `/agent/` paths rejected, and raw TCP `43610` not reachable from the external path.
+
 Package generation also refuses symlinked output directories, archive paths, or output parent directories before deleting or writing package artifacts.
 
 Packaged client README text must stay player-facing: Java install guidance, setup-check commands, transport setup, operator-provided username/password guidance, and a no-password-reuse warning. The package includes macOS double-click `Run-2006Scape.command` and `Check-Setup.command` wrappers, plus `check-setup-macos-linux.sh` and `check-setup-windows.bat` so players can verify Java, print `client.properties`, and attempt TCP checks without logging in or changing server state. For `client_tls_tunnel`, packaged launchers must try to start the bundled player-side stunnel config automatically when `stunnel` is installed and still show a clear manual fallback when it is not; the macOS/Linux setup checker may also start the bundled stunnel config temporarily for no-login TCP diagnostics, while the Windows checker expects the local tunnel endpoint to be reachable first. This matters most for `direct_tcp`, where regular players do not need a VPN/tunnel but the legacy game/cache protocol is plaintext to the public host.
@@ -123,6 +137,7 @@ Run these only after the remote server is intentionally built, configured, and r
 
 ```sh
 scripts/probe-deployment-network.py --config "2006Scape Server/ServerConfig.json"
+scripts/probe-agent-bridge-gateway.py --gateway-url https://AGENT_GATEWAY_HOST
 scripts/verify-external-deployment.py --config "2006Scape Server/ServerConfig.json" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --live
 ```
 

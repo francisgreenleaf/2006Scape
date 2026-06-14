@@ -24,6 +24,10 @@ You need:
 - A second throwaway local test account name and password for coexistence proof.
 
 Do not expose the agent bridge. It must stay loopback-only, normally `127.0.0.1:43610`.
+If players should use `/agent ...` in the packaged client, or if repo-side
+Codex threads should control remote logged-in characters, expose only an HTTPS
+agent gateway and package its URL as `agent.bridge.url`. Start with
+`docs/agent-bridge-gateway.md`; do not open raw TCP `43610`.
 
 ## 1. Create The External Config
 

@@ -18,6 +18,7 @@ CONFIG_HTTP_PORT=""
 CONFIG_JAGGRAB_PORT=""
 CONFIG_SECURE_TRANSPORT=""
 CONFIG_CLIENT_CONNECT_HOST=""
+CONFIG_AGENT_BRIDGE_URL=""
 
 if [[ -n "$SERVER_CONFIG" ]]; then
     PREFLIGHT_ARGS=("$SERVER_CONFIG")
@@ -50,6 +51,7 @@ emit("HTTP_PORT", data.get("http_port"))
 emit("JAGGRAB_PORT", data.get("jaggrab_port"))
 emit("SECURE_TRANSPORT", data.get("external_transport_mode"))
 emit("CLIENT_CONNECT_HOST", data.get("client_connect_host"))
+emit("AGENT_BRIDGE_URL", data.get("agent_bridge_public_url") or data.get("agent_bridge_url") or data.get("agent_gateway_url"))
 PY
 )"
     while IFS=$'\t' read -r key value; do
@@ -61,6 +63,7 @@ PY
             JAGGRAB_PORT) CONFIG_JAGGRAB_PORT="$value" ;;
             SECURE_TRANSPORT) CONFIG_SECURE_TRANSPORT="$value" ;;
             CLIENT_CONNECT_HOST) CONFIG_CLIENT_CONNECT_HOST="$value" ;;
+            AGENT_BRIDGE_URL) CONFIG_AGENT_BRIDGE_URL="$value" ;;
         esac
     done <<< "$CONFIG_OUTPUT"
 fi
@@ -74,6 +77,7 @@ SINGLE_ONDEMAND="${CLIENT_SINGLE_ONDEMAND:-true}"
 CLIENT_SCALE="${CLIENT_SCALE:-2}"
 SHOW_NAVBAR="${CLIENT_SHOW_NAVBAR:-false}"
 SECURE_TRANSPORT="${CLIENT_SECURE_TRANSPORT:-${CONFIG_SECURE_TRANSPORT:-external transport not specified}}"
+AGENT_BRIDGE_URL="${CLIENT_AGENT_BRIDGE_URL:-${CONFIG_AGENT_BRIDGE_URL:-http://127.0.0.1:43610}}"
 if [[ -z "${CLIENT_SERVER_HOST:-}" && "$(printf '%s' "$SECURE_TRANSPORT" | tr '[:upper:]' '[:lower:]')" == "client_tls_tunnel" ]]; then
     SERVER_HOST="${CONFIG_CLIENT_CONNECT_HOST:-127.0.0.1}"
 else
@@ -183,6 +187,7 @@ require_single_line_value "client server.world" "$SERVER_WORLD"
 require_single_line_value "client http.port" "$HTTP_PORT"
 require_single_line_value "client jaggrab.port" "$JAGGRAB_PORT"
 require_single_line_value "client secure.transport" "$SECURE_TRANSPORT"
+require_single_line_value "client agent.bridge.url" "$AGENT_BRIDGE_URL"
 require_single_line_value "client check_crc" "$CHECK_CRC"
 require_single_line_value "client single_ondemand" "$SINGLE_ONDEMAND"
 require_single_line_value "client scale" "$CLIENT_SCALE"
@@ -218,6 +223,21 @@ if ! is_loopback_client_host "$SERVER_HOST"; then
         exit 1
     fi
 fi
+
+python3 - "$AGENT_BRIDGE_URL" <<'PY'
+import sys
+from urllib.parse import urlparse
+
+value = sys.argv[1].strip()
+parsed = urlparse(value)
+if parsed.scheme not in ("http", "https") or not parsed.netloc:
+    raise SystemExit("agent.bridge.url must be an http(s) base URL")
+if parsed.username or parsed.password or parsed.query or parsed.fragment:
+    raise SystemExit("agent.bridge.url must not include user info, query, or fragment")
+host = (parsed.hostname or "").lower()
+if parsed.scheme != "https" and host not in ("localhost", "127.0.0.1", "::1"):
+    raise SystemExit("non-local agent.bridge.url must use HTTPS")
+PY
 
 if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
     "$SCRIPT_DIR/build-local.sh" -DskipTests
@@ -300,6 +320,7 @@ server.world=$SERVER_WORLD
 http.port=$HTTP_PORT
 jaggrab.port=$JAGGRAB_PORT
 secure.transport=$SECURE_TRANSPORT
+agent.bridge.url=$AGENT_BRIDGE_URL
 check_crc=$CHECK_CRC
 single_ondemand=$SINGLE_ONDEMAND
 client.scale=$CLIENT_SCALE
@@ -394,6 +415,7 @@ fi
 SERVER_HOST="$(read_prop server.host)"
 SERVER_PORT="$(read_prop server.port)"
 TRANSPORT="$(read_prop secure.transport)"
+AGENT_BRIDGE_URL="$(read_prop agent.bridge.url)"
 
 if [[ "$(printf '%s' "$TRANSPORT" | tr '[:upper:]' '[:lower:]')" == "client_tls_tunnel" ]]; then
     start_client_tls_tunnel_if_needed "$SERVER_HOST" "$SERVER_PORT"
@@ -599,6 +621,7 @@ echo "  server.port=$SERVER_PORT"
 echo "  http.port=$HTTP_PORT"
 echo "  jaggrab.port=$JAGGRAB_PORT"
 echo "  secure.transport=$TRANSPORT"
+echo "  agent.bridge.url=$AGENT_BRIDGE_URL"
 echo
 
 status=0
@@ -658,6 +681,7 @@ chmod +x "$DIST_DIR/Check-Setup.command"
     printf '%s\r\n' '    if "%%A"=="http.port" set HTTP_PORT=%%B'
     printf '%s\r\n' '    if "%%A"=="jaggrab.port" set JAGGRAB_PORT=%%B'
     printf '%s\r\n' '    if "%%A"=="secure.transport" set TRANSPORT=%%B'
+    printf '%s\r\n' '    if "%%A"=="agent.bridge.url" set AGENT_BRIDGE_URL=%%B'
     printf '%s\r\n' ')'
     printf '%s\r\n' 'echo Java:'
     printf '%s\r\n' 'java -version'
@@ -668,6 +692,7 @@ chmod +x "$DIST_DIR/Check-Setup.command"
     printf '%s\r\n' 'echo   http.port=%HTTP_PORT%'
     printf '%s\r\n' 'echo   jaggrab.port=%JAGGRAB_PORT%'
     printf '%s\r\n' 'echo   secure.transport=%TRANSPORT%'
+    printf '%s\r\n' 'echo   agent.bridge.url=%AGENT_BRIDGE_URL%'
     printf '%s\r\n' 'echo.'
     printf '%s\r\n' 'if /I "%TRANSPORT%"=="client_tls_tunnel" echo Transport note: the launcher can start stunnel automatically, but this Windows checker expects the local tunnel endpoint to be reachable first.'
     printf '%s\r\n' 'if /I "%TRANSPORT%"=="direct_tcp" echo Transport note: direct_tcp connects directly to the public host over plaintext TCP.'
@@ -749,6 +774,7 @@ Server:
   JAGGRAB/cache port: $JAGGRAB_PORT
   expected external transport: $SECURE_TRANSPORT
   public game host: $PUBLIC_GAME_HOST
+  agent bridge URL: $AGENT_BRIDGE_URL
 
 $TRANSPORT_GUIDANCE
 
@@ -759,12 +785,13 @@ Login:
   the legacy game/cache protocol is plaintext to the public host.
 
 AI agent mode:
-  The in-game /agent command needs the server-side agent bridge on port 43610,
-  but that bridge must stay private and loopback-only. For remote servers, use
-  an operator-approved SSH/VPN/tunnel path to 127.0.0.1:43610 before trying
-  /agent status, /agent key, or /agent <task>. Do not expose port 43610 publicly.
+  The in-game /agent command uses agent.bridge.url from client.properties.
+  For remote servers this should be the operator's HTTPS /agent gateway. The
+  raw server-side bridge port 43610 must stay private and loopback-only. If
+  agent.bridge.url is still http://127.0.0.1:43610, /agent only works with a
+  local server or trusted private tunnel to the server's loopback bridge.
 
-Edit client.properties only if the server host or ports change.
+Edit client.properties only if the server host, ports, or agent bridge URL change.
 If this package uses Tailscale, WireGuard, or VPN, connect that transport first.
 If this package uses client_tls_tunnel, the launcher starts stunnel when it can; otherwise start it manually first.
 If this package uses direct_tcp, no VPN/tunnel is expected; the game/cache protocol is plaintext to the public host.
@@ -803,6 +830,7 @@ single_ondemand=$SINGLE_ONDEMAND
 client_scale=$CLIENT_SCALE
 show_navbar=$SHOW_NAVBAR
 expected_external_transport=$SECURE_TRANSPORT
+agent_bridge_url=$AGENT_BRIDGE_URL
 jar_sha256=$JAR_SHA256
 
 Security note:

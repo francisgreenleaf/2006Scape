@@ -107,7 +107,11 @@ public final class Main {
 								ClientSettings.JAGGRAB_PORT = parsePositiveInt(args[++i], ClientSettings.JAGGRAB_PORT, "JAGGRAB port");
 								break;
 							case "-agent-bridge-port":
-								ClientSettings.AGENT_BRIDGE_PORT = parsePositiveInt(args[++i], ClientSettings.AGENT_BRIDGE_PORT, "agent bridge port");
+								setAgentBridgePort(parsePositiveInt(args[++i], ClientSettings.AGENT_BRIDGE_PORT, "agent bridge port"));
+								break;
+							case "-agent-bridge-url":
+							case "-agent-gateway-url":
+								setAgentBridgeUrl(args[++i]);
 								break;
 							case "-agent-command":
 							case "-agent-auto-command":
@@ -162,6 +166,8 @@ public final class Main {
 							case "-cache-http-port":
 							case "-jaggrab-port":
 							case "-agent-bridge-port":
+							case "-agent-bridge-url":
+							case "-agent-gateway-url":
 							case "-client-config":
 							case "-config":
 								i++;
@@ -187,7 +193,7 @@ public final class Main {
 							+ " autoCommandSet=" + (ClientSettings.AGENT_AUTO_COMMAND != null
 									&& !ClientSettings.AGENT_AUTO_COMMAND.trim().isEmpty())
 							+ " server=" + ClientSettings.SERVER_IP + ":" + ClientSettings.gamePort()
-							+ " bridge=127.0.0.1:" + ClientSettings.AGENT_BRIDGE_PORT);
+							+ " bridge=" + ClientSettings.AGENT_BRIDGE_URL);
 				}
 			printExternalTransportNotice();
 
@@ -288,6 +294,14 @@ public final class Main {
 		if (jaggrabPort != null) {
 			ClientSettings.JAGGRAB_PORT = parsePositiveInt(jaggrabPort, ClientSettings.JAGGRAB_PORT, "JAGGRAB port");
 		}
+		String agentBridgePort = firstNonBlank(properties, "agent.bridge.port", "agent_bridge_port");
+		if (agentBridgePort != null) {
+			setAgentBridgePort(parsePositiveInt(agentBridgePort, ClientSettings.AGENT_BRIDGE_PORT, "agent bridge port"));
+		}
+		String agentBridgeUrl = firstNonBlank(properties, "agent.bridge.url", "agent_bridge_url", "agentBridgeUrl");
+		if (agentBridgeUrl != null) {
+			setAgentBridgeUrl(agentBridgeUrl);
+		}
 		String world = firstNonBlank(properties, "server.world", "world");
 		if (world != null) {
 			ClientSettings.SERVER_WORLD = parsePositiveInt(world, ClientSettings.SERVER_WORLD, "world");
@@ -312,6 +326,20 @@ public final class Main {
 				"expected_external_transport");
 		if (secureTransport != null) {
 			ClientSettings.EXPECTED_SECURE_TRANSPORT = secureTransport;
+		}
+	}
+
+	private static void setAgentBridgePort(int port) {
+		ClientSettings.AGENT_BRIDGE_PORT = port;
+		ClientSettings.AGENT_BRIDGE_URL = "http://127.0.0.1:" + port;
+	}
+
+	private static void setAgentBridgeUrl(String value) {
+		try {
+			ClientSettings.AGENT_BRIDGE_URL = AgentBridgeHttpClient.normalizeBaseUrlForTests(value);
+		} catch (IllegalArgumentException e) {
+			System.out.println("[Client] invalid agent bridge URL, keeping "
+					+ ClientSettings.AGENT_BRIDGE_URL + ": " + e.getMessage());
 		}
 	}
 

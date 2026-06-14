@@ -43,7 +43,7 @@ public class AgentClientController {
     public AgentClientController(Game game, AgentTerminalLog terminalLog) {
         this.game = game;
         this.terminalLog = terminalLog;
-        this.bridgeHttpClient = new AgentBridgeHttpClient(ClientSettings.AGENT_BRIDGE_PORT);
+        this.bridgeHttpClient = new AgentBridgeHttpClient(ClientSettings.AGENT_BRIDGE_URL);
         Consumer<String> messages = text -> { };
         this.codexClient = new CodexAppServerClient(bridgeHttpClient, messages, terminalLog, () -> taskRunning = false);
         this.narrationClient = new AgentPersonalityNarrationClient(bridgeHttpClient, terminalLog);
@@ -224,7 +224,7 @@ public class AgentClientController {
 
     private void ensureBridgeSessionOnly() throws Exception {
         if (!bridgeHttpClient.health()) {
-            throw new IOException("Local agent bridge is not running. Start the 2006Scape server first.");
+            throw new IOException("Agent bridge is not reachable at " + bridgeHttpClient.getBaseUrl() + ".");
         }
         if (!bridgeHttpClient.hasSession()) {
             tryClaimGameSession();
@@ -254,8 +254,8 @@ public class AgentClientController {
     private void ensureReadyForTask() throws Exception {
         ensureAppServer();
         if (!bridgeHttpClient.health()) {
-            terminalLog.error("Local agent bridge is not running. Start the 2006Scape server first.");
-            throw new IOException("Local agent bridge is not running. Start the 2006Scape server first.");
+            terminalLog.error("Agent bridge is not reachable at " + bridgeHttpClient.getBaseUrl() + ".");
+            throw new IOException("Agent bridge is not reachable at " + bridgeHttpClient.getBaseUrl() + ".");
         }
         if (!bridgeHttpClient.hasSession()) {
             tryClaimGameSession();

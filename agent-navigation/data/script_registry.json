@@ -56,6 +56,31 @@
       ]
     },
     {
+      "id": "remote_claim",
+      "name": "Remote Agent Bridge Claim",
+      "path": "agent-navigation/tools/remote_claim.py",
+      "kind": "runtime_helper",
+      "description": "Claims a logged-in remote player through an operator HTTPS /agent gateway, writes the profile-scoped ignored bridge session file, and can verify observe_state_XXS without exposing the raw bridge port.",
+      "aliases": [
+        "remote claim",
+        "remote bridge",
+        "agent bridge claim",
+        "repo remote control",
+        "remote player agent"
+      ],
+      "tags": [
+        "agent",
+        "bridge",
+        "remote",
+        "runtime",
+        "profile"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/remote_claim.py --profile MrFlame --bridge-url https://agents.example.com --verify",
+        "python3 agent-navigation/tools/script_registry.py run remote claim -- --profile MrFlame --bridge-url https://agents.example.com --verify"
+      ]
+    },
+    {
       "id": "agility_runner",
       "name": "Adaptive Agility Runner",
       "path": "agent-navigation/tools/agility_runner.py",

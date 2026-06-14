@@ -81,7 +81,145 @@ echo "Running focused client config tests..."
 "$MAVEN_BIN" -q -pl "2006Scape Client" -Dtest=MainClientConfigTest test
 
 echo "Checking Python helper syntax..."
-python3 -m py_compile scripts/account-admin.py scripts/backup-runtime-data.py scripts/check-deployment-proof-manifest.py scripts/create-account.py scripts/deployment-readiness-report.py scripts/deployment-readiness-status.py scripts/package-deployment-proof.py scripts/prepare-external-deployment.py scripts/preflight-external-config.py scripts/probe-concurrent-logins.py scripts/probe-deployment-network.py scripts/probe-game-login.py scripts/probe-discord-agent-bots.py scripts/render-client-tls-tunnel-config.py scripts/render-server-deployment-files.py scripts/verify-agent-chat-log.py scripts/verify-discord-channel-message.py scripts/verify-external-deployment.py scripts/write-desktop-client-proof.py scripts/smoke-network-auth-chat-runtime.py scripts/lib/deployment_proof_manifest.py scripts/lib/game_login_probe.py scripts/lib/discord_bot_probe.py agent-navigation/tools/agent_chat_XS.py agent-navigation/tools/rs-tool_XS.py
+python3 -m py_compile scripts/account-admin.py scripts/backup-runtime-data.py scripts/check-deployment-proof-manifest.py scripts/create-account.py scripts/deployment-readiness-report.py scripts/deployment-readiness-status.py scripts/package-deployment-proof.py scripts/prepare-external-deployment.py scripts/preflight-external-config.py scripts/probe-agent-bridge-gateway.py scripts/probe-concurrent-logins.py scripts/probe-deployment-network.py scripts/probe-game-login.py scripts/probe-discord-agent-bots.py scripts/render-agent-bridge-gateway-config.py scripts/render-client-tls-tunnel-config.py scripts/render-server-deployment-files.py scripts/verify-agent-chat-log.py scripts/verify-discord-channel-message.py scripts/verify-external-deployment.py scripts/write-desktop-client-proof.py scripts/smoke-network-auth-chat-runtime.py scripts/lib/deployment_proof_manifest.py scripts/lib/game_login_probe.py scripts/lib/discord_bot_probe.py agent-navigation/tools/agent_chat_XS.py agent-navigation/tools/remote_claim.py agent-navigation/tools/rs-tool_XS.py
+
+echo "Checking remote agent bridge claim and gateway helpers..."
+python3 - <<'PY'
+import importlib.util
+import json
+import shutil
+import socket
+import tempfile
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
+
+def load(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+remote_claim = load("remote_claim", "agent-navigation/tools/remote_claim.py")
+gateway = load("probe_agent_bridge_gateway", "scripts/probe-agent-bridge-gateway.py")
+renderer = load("render_agent_bridge_gateway_config", "scripts/render-agent-bridge-gateway-config.py")
+
+assert remote_claim.normalize_bridge_url("https://agent.example.net/") == "https://agent.example.net"
+assert remote_claim.normalize_bridge_url("http://127.0.0.1:9999") == "http://127.0.0.1:9999"
+for bad in ("http://agent.example.net", "ftp://agent.example.net", "https://u:p@agent.example.net", "https://agent.example.net?token=x"):
+    try:
+        remote_claim.normalize_bridge_url(bad)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("accepted unsafe bridge URL {}".format(bad))
+
+rendered = renderer.render_nginx(type("Args", (), {
+    "server_name": "agents.example.net",
+    "cert_path": "/etc/letsencrypt/live/agents.example.net/fullchain.pem",
+    "key_path": "/etc/letsencrypt/live/agents.example.net/privkey.pem",
+    "access_log": "/var/log/nginx/access.log",
+    "error_log": "/var/log/nginx/error.log",
+    "upstream": "http://127.0.0.1:43610",
+    "body_size": "64k",
+    "claim_rate": "10r/m",
+    "api_rate": "60r/m",
+    "tool_rate": "120r/m",
+    "burst": 20,
+})())
+for expected in (
+    "client_max_body_size 64k;",
+    "X-Forwarded-For",
+    "location = /agent/tool",
+    "location ^~ /agent/",
+    "proxy_pass http://127.0.0.1:43610/agent/session/claim;",
+):
+    assert expected in rendered, expected
+
+claim_nonce = "TEST-CLAIM"
+observed_tools = []
+
+class Handler(BaseHTTPRequestHandler):
+    def log_message(self, format, *args):
+        return
+
+    def _json(self, status, payload):
+        raw = json.dumps(payload).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(raw)))
+        self.end_headers()
+        self.wfile.write(raw)
+
+    def do_GET(self):
+        if self.path == "/agent/health":
+            self._json(200, {"ok": True, "service": "2006scape-agent"})
+        elif self.path.startswith("/agent/"):
+            self._json(404, {"success": False, "message": "not found"})
+        else:
+            self._json(404, {})
+
+    def do_POST(self):
+        length = int(self.headers.get("Content-Length") or "0")
+        payload = json.loads(self.rfile.read(length).decode("utf-8") or "{}")
+        if self.path == "/agent/session/claim" and payload.get("nonce") == claim_nonce:
+            self._json(200, {
+                "success": True,
+                "token": "token-for-test",
+                "sessionId": "session-for-test",
+                "playerId": 7,
+                "playerName": "MrRemote",
+            })
+        elif self.path == "/agent/session/claim":
+            self._json(404, {"success": False, "message": "No pending agent bridge claim was found."})
+        elif self.path == "/agent/tool" and self.headers.get("X-Agent-Token") == "token-for-test":
+            observed_tools.append(payload.get("tool"))
+            self._json(200, {"success": True, "player": {"name": "MrRemote", "x": 1, "y": 2, "height": 0}})
+        else:
+            self._json(401, {"success": False, "message": "invalid"})
+
+server = HTTPServer(("127.0.0.1", 0), Handler)
+thread = threading.Thread(target=server.serve_forever)
+thread.daemon = True
+thread.start()
+base = "http://127.0.0.1:{}".format(server.server_port)
+tmp = Path(tempfile.mkdtemp(prefix="remote-claim-test-"))
+try:
+    session_file = tmp / "rsbridge-session-mrremote.json"
+    rc = remote_claim.main([
+        "--profile", "MrRemote",
+        "--bridge-url", base,
+        "--nonce", claim_nonce,
+        "--session-file", str(session_file),
+        "--allow-http-for-test",
+        "--verify",
+        "--json",
+    ])
+    assert rc == 0
+    session = json.loads(session_file.read_text(encoding="utf-8"))
+    assert session["bridgeUrl"] == base, session
+    assert session["playerName"] == "MrRemote", session
+    assert session["token"] == "token-for-test", session
+    assert observed_tools == ["observe_state_XXS"], observed_tools
+
+    free = socket.socket()
+    free.bind(("127.0.0.1", 0))
+    raw_port = free.getsockname()[1]
+    free.close()
+    result = gateway.probe_gateway(
+        base,
+        raw_host="127.0.0.1",
+        raw_port=raw_port,
+        timeout=1.0,
+        allow_http_for_test=True,
+    )
+    assert result["success"] is True, result
+    assert result["checks"][-1] == "raw bridge TCP not reachable 127.0.0.1:{}".format(raw_port), result
+finally:
+    server.shutdown()
+    thread.join(timeout=3)
+    shutil.rmtree(str(tmp))
+PY
 
 echo "Checking client_tls_tunnel live verification requires TLS..."
 python3 - <<'PY'
@@ -2153,6 +2291,8 @@ grep -q "Java is required to run 2006Scape" "$TMP_DIR/2006scape-client/check-set
 grep -q "Java is required to run 2006Scape" "$TMP_DIR/2006scape-client/check-setup-windows.bat"
 grep -q "Game TCP check" "$TMP_DIR/2006scape-client/check-setup-macos-linux.sh"
 grep -q "PowerShell is required for TCP checks" "$TMP_DIR/2006scape-client/check-setup-windows.bat"
+grep -q "agent.bridge.url" "$TMP_DIR/2006scape-client/check-setup-macos-linux.sh"
+grep -q "agent.bridge.url" "$TMP_DIR/2006scape-client/check-setup-windows.bat"
 grep -q "Java is required to run 2006Scape" "$TMP_DIR/2006scape-client/run-macos-linux.sh"
 grep -q "Java is required to run 2006Scape" "$TMP_DIR/2006scape-client/run-windows.bat"
 grep -q -- "-no-java-warnings" "$TMP_DIR/2006scape-client/run-macos-linux.sh"
@@ -2166,14 +2306,18 @@ grep -q "suppress the legacy Parabot-focused Java-version warning" "$TMP_DIR/200
 grep -q "Transport setup:" "$TMP_DIR/2006scape-client/README.txt"
 grep -q "Connect Tailscale before launching the client" "$TMP_DIR/2006scape-client/README.txt"
 grep -q "public game host: example-tailnet-host" "$TMP_DIR/2006scape-client/README.txt"
+grep -q "agent bridge URL: http://127.0.0.1:43610" "$TMP_DIR/2006scape-client/README.txt"
+grep -q "operator's HTTPS /agent gateway" "$TMP_DIR/2006scape-client/README.txt"
 grep -q "Use the username and password provided by the server operator" "$TMP_DIR/2006scape-client/README.txt"
 grep -q "Do not use a RuneScape.com password or reuse passwords from other services" "$TMP_DIR/2006scape-client/README.txt"
 grep -q "server.host=example-tailnet-host" "$TMP_DIR/2006scape-client/client.properties"
 grep -q "http.port=8080" "$TMP_DIR/2006scape-client/client.properties"
 grep -q "secure.transport=tailscale" "$TMP_DIR/2006scape-client/client.properties"
+grep -q "agent.bridge.url=http://127.0.0.1:43610" "$TMP_DIR/2006scape-client/client.properties"
 grep -q "http_port=8080" "$TMP_DIR/2006scape-client/MANIFEST.txt"
 grep -q "public_game_host=example-tailnet-host" "$TMP_DIR/2006scape-client/MANIFEST.txt"
 grep -q "expected_external_transport=tailscale" "$TMP_DIR/2006scape-client/MANIFEST.txt"
+grep -q "agent_bridge_url=http://127.0.0.1:43610" "$TMP_DIR/2006scape-client/MANIFEST.txt"
 (cd "$TMP_DIR/2006scape-client" && shasum -a 256 -c SHA256SUMS >/dev/null)
 
 echo "Smoke-testing standalone client packaging from server config..."
@@ -2210,6 +2354,8 @@ grep -q "Java is required to run 2006Scape" "$TMP_DIR/2006scape-client-from-conf
 grep -q "Java is required to run 2006Scape" "$TMP_DIR/2006scape-client-from-config/check-setup-windows.bat"
 grep -q "Game TCP check" "$TMP_DIR/2006scape-client-from-config/check-setup-macos-linux.sh"
 grep -q "PowerShell is required for TCP checks" "$TMP_DIR/2006scape-client-from-config/check-setup-windows.bat"
+grep -q "agent.bridge.url" "$TMP_DIR/2006scape-client-from-config/check-setup-macos-linux.sh"
+grep -q "agent.bridge.url" "$TMP_DIR/2006scape-client-from-config/check-setup-windows.bat"
 grep -q "Java is required to run 2006Scape" "$TMP_DIR/2006scape-client-from-config/run-macos-linux.sh"
 grep -q "Java is required to run 2006Scape" "$TMP_DIR/2006scape-client-from-config/run-windows.bat"
 grep -q -- "-no-java-warnings" "$TMP_DIR/2006scape-client-from-config/run-macos-linux.sh"
@@ -2223,6 +2369,8 @@ grep -q "suppress the legacy Parabot-focused Java-version warning" "$TMP_DIR/200
 grep -q "No VPN or client-side tunnel is required for this package" "$TMP_DIR/2006scape-client-from-config/README.txt"
 grep -q "connects directly to server.example.com over plaintext TCP" "$TMP_DIR/2006scape-client-from-config/README.txt"
 grep -q "public game host: server.example.com" "$TMP_DIR/2006scape-client-from-config/README.txt"
+grep -q "agent bridge URL: http://127.0.0.1:43610" "$TMP_DIR/2006scape-client-from-config/README.txt"
+grep -q "raw server-side bridge port 43610 must stay private" "$TMP_DIR/2006scape-client-from-config/README.txt"
 grep -q "Use the username and password provided by the server operator" "$TMP_DIR/2006scape-client-from-config/README.txt"
 grep -q "Do not use a RuneScape.com password or reuse passwords from other services" "$TMP_DIR/2006scape-client-from-config/README.txt"
 grep -q "use a password unique to this 2006Scape server" "$TMP_DIR/2006scape-client-from-config/README.txt"
@@ -2231,10 +2379,12 @@ grep -q "server.port=43594" "$TMP_DIR/2006scape-client-from-config/client.proper
 grep -q "http.port=8080" "$TMP_DIR/2006scape-client-from-config/client.properties"
 grep -q "jaggrab.port=43595" "$TMP_DIR/2006scape-client-from-config/client.properties"
 grep -q "secure.transport=direct_tcp" "$TMP_DIR/2006scape-client-from-config/client.properties"
+grep -q "agent.bridge.url=http://127.0.0.1:43610" "$TMP_DIR/2006scape-client-from-config/client.properties"
 grep -q "source_server_config=2006Scape Server/ServerConfig.External.Sample.json" "$TMP_DIR/2006scape-client-from-config/MANIFEST.txt"
 grep -Eq '^source_server_config_sha256=[0-9a-f]{64}$' "$TMP_DIR/2006scape-client-from-config/MANIFEST.txt"
 grep -q "public_game_host=server.example.com" "$TMP_DIR/2006scape-client-from-config/MANIFEST.txt"
 grep -q "expected_external_transport=direct_tcp" "$TMP_DIR/2006scape-client-from-config/MANIFEST.txt"
+grep -q "agent_bridge_url=http://127.0.0.1:43610" "$TMP_DIR/2006scape-client-from-config/MANIFEST.txt"
 grep -q "direct_tcp intentionally connects directly over plaintext TCP" "$TMP_DIR/2006scape-client-from-config/MANIFEST.txt"
 (cd "$TMP_DIR/2006scape-client-from-config" && shasum -a 256 -c SHA256SUMS >/dev/null)
 

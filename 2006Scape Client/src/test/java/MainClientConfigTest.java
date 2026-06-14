@@ -33,6 +33,8 @@ public class MainClientConfigTest {
     private boolean previousShowNavbar;
     private int previousClientScale;
     private String previousExpectedSecureTransport;
+    private int previousAgentBridgePort;
+    private String previousAgentBridgeUrl;
 
     @Before
     public void setUp() {
@@ -46,6 +48,8 @@ public class MainClientConfigTest {
         previousShowNavbar = ClientSettings.SHOW_NAVBAR;
         previousClientScale = ClientSettings.CLIENT_SCALE;
         previousExpectedSecureTransport = ClientSettings.EXPECTED_SECURE_TRANSPORT;
+        previousAgentBridgePort = ClientSettings.AGENT_BRIDGE_PORT;
+        previousAgentBridgeUrl = ClientSettings.AGENT_BRIDGE_URL;
     }
 
     @After
@@ -60,6 +64,8 @@ public class MainClientConfigTest {
         ClientSettings.SHOW_NAVBAR = previousShowNavbar;
         ClientSettings.CLIENT_SCALE = previousClientScale;
         ClientSettings.EXPECTED_SECURE_TRANSPORT = previousExpectedSecureTransport;
+        ClientSettings.AGENT_BRIDGE_PORT = previousAgentBridgePort;
+        ClientSettings.AGENT_BRIDGE_URL = previousAgentBridgeUrl;
     }
 
     @Test
@@ -75,7 +81,8 @@ public class MainClientConfigTest {
                         + "single_ondemand=false\n"
                         + "show_navbar=false\n"
                         + "client.scale=3\n"
-                        + "secure.transport=tailscale\n").getBytes(StandardCharsets.UTF_8));
+                        + "secure.transport=tailscale\n"
+                        + "agent.bridge.url=https://agent.example.net/bridge/\n").getBytes(StandardCharsets.UTF_8));
 
         loadClientConfig(config);
 
@@ -89,8 +96,21 @@ public class MainClientConfigTest {
         assertFalse(ClientSettings.SHOW_NAVBAR);
         assertEquals(3, ClientSettings.CLIENT_SCALE);
         assertEquals("tailscale", ClientSettings.EXPECTED_SECURE_TRANSPORT);
+        assertEquals("https://agent.example.net/bridge", ClientSettings.AGENT_BRIDGE_URL);
         assertEquals(43594, ClientSettings.gamePort());
         assertEquals(43594, ClientSettings.onDemandPort());
+    }
+
+    @Test
+    public void agentBridgeHttpClientNormalizesAndRejectsUnsafeBaseUrls() {
+        assertEquals("http://127.0.0.1:43610", AgentBridgeHttpClient.normalizeBaseUrlForTests(""));
+        assertEquals("https://agent.example.net/path", AgentBridgeHttpClient.normalizeBaseUrlForTests(" https://agent.example.net/path/ "));
+
+        assertInvalidAgentBridgeUrl("ftp://agent.example.net");
+        assertInvalidAgentBridgeUrl("https://user:pass@agent.example.net");
+        assertInvalidAgentBridgeUrl("https://agent.example.net?token=secret");
+        assertInvalidAgentBridgeUrl("https://agent.example.net/#fragment");
+        assertInvalidAgentBridgeUrl("https://agent.example.net/\nattack");
     }
 
     @Test
@@ -171,6 +191,15 @@ public class MainClientConfigTest {
             }
         }
         throw new AssertionError("dynamic tool not found: " + name);
+    }
+
+    private static void assertInvalidAgentBridgeUrl(String value) {
+        try {
+            AgentBridgeHttpClient.normalizeBaseUrlForTests(value);
+            throw new AssertionError("accepted invalid agent bridge URL: " + value);
+        } catch (IllegalArgumentException expected) {
+            // Expected.
+        }
     }
 
     private static String captureTransportNotice() throws Exception {

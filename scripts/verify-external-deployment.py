@@ -246,6 +246,17 @@ def string_value(data, key, fallback=""):
     return "" if value is None else str(value).strip()
 
 
+def agent_bridge_public_url(config):
+    value = (
+        string_value(config, "agent_bridge_public_url")
+        or string_value(config, "agent_bridge_url")
+        or string_value(config, "agent_gateway_url")
+    )
+    if value:
+        return value
+    return "http://127.0.0.1:{}".format(int_value(config, "agent_bridge_port", AGENT_BRIDGE_PORT))
+
+
 def string_values(data, plural_key, singular_key, fallback=""):
     raw = data.get(plural_key)
     values = []
@@ -512,6 +523,7 @@ def verify_client_package(config, config_path, client_dist, warnings):
     expect_equal(properties.get("http.port", ""), int_value(config, "http_port", 8080), "client http.port")
     expect_equal(properties.get("jaggrab.port", ""), int_value(config, "jaggrab_port", 43595), "client jaggrab.port")
     expect_equal(properties.get("secure.transport", ""), string_value(config, "external_transport_mode"), "client secure.transport")
+    expect_equal(properties.get("agent.bridge.url", ""), agent_bridge_public_url(config), "client agent.bridge.url")
 
     expect_equal(manifest.get("server_host", ""), expected_client_host, "manifest server_host")
     expect_equal(
@@ -523,6 +535,7 @@ def verify_client_package(config, config_path, client_dist, warnings):
     expect_equal(manifest.get("http_port", ""), int_value(config, "http_port", 8080), "manifest http_port")
     expect_equal(manifest.get("jaggrab_port", ""), int_value(config, "jaggrab_port", 43595), "manifest jaggrab_port")
     expect_equal(manifest.get("expected_external_transport", ""), string_value(config, "external_transport_mode"), "manifest expected_external_transport")
+    expect_equal(manifest.get("agent_bridge_url", ""), agent_bridge_public_url(config), "manifest agent_bridge_url")
     if not manifest.get("source_server_config", ""):
         warn(warnings, "client manifest does not record source_server_config")
     expect_equal(
@@ -563,6 +576,11 @@ def verify_client_package_text(config, client_dist):
     require_text(
         client_dist / "check-setup-macos-linux.sh",
         "macOS/Linux setup checker",
+        "agent.bridge.url",
+    )
+    require_text(
+        client_dist / "check-setup-macos-linux.sh",
+        "macOS/Linux setup checker",
         "TCP check",
     )
     require_text(
@@ -584,6 +602,11 @@ def verify_client_package_text(config, client_dist):
         client_dist / "check-setup-windows.bat",
         "Windows setup checker",
         "secure.transport",
+    )
+    require_text(
+        client_dist / "check-setup-windows.bat",
+        "Windows setup checker",
+        "agent.bridge.url",
     )
     require_text(
         client_dist / "check-setup-windows.bat",
@@ -671,6 +694,21 @@ def verify_client_package_text(config, client_dist):
     require_text(
         client_dist / "README.txt",
         "client README",
+        "agent bridge URL",
+    )
+    require_text(
+        client_dist / "README.txt",
+        "client README",
+        "operator's HTTPS /agent gateway",
+    )
+    require_text(
+        client_dist / "README.txt",
+        "client README",
+        "raw server-side bridge port 43610 must stay private",
+    )
+    require_text(
+        client_dist / "README.txt",
+        "client README",
         "Use the username and password provided by the server operator",
     )
     require_text(
@@ -710,6 +748,11 @@ def verify_client_package_text(config, client_dist):
         client_dist / "MANIFEST.txt",
         "client manifest",
         "The legacy Java client speaks plaintext",
+    )
+    require_text(
+        client_dist / "MANIFEST.txt",
+        "client manifest",
+        "agent_bridge_url",
     )
     require_text(
         client_dist / "MANIFEST.txt",

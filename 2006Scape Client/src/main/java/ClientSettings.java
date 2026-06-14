@@ -101,6 +101,7 @@ public class ClientSettings {
 
     public static boolean AGENT_ENABLED = true;
     public static int AGENT_BRIDGE_PORT = 43610;
+    public static String AGENT_BRIDGE_URL = "http://127.0.0.1:43610";
     public static String AGENT_WORKSPACE_DIR = "";
     public static String AGENT_AUTO_CLAIM_NONCE = "";
     public static String AGENT_AUTO_COMMAND = "";

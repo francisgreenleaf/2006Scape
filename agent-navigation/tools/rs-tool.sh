@@ -5,7 +5,7 @@ usage() {
   cat <<'EOF'
 Usage: agent-navigation/tools/rs-tool.sh [--profile PROFILE] TOOL [JSON_ARGUMENTS]
 
-Call a 2006Scape rs bridge tool through the active local session.
+Call a 2006Scape rs bridge tool through the active local or remote session.
 
 Examples:
   agent-navigation/tools/rs-tool_XS.sh observe_state '{}'
@@ -17,7 +17,7 @@ Environment:
   RSBRIDGE_PROFILE        Fallback profile when RS_PROFILE is unset
   RSBRIDGE_SESSION_FILE  Override session file path
   RSBRIDGE_EXPECT_PLAYER Validate the session player before sending the tool call
-  RSBRIDGE_TOOL_URL      Override tool URL, default http://127.0.0.1:43610/agent/tool
+  RSBRIDGE_TOOL_URL      Override tool URL; otherwise session bridgeUrl + /agent/tool or local default
   RS_ALLOW_FULL_OBSERVE  Set to 1/true/yes to allow full observe_state output
 EOF
 }
@@ -75,7 +75,6 @@ else
   SESSION_FILE="$ROOT/.local/rsbridge-session.json"
 fi
 EXPECT_PLAYER="${RSBRIDGE_EXPECT_PLAYER:-$PROFILE}"
-TOOL_URL="${RSBRIDGE_TOOL_URL:-http://127.0.0.1:43610/agent/tool}"
 TOOL="$1"
 if [[ $# -ge 2 ]]; then
   ARGS_JSON="$2"
@@ -105,9 +104,10 @@ if [[ ! -f "$SESSION_FILE" ]]; then
   exit 1
 fi
 
-token="$(python3 - "$SESSION_FILE" "$EXPECT_PLAYER" <<'PY'
+session_info="$(python3 - "$SESSION_FILE" "$EXPECT_PLAYER" <<'PY'
 import json
 import sys
+from urllib.parse import urlparse
 
 with open(sys.argv[1], "r", encoding="utf-8") as handle:
     data = json.load(handle)
@@ -115,9 +115,23 @@ expected = " ".join(sys.argv[2].strip().lower().replace("_", " ").split())
 actual = " ".join(str(data.get("playerName") or "").strip().lower().replace("_", " ").split())
 if expected and actual and expected != actual:
     raise SystemExit("session player mismatch: expected {} but session is {}".format(expected, actual))
-print(data["token"])
+token = data.get("token")
+if not token:
+    raise SystemExit("bridge session credential missing: {}".format(sys.argv[1]))
+bridge_url = str(data.get("bridgeUrl") or data.get("bridge_url") or "http://127.0.0.1:43610").strip()
+if not bridge_url:
+    bridge_url = "http://127.0.0.1:43610"
+if any(ord(ch) < 32 for ch in bridge_url):
+    raise SystemExit("bridgeUrl in session file must be a single-line URL")
+bridge_url = bridge_url.rstrip("/")
+parsed = urlparse(bridge_url)
+if parsed.scheme not in ("http", "https") or not parsed.netloc or parsed.username or parsed.password or parsed.query or parsed.fragment:
+    raise SystemExit("bridgeUrl in session file must be a plain http(s) base URL")
+print("{}\t{}/agent/tool".format(token, bridge_url))
 PY
 )"
+IFS=$'\t' read -r token session_tool_url <<< "$session_info"
+TOOL_URL="${RSBRIDGE_TOOL_URL:-$session_tool_url}"
 
 payload="$(python3 - "$TOOL" "$ARGS_JSON" <<'PY'
 import json

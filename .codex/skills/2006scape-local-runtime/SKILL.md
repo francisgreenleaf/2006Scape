@@ -13,6 +13,8 @@ Keep runtime work separate from code work. Prefer `agent-navigation/tools/runtim
 
 Never print, paste, inspect, log, or commit bridge tokens. The only allowed token destination is an ignored `agent-navigation/.local/rsbridge-session*.json` file read by `agent-navigation/tools/rs-tool_XXS.sh`, `agent-navigation/tools/rs-tool_XS.sh`, or the full fallback `agent-navigation/tools/rs-tool.sh`.
 
+Remote player-agent sessions use the same ignored session files, but include `bridgeUrl` and are created by `agent-navigation/tools/remote_claim.py` through an HTTPS gateway. Do not treat remote gateway setup as local runtime management, and do not open raw local bridge port `43610` to make remote control work.
+
 ## Current Runtime Pieces
 
 - Game server: listens on `127.0.0.1:43594` for the game service.
@@ -21,6 +23,7 @@ Never print, paste, inspect, log, or commit bridge tokens. The only allowed toke
 - Server launcher: `./scripts/start-server.sh`, which runs from the repo root and copies the jar to `/tmp/2006scape-run/`.
 - Client launcher: `./scripts/start-client.sh`.
 - Bridge wrappers: use `agent-navigation/tools/observe_XXS.sh` and `agent-navigation/tools/rs-tool_XXS.sh` for confirmation/status checks, and `agent-navigation/tools/observe_XS.sh` / `agent-navigation/tools/rs-tool_XS.sh` for compact decision context. `observe-slim.sh` and `rs-tool.sh` are fallback surfaces only; `rs-tool.sh observe_state` requires `RS_ALLOW_FULL_OBSERVE=1` for explicit debug/evidence work.
+- Remote claim helper: `python3 agent-navigation/tools/remote_claim.py --profile PROFILE --bridge-url https://AGENT_GATEWAY_HOST --verify`; it prints the `::agent claim CODE` command for the logged-in remote client and writes the profile session file.
 - Runtime helper: `agent-navigation/tools/runtime_doctor.py`.
 - Server tick log summarizer: `agent-navigation/tools/server_tick_report.py`.
 - Client scale: use 1x by default for profile relaunches and claims unless the user explicitly asks for another scale.
