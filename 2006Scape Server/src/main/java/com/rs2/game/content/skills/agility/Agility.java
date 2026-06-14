@@ -252,6 +252,24 @@ public class Agility {
 				return 20;
 			case WildernessAgility.WILDERNESS_ROCKS_OBJECT:
 				return 0;
+			case PyramidAgility.PYRAMID_DOORWAY_1:
+			case PyramidAgility.PYRAMID_DOORWAY_2:
+			case PyramidAgility.PYRAMID_DOORWAY_3:
+			case PyramidAgility.PYRAMID_DOORWAY_4:
+			case PyramidAgility.PYRAMID_ROCKS_WIDE:
+			case PyramidAgility.PYRAMID_ROCKS:
+			case PyramidAgility.PYRAMID_STAIRCE_OBJECT:
+			case PyramidAgility.PYRAMID_STAIRS_DOWN_OBJECT:
+				return 0;
+			case PyramidAgility.PYRAMID_BLOCK_1:
+			case PyramidAgility.PYRAMID_BLOCK_2:
+			case PyramidAgility.PYRAMID_BLOCK_3:
+			case PyramidAgility.PYRAMID_BLOCK_4:
+			case PyramidAgility.PYRAMID_BLOCK_5:
+				return 12;
+			case PyramidAgility.PYRAMID_CACHE_NULL_BLOCK:
+			case PyramidAgility.PYRAMID_CACHE_NULL_EAST_BLOCK:
+				return 0;
 			case BarbarianAgility.BARBARIAN_LOG_OBJECT:
 			case BarbarianAgility.BARBARIAN_WALL_OBJECT:
 				return 14;
@@ -271,15 +289,23 @@ public class Agility {
 			case PyramidAgility.PYRAMID_GAP:
 			case PyramidAgility.PYRAMID_GAP_1:
 			case PyramidAgility.PYRAMID_GAP_2:
-				return 57;
+			case PyramidAgility.PYRAMID_GAP_3:
+			case PyramidAgility.PYRAMID_GAP_4:
+			case PyramidAgility.PYRAMID_GAP_5:
+			case PyramidAgility.PYRAMID_GAP_6:
+			case PyramidAgility.PYRAMID_GAP_7:
+				return 56.4;
 			case PyramidAgility.PYRAMID_JUMP:
 				return 22;
 			case PyramidAgility.LEDGE:
 			case PyramidAgility.LEDGE_2:
 			case PyramidAgility.LEDGE_3:
+			case PyramidAgility.LEDGE_4:
+			case PyramidAgility.LEDGE_5:
 				return 52;
+			case PyramidAgility.PYRAMID_PLANK_OBJECT_1:
 			case PyramidAgility.PYRAMID_PLANK_OBJECT:
-				return 57;
+				return 56.4;
 			case WerewolfAgility.WEREWOLF_SLING_OBJECT:
 				return 190;
 		}
@@ -294,15 +320,36 @@ public class Agility {
 	private int getLevelRequired(int objectId) {
 		switch (objectId) {
 			case PyramidAgility.PYRAMID_WALL_OBJECT:
+			case PyramidAgility.PYRAMID_DOORWAY_1:
+			case PyramidAgility.PYRAMID_DOORWAY_2:
+			case PyramidAgility.PYRAMID_DOORWAY_3:
+			case PyramidAgility.PYRAMID_DOORWAY_4:
+			case PyramidAgility.PYRAMID_ROCKS_WIDE:
 			case PyramidAgility.PYRAMID_STAIRCE_OBJECT:
+			case PyramidAgility.PYRAMID_STAIRS_DOWN_OBJECT:
+			case PyramidAgility.PYRAMID_PLANK_OBJECT_1:
 			case PyramidAgility.PYRAMID_PLANK_OBJECT:
 			case PyramidAgility.PYRAMID_GAP:
 			case PyramidAgility.PYRAMID_GAP_1:
 			case PyramidAgility.PYRAMID_GAP_2:
+			case PyramidAgility.PYRAMID_GAP_3:
+			case PyramidAgility.PYRAMID_GAP_4:
+			case PyramidAgility.PYRAMID_GAP_5:
+			case PyramidAgility.PYRAMID_GAP_6:
+			case PyramidAgility.PYRAMID_GAP_7:
 			case PyramidAgility.PYRAMID_JUMP:
+			case PyramidAgility.PYRAMID_BLOCK_1:
+			case PyramidAgility.PYRAMID_BLOCK_2:
+			case PyramidAgility.PYRAMID_BLOCK_3:
+			case PyramidAgility.PYRAMID_BLOCK_4:
+			case PyramidAgility.PYRAMID_BLOCK_5:
+			case PyramidAgility.PYRAMID_CACHE_NULL_BLOCK:
+			case PyramidAgility.PYRAMID_CACHE_NULL_EAST_BLOCK:
 			case PyramidAgility.LEDGE:
 			case PyramidAgility.LEDGE_2:
 			case PyramidAgility.LEDGE_3:
+			case PyramidAgility.LEDGE_4:
+			case PyramidAgility.LEDGE_5:
 			case PyramidAgility.PYRAMID_ROCKS:
 				return 30;
 			case BarbarianAgility.BARBARIAN_ROPE_SWING_OBJECT:
@@ -368,16 +415,40 @@ public class Agility {
 				return 1604; // 2588
 			case WildernessAgility.WILDERNESS_ROCKS_OBJECT:
 			case WerewolfAgility.WEREWOLF_SKULL_OBJECT:
+			case PyramidAgility.PYRAMID_ROCKS_WIDE:
 			case PyramidAgility.PYRAMID_ROCKS:
 				return 1148;
 			case BarbarianAgility.BARBARIAN_LEDGE_OBJECT:
 			case PyramidAgility.LEDGE:
 			case PyramidAgility.LEDGE_2:
 			case PyramidAgility.LEDGE_3:
+			case PyramidAgility.LEDGE_4:
+			case PyramidAgility.LEDGE_5:
 				return 756;
 			case BarbarianAgility.BARBARIAN_WALL_OBJECT:
 			case PyramidAgility.PYRAMID_WALL_OBJECT:
 				return WALL_EMOTE;
+			case PyramidAgility.PYRAMID_JUMP:
+			case PyramidAgility.PYRAMID_GAP:
+			case PyramidAgility.PYRAMID_GAP_1:
+			case PyramidAgility.PYRAMID_GAP_2:
+			case PyramidAgility.PYRAMID_GAP_3:
+			case PyramidAgility.PYRAMID_GAP_4:
+			case PyramidAgility.PYRAMID_GAP_5:
+			case PyramidAgility.PYRAMID_GAP_6:
+			case PyramidAgility.PYRAMID_GAP_7:
+				return 3067;
+			case PyramidAgility.PYRAMID_PLANK_OBJECT_1:
+			case PyramidAgility.PYRAMID_PLANK_OBJECT:
+				return 2295;
+			case PyramidAgility.PYRAMID_BLOCK_1:
+			case PyramidAgility.PYRAMID_BLOCK_2:
+			case PyramidAgility.PYRAMID_BLOCK_3:
+			case PyramidAgility.PYRAMID_BLOCK_4:
+			case PyramidAgility.PYRAMID_BLOCK_5:
+			case PyramidAgility.PYRAMID_CACHE_NULL_BLOCK:
+			case PyramidAgility.PYRAMID_CACHE_NULL_EAST_BLOCK:
+				return 1603;
 			case ApeAtollAgility.APE_ATOLL_STEPPING_STONES_OBJECT:
 				return 3480;
 			case ApeAtollAgility.APE_ATOLL_MONKEYBARS_OBJECT:
@@ -543,108 +614,6 @@ public class Agility {
 
 		if (steppingStoneTimer > 0) {
 			steppingStoneTimer--;
-		}
-
-		if (hotSpot(3363, 2851)) {
-			moveX = 3368;
-			moveY = 2851;
-			moveH = 1;
-			walk(1, 0, 2753, -1);
-			c.getPlayerAssistant().addSkillXP(14, Constants.AGILITY);
-			agilityTimer = 2;
-		}
-
-		if (hotSpot(3372, 2832)) {
-			moveX = 3367;
-			moveY = 2832;
-			moveH = 1;
-			walk(-1, 0, 2753, -1);
-			c.getPlayerAssistant().addSkillXP(14, Constants.AGILITY);
-			agilityTimer = 2;
-		}
-
-		if (hotSpot(3364, 2832)) {
-			moveX = 3359;
-			moveY = 2832;
-			moveH = 1;
-			walk(-1, 0, 2753, -1);
-			c.getPlayerAssistant().addSkillXP(14, Constants.AGILITY);
-			agilityTimer = 2;
-		}
-
-		if (hotSpot(3357, 2836)) {
-			moveX = 3357;
-			moveY = 2841;
-			moveH = 2;
-			walk(0, 1, 2753, -1);
-			c.getPlayerAssistant().addSkillXP(14, Constants.AGILITY);
-			agilityTimer = 2;
-		}
-
-		if (hotSpot(3357, 2846)) {
-			moveX = 3357;
-			moveY = 2849;
-			moveH = 2;
-			walk(0, 1, 2753, -1);
-			c.getPlayerAssistant().addSkillXP(14, Constants.AGILITY);
-			agilityTimer = 2;
-		}
-
-		if (hotSpot(3359, 2849)) {
-			moveX = 3366;
-			moveY = 2849;
-			moveH = 2;
-			walk(1, 0, 2753, -1);
-			c.getPlayerAssistant().addSkillXP(14, Constants.AGILITY);
-			agilityTimer = 2;
-		}
-
-		if (hotSpot(3372, 2841)) {
-			moveX = 3372;
-			moveY = 2836;
-			moveH = 2;
-			walk(0, -1, 2753, -1);
-			c.getPlayerAssistant().addSkillXP(14, Constants.AGILITY);
-			agilityTimer = 2;
-		}
-
-		if (hotSpot(3366, 2834)) {
-			moveX = 3363;
-			moveY = 2834;
-			moveH = 2;
-			walk(-1, 0, 2753, -1);
-			c.getPlayerAssistant().addSkillXP(14, Constants.AGILITY);
-			agilityTimer = 2;
-		}
-
-		if (hotSpot(3359, 2842)) {
-			moveX = 3359;
-			moveY = 2847;
-			moveH = 3;
-			walk(0, 1, 2753, -1);
-			c.getPlayerAssistant().addSkillXP(14, Constants.AGILITY);
-			agilityTimer = 2;
-		}
-
-		if (hotSpot(3370, 2843)) {
-			moveX = 3370;
-			moveY = 2840;
-			moveH = 3;
-			walk(0, -1, 2753, -1);
-			c.getPlayerAssistant().addSkillXP(14, Constants.AGILITY);
-		}
-
-		if (agilityTimer > 0) {
-			agilityTimer--;
-		}
-
-		if (agilityTimer == 0) {
-			c.getPlayerAssistant().movePlayer(moveX, moveY, moveH);
-			moveX = -1;
-			moveY = -1;
-			moveH = 0;
-			agilityTimer = -1;
-			System.out.println("Bam");
 		}
 
 	}

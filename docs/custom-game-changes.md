@@ -187,6 +187,7 @@ Player-facing behavior:
 - Nulodion now handles the cannon feature through the custom quest layer instead of the dead core branch.
 - Players can start a small Dwarf Cannon quest from Nulodion, learn that cannonballs require an ammo mould and steel bar, and complete the quest after making a cannonball.
 - Nulodion can open the cannon parts shop from dialogue, so the cannon acquisition path is reachable in-game.
+- Nulodion's shop now also stocks ammo mould `4`, so players can buy the required mould from the same quest/shop flow before making their proof cannonball.
 - Lost cannon recovery still returns the four cannon parts, and the death path now clears the dead player's cannon instead of the killer's.
 
 Reasoning:
@@ -199,6 +200,7 @@ Implementation:
 
 - Custom quest: `2006Scape Server/src/main/java/com/rs2/game/content/custom/quests/dwarvenmine/dwarfcannon/DwarfCannonQuest.java`
 - Quest guide: `2006Scape Server/src/main/java/com/rs2/game/content/custom/quests/dwarvenmine/dwarfcannon/GUIDE.md`
+- Shop stock: `2006Scape Server/data/cfg/shops.json` shop id `144`
 - Custom registry: `2006Scape Server/src/main/java/com/rs2/game/content/custom/CustomContent.java`
 - Death fix: `2006Scape Server/src/main/java/com/rs2/game/players/PlayerAssistant.java`
 - Custom-content docs: `2006Scape Server/src/main/java/com/rs2/game/content/custom/README.md`

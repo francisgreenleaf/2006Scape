@@ -564,6 +564,846 @@
           ]
         }
       ]
+    },
+    {
+      "id": "agility_pyramid_course",
+      "name": "Agility Pyramid",
+      "placeId": "3355,2830,0",
+      "startTile": {
+        "x": 3355,
+        "y": 2830,
+        "height": 0
+      },
+      "startRadius": 8,
+      "lapCompleteRadius": 8,
+      "expectedLapXp": 1014,
+      "lockApproach": true,
+      "courseBounds": {
+        "minX": 3349,
+        "minY": 2830,
+        "maxX": 3375,
+        "maxY": 2851,
+        "heights": [
+          0,
+          1,
+          2,
+          3
+        ]
+      },
+      "notes": "2006-style Agility Pyramid route using cache object placements around 3338,2828..3378,2854. The final stairs award the Pyramid top because this cache has no separate clickable summit top; the doorway exits to Simon, who buys tops for the 2006-era 1,000 coin reward.",
+      "requiresSetup": true,
+      "setupScript": "agent-navigation/tools/agility_pyramid_travel_setup.py",
+      "steps": [
+        {
+          "id": "stairs_ground_to_level_1",
+          "name": "Stairs to level 1",
+          "expectedHeight": 0,
+          "maxTicks": 12,
+          "postRadius": 0,
+          "postTiles": [
+            {
+              "x": 3355,
+              "y": 2833,
+              "height": 1
+            }
+          ],
+          "variants": [
+            {
+              "id": "west_hotspot",
+              "objectId": 10857,
+              "objectName": "Stairs",
+              "objectTile": {
+                "x": 3354,
+                "y": 2831,
+                "height": 0
+              },
+              "approachTile": {
+                "x": 3355,
+                "y": 2830,
+                "height": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "west_block_level_1",
+          "name": "Level 1 west moving block",
+          "expectedHeight": 1,
+          "maxTicks": 8,
+          "postRadius": 0,
+          "postTiles": [
+            {
+              "x": 3355,
+              "y": 2848,
+              "height": 1
+            }
+          ],
+          "variants": [
+            {
+              "id": "west_block",
+              "objectId": 3550,
+              "objectName": "Moving block",
+              "objectTile": {
+                "x": 3355,
+                "y": 2841,
+                "height": 1
+              },
+              "approachTile": {
+                "x": 3355,
+                "y": 2841,
+                "height": 1
+              }
+            }
+          ]
+        },
+        {
+          "id": "low_wall_level_1",
+          "name": "Level 1 low wall",
+          "expectedHeight": 1,
+          "maxTicks": 10,
+          "postRadius": 0,
+          "postTiles": [
+            {
+              "x": 3355,
+              "y": 2850,
+              "height": 1
+            }
+          ],
+          "variants": [
+            {
+              "id": "west_wall",
+              "objectId": 10865,
+              "objectName": "Low wall",
+              "objectTile": {
+                "x": 3354,
+                "y": 2849,
+                "height": 1
+              },
+              "approachTile": {
+                "x": 3355,
+                "y": 2848,
+                "height": 1
+              }
+            }
+          ]
+        },
+        {
+          "id": "ledge_level_1_south",
+          "name": "Level 1 south ledge",
+          "expectedHeight": 1,
+          "maxTicks": 10,
+          "postRadius": 0,
+          "postTiles": [
+            {
+              "x": 3368,
+              "y": 2851,
+              "height": 1
+            }
+          ],
+          "variants": [
+            {
+              "id": "south_ledge",
+              "objectId": 10860,
+              "objectName": "Ledge",
+              "objectTile": {
+                "x": 3364,
+                "y": 2851,
+                "height": 1
+              },
+              "approachTile": {
+                "x": 3363,
+                "y": 2851,
+                "height": 1
+              }
+            }
+          ]
+        },
+        {
+          "id": "moving_block_level_1",
+          "name": "Level 1 moving block",
+          "expectedHeight": 1,
+          "maxTicks": 8,
+          "postRadius": 1,
+          "postTiles": [
+            {
+              "x": 3371,
+              "y": 2849,
+              "height": 1
+            }
+          ],
+          "variants": [
+            {
+              "id": "south_block",
+              "objectId": 10878,
+              "objectName": "Moving block",
+              "objectTile": {
+                "x": 3368,
+                "y": 2849,
+                "height": 1
+              },
+              "approachTile": {
+                "x": 3368,
+                "y": 2851,
+                "height": 1
+              }
+            }
+          ]
+        },
+        {
+          "id": "east_block_level_1",
+          "name": "Level 1 east moving block",
+          "expectedHeight": 1,
+          "maxTicks": 8,
+          "postRadius": 0,
+          "postTiles": [
+            {
+              "x": 3374,
+              "y": 2849,
+              "height": 1
+            }
+          ],
+          "variants": [
+            {
+              "id": "east_block",
+              "objectId": 10897,
+              "objectName": "Moving block",
+              "objectTile": {
+                "x": 3372,
+                "y": 2849,
+                "height": 1
+              },
+              "approachTile": {
+                "x": 3371,
+                "y": 2849,
+                "height": 1
+              }
+            }
+          ]
+        },
+        {
+          "id": "plank_level_1_east",
+          "name": "Level 1 east plank",
+          "expectedHeight": 1,
+          "maxTicks": 14,
+          "postRadius": 0,
+          "postTiles": [
+            {
+              "x": 3375,
+              "y": 2839,
+              "height": 1
+            }
+          ],
+          "variants": [
+            {
+              "id": "east_plank",
+              "objectId": 10868,
+              "objectName": "Plank",
+              "objectTile": {
+                "x": 3375,
+                "y": 2845,
+                "height": 1
+              },
+              "approachTile": {
+                "x": 3374,
+                "y": 2846,
+                "height": 1
+              }
+            }
+          ]
+        },
+        {
+          "id": "north_block_level_1",
+          "name": "Level 1 north moving block",
+          "expectedHeight": 1,
+          "maxTicks": 8,
+          "postRadius": 0,
+          "postTiles": [
+            {
+              "x": 3374,
+              "y": 2834,
+              "height": 1
+            }
+          ],
+          "variants": [
+            {
+              "id": "north_block",
+              "objectId": 3550,
+              "objectName": "Moving block",
+              "objectTile": {
+                "x": 3374,
+                "y": 2835,
+                "height": 1
+              },
+              "approachTile": {
+                "x": 3374,
+                "y": 2836,
+                "height": 1
+              }
+            }
+          ]
+        },
+        {
+          "id": "gap_level_1_northeast",
+          "name": "Level 1 northeast gap",
+          "expectedHeight": 1,
+          "maxTicks": 10,
+          "postRadius": 0,
+          "postTiles": [
+            {
+              "x": 3367,
+              "y": 2832,
+              "height": 1
+            }
+          ],
+          "variants": [
+            {
+              "id": "northeast_gap",
+              "objectId": 10863,
+              "objectName": "Gap",
+              "objectTile": {
+                "x": 3372,
+                "y": 2832,
+                "height": 1
+              },
+              "approachTile": {
+                "x": 3372,
+                "y": 2832,
+                "height": 1
+              }
+            }
+          ]
+        },
+        {
+          "id": "ledge_level_1_north",
+          "name": "Level 1 north ledge",
+          "expectedHeight": 1,
+          "maxTicks": 10,
+          "postRadius": 0,
+          "postTiles": [
+            {
+              "x": 3359,
+              "y": 2832,
+              "height": 1
+            }
+          ],
+          "variants": [
+            {
+              "id": "north_ledge",
+              "objectId": 10886,
+              "objectName": "Ledge",
+              "objectTile": {
+                "x": 3362,
+                "y": 2831,
+                "height": 1
+              },
+              "approachTile": {
+                "x": 3364,
+                "y": 2832,
+                "height": 1
+              }
+            }
+          ]
+        },
+        {
+          "id": "stairs_level_1_to_level_2",
+          "name": "Stairs to level 2",
+          "expectedHeight": 1,
+          "maxTicks": 12,
+          "postRadius": 0,
+          "postTiles": [
+            {
+              "x": 3356,
+              "y": 2835,
+              "height": 2
+            }
+          ],
+          "variants": [
+            {
+              "id": "west_hotspot",
+              "objectId": 10857,
+              "objectName": "Stairs",
+              "objectTile": {
+                "x": 3356,
+                "y": 2833,
+                "height": 1
+              },
+              "approachTile": {
+                "x": 3356,
+                "y": 2832,
+                "height": 1
+              }
+            }
+          ]
+        },
+        {
+          "id": "jump_level_2_west_north",
+          "name": "Level 2 west jump",
+          "expectedHeight": 2,
+          "maxTicks": 10,
+          "postRadius": 0,
+          "postTiles": [
+            {
+              "x": 3357,
+              "y": 2841,
+              "height": 2
+            }
+          ],
+          "variants": [
+            {
+              "id": "west_north_gap",
+              "objectId": 10863,
+              "objectName": "Gap",
+              "objectTile": {
+                "x": 3357,
+                "y": 2836,
+                "height": 2
+              },
+              "approachTile": {
+                "x": 3357,
+                "y": 2836,
+                "height": 2
+              }
+            }
+          ]
+        },
+        {
+          "id": "jump_level_2_west_south",
+          "name": "Level 2 west south jump",
+          "expectedHeight": 2,
+          "maxTicks": 10,
+          "postRadius": 0,
+          "postTiles": [
+            {
+              "x": 3357,
+              "y": 2849,
+              "height": 2
+            }
+          ],
+          "variants": [
+            {
+              "id": "west_south_gap",
+              "objectId": 10859,
+              "objectName": "Gap",
+              "objectTile": {
+                "x": 3356,
+                "y": 2847,
+                "height": 2
+              },
+              "approachTile": {
+                "x": 3357,
+                "y": 2846,
+                "height": 2
+              }
+            }
+          ]
+        },
+        {
+          "id": "gap_level_2_south",
+          "name": "Level 2 south gap",
+          "expectedHeight": 2,
+          "maxTicks": 10,
+          "postRadius": 0,
+          "postTiles": [
+            {
+              "x": 3366,
+              "y": 2849,
+              "height": 2
+            }
+          ],
+          "variants": [
+            {
+              "id": "south_gap",
+              "objectId": 10863,
+              "objectName": "Gap",
+              "objectTile": {
+                "x": 3359,
+                "y": 2849,
+                "height": 2
+              },
+              "approachTile": {
+                "x": 3359,
+                "y": 2849,
+                "height": 2
+              }
+            }
+          ]
+        },
+        {
+          "id": "east_block_level_2",
+          "name": "Level 2 east moving block",
+          "expectedHeight": 2,
+          "maxTicks": 8,
+          "postRadius": 0,
+          "postTiles": [
+            {
+              "x": 3373,
+              "y": 2849,
+              "height": 2
+            }
+          ],
+          "variants": [
+            {
+              "id": "east_block",
+              "objectId": 3550,
+              "objectName": "Moving block",
+              "objectTile": {
+                "x": 3368,
+                "y": 2849,
+                "height": 2
+              },
+              "approachTile": {
+                "x": 3367,
+                "y": 2849,
+                "height": 2
+              }
+            }
+          ]
+        },
+        {
+          "id": "ledge_level_2_east",
+          "name": "Level 2 east ledge",
+          "expectedHeight": 2,
+          "maxTicks": 10,
+          "postRadius": 0,
+          "postTiles": [
+            {
+              "x": 3372,
+              "y": 2836,
+              "height": 2
+            }
+          ],
+          "variants": [
+            {
+              "id": "east_ledge",
+              "objectId": 10860,
+              "objectName": "Ledge",
+              "objectTile": {
+                "x": 3372,
+                "y": 2839,
+                "height": 2
+              },
+              "approachTile": {
+                "x": 3373,
+                "y": 2841,
+                "height": 2
+              }
+            }
+          ]
+        },
+        {
+          "id": "low_wall_level_2_north",
+          "name": "Level 2 north low wall",
+          "expectedHeight": 2,
+          "maxTicks": 10,
+          "postRadius": 0,
+          "postTiles": [
+            {
+              "x": 3369,
+              "y": 2834,
+              "height": 2
+            }
+          ],
+          "variants": [
+            {
+              "id": "north_wall",
+              "objectId": 10865,
+              "objectName": "Low wall",
+              "objectTile": {
+                "x": 3370,
+                "y": 2833,
+                "height": 2
+              },
+              "approachTile": {
+                "x": 3371,
+                "y": 2834,
+                "height": 2
+              }
+            }
+          ]
+        },
+        {
+          "id": "jump_level_2_north",
+          "name": "Level 2 north jump",
+          "expectedHeight": 2,
+          "maxTicks": 10,
+          "postRadius": 0,
+          "postTiles": [
+            {
+              "x": 3363,
+              "y": 2834,
+              "height": 2
+            }
+          ],
+          "variants": [
+            {
+              "id": "north_gap",
+              "objectId": 10859,
+              "objectName": "Gap",
+              "objectTile": {
+                "x": 3364,
+                "y": 2833,
+                "height": 2
+              },
+              "approachTile": {
+                "x": 3366,
+                "y": 2834,
+                "height": 2
+              }
+            }
+          ]
+        },
+        {
+          "id": "stairs_level_2_to_level_3",
+          "name": "Stairs to level 3",
+          "expectedHeight": 2,
+          "maxTicks": 12,
+          "postRadius": 0,
+          "postTiles": [
+            {
+              "x": 3358,
+              "y": 2837,
+              "height": 3
+            }
+          ],
+          "variants": [
+            {
+              "id": "east_hotspot",
+              "objectId": 10857,
+              "objectName": "Stairs",
+              "objectTile": {
+                "x": 3358,
+                "y": 2835,
+                "height": 2
+              },
+              "approachTile": {
+                "x": 3358,
+                "y": 2834,
+                "height": 2
+              }
+            }
+          ]
+        },
+        {
+          "id": "low_wall_level_3_west",
+          "name": "Level 3 west low wall",
+          "expectedHeight": 3,
+          "maxTicks": 10,
+          "postRadius": 0,
+          "postTiles": [
+            {
+              "x": 3358,
+              "y": 2840,
+              "height": 3
+            }
+          ],
+          "variants": [
+            {
+              "id": "west_wall",
+              "objectId": 10865,
+              "objectName": "Low wall",
+              "objectTile": {
+                "x": 3358,
+                "y": 2839,
+                "height": 3
+              },
+              "approachTile": {
+                "x": 3358,
+                "y": 2838,
+                "height": 3
+              }
+            }
+          ]
+        },
+        {
+          "id": "ledge_level_3_west",
+          "name": "Level 3 west ledge",
+          "expectedHeight": 3,
+          "maxTicks": 10,
+          "postRadius": 0,
+          "postTiles": [
+            {
+              "x": 3359,
+              "y": 2847,
+              "height": 3
+            }
+          ],
+          "variants": [
+            {
+              "id": "west_ledge",
+              "objectId": 10888,
+              "objectName": "Ledge",
+              "objectTile": {
+                "x": 3358,
+                "y": 2843,
+                "height": 3
+              },
+              "approachTile": {
+                "x": 3359,
+                "y": 2842,
+                "height": 3
+              }
+            }
+          ]
+        },
+        {
+          "id": "jump_level_3_east",
+          "name": "Level 3 east jump",
+          "expectedHeight": 3,
+          "maxTicks": 10,
+          "postRadius": 0,
+          "postTiles": [
+            {
+              "x": 3370,
+              "y": 2840,
+              "height": 3
+            }
+          ],
+          "variants": [
+            {
+              "id": "east_gap",
+              "objectId": 10859,
+              "objectName": "Gap",
+              "objectTile": {
+                "x": 3370,
+                "y": 2841,
+                "height": 3
+              },
+              "approachTile": {
+                "x": 3370,
+                "y": 2843,
+                "height": 3
+              }
+            }
+          ]
+        },
+        {
+          "id": "plank_level_3_north",
+          "name": "Level 3 north plank",
+          "expectedHeight": 3,
+          "maxTicks": 14,
+          "postRadius": 0,
+          "postTiles": [
+            {
+              "x": 3364,
+              "y": 2835,
+              "height": 3
+            }
+          ],
+          "variants": [
+            {
+              "id": "north_plank",
+              "objectId": 10868,
+              "objectName": "Plank",
+              "objectTile": {
+                "x": 3370,
+                "y": 2835,
+                "height": 3
+              },
+              "approachTile": {
+                "x": 3370,
+                "y": 2835,
+                "height": 3
+              }
+            }
+          ]
+        },
+        {
+          "id": "stairs_summit",
+          "name": "Summit stairs",
+          "expectedHeight": 3,
+          "maxTicks": 12,
+          "postRadius": 0,
+          "postTiles": [
+            {
+              "x": 3363,
+              "y": 2830,
+              "height": 0
+            }
+          ],
+          "variants": [
+            {
+              "id": "west_hotspot",
+              "objectId": 10857,
+              "objectName": "Stairs",
+              "objectTile": {
+                "x": 3360,
+                "y": 2837,
+                "height": 3
+              },
+              "approachTile": {
+                "x": 3360,
+                "y": 2836,
+                "height": 3
+              }
+            }
+          ]
+        },
+        {
+          "id": "doorway_exit",
+          "name": "Summit doorway",
+          "expectedHeight": 0,
+          "maxTicks": 12,
+          "postRadius": 0,
+          "postTiles": [
+            {
+              "x": 3351,
+              "y": 2838,
+              "height": 0
+            }
+          ],
+          "variants": [
+            {
+              "id": "summit_doorway",
+              "objectId": 10849,
+              "objectName": "Doorway",
+              "objectTile": {
+                "x": 3364,
+                "y": 2830,
+                "height": 0
+              },
+              "approachTile": {
+                "x": 3364,
+                "y": 2830,
+                "height": 0
+              }
+            }
+          ]
+        },
+        {
+          "id": "sell_pyramid_top",
+          "name": "Sell Pyramid top",
+          "action": "interact_npc",
+          "npcId": 3123,
+          "option": "first",
+          "skipIfMissingItemId": 6970,
+          "skipIfFreeInventorySlotsAbove": 0,
+          "expectedHeight": 0,
+          "maxTicks": 6,
+          "postRadius": 1,
+          "postTiles": [
+            {
+              "x": 3351,
+              "y": 2838,
+              "height": 0
+            }
+          ],
+          "variants": [
+            {
+              "id": "simon_templeton",
+              "action": "interact_npc",
+              "npcId": 3123,
+              "npcName": "Simon Templeton",
+              "option": "first",
+              "maxDistance": 5,
+              "approachTile": {
+                "x": 3351,
+                "y": 2838,
+                "height": 0
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

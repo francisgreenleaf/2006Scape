@@ -175,6 +175,33 @@ def route_to_yew(args, handle, reason, player=None):
         "waypoints": YEW_ROUTE_FROM_BANK,
         "player": base.compact_player(player),
     })
+    direct_started = time.monotonic()
+    direct_result = base.call_tool("walk_to_tile_until_arrived_XS", {
+        "x": int(YEW_ANCHOR["x"]),
+        "y": int(YEW_ANCHOR["y"]),
+        "height": int(YEW_ANCHOR.get("height", 0)),
+        "maxTicks": args.local_route_ticks,
+        "maxWalkDistance": args.local_route_distance,
+        "stopOnStall": True,
+        "stopDistance": 4,
+    })
+    direct_player = base.bridge._player_from_or(direct_result, player)
+    base.write_event(handle, "yew_route_direct", {
+        "reason": reason,
+        "target": SEERS_YEW,
+        "tile": YEW_ANCHOR,
+        "success": bool(direct_result.get("success")),
+        "batchStatus": direct_result.get("batchStatus"),
+        "batchTicks": direct_result.get("batchTicks"),
+        "stopDistance": 4,
+        "durationMs": int((time.monotonic() - direct_started) * 1000),
+        "player": base.compact_player(direct_player),
+    })
+    if direct_result.get("success", False):
+        base.write_status(args, "routed", direct_player, {"target": SEERS_YEW})
+        return direct_player
+    player = direct_player
+
     for index, tile in enumerate(YEW_ROUTE_FROM_BANK, start=1):
         current = base.tile_from_player(player)
         stop_distance = 4 if index == len(YEW_ROUTE_FROM_BANK) else 1

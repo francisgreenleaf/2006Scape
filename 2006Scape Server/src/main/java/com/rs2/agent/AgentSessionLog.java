@@ -9,6 +9,7 @@ import java.nio.file.StandardOpenOption;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -32,6 +33,11 @@ public class AgentSessionLog {
 
     private static final Gson GSON = new Gson();
     private static final String LOG_DIR = "agent-sessions";
+    private static final int MAX_ACTION_SUMMARY_ITEMS = 80;
+    private static final int MAX_OBSTACLE_SUMMARY_ITEMS = 80;
+    private static final int MAX_BLOCKER_SUMMARY_ITEMS = 80;
+    private static final int MAX_DECISION_TRAIL_ITEMS = 80;
+    private static final int MAX_TIMELINE_ITEMS = 120;
     private static final Pattern[] SENSITIVE_VALUE_PATTERNS = {
             Pattern.compile("(?i)\\bBearer\\s+[A-Za-z0-9._\\-+/=]+"),
             Pattern.compile("(?i)\\b(api[_-]?key|token|session[_-]?token|auth[_-]?token|password|secret|cookie)\\s*[:=]\\s*[^\\s,;}]+"),
@@ -39,6 +45,7 @@ public class AgentSessionLog {
     };
 
     private final Object lock = new Object();
+    private final Map<String, Summary> summaries = new HashMap<String, Summary>();
     private File logDirectoryForTests;
 
     public void sessionRegistered(AgentSession session) {
@@ -106,12 +113,14 @@ public class AgentSessionLog {
     void setLogDirectoryForTests(File directory) {
         synchronized (lock) {
             logDirectoryForTests = directory;
+            summaries.clear();
         }
     }
 
     void resetLogDirectoryForTests() {
         synchronized (lock) {
             logDirectoryForTests = null;
+            summaries.clear();
         }
     }
 
@@ -152,6 +161,7 @@ public class AgentSessionLog {
                 return;
             }
             File logFile = new File(dayDirectory, session.getSessionId() + ".jsonl");
+            Summary summary = summaryForLog(session, logFile);
             try (BufferedWriter writer = Files.newBufferedWriter(logFile.toPath(), StandardCharsets.UTF_8,
                     StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
                 writer.write(GSON.toJson(entry));
@@ -160,9 +170,10 @@ public class AgentSessionLog {
                 System.err.println("Unable to write agent session log: " + e.getMessage());
                 return;
             }
+            summary.consume(entry);
             File summaryFile = new File(dayDirectory, session.getSessionId() + ".md");
             try {
-                writeMarkdownSummary(session, now, logFile, summaryFile);
+                writeMarkdownSummary(summary, now, summaryFile);
             } catch (IOException e) {
                 System.err.println("Unable to write agent session summary: " + e.getMessage());
             }
@@ -171,6 +182,22 @@ public class AgentSessionLog {
         if (allowNarrator) {
             AgentPersonalityNarrator.INSTANCE.observe(this, session, entry);
         }
+    }
+
+    private Summary summaryForLog(AgentSession session, File logFile) {
+        String key = logFile.getAbsolutePath();
+        Summary summary = summaries.get(key);
+        if (summary != null) {
+            return summary;
+        }
+        try {
+            summary = loadSummary(session, logFile);
+        } catch (IOException e) {
+            System.err.println("Unable to load existing agent session summary state: " + e.getMessage());
+            summary = new Summary(session.getSessionId());
+        }
+        summaries.put(key, summary);
+        return summary;
     }
 
     private File resolveLogDirectory() {
@@ -199,8 +226,7 @@ public class AgentSessionLog {
         return state;
     }
 
-    private void writeMarkdownSummary(AgentSession session, long now, File logFile, File summaryFile) throws IOException {
-        Summary summary = loadSummary(session, logFile);
+    private void writeMarkdownSummary(Summary summary, long now, File summaryFile) throws IOException {
         String markdown = renderMarkdown(summary, now);
         Files.write(summaryFile.toPath(), markdown.getBytes(StandardCharsets.UTF_8),
                 StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
@@ -393,83 +419,76 @@ public class AgentSessionLog {
                     ? entry.get("data").getAsJsonObject()
                     : new JsonObject();
             if ("session_registered".equals(event)) {
-                timeline.add(label(time, "Session registered."));
+                addTimeline(label(time, "Session registered."));
             } else if ("session_claimed".equals(event)) {
-                timeline.add(label(time, "Session claimed by local client."));
+                addTimeline(label(time, "Session claimed by local client."));
             } else if ("turn_requested".equals(event)) {
                 task = string(data, "command", task);
-                decisionTrail.add("The user goal was captured as `" + fallback(task, "unknown task") + "`, so the harness had a concrete task to anchor the turn.");
-                timeline.add(label(time, "Task requested: " + fallback(task, "unknown task") + "."));
+                addDecisionTrail("The user goal was captured as `" + fallback(task, "unknown task") + "`, so the harness had a concrete task to anchor the turn.");
+                addTimeline(label(time, "Task requested: " + fallback(task, "unknown task") + "."));
             } else if ("turn_started".equals(event)) {
                 task = string(data, "command", task);
                 turnCompleted = false;
                 turnInterrupted = false;
-                decisionTrail.add("Codex started a read-only turn connected to the claimed player session.");
-                timeline.add(label(time, "Codex turn started."));
+                addDecisionTrail("Codex started a read-only turn connected to the claimed player session.");
+                addTimeline(label(time, "Codex turn started."));
             } else if ("assistant_message".equals(event)) {
                 latestAssistantMessage = string(data, "text", latestAssistantMessage);
                 if (latestAssistantMessage != null && !latestAssistantMessage.trim().isEmpty()) {
-                    decisionTrail.add("The assistant interpreted the tool evidence as: " + compact(latestAssistantMessage, 220));
+                    addDecisionTrail("The assistant interpreted the tool evidence as: " + compact(latestAssistantMessage, 220));
                 }
-                timeline.add(label(time, "Assistant reported: " + compact(latestAssistantMessage, 180)));
+                addTimeline(label(time, "Assistant reported: " + compact(latestAssistantMessage, 180)));
             } else if ("turn_completed".equals(event)) {
                 turnCompleted = true;
-                decisionTrail.add("The turn reached a normal completion event.");
-                timeline.add(label(time, "Turn completed."));
+                addDecisionTrail("The turn reached a normal completion event.");
+                addTimeline(label(time, "Turn completed."));
             } else if ("turn_interrupted".equals(event)) {
                 turnInterrupted = true;
                 addObstacle("Turn was interrupted before completion.");
-                timeline.add(label(time, "Turn interrupted."));
+                addTimeline(label(time, "Turn interrupted."));
             } else if ("session_expired".equals(event) || "session_invalidated".equals(event)) {
                 addObstacle("Session ended: " + string(data, "reason", "unknown reason") + ".");
-                timeline.add(label(time, "Session ended."));
+                addTimeline(label(time, "Session ended."));
             } else if ("goal_started".equals(event)) {
                 String detail = goalDetail(data, "Started durable goal");
                 latestSuccess = detail;
-                actions.add(detail);
-                decisionTrail.add("A durable goal was started so normal gameplay could continue outside a single Codex turn.");
-                timeline.add(label(time, detail));
+                addAction(detail);
+                addDecisionTrail("A durable goal was started so normal gameplay could continue outside a single Codex turn.");
+                addTimeline(label(time, detail));
             } else if ("goal_progress".equals(event)) {
                 String detail = goalDetail(data, "Durable goal progressed");
                 latestSuccess = detail;
-                decisionTrail.add("Goal progress showed the server-side loop was still making normal gameplay attempts.");
-                timeline.add(label(time, detail));
+                addDecisionTrail("Goal progress showed the server-side loop was still making normal gameplay attempts.");
+                addTimeline(label(time, detail));
             } else if ("goal_completed".equals(event)) {
                 String detail = goalDetail(data, "Durable goal completed");
                 latestSuccess = detail;
-                actions.add(detail);
-                decisionTrail.add("The durable goal met its target and reported completion from server state.");
-                timeline.add(label(time, detail));
+                addAction(detail);
+                addDecisionTrail("The durable goal met its target and reported completion from server state.");
+                addTimeline(label(time, detail));
             } else if ("goal_blocked".equals(event) || "goal_stopped".equals(event)) {
                 String detail = goalDetail(data, "Durable goal stopped");
                 addObstacle(detail);
-                timeline.add(label(time, detail));
+                addTimeline(label(time, detail));
             } else if ("personality_chatter".equals(event)) {
                 String text = string(data, "text", "");
                 String source = string(data, "source", "unknown");
                 if (!text.isEmpty()) {
-                    addLimited(personalityChatter, source + ": " + compact(text, 180), 12);
+                    addBounded(personalityChatter, source + ": " + compact(text, 180), 12);
                 }
-                timeline.add(label(time, "Personality chatter recorded."));
+                addTimeline(label(time, "Personality chatter recorded."));
             } else if ("personality_spoken".equals(event)) {
                 String text = string(data, "text", "");
                 if (!text.isEmpty()) {
-                    addLimited(personalityChatter, "spoken: " + compact(text, 180), 12);
+                    addBounded(personalityChatter, "spoken: " + compact(text, 180), 12);
                 }
-                timeline.add(label(time, "Personality chatter spoken publicly."));
+                addTimeline(label(time, "Personality chatter spoken publicly."));
             } else if ("personality_chatter_failed".equals(event)) {
-                timeline.add(label(time, "Personality chatter enrichment failed."));
+                addTimeline(label(time, "Personality chatter enrichment failed."));
             } else if ("tool_completed".equals(event) || "tool_failed".equals(event)) {
                 consumeTool(time, event, data);
             } else {
-                timeline.add(label(time, "Recorded event: " + event + "."));
-            }
-        }
-
-        private void addLimited(List<String> values, String value, int limit) {
-            values.add(value);
-            while (values.size() > limit) {
-                values.remove(0);
+                addTimeline(label(time, "Recorded event: " + event + "."));
             }
         }
 
@@ -521,28 +540,51 @@ public class AgentSessionLog {
             latestTool = "`rs." + tool + "`";
             if (success) {
                 latestSuccess = detail;
-                actions.add(detail);
-                decisionTrail.add("`rs." + tool + "` succeeded, so the agent could build on that observation/action result.");
-                timeline.add(label(time, "`rs." + tool + "` succeeded."));
+                addAction(detail);
+                addDecisionTrail("`rs." + tool + "` succeeded, so the agent could build on that observation/action result.");
+                addTimeline(label(time, "`rs." + tool + "` succeeded."));
             } else {
                 addObstacle("`rs." + tool + "` failed: " + compact(message, 220) + ".");
                 addBlocker(tool, message);
-                decisionTrail.add("`rs." + tool + "` returned a blocker, shifting the next step toward recovery or a clearer report.");
-                timeline.add(label(time, "`rs." + tool + "` failed."));
+                addDecisionTrail("`rs." + tool + "` returned a blocker, shifting the next step toward recovery or a clearer report.");
+                addTimeline(label(time, "`rs." + tool + "` failed."));
             }
+        }
+
+        private void addAction(String action) {
+            addBounded(actions, action, MAX_ACTION_SUMMARY_ITEMS);
         }
 
         private void addObstacle(String obstacle) {
             latestObstacle = obstacle;
-            obstacles.add(obstacle);
+            addBounded(obstacles, obstacle, MAX_OBSTACLE_SUMMARY_ITEMS);
             if (isInGameBlocker(obstacle)) {
-                blockers.add(obstacle);
+                addBounded(blockers, obstacle, MAX_BLOCKER_SUMMARY_ITEMS);
             }
         }
 
         private void addBlocker(String tool, String message) {
             String category = blockerCategory(message);
-            blockers.add(category + ": `rs." + tool + "` reported " + compact(message, 220) + ".");
+            addBounded(blockers, category + ": `rs." + tool + "` reported " + compact(message, 220) + ".",
+                    MAX_BLOCKER_SUMMARY_ITEMS);
+        }
+
+        private void addDecisionTrail(String decision) {
+            addBounded(decisionTrail, decision, MAX_DECISION_TRAIL_ITEMS);
+        }
+
+        private void addTimeline(String event) {
+            addBounded(timeline, event, MAX_TIMELINE_ITEMS);
+        }
+
+        private void addBounded(List<String> values, String value, int limit) {
+            if (value == null || value.trim().isEmpty()) {
+                return;
+            }
+            values.add(value);
+            while (values.size() > limit) {
+                values.remove(0);
+            }
         }
 
         private String solution() {

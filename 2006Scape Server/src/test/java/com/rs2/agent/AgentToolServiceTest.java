@@ -305,6 +305,56 @@ public class AgentToolServiceTest {
     }
 
     @Test
+    public void withdrawBankItemsSupportsMixedQuantitiesInOneCall() {
+        Player player = testPlayer(9, "MrSteel");
+        player.absX = 3270;
+        player.absY = 3167;
+        player.heightLevel = 0;
+        player.bankItems[0] = 441;
+        player.bankItemsN[0] = 100;
+        player.bankItems[1] = 454;
+        player.bankItemsN[1] = 200;
+
+        JsonObject arguments = new JsonObject();
+        JsonArray items = new JsonArray();
+        JsonObject iron = new JsonObject();
+        iron.addProperty("itemId", 440);
+        iron.addProperty("amount", 9);
+        items.add(iron);
+        JsonObject coal = new JsonObject();
+        coal.addProperty("itemId", 453);
+        coal.addProperty("amount", 18);
+        items.add(coal);
+        arguments.add("items", items);
+
+        JsonObject result = AgentToolService.handle(player, "withdraw_bank_items", arguments);
+
+        assertTrue(result.get("success").getAsBoolean());
+        assertEquals(2, result.get("withdrawn").getAsInt());
+        assertEquals(27, result.get("withdrawnAmount").getAsInt());
+        assertEquals(2, result.get("requested").getAsInt());
+        assertEquals(9, inventoryCount(player, 440));
+        assertEquals(18, inventoryCount(player, 453));
+        assertEquals(91, bankCount(player, 440));
+        assertEquals(182, bankCount(player, 453));
+        JsonArray summaries = result.getAsJsonArray("items");
+        assertEquals(2, summaries.size());
+        assertEquals(440, summaries.get(0).getAsJsonObject().get("itemId").getAsInt());
+        assertEquals(9, summaries.get(0).getAsJsonObject().get("requested").getAsInt());
+        assertEquals(9, summaries.get(0).getAsJsonObject().get("withdrawnAmount").getAsInt());
+        assertEquals(453, summaries.get(1).getAsJsonObject().get("itemId").getAsInt());
+        assertEquals(18, summaries.get(1).getAsJsonObject().get("requested").getAsInt());
+        assertEquals(18, summaries.get(1).getAsJsonObject().get("withdrawnAmount").getAsInt());
+
+        JsonObject compact = AgentToolService.compactXsResult("withdraw_bank_items", result, player, arguments);
+        assertTrue(compact.get("success").getAsBoolean());
+        assertTrue(compact.get("compact").getAsBoolean());
+        assertEquals("withdraw_bank_items_XS", compact.get("tool").getAsString());
+        assertEquals(27, compact.get("withdrawnAmount").getAsInt());
+        assertEquals(2, compact.getAsJsonArray("items").size());
+    }
+
+    @Test
     public void travelRecognizesAlKharidGateCrossingSteps() {
         assertTrue(AgentToolService.isAlKharidGateCrossingStep(3268, 3227, 3252, 3236));
         assertTrue(AgentToolService.isAlKharidGateCrossingStep(3267, 3227, 3274, 3195));

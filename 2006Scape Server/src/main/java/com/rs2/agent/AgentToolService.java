@@ -32,6 +32,8 @@ import com.rs2.game.content.consumables.Food;
 import com.rs2.game.content.consumables.Kebabs;
 import com.rs2.game.content.custom.CustomContent;
 import com.rs2.game.content.custom.shops.CustomShops;
+import com.rs2.game.content.combat.range.DwarfCannon;
+import com.rs2.game.content.combat.magic.MagicData;
 import com.rs2.game.content.skills.SkillHandler;
 import com.rs2.game.content.skills.cooking.Cooking;
 import com.rs2.game.content.skills.cooking.CookingTutorialIsland;
@@ -178,6 +180,10 @@ public class AgentToolService {
             114, 2728, 2729, 2730, 2731, StaticObjectList.FIRE, 2859, 3039, 4172,
             5275, 8750, 9682, 12102, 13539, 13540, 13541, 13542, 13543, 13544, 14919
     };
+    private static final int[] CANNONBALL_FURNACE_OBJECT_IDS = {
+            14921, 9390, 2781, 2785, 2966, 3294, 3413, 4304, 4305, 6189, 6190,
+            11009, 11010, 11666, 12100, 12809
+    };
     private static final String[] SKILL_NAMES = {"attack", "defence", "strength", "hitpoints", "ranged",
             "prayer", "magic", "cooking", "woodcutting", "fletching", "fishing", "firemaking", "crafting",
             "smithing", "mining", "herblore", "agility", "thieving", "slayer", "farming", "runecraft",
@@ -291,6 +297,9 @@ public class AgentToolService {
         }
         if ("attack_npc".equals(tool)) {
             return attackNpc(player, arguments);
+        }
+        if ("cast_spell_on_npc".equals(tool)) {
+            return castSpellOnNpc(player, arguments);
         }
         if ("train_combat".equals(tool)) {
             return trainCombat(player, arguments);
@@ -726,6 +735,8 @@ public class AgentToolService {
         copyIfPresent(result, compact, "depositedAmount");
         copyIfPresent(result, compact, "withdrawn");
         copyIfPresent(result, compact, "withdrawnAmount");
+        copyIfPresent(result, compact, "requested");
+        copyIfPresent(result, compact, "items");
         copyIfPresent(result, compact, "unequipped");
         copyIfPresent(result, compact, "equipped");
         copyIfPresent(result, compact, "dropped");
@@ -737,6 +748,9 @@ public class AgentToolService {
         copyIfPresent(result, compact, "amount");
         copyIfPresent(result, compact, "itemId");
         copyIfPresent(result, compact, "itemName");
+        copyIfPresent(result, compact, "spell");
+        copyIfPresent(result, compact, "spellId");
+        copyIfPresent(result, compact, "spellIndex");
         copyIfPresent(result, compact, "itemCountAfter");
         copyIfPresent(result, compact, "offered");
         copyIfPresent(result, compact, "offeredAmount");
@@ -806,6 +820,8 @@ public class AgentToolService {
         copyIfPresent(result, compact, "depositedAmount");
         copyIfPresent(result, compact, "withdrawn");
         copyIfPresent(result, compact, "withdrawnAmount");
+        copyIfPresent(result, compact, "requested");
+        copyIfPresent(result, compact, "items");
         copyIfPresent(result, compact, "unequipped");
         copyIfPresent(result, compact, "equipped");
         copyIfPresent(result, compact, "dropped");
@@ -824,6 +840,9 @@ public class AgentToolService {
         copyIfPresent(result, compact, "amount");
         copyIfPresent(result, compact, "itemId");
         copyIfPresent(result, compact, "itemName");
+        copyIfPresent(result, compact, "spell");
+        copyIfPresent(result, compact, "spellId");
+        copyIfPresent(result, compact, "spellIndex");
         copyIfPresent(result, compact, "expectedItemId");
         copyIfPresent(result, compact, "expectedItemName");
         copyIfPresent(result, compact, "itemDelta");
@@ -1154,6 +1173,7 @@ public class AgentToolService {
         boolean openedCookingInterface = false;
         boolean handledCustomContent = false;
         boolean openedSpinningInterface = false;
+        boolean startedCannonballMaking = false;
         if (isCookingObject(objectId) && isRawCookableFood(item.itemId)) {
             openedCookingInterface = Cooking.startCooking(player, item.itemId, objectId);
             if (!openedCookingInterface && !player.playerIsCooking) {
@@ -1173,6 +1193,9 @@ public class AgentToolService {
         } else if (isSpinningWheelItemOnObject(item.itemId, objectId)) {
             Spinning.showSpinning(player);
             openedSpinningInterface = true;
+        } else if (isCannonballItemOnFurnace(item.itemId, objectId)) {
+            DwarfCannon.makeBall(player);
+            startedCannonballMaking = player.isSmithing;
         } else {
             UseItem.itemOnObject(player, objectId, x, y, item.itemId);
         }
@@ -1186,6 +1209,7 @@ public class AgentToolService {
         result.addProperty("openedCookingInterface", openedCookingInterface);
         result.addProperty("handledCustomContent", handledCustomContent);
         result.addProperty("openedSpinningInterface", openedSpinningInterface);
+        result.addProperty("startedCannonballMaking", startedCannonballMaking);
         addPlayerState(result, player);
         return result;
     }
@@ -1810,6 +1834,48 @@ public class AgentToolService {
         if (buttonId < 0) {
             return failure("buttonId is required.");
         }
+        if (buttonId == 1093 || buttonId == 1094 || buttonId == 1097) {
+            if (player.autocastId > 0) {
+                player.getPlayerAssistant().resetAutocast();
+                JsonObject result = success("Reset autocast spell.");
+                result.addProperty("buttonId", buttonId);
+                result.addProperty("autocasting", player.autocasting);
+                result.addProperty("autocastId", player.autocastId);
+                addPlayerState(result, player);
+                return result;
+            }
+            if (player.playerMagicBook == 1) {
+                if (player.playerEquipment[player.playerWeapon] != 4675) {
+                    return failure("You can't autocast ancients without an ancient staff.");
+                }
+                player.getPacketSender().setSidebarInterface(0, 1689);
+            } else if (player.playerMagicBook == 0) {
+                if (player.playerEquipment[player.playerWeapon] == 4170) {
+                    player.getPacketSender().setSidebarInterface(0, 12050);
+                } else {
+                    player.getPacketSender().setSidebarInterface(0, 1829);
+                }
+            }
+            player.post(new ButtonActionEvent(buttonId));
+            JsonObject result = success("Opened autocast spell chooser.");
+            result.addProperty("buttonId", buttonId);
+            addPlayerState(result, player);
+            return result;
+        }
+        if (player.isAutoButton(buttonId)) {
+            player.assignAutocast(buttonId);
+            player.post(new ButtonActionEvent(buttonId));
+            JsonObject result = success("Selected autocast spell.");
+            result.addProperty("buttonId", buttonId);
+            result.addProperty("autocasting", player.autocasting);
+            result.addProperty("autocastId", player.autocastId);
+            if (player.autocastId >= 0 && player.autocastId < MagicData.MAGIC_SPELLS.length) {
+                result.addProperty("spellId", MagicData.MAGIC_SPELLS[player.autocastId][0]);
+                result.addProperty("spell", magicSpellLabel(player.autocastId));
+            }
+            addPlayerState(result, player);
+            return result;
+        }
         if (buttonId == 21010 || buttonId == 21011) {
             if (!player.isBanking) {
                 return failure("The player must be banking to change bank withdraw mode.");
@@ -1841,6 +1907,18 @@ public class AgentToolService {
 
     private static boolean isSpinningWheelItemOnObject(int itemId, int objectId) {
         return objectId == 2644 && (itemId == 1737 || itemId == 1779);
+    }
+
+    private static boolean isCannonballItemOnFurnace(int itemId, int objectId) {
+        if (itemId != StaticItemList.STEEL_BAR && itemId != StaticItemList.AMMO_MOULD) {
+            return false;
+        }
+        for (int furnaceObjectId : CANNONBALL_FURNACE_OBJECT_IDS) {
+            if (objectId == furnaceObjectId) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void handleSpinningButton(Player player, int buttonId) {
@@ -2601,21 +2679,169 @@ public class AgentToolService {
         SkillHandler.resetSkills(player);
         player.getPlayerAssistant().resetFollow();
         player.getCombatAssistant().resetPlayerAttack();
+        boolean usingAutocast = player.autocastId > 0;
+        if (usingAutocast) {
+            player.autocasting = true;
+        }
         player.npcIndex = npcIndex;
         player.followNpcId = npcIndex;
         player.followPlayerId = 0;
         player.faceUpdate(npcIndex);
         boolean inMeleeRange = player.goodDistance(player.getX(), player.getY(), npc.getX(), npc.getY(), 1);
-        if (!inMeleeRange) {
+        boolean inAttackRange = usingAutocast
+                ? player.goodDistance(player.getX(), player.getY(), npc.getX(), npc.getY(), 6)
+                : inMeleeRange;
+        if (!inAttackRange) {
             player.getPlayerAssistant().playerWalk(npc.getX(), npc.getY());
         } else {
+            if (usingAutocast) {
+                player.stopMovement();
+            }
             player.getCombatAssistant().attackNpc(npcIndex);
         }
-        JsonObject result = success((inMeleeRange ? "Attacking " : "Walking into melee range to attack ") + npc.name() + ".");
-        result.addProperty("approaching", !inMeleeRange);
+        String action = usingAutocast ? "autocast attack " : "attack ";
+        JsonObject result = success((inAttackRange ? "Starting " : "Walking into range to start ")
+                + action + npc.name() + ".");
+        result.addProperty("approaching", !inAttackRange);
+        result.addProperty("autocasting", player.autocasting);
+        result.addProperty("autocastId", player.autocastId);
         result.add("npc", npcJson(npc, AgentKnowledgeBase.distance(player.absX, player.absY, npc.absX, npc.absY)));
         addPlayerState(result, player);
         return result;
+    }
+
+    private static JsonObject castSpellOnNpc(Player player, JsonObject arguments) {
+        int spellIndex = resolveMagicSpellIndex(arguments);
+        if (spellIndex < 0) {
+            return failure("Unknown spell. Pass spellId/magicId from MagicData or spellIndex.");
+        }
+        if (player.playerLevel[Constants.MAGIC] < MagicData.MAGIC_SPELLS[spellIndex][1]) {
+            return failure("Magic level " + MagicData.MAGIC_SPELLS[spellIndex][1] + " is required for this spell.");
+        }
+
+        Npc npc = findNpcForInteraction(player, arguments);
+        if (npc == null || !isNpcCandidate(player, npc) || npc.MaxHP <= 0) {
+            return failure("No matching attackable NPC found nearby.");
+        }
+        if (!isReachableNpc(player, npc)) {
+            player.getCombatAssistant().resetPlayerAttack();
+            return failure("That NPC is not reachable with normal movement.");
+        }
+
+        int distance = AgentKnowledgeBase.distance(player.absX, player.absY, npc.absX, npc.absY);
+        boolean inCastRange = player.goodDistance(player.getX(), player.getY(), npc.getX(), npc.getY(), 6);
+        player.endCurrentTask();
+        SkillHandler.resetSkills(player);
+        player.getPlayerAssistant().resetFollow();
+        player.getCombatAssistant().resetPlayerAttack();
+        player.spellId = spellIndex;
+        player.usingMagic = true;
+        player.autocasting = false;
+        player.npcIndex = npc.npcId;
+        player.followNpcId = npc.npcId;
+        player.followPlayerId = 0;
+        player.faceUpdate(npc.npcId);
+        if (!inCastRange) {
+            player.getPlayerAssistant().playerWalk(npc.getX(), npc.getY());
+        } else {
+            player.stopMovement();
+            if (player.attackTimer <= 0) {
+                player.getCombatAssistant().attackNpc(npc.npcId);
+                player.attackTimer++;
+            }
+        }
+
+        JsonObject result = success((inCastRange ? "Casting " : "Walking into range to cast ")
+                + magicSpellLabel(spellIndex) + " on " + npc.name() + ".");
+        result.addProperty("approaching", !inCastRange);
+        result.addProperty("spellIndex", spellIndex);
+        result.addProperty("spellId", MagicData.MAGIC_SPELLS[spellIndex][0]);
+        result.addProperty("spell", magicSpellLabel(spellIndex));
+        result.add("npc", npcJson(npc, distance));
+        addPlayerState(result, player);
+        return result;
+    }
+
+    private static int resolveMagicSpellIndex(JsonObject arguments) {
+        int explicitIndex = getInt(arguments, "spellIndex", -1);
+        if (explicitIndex >= 0 && explicitIndex < MagicData.MAGIC_SPELLS.length) {
+            return explicitIndex;
+        }
+        int spellId = getInt(arguments, "spellId", getInt(arguments, "magicId", -1));
+        if (spellId >= 0) {
+            for (int i = 0; i < MagicData.MAGIC_SPELLS.length; i++) {
+                if (MagicData.MAGIC_SPELLS[i][0] == spellId) {
+                    return i;
+                }
+            }
+        }
+        String spellName = normalize(getString(arguments, "spell", getString(arguments, "name", "")));
+        if (spellName.isEmpty()) {
+            return -1;
+        }
+        for (int i = 0; i < MagicData.MAGIC_SPELLS.length; i++) {
+            if (normalize(magicSpellLabel(i)).equals(spellName)) {
+                return i;
+            }
+        }
+        if ("wind strike".equals(spellName)) {
+            return 0;
+        }
+        if ("wind bolt".equals(spellName)) {
+            return 4;
+        }
+        if ("wind blast".equals(spellName)) {
+            return 8;
+        }
+        if ("wind wave".equals(spellName)) {
+            return 12;
+        }
+        return -1;
+    }
+
+    private static String magicSpellLabel(int spellIndex) {
+        switch (spellIndex) {
+        case 0:
+            return "Wind Strike";
+        case 1:
+            return "Water Strike";
+        case 2:
+            return "Earth Strike";
+        case 3:
+            return "Fire Strike";
+        case 4:
+            return "Wind Bolt";
+        case 5:
+            return "Water Bolt";
+        case 6:
+            return "Earth Bolt";
+        case 7:
+            return "Fire Bolt";
+        case 8:
+            return "Wind Blast";
+        case 9:
+            return "Water Blast";
+        case 10:
+            return "Earth Blast";
+        case 11:
+            return "Fire Blast";
+        case 12:
+            return "Wind Wave";
+        case 13:
+            return "Water Wave";
+        case 14:
+            return "Earth Wave";
+        case 15:
+            return "Fire Wave";
+        case 16:
+            return "Confuse";
+        case 17:
+            return "Weaken";
+        case 18:
+            return "Curse";
+        default:
+            return MagicData.getSpellName(spellIndex);
+        }
     }
 
     private static JsonObject trainCombat(Player player, JsonObject arguments) {
@@ -4043,15 +4269,115 @@ public class AgentToolService {
         SkillHandler.resetSkills(player);
         player.getPacketSender().openUpBank();
 
-        String name = normalize(getString(arguments, "name", ""));
+        if (hasWithdrawBankItemBatch(arguments)) {
+            return withdrawBankItemBatch(player, arguments);
+        }
+
+        JsonObject item = withdrawOneBankItem(player, arguments);
+        int withdrawnAmount = getInt(item, "withdrawnAmount", 0);
+        JsonObject result = withdrawnAmount > 0
+                ? success("Withdrew " + withdrawnAmount + " bank item" + (withdrawnAmount == 1 ? "." : "s."))
+                : failure(getString(item, "message", "No matching bank item was withdrawn."));
+        result.addProperty("withdrawn", withdrawnAmount > 0 ? 1 : 0);
+        result.addProperty("withdrawnAmount", withdrawnAmount);
+        if (item.has("itemId")) {
+            result.addProperty("itemId", item.get("itemId").getAsInt());
+        }
+        if (item.has("itemName")) {
+            result.addProperty("itemName", item.get("itemName").getAsString());
+        }
+        addPlayerState(result, player);
+        return result;
+    }
+
+    private static boolean hasWithdrawBankItemBatch(JsonObject arguments) {
+        return hasArray(arguments, "items") || hasArray(arguments, "withdrawals") || hasArray(arguments, "requests");
+    }
+
+    private static JsonArray withdrawBankItemBatchArray(JsonObject arguments) {
+        if (hasArray(arguments, "items")) {
+            return jsonArray(arguments, "items");
+        }
+        if (hasArray(arguments, "withdrawals")) {
+            return jsonArray(arguments, "withdrawals");
+        }
+        return jsonArray(arguments, "requests");
+    }
+
+    private static JsonObject withdrawBankItemBatch(Player player, JsonObject arguments) {
+        JsonArray requests = withdrawBankItemBatchArray(arguments);
+        boolean allowPartial = getBoolean(arguments, "allowPartial", false);
+        int defaultAmount = Math.max(1, getInt(arguments, "amount", 1));
+        JsonArray items = new JsonArray();
+        int completed = 0;
+        int withdrawnAmount = 0;
+        String failedMessage = "";
+
+        for (JsonElement element : requests) {
+            JsonObject itemSummary = new JsonObject();
+            JsonObject request = withdrawBankItemRequest(element, defaultAmount, itemSummary);
+            if (request == null) {
+                itemSummary.addProperty("success", false);
+                itemSummary.addProperty("withdrawnAmount", 0);
+                if (!itemSummary.has("message")) {
+                    itemSummary.addProperty("message", "Invalid batch withdraw item.");
+                }
+                failedMessage = getString(itemSummary, "message", "Invalid batch withdraw item.");
+                items.add(itemSummary);
+                if (!allowPartial) {
+                    break;
+                }
+                continue;
+            }
+
+            int requestedAmount = Math.max(1, getInt(request, "amount", defaultAmount));
+            JsonObject moved = withdrawOneBankItem(player, request);
+            int movedAmount = Math.max(0, getInt(moved, "withdrawnAmount", 0));
+            boolean itemSuccess = getBoolean(moved, "success", false)
+                    && (allowPartial || movedAmount >= requestedAmount);
+            copyIfPresent(moved, itemSummary, "itemId");
+            copyIfPresent(moved, itemSummary, "itemName");
+            itemSummary.addProperty("requested", requestedAmount);
+            itemSummary.addProperty("withdrawnAmount", movedAmount);
+            if (!itemSuccess) {
+                itemSummary.addProperty("success", false);
+                itemSummary.addProperty("message", getString(moved, "message", "No matching bank item was withdrawn."));
+                failedMessage = getString(itemSummary, "message", "No matching bank item was withdrawn.");
+            } else {
+                completed++;
+            }
+            withdrawnAmount += movedAmount;
+            items.add(itemSummary);
+            if (!itemSuccess && !allowPartial) {
+                break;
+            }
+        }
+
+        JsonObject result = completed == requests.size() && withdrawnAmount > 0
+                ? success("Withdrew " + withdrawnAmount + " bank item" + (withdrawnAmount == 1 ? "" : "s")
+                        + " across " + completed + " request" + (completed == 1 ? "." : "s."))
+                : failure("Batch bank withdraw incomplete: "
+                        + (failedMessage.isEmpty() ? "no matching bank item was withdrawn" : failedMessage));
+        result.addProperty("withdrawn", completed);
+        result.addProperty("withdrawnAmount", withdrawnAmount);
+        result.addProperty("requested", requests.size());
+        result.add("items", items);
+        addPlayerState(result, player);
+        return result;
+    }
+
+    private static JsonObject withdrawOneBankItem(Player player, JsonObject arguments) {
+        String name = normalize(getString(arguments, "name", getString(arguments, "item", "")));
         int amount = Math.max(1, getInt(arguments, "amount", 1));
         List<Integer> itemIds = getIntList(arguments, "itemIds");
         int requestedId = getInt(arguments, "itemId", -1);
         if (requestedId >= 0) {
             itemIds.add(requestedId);
         }
-        int withdrawn = 0;
-        int withdrawnAmount = 0;
+        JsonObject result = new JsonObject();
+        result.addProperty("success", false);
+        result.addProperty("requested", amount);
+        result.addProperty("withdrawnAmount", 0);
         for (int i = 0; i < player.bankItems.length; i++) {
             int storedId = player.bankItems[i];
             if (!hasPositiveStoredItem(storedId, player.bankItemsN[i])) {
@@ -4072,17 +4398,77 @@ public class AgentToolService {
             player.getItemAssistant().fromBank(itemId, i, Math.min(amount, Math.max(1, player.bankItemsN[i])));
             int moved = countInventoryItem(player, itemId) - before;
             if (moved > 0) {
-                withdrawn++;
-                withdrawnAmount += moved;
+                result.addProperty("success", true);
+                result.addProperty("itemId", itemId);
+                result.addProperty("itemName", DeprecatedItems.getItemName(itemId));
+                result.addProperty("withdrawnAmount", moved);
+                result.addProperty("message", "Withdrew " + moved + " bank item" + (moved == 1 ? "." : "s."));
+                return result;
             }
             break;
         }
-        JsonObject result = withdrawn > 0 ? success("Withdrew " + withdrawnAmount + " bank item" + (withdrawnAmount == 1 ? "." : "s."))
-                : failure("No matching bank item was withdrawn.");
-        result.addProperty("withdrawn", withdrawn);
-        result.addProperty("withdrawnAmount", withdrawnAmount);
-        addPlayerState(result, player);
+        result.addProperty("message", "No matching bank item was withdrawn.");
         return result;
+    }
+
+    private static JsonObject withdrawBankItemRequest(JsonElement element, int defaultAmount, JsonObject summary) {
+        JsonObject request = new JsonObject();
+        int amount = defaultAmount;
+        if (element == null || element.isJsonNull()) {
+            summary.addProperty("message", "Batch withdraw item was null.");
+            return null;
+        }
+        if (element.isJsonPrimitive()) {
+            try {
+                int itemId = element.getAsInt();
+                request.addProperty("itemId", itemId);
+                request.addProperty("amount", amount);
+                summary.addProperty("itemId", itemId);
+                return request;
+            } catch (RuntimeException ignored) {
+                summary.addProperty("message", "Primitive batch withdraw item must be an item id.");
+                return null;
+            }
+        }
+        if (element.isJsonArray()) {
+            JsonArray pair = element.getAsJsonArray();
+            if (pair.size() < 2 || !pair.get(0).isJsonPrimitive() || !pair.get(1).isJsonPrimitive()) {
+                summary.addProperty("message", "Array batch withdraw item must be [itemId, amount].");
+                return null;
+            }
+            try {
+                int itemId = pair.get(0).getAsInt();
+                amount = Math.max(1, pair.get(1).getAsInt());
+                request.addProperty("itemId", itemId);
+                request.addProperty("amount", amount);
+                summary.addProperty("itemId", itemId);
+                return request;
+            } catch (RuntimeException ignored) {
+                summary.addProperty("message", "Array batch withdraw item must use numeric itemId and amount.");
+                return null;
+            }
+        }
+        if (!element.isJsonObject()) {
+            summary.addProperty("message", "Unsupported batch withdraw item shape.");
+            return null;
+        }
+
+        JsonObject item = element.getAsJsonObject();
+        amount = Math.max(1, getInt(item, "amount", getInt(item, "count", getInt(item, "quantity", defaultAmount))));
+        int itemId = getInt(item, "itemId", getInt(item, "id", -1));
+        String name = getString(item, "name", getString(item, "item", ""));
+        if (itemId >= 0) {
+            request.addProperty("itemId", itemId);
+            summary.addProperty("itemId", itemId);
+        } else if (!name.trim().isEmpty()) {
+            request.addProperty("name", name);
+            summary.addProperty("name", name);
+        } else {
+            summary.addProperty("message", "Batch withdraw object must include itemId/id or name/item.");
+            return null;
+        }
+        request.addProperty("amount", amount);
+        return request;
     }
 
     static boolean hasPositiveStoredItem(int storedId, int amount) {

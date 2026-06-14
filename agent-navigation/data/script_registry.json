@@ -102,7 +102,7 @@
       "name": "Agility Pyramid Runner",
       "path": "agent-navigation/tools/agility_pyramid_runner.py",
       "kind": "gameplay_runner",
-      "description": "Course-specific wrapper for the Agility Pyramid phase. It exits with a clear message until the pyramid course definition and route data are added locally.",
+      "description": "Course-specific wrapper for the Agility Pyramid phase. Uses the locally defined fast stair route and delegates obstacle execution to the adaptive agility runner.",
       "aliases": [
         "agility pyramid runner",
         "pyramid agility",
@@ -116,8 +116,62 @@
         "runner"
       ],
       "examples": [
-        "python3 agent-navigation/tools/agility_pyramid_runner.py --target-agility-level 40",
+        "python3 agent-navigation/tools/agility_pyramid_runner.py --target-agility-level 99",
+        "python3 agent-navigation/tools/agility_pyramid_runner.py --profile Mrathlete --launch-detached",
+        "python3 agent-navigation/tools/agility_pyramid_runner.py --profile Mrathlete --status",
+        "python3 agent-navigation/tools/agility_pyramid_runner.py --profile Mrathlete --report --report-text",
         "python3 agent-navigation/tools/script_registry.py run pyramid agility -- --quiet"
+      ]
+    },
+    {
+      "id": "agility_runner_report",
+      "name": "Agility Runner Report",
+      "path": "agent-navigation/tools/agility_runner_report.py",
+      "kind": "report",
+      "description": "Summarizes adaptive agility runner JSONL logs by lap timing, XP/hour, per-step timing, failure reasons, and slowest steps without loading raw logs into Codex context.",
+      "aliases": [
+        "agility report",
+        "agility timing report",
+        "agility runner report",
+        "pyramid agility report"
+      ],
+      "tags": [
+        "agility",
+        "report",
+        "timing",
+        "tick-analysis",
+        "runner"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/agility_runner_report.py --profile Mrathlete --course agility_pyramid_course --text",
+        "python3 agent-navigation/tools/agility_runner_report.py --profile Mrathlete --course barbarian_outpost_agility_course --text",
+        "python3 agent-navigation/tools/script_registry.py run agility report -- --profile Mrathlete --course agility_pyramid_course --text"
+      ]
+    },
+    {
+      "id": "agility_pyramid_travel_setup",
+      "name": "Agility Pyramid Travel Setup",
+      "path": "agent-navigation/tools/agility_pyramid_travel_setup.py",
+      "kind": "gameplay_setup",
+      "description": "Safely moves a selected profile from Lumbridge or Al Kharid to the Agility Pyramid start, requiring carried coins for the toll, Shantay pass, and full waterskins before any desert crossing.",
+      "aliases": [
+        "pyramid agility setup",
+        "agility pyramid setup",
+        "pyramid travel setup",
+        "shantay pyramid setup"
+      ],
+      "tags": [
+        "gameplay",
+        "agility",
+        "pyramid",
+        "travel",
+        "setup",
+        "desert"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/agility_pyramid_travel_setup.py --profile Mrathlete --status",
+        "python3 agent-navigation/tools/agility_pyramid_travel_setup.py --profile Mrathlete --waterskins 2",
+        "python3 agent-navigation/tools/script_registry.py run pyramid travel setup -- --profile Mrathlete"
       ]
     },
     {
@@ -300,6 +354,112 @@
       ]
     },
     {
+      "id": "yew_longbow_stringer",
+      "name": "Yew Longbow Stringer",
+      "path": "agent-navigation/tools/yew_longbow_stringer.py",
+      "kind": "gameplay_runner",
+      "description": "Profile-scoped bank runner that strings yew longbow (u) with bow strings into yew longbows using normal withdraw, calibrated exact-tick stringing waits, immediate bank/deposit loops, and compact primitives. It supports status and cooperative stop files.",
+      "aliases": [
+        "string yews",
+        "yew stringing",
+        "string yew longbows",
+        "yew longbow stringer",
+        "bow string yews"
+      ],
+      "tags": [
+        "gameplay",
+        "fletching",
+        "yew",
+        "longbow",
+        "stringing",
+        "runner",
+        "bank"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/yew_longbow_stringer.py --profile PROFILE --bank falador_east_bank --max-cycles 1",
+        "python3 agent-navigation/tools/script_registry.py run string yews -- --profile PROFILE --status"
+      ]
+    },
+    {
+      "id": "falador_willow_longbow_selloff",
+      "name": "Falador Willow Longbow Selloff",
+      "path": "agent-navigation/tools/falador_willow_longbow_selloff.py",
+      "kind": "gameplay_runner",
+      "description": "Profile-scoped Falador cleanup helper that withdraws only banked willow longbow (u) as notes, sells them to the Falador general store, and returns to Falador east bank to bank the sale coins without touching yew bow stock.",
+      "aliases": [
+        "sell willow longs",
+        "sell willow longbows",
+        "falador willow selloff",
+        "willow longbow selloff"
+      ],
+      "tags": [
+        "gameplay",
+        "fletching",
+        "willow",
+        "longbow",
+        "shop",
+        "falador",
+        "bank"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/falador_willow_longbow_selloff.py --profile PROFILE",
+        "python3 agent-navigation/tools/script_registry.py run sell willow longs -- --profile PROFILE"
+      ]
+    },
+    {
+      "id": "magic_training_runner",
+      "name": "Magic Training Runner",
+      "path": "agent-navigation/tools/magic_training_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Profile-scoped Magic combat runner that selects standard combat spells, equips an air staff, manages food and runes, trains on safe nearby NPCs, and records compact Magic XP run logs.",
+      "aliases": [
+        "magic training",
+        "train magic",
+        "magic runner",
+        "cast spells",
+        "combat magic"
+      ],
+      "tags": [
+        "gameplay",
+        "magic",
+        "combat",
+        "training",
+        "runner",
+        "primitive"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/magic_training_runner.py --profile PROFILE --npc goblin --max-rounds 20 --setup-bank",
+        "python3 agent-navigation/tools/script_registry.py run magic training -- --profile PROFILE --max-rounds 20"
+      ]
+    },
+    {
+      "id": "magic_campaign_runner",
+      "name": "Magic Campaign Runner",
+      "path": "agent-navigation/tools/magic_campaign_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Long-running profile-scoped Magic campaign runner that restocks runes, prepares bank loadouts, routes to training targets, runs Magic training batches, and writes campaign status/log artifacts.",
+      "aliases": [
+        "magic campaign",
+        "magic campaign runner",
+        "long magic training",
+        "rune restock magic"
+      ],
+      "tags": [
+        "gameplay",
+        "magic",
+        "combat",
+        "training",
+        "campaign",
+        "runner",
+        "bank",
+        "shop"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/magic_campaign_runner.py --profile PROFILE --max-batches 1",
+        "python3 agent-navigation/tools/script_registry.py run magic campaign -- --profile PROFILE --status"
+      ]
+    },
+    {
       "id": "woodcutting_runner",
       "name": "Primitive Woodcutting Runner",
       "path": "agent-navigation/tools/woodcutting_runner.py",
@@ -357,7 +517,7 @@
       "name": "Fast Seers Flax Spin Runner",
       "path": "agent-navigation/tools/seers_flax_spin_fast_runner.py",
       "kind": "gameplay_runner",
-      "description": "Fast Seers Village flax picker and bowstring spinner with low-overhead tick-analysis events, cached flax selection, compact bridge calls, cooperative status/stop files, and tiny shutdown-status polling.",
+      "description": "Fast Seers Village flax picker and bowstring spinner with low-overhead tick-analysis events, cached flax selection, compact bridge calls, exact-tick spinning waits, cooperative status/stop files, and tiny shutdown-status polling.",
       "aliases": [
         "seers flax fast",
         "fast flax",
@@ -378,6 +538,65 @@
       "examples": [
         "python3 agent-navigation/tools/seers_flax_spin_fast_runner.py --profile PROFILE --max-cycles 1 --quiet",
         "python3 agent-navigation/tools/script_registry.py run seers flax fast -- --profile PROFILE --shutdown-status"
+      ]
+    },
+    {
+      "id": "seers_bowstring_yew_master",
+      "name": "Seers Bowstring Yew Master",
+      "path": "agent-navigation/tools/seers_bowstring_yew_master.py",
+      "kind": "gameplay_runner",
+      "description": "Profile-scoped master runner that alternates the fast Seers flax-to-bowstring runner with bank-based yew longbow stringing at Seers bank, while exposing compact status and cooperative stop controls.",
+      "aliases": [
+        "seers bowstring yew master",
+        "bowstring yew master",
+        "alternate bowstrings yews",
+        "flax yew alternator",
+        "seers master"
+      ],
+      "tags": [
+        "gameplay",
+        "crafting",
+        "fletching",
+        "flax",
+        "bowstrings",
+        "yew",
+        "runner",
+        "seers"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/seers_bowstring_yew_master.py --profile PROFILE --max-master-cycles 1",
+        "python3 agent-navigation/tools/script_registry.py run seers master -- --profile PROFILE --shutdown-status"
+      ]
+    },
+    {
+      "id": "seers_yew_complete_bow_master",
+      "name": "Seers Yew Complete Bow Master",
+      "path": "agent-navigation/tools/seers_yew_complete_bow_master.py",
+      "kind": "gameplay_runner",
+      "description": "Profile-scoped master runner that makes finished yew longbows by switching between existing Seers yew chop/fletch, fast flax-to-bowstring, and yew-longbow stringing runners. It prioritizes stringing pairable supplies first and exposes compact status plus cooperative stop controls.",
+      "aliases": [
+        "seers complete yews",
+        "complete yew bows",
+        "make complete yew longbows",
+        "yew flax string master",
+        "seers yew complete master"
+      ],
+      "tags": [
+        "gameplay",
+        "woodcutting",
+        "fletching",
+        "crafting",
+        "flax",
+        "bowstrings",
+        "yew",
+        "longbow",
+        "runner",
+        "wrapper",
+        "seers"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/seers_yew_complete_bow_master.py --profile PROFILE --max-master-cycles 1",
+        "python3 agent-navigation/tools/script_registry.py run complete yew bows -- --profile PROFILE --shutdown-status"
       ]
     },
     {
@@ -811,7 +1030,7 @@
       "name": "Primitive Smithing Runner",
       "path": "agent-navigation/tools/smithing_runner.py",
       "kind": "gameplay_runner",
-      "description": "Runs smelting and smithing externally using object interaction, item-on-object, interface-button smelting, interface-item smithing selection, wait_until_idle, and SmithingData parsing instead of Java smelt_bar, smith_item, smith_best_item, plan_smithing, or train_smithing_profit strategy calls.",
+      "description": "Runs smelting and smithing externally using reusable bridge primitives such as smelt_bar, object interaction, interface-item smithing selection, wait_until_idle, and SmithingData parsing instead of Java smith_item, smith_best_item, plan_smithing, or train_smithing_profit strategy calls.",
       "aliases": [
         "smithing",
         "smith",
@@ -830,6 +1049,81 @@
       "examples": [
         "python3 agent-navigation/tools/script_registry.py run smithing -- --mode smelt --bar bronze --quiet",
         "python3 agent-navigation/tools/smithing_runner.py --mode smith --item sword --amount 10"
+      ]
+    },
+    {
+      "id": "al_kharid_bronze_prep_runner",
+      "name": "Al Kharid Bronze Prep Runner",
+      "path": "agent-navigation/tools/al_kharid_bronze_prep_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Phase-specific Smithing-30 prep wrapper that mines balanced Al Kharid copper/tin with a rune pickaxe, smelts bronze at the Al Kharid furnace, and stops once banked bronze can finish level 30 Smithing.",
+      "aliases": [
+        "bronze prep",
+        "al kharid bronze",
+        "copper tin smithing prep",
+        "smithing 30 prep"
+      ],
+      "tags": [
+        "gameplay",
+        "mining",
+        "smithing",
+        "bronze",
+        "runner",
+        "phase"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/al_kharid_bronze_prep_runner.py --profile MrFlame --max-loops 2",
+        "python3 agent-navigation/tools/script_registry.py run bronze prep -- --profile MrFlame --quiet"
+      ]
+    },
+    {
+      "id": "varrock_bronze_smith_runner",
+      "name": "Varrock Bronze Smith Runner",
+      "path": "agent-navigation/tools/varrock_bronze_smith_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Phase-specific wrapper that routes to Varrock west bank, withdraws hammer and bronze bars, smiths at Varrock west anvils, banks products, and stops at the target Smithing level.",
+      "aliases": [
+        "varrock bronze smith",
+        "bronze smithing",
+        "smith bronze bars",
+        "smithing 30 bronze"
+      ],
+      "tags": [
+        "gameplay",
+        "smithing",
+        "bronze",
+        "anvil",
+        "runner",
+        "phase"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/varrock_bronze_smith_runner.py --profile MrFlame --max-batches 2",
+        "python3 agent-navigation/tools/script_registry.py run varrock bronze smith -- --profile MrFlame --quiet"
+      ]
+    },
+    {
+      "id": "al_kharid_steel_smelter",
+      "name": "Al Kharid Steel Smelter",
+      "path": "agent-navigation/tools/al_kharid_steel_smelter.py",
+      "kind": "gameplay_runner",
+      "description": "Phase-specific wrapper that smelts banked iron ore and coal into steel bars at Al Kharid furnace using 9-steel inventory loads and banks each batch.",
+      "aliases": [
+        "steel smelter",
+        "al kharid steel",
+        "smelt steel bars",
+        "steel bar phase"
+      ],
+      "tags": [
+        "gameplay",
+        "smithing",
+        "smelting",
+        "steel",
+        "runner",
+        "phase"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/al_kharid_steel_smelter.py --profile MrFlame --max-batches 2",
+        "python3 agent-navigation/tools/script_registry.py run steel smelter -- --profile MrFlame --quiet"
       ]
     },
     {

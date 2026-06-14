@@ -16,8 +16,8 @@ Use this when you want to play or manually type `/agent ...` in the client:
 This builds if needed, starts the server, waits for port `43594`, and launches the client against localhost. Log in when the client opens. If you only need the client attached to an already-running server:
 
 ```sh
-./scripts/start-client.sh -u "MrFlame" -scale 2 -no-nav
-CLIENT_SINGLE_INSTANCE=0 ./scripts/start-client.sh -u "MrGem" -scale 2 -no-nav
+./scripts/start-client.sh -u "MrFlame" -scale 1 -no-nav
+CLIENT_SINGLE_INSTANCE=0 ./scripts/start-client.sh -u "MrGem" -scale 1 -no-nav
 ```
 
 ## Agent-Owned Relaunch
@@ -118,7 +118,7 @@ PY
      -password-character-save "2006Scape Server/data/characters/${profile_file}.txt" \
      -agent-auto-login \
      -agent-claim "$nonce" \
-     -scale 2 \
+     -scale 1 \
      -no-nav
    ```
 

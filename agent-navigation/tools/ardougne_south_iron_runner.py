@@ -12,6 +12,8 @@ iron cluster near the south bank.
 """
 
 import argparse
+import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -21,12 +23,184 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 import mining_runner  # noqa: E402
+import bridge_script as bridge  # noqa: E402
 from profile_utils import resolve_profile  # noqa: E402
 
+
+NAV_ROOT = SCRIPT_DIR.parent
+ML2_DEFINE = NAV_ROOT / "ml2-routing" / "route_ml_XS.py"
+ML2_EXECUTE = NAV_ROOT / "ml2-routing" / "tools" / "execute_route_definition.py"
+ML2_EVIDENCE = NAV_ROOT / ".local" / "run-evidence" / "ml2-route-executor.routes.jsonl"
 
 ARDY_SOUTH_IRON_SITE = "2606,3238,0"
 ARDY_SOUTH_BANK = "ardougne_south_bank"
 ARDY_SOUTH_BANK_TILE = "2654,3283,0"
+
+
+def _ardy_tile(value):
+    return mining_runner.parse_tile(value)
+
+
+def _ardy_direct_walk(target, args, handle, reason, stop_distance=0, require_bank=False):
+    max_distance = max(int(args.max_walk_distance), 96)
+    result = bridge.call_tool("walk_to_tile_until_arrived_XS", {
+        "x": int(target["x"]),
+        "y": int(target["y"]),
+        "height": int(target.get("height", 0) or 0),
+        "stopDistance": int(stop_distance),
+        "maxTicks": int(args.route_max_ticks),
+        "maxWalkDistance": max_distance,
+        "stopOnCombat": True,
+        "stopOnStall": True,
+    }, profile=args.profile)
+    player = bridge.player_from(result)
+    ok = bool(player.get("inBankArea")) if require_bank else (
+        mining_runner.chebyshev(mining_runner.tile_from_player(player), target) <= int(stop_distance)
+    )
+    mining_runner.write_event(handle, "ardy_direct_walk", {
+        "reason": reason,
+        "target": mining_runner.tile_string(target),
+        "stopDistance": int(stop_distance),
+        "requireBank": bool(require_bank),
+        "success": ok,
+        "batchStatus": result.get("batchStatus"),
+        "message": result.get("message"),
+        "player": mining_runner.compact_player(player),
+    })
+    return ok
+
+
+def _ardy_ml2_route(target, args, handle, reason, arrival_radius=1):
+    player = mining_runner.observe_xs()
+    start = mining_runner.tile_string(mining_runner.tile_from_player(player))
+    target_string = mining_runner.tile_string(target)
+    define_cmd = [
+        sys.executable,
+        str(ML2_DEFINE),
+        "define",
+        "--from", start,
+        "--to", target_string,
+        "--combat-level", str(player.get("combatLevel") or player.get("cb") or 0),
+        "--food", str(player.get("inventoryFood") or player.get("food") or 0),
+        "--run-energy", str(player.get("runEnergy") or player.get("run") or 0),
+    ]
+    if player.get("runEnabled") or player.get("runOn"):
+        define_cmd.append("--run-enabled")
+    define = subprocess.run(
+        define_cmd,
+        cwd=str(bridge.REPO_ROOT),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    route = {}
+    if define.stdout.strip():
+        route = json.loads(define.stdout.strip().splitlines()[-1])
+    if define.returncode != 0 or route.get("status") != "ok" or not route.get("path"):
+        mining_runner.write_event(handle, "ardy_ml2_route_define_failed", {
+            "reason": reason,
+            "from": start,
+            "target": target_string,
+            "returncode": define.returncode,
+            "stdout": define.stdout[-2000:],
+            "stderr": define.stderr[-2000:],
+            "route": route,
+        })
+        return False
+    execute_cmd = [
+        sys.executable,
+        str(ML2_EXECUTE),
+        "--route-definition", str(route["path"]),
+        "--profile", args.profile,
+        "--run-mode", "auto",
+        "--eat-at", "10",
+        "--arrival-radius", str(int(arrival_radius)),
+        "--evidence-jsonl", str(ML2_EVIDENCE),
+    ]
+    execute = subprocess.run(
+        execute_cmd,
+        cwd=str(bridge.REPO_ROOT),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    updated = mining_runner.observe_xs()
+    distance = mining_runner.chebyshev(mining_runner.tile_from_player(updated), target)
+    ok = execute.returncode == 0 and distance <= int(arrival_radius)
+    mining_runner.write_event(handle, "ardy_ml2_route", {
+        "reason": reason,
+        "from": start,
+        "target": target_string,
+        "arrivalRadius": int(arrival_radius),
+        "success": ok,
+        "distance": distance,
+        "route": {
+            "id": route.get("id"),
+            "mode": route.get("mode"),
+            "proven": (route.get("evidence") or {}).get("proven"),
+            "distTiles": route.get("distTiles"),
+            "path": route.get("path"),
+        },
+        "returncode": execute.returncode,
+        "stdout": execute.stdout[-2000:],
+        "stderr": execute.stderr[-2000:],
+        "player": mining_runner.compact_player(updated),
+    })
+    return ok
+
+
+def install_ardy_route_hooks():
+    original_route_to_tile = mining_runner.route_to_tile
+    original_route_to_bank = mining_runner.route_to_bank
+    site_tile = _ardy_tile(ARDY_SOUTH_IRON_SITE)
+    bank_tile = _ardy_tile(ARDY_SOUTH_BANK_TILE)
+
+    def near_enough_for_direct_walk(target, args, margin=30):
+        player = mining_runner.observe_xs()
+        distance = mining_runner.chebyshev(mining_runner.tile_from_player(player), target)
+        return distance <= int(margin)
+
+    def route_to_tile(target_tile, args, handle, reason):
+        if mining_runner.tile_string(target_tile) == ARDY_SOUTH_IRON_SITE:
+            if not near_enough_for_direct_walk(site_tile, args):
+                return _ardy_ml2_route(
+                    site_tile,
+                    args,
+                    handle,
+                    reason or "ardy_mine_site_ml2",
+                    arrival_radius=int(args.arrival_radius),
+                )
+            return _ardy_direct_walk(
+                site_tile,
+                args,
+                handle,
+                reason or "ardy_mine_site",
+                stop_distance=int(args.arrival_radius),
+            )
+        return original_route_to_tile(target_tile, args, handle, reason)
+
+    def route_to_bank(site, args, handle):
+        if site.get("bankPlace") == ARDY_SOUTH_BANK or mining_runner.tile_string(site.get("bankTile", {})) == ARDY_SOUTH_BANK_TILE:
+            if not near_enough_for_direct_walk(bank_tile, args):
+                return _ardy_ml2_route(
+                    bank_tile,
+                    args,
+                    handle,
+                    "ardy_south_bank_ml2",
+                    arrival_radius=4,
+                )
+            return _ardy_direct_walk(
+                bank_tile,
+                args,
+                handle,
+                "ardy_south_bank",
+                stop_distance=4,
+                require_bank=True,
+            )
+        return original_route_to_bank(site, args, handle)
+
+    mining_runner.route_to_tile = route_to_tile
+    mining_runner.route_to_bank = route_to_bank
 
 
 def build_mining_args(args):
@@ -79,7 +253,7 @@ def main(argv=None):
     parser.add_argument("--rock-scan-distance", type=int, default=8)
     parser.add_argument("--mine-max-ticks", type=int, default=250)
     parser.add_argument("--max-batches-per-leg", type=int, default=8)
-    parser.add_argument("--max-walk-distance", type=int, default=48)
+    parser.add_argument("--max-walk-distance", type=int, default=96)
     parser.add_argument("--route-max-ticks", type=int, default=180)
     parser.add_argument("--min-run-energy", type=int, default=10)
     parser.add_argument("--loop-delay", type=float, default=0.05)
@@ -97,6 +271,7 @@ def main(argv=None):
     if args.print_command:
         print("python3 agent-navigation/tools/mining_runner.py " + " ".join(delegated))
         return 0
+    install_ardy_route_hooks()
     return mining_runner.main(delegated)
 
 

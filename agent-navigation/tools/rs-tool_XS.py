@@ -9,6 +9,7 @@ from pathlib import Path
 from xs_common import ROOT, compact_bridge, dump, run_command
 from profile_utils import resolve_profile
 from usage_log import log_usage
+import bridge_script as bridge
 
 
 RS_TOOL = Path(__file__).resolve().parent / "rs-tool.sh"
@@ -67,6 +68,15 @@ def main():
         return 2
 
     tool = xs_tool_name(args.tool)
+    if bridge._has_batched_withdraw_args(tool, parsed):
+        log_usage("rs-tool_XS", surface="xs", argv=[tool, parsed])
+        data = bridge.call_tool(tool, parsed, profile=args.profile)
+        payload = compact_bridge(data, tool)
+        if isinstance(payload, dict):
+            payload.setdefault("tool", tool)
+        dump(payload)
+        return 0 if bool(payload.get("success", payload.get("ok", False))) else 1
+
     env = os.environ.copy()
     if args.profile:
         env["RS_PROFILE"] = args.profile

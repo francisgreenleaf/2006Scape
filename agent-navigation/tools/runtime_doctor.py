@@ -561,7 +561,7 @@ def add_profile_args(parser):
 def add_claim_args(parser):
     add_profile_args(parser)
     parser.add_argument("--password-file")
-    parser.add_argument("--scale", type=int, default=2)
+    parser.add_argument("--scale", type=int, default=1)
     parser.add_argument("--claim-timeout", type=float, default=90.0)
     parser.add_argument("--server-timeout", type=float, default=45.0)
     parser.add_argument("--replace-client", dest="replace_client", action="store_true")
