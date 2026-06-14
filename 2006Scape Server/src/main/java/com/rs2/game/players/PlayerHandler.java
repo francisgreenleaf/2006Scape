@@ -347,8 +347,11 @@ public class PlayerHandler {
 			outStr.writeWordBigEndian(updateSeconds * 50 / 30);
 		}
 		plr.updateThisPlayerMovement(outStr);
+		boolean echoChatTextToSelf = plr.isChatTextEchoToSelfRequired();
 		boolean saveChatTextUpdate = plr.isChatTextUpdateRequired();
-		plr.setChatTextUpdateRequired(false);
+		if (!echoChatTextToSelf) {
+			plr.setChatTextUpdateRequired(false);
+		}
 		plr.appendPlayerUpdateBlock(updateBlock);
 		plr.setChatTextUpdateRequired(saveChatTextUpdate);
 		if (outStr != null) {

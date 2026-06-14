@@ -6,6 +6,8 @@ import com.rs2.game.content.StaticObjectList;
 import com.rs2.game.objects.Objects;
 import com.rs2.game.players.Client;
 import com.rs2.game.players.Player;
+import com.rs2.util.Misc;
+import com.rs2.util.Stream;
 import org.apollo.cache.def.ItemDefinition;
 import org.apollo.util.security.IsaacRandom;
 import org.junit.BeforeClass;
@@ -539,6 +541,35 @@ public class AgentToolServiceTest {
         assertFalse(compact.getAsJsonObject("player").has("inventory"));
     }
 
+    @Test
+    public void publicChatUsesOnlyPackedTextBytes() {
+        Player player = testPlayer(44, "speaker");
+        JsonObject arguments = new JsonObject();
+        arguments.addProperty("message", "A little better. That is how the grind sneaks up on you.");
+
+        JsonObject result = AgentToolService.handle(player, "send_public_chat", arguments);
+
+        assertTrue(result.get("success").getAsBoolean());
+        int packedSize = player.getChatTextSize() & 0xff;
+        assertEquals(packedSize, player.getChatText().length);
+        assertTrue(player.isChatTextEchoToSelfRequired());
+        assertEquals("A little better. That is how the grind sneaks up on you.",
+                Misc.optimizeText(Misc.textUnpack(player.getChatText(), packedSize)));
+        Stream update = new Stream(new byte[256]);
+        ((TestPlayer) player).appendPublicChatForTest(update);
+        assertEquals(4 + packedSize, update.currentOffset);
+        assertEquals(0, update.buffer[0] & 0xff);
+        assertEquals(0, update.buffer[1] & 0xff);
+        assertEquals(0, update.buffer[2] & 0xff);
+        assertEquals(packedSize, -update.buffer[3] & 0xff);
+        byte[] decoded = new byte[packedSize];
+        for (int i = 0; i < packedSize; i++) {
+            decoded[packedSize - 1 - i] = update.buffer[4 + i];
+        }
+        assertEquals("A little better. That is how the grind sneaks up on you.",
+                Misc.optimizeText(Misc.textUnpack(decoded, packedSize)));
+    }
+
     private static Player testPlayer(int playerId, String playerName) {
         Player player = new TestPlayer(playerId);
         player.playerName = playerName;
@@ -579,6 +610,10 @@ public class AgentToolServiceTest {
         @Override
         public void flushOutStream() {
             // Keep bridge tool tests independent from an attached network session.
+        }
+
+        private void appendPublicChatForTest(Stream stream) {
+            appendPlayerChatText(stream);
         }
     }
 }

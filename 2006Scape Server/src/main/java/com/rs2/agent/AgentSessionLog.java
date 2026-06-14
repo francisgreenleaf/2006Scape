@@ -94,6 +94,13 @@ public class AgentSessionLog {
         toolFailed(session, tool, arguments, result, durationMs);
     }
 
+    void recordPersonalityEvent(AgentSession session, String event, JsonObject data) {
+        if (event == null || !event.startsWith("personality_")) {
+            return;
+        }
+        record(session, event, data, false);
+    }
+
     private void toolEvent(AgentSession session, String event, String tool, JsonObject arguments, JsonObject result, long durationMs) {
         JsonObject data = new JsonObject();
         data.addProperty("tool", tool == null ? "" : tool);
@@ -118,6 +125,10 @@ public class AgentSessionLog {
     }
 
     private void record(AgentSession session, String event, JsonObject data) {
+        record(session, event, data, true);
+    }
+
+    private void record(AgentSession session, String event, JsonObject data, boolean allowNarrator) {
         if (session == null || session.getSessionId() == null || session.getSessionId().trim().isEmpty()) {
             return;
         }
@@ -137,12 +148,13 @@ public class AgentSessionLog {
         if (data != null) {
             entry.add("data", sanitize(data));
         }
-        write(session, now, entry);
+        write(session, now, entry, allowNarrator);
     }
 
-    private void write(AgentSession session, long now, JsonObject entry) {
+    private void write(AgentSession session, long now, JsonObject entry, boolean allowNarrator) {
+        File logDirectory;
         synchronized (lock) {
-            File logDirectory = resolveLogDirectory();
+            logDirectory = resolveLogDirectory();
             File dayDirectory = new File(logDirectory, dateStamp(now));
             if (!dayDirectory.exists() && !dayDirectory.mkdirs()) {
                 System.err.println("Unable to create agent session log directory: " + dayDirectory.getAbsolutePath());
@@ -166,6 +178,9 @@ public class AgentSessionLog {
                 System.err.println("Unable to write agent session summary: " + e.getMessage());
             }
             AgentProfileMemory.INSTANCE.record(logDirectory, entry);
+        }
+        if (allowNarrator) {
+            AgentPersonalityNarrator.INSTANCE.observe(this, session, entry);
         }
     }
 
@@ -271,6 +286,9 @@ public class AgentSessionLog {
         builder.append("## Learning Over Time\n\n");
         builder.append(summary.learning()).append("\n\n");
 
+        builder.append("## Personality Chatter\n\n");
+        appendBullets(builder, summary.personalityChatter, "No personality chatter recorded yet.");
+
         builder.append("## Timeline\n\n");
         appendBullets(builder, summary.timeline, "No timeline events recorded yet.");
         return builder.toString();
@@ -368,6 +386,7 @@ public class AgentSessionLog {
         private final List<String> blockers = new ArrayList<String>();
         private final List<String> decisionTrail = new ArrayList<String>();
         private final List<String> timeline = new ArrayList<String>();
+        private final List<String> personalityChatter = new ArrayList<String>();
         private String playerName;
         private int playerId = -1;
         private String startedAt;
@@ -451,6 +470,21 @@ public class AgentSessionLog {
                 String detail = goalDetail(data, "Durable goal stopped");
                 addObstacle(detail);
                 addTimeline(label(time, detail));
+            } else if ("personality_chatter".equals(event)) {
+                String text = string(data, "text", "");
+                String source = string(data, "source", "unknown");
+                if (!text.isEmpty()) {
+                    addBounded(personalityChatter, source + ": " + compact(text, 180), 12);
+                }
+                addTimeline(label(time, "Personality chatter recorded."));
+            } else if ("personality_spoken".equals(event)) {
+                String text = string(data, "text", "");
+                if (!text.isEmpty()) {
+                    addBounded(personalityChatter, "spoken: " + compact(text, 180), 12);
+                }
+                addTimeline(label(time, "Personality chatter spoken publicly."));
+            } else if ("personality_chatter_failed".equals(event)) {
+                addTimeline(label(time, "Personality chatter enrichment failed."));
             } else if ("tool_completed".equals(event) || "tool_failed".equals(event)) {
                 consumeTool(time, event, data);
             } else {

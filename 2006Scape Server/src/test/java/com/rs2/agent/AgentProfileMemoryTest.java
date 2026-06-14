@@ -32,6 +32,10 @@ public class AgentProfileMemoryTest {
                 "Training cows near Lumbridge made level progress."));
         AgentProfileMemory.INSTANCE.record(logDirectory, entry("goal_blocked", "MrGem", "message",
                 "Player death stopped the combat goal."));
+        AgentProfileMemory.INSTANCE.record(logDirectory, personalityEntry("personality_chatter", "MrGem",
+                "Right. Bank first, heroics later."));
+        AgentProfileMemory.INSTANCE.record(logDirectory, personalityEntry("personality_spoken", "MrGem",
+                "Right. Bank first, heroics later."));
 
         File memoryFile = AgentProfileMemory.INSTANCE.personalityFile(logDirectory, "MrGem");
         assertTrue(memoryFile.exists());
@@ -47,6 +51,11 @@ public class AgentProfileMemoryTest {
         assertTrue(memory.contains("Use a reliable banking route before long gathering or combat loops."));
         assertTrue(memory.contains("## Recent Notes"));
         assertTrue(memory.contains("Risk note: deaths require better food, gear, and an exit path before retrying."));
+        assertTrue(memory.contains("## Personality Sketch"));
+        assertTrue(memory.contains("## Narrative Self-Talk"));
+        assertTrue(memory.contains("Right. Bank first, heroics later."));
+        assertTrue(memory.contains("## Spoken Thoughts"));
+        assertTrue(memory.contains("## Style Influences"));
         assertFalse(memory.contains("Note to self:"));
         assertFalse(memory.contains("cows are not glorious enemies"));
         assertFalse(memory.contains("campfire"));
@@ -56,6 +65,10 @@ public class AgentProfileMemoryTest {
         assertTrue(observed.has("personalityDrift"));
         assertTrue(observed.has("selfFormedGoals"));
         assertTrue(observed.has("selfTalkLog"));
+        assertTrue(observed.has("narrativeSelfTalkLog"));
+        assertTrue(observed.has("personalitySketch"));
+        assertTrue(observed.has("styleInfluences"));
+        assertTrue(observed.has("spokenThoughts"));
     }
 
     @Test
@@ -117,6 +130,19 @@ public class AgentProfileMemoryTest {
         result.addProperty("success", "tool_completed".equals(event));
         result.addProperty("message", message);
         data.add("result", result);
+        entry.add("data", data);
+        return entry;
+    }
+
+    private JsonObject personalityEntry(String event, String playerName, String text) {
+        JsonObject entry = new JsonObject();
+        entry.addProperty("timestamp", "2026-05-19T00:00:00.000Z");
+        entry.addProperty("event", event);
+        entry.addProperty("sessionId", "session-a");
+        entry.addProperty("playerName", playerName);
+        JsonObject data = new JsonObject();
+        data.addProperty("text", text);
+        data.addProperty("source", "template");
         entry.add("data", data);
         return entry;
     }
