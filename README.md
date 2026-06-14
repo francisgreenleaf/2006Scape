@@ -1,11 +1,6 @@
 # 2006Scape - but with codex ![Gameplay Image](https://i.imgur.com/WHnQz2W.png)
 
 
-## How to Play
-
-### Client/Launcher Download: https://2006Scape.org/
-### Rune-Server project thread: [Project thread](https://www.rune-server.ee/runescape-development/rs2-server/projects/686444-2006rebotted-remake-server-will-allow-supply-creatable-bots.html)
-
 # About This Fork
 
 This fork turns 2006Scape into a local, instrumented RuneScape agent laboratory. The original private server and desktop client are still here, but they now carry a Codex bridge that lets a logged-in player type `/agent ...` in the normal chatbox and hand a bounded gameplay task to an AI agent. The interesting part is the constraint: the agent plays through the server's own mechanics. It walks, clicks objects, opens gates, fights NPCs, eats food, banks, shops, mines, cooks, smiths, and waits for real ticks. It does not teleport, spawn items, edit stats, or drive the screen with brittle mouse automation.
