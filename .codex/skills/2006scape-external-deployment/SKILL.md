@@ -23,6 +23,7 @@ Load only the file needed for the task:
 
 - `docs/external-deployment-quickstart.md`: short first-live-test path for the default `direct_tcp` deployment.
 - `docs/player-agent-mode/README.md`: packaged-client `/agent` and repo-side remote-claim usage.
+- `docs/vps-direct-tcp-deployment-notes.md`: local operator notes for the active VPS test path, private credential env-file handling, profile login probes, and repo-side Codex control of named profiles.
 - `docs/agent-bridge-gateway.md` and `docs/config/templates/agent-bridge-gateway.nginx.conf`: public-safe HTTPS gateway render/probe workflow and static Nginx template.
 - `docs/network-auth-agent-chat-design.md`: design, implemented surfaces, requirement matrix, validation plan, and future decisions.
 - `docs/deployment-networking.md`: operator workflow, hosting tradeoffs, `direct_tcp`, Tailscale/WireGuard/VPN/client_tls_tunnel setup, live proof checklist.
@@ -107,6 +108,15 @@ scripts/probe-agent-bridge-gateway.py --gateway-url https://AGENT_GATEWAY_HOST
 ```
 
 The gateway proof is separate from public game/cache proof: it must show approved `/agent` endpoints reachable, unapproved `/agent/` paths rejected, and raw TCP `43610` not reachable from the external path.
+
+For a repo Codex thread controlling one named VPS character, use the player-agent README and VPS notes. Do not paste passwords or tokens. Source private credentials only into the shell when launching or probing a client login, then claim through the HTTPS gateway:
+
+```sh
+python3 agent-navigation/tools/remote_claim.py --profile PROFILE --bridge-url https://AGENT_GATEWAY_HOST --verify
+RS_PROFILE=PROFILE agent-navigation/tools/observe_XS.sh
+```
+
+If no HTTPS gateway URL or valid profile session file is available, stop and ask the operator. Do not expose raw TCP `43610` as a shortcut.
 
 Package generation also refuses symlinked output directories, archive paths, or output parent directories before deleting or writing package artifacts.
 

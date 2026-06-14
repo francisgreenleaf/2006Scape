@@ -23,6 +23,7 @@
 - 2026-06-14: Added VPS PBKDF2 accounts and copied character saves for the named test profiles. Live protocol login probes accepted all of them over the private public host and game port.
 - 2026-06-14: Packaged client launch defaults were changed to `client.scale=2` and `show_navbar=false` so the larger testing window uses repo-native canvas scaling instead of macOS JVM UI scaling.
 - 2026-06-14: A later SSH check from the local machine to port `22` timed out briefly, while public game/cache checks and a profile login still passed. A follow-up check recovered and `ssh` is currently reachable again.
+- 2026-06-14: The current local packaged `client.properties` is enough for direct-TCP game login but does not include `agent.bridge.url`. Repo-side Codex control of a VPS character still needs the HTTPS gateway URL packaged or supplied as `AGENT_BRIDGE_URL`, then a profile-scoped `remote_claim.py` session.
 
 ## Local Test Credentials
 
@@ -62,21 +63,55 @@ The packaged client connects to the privately supplied server host on world `1`,
 
 ## AI Agent Connect Steps
 
-Legacy remote `/agent` use can still use a trusted private SSH local port forward, but the preferred player-agent mode is now an HTTPS `/agent` gateway packaged as `agent.bridge.url`. In both cases, port `43610` must not be exposed publicly. For a private SSH fallback from the repo machine or another trusted operator machine:
+Direct TCP game login and Codex repo control are separate paths. The game client
+connects to the VPS over `43594`/`8080`/`43595`; repo-side Codex tools need a
+claimed bridge session through the HTTPS `/agent` gateway configured as
+`agent.bridge.url`. The raw bridge port `43610` must stay loopback-only.
+
+For one named profile from the repo machine:
+
+1. Source the private credentials only into the current shell. Do not print or
+   paste passwords into prompts, docs, logs, or PRs.
+
+   ```sh
+   cd <local-worktree>
+   set -a
+   source dist/external-deployment/private/vps-character-credentials.env
+   set +a
+   ```
+
+2. Launch the packaged client and log in as the target profile, such as
+   `MrFlame`, with the matching env vars from the private file.
+3. Claim the profile-scoped remote bridge session through the operator gateway:
+
+   ```sh
+   python3 agent-navigation/tools/remote_claim.py \
+     --profile MrFlame \
+     --bridge-url "$AGENT_BRIDGE_URL" \
+     --verify
+   ```
+
+4. Type the exact claim command printed by `remote_claim.py` in the logged-in
+   game client when prompted.
+5. Use profile-scoped compact tools from the repo:
+
+   ```sh
+   RS_PROFILE=MrFlame agent-navigation/tools/observe_XS.sh
+   RS_PROFILE=MrFlame agent-navigation/tools/rs-tool_XS.sh bank_item_count_XS '{"names":["coal","iron ore"]}'
+   ```
+
+If there is no HTTPS gateway URL yet, a trusted operator machine can still use a
+temporary private SSH local port forward for legacy `/agent` testing:
 
 ```sh
 ssh -i <path-to-private-key> -N -L 43610:127.0.0.1:43610 <user>@<vps-host>
 ```
 
-With that tunnel running:
-
-1. Launch the packaged client.
-2. Log in to the desired profile.
-3. Type `/agent status`.
-4. If Codex auth is needed, type `/agent key` and enter the API key in the Swing dialog.
-5. Start a task with `/agent <task>`.
-
-External players who do not have the private SSH/VPN/tunnel path should play normally and should not use `/agent`.
+With that tunnel running, launch the packaged client, log in to the desired
+profile, type `/agent status`, use `/agent key` if Codex auth is needed, and
+start a task with `/agent <task>`. External players who do not have the HTTPS
+gateway or private SSH/VPN/tunnel path should play normally and should not use
+`/agent`.
 
 ## Useful Live Checks
 
@@ -92,5 +127,16 @@ PY
 set -a
 source dist/external-deployment/private/vps-character-credentials.env
 set +a
-python3 scripts/probe-game-login.py --host "$HOST" --port 43594 --username "$PROFILE_USERNAME" --password-env PROFILE_PASSWORD --hold-seconds 1
+PROFILE_USERNAME="$MRFLAME_USERNAME"
+PROFILE_PASSWORD_ENV=MRFLAME_PASSWORD
+python3 scripts/probe-game-login.py --host "$HOST" --port 43594 --username "$PROFILE_USERNAME" --password-env "$PROFILE_PASSWORD_ENV" --hold-seconds 1
+```
+
+Example profile login probes without printing passwords:
+
+```sh
+python3 scripts/probe-game-login.py --host "$HOST" --port 43594 --username "$MRFLAME_USERNAME" --password-env MRFLAME_PASSWORD --hold-seconds 1
+python3 scripts/probe-game-login.py --host "$HOST" --port 43594 --username "$MRFISH_USERNAME" --password-env MRFISH_PASSWORD --hold-seconds 1
+python3 scripts/probe-game-login.py --host "$HOST" --port 43594 --username "$MRWOOD_USERNAME" --password-env MRWOOD_PASSWORD --hold-seconds 1
+python3 scripts/probe-game-login.py --host "$HOST" --port 43594 --username "$MRATHLETE_USERNAME" --password-env MRATHLETE_PASSWORD --hold-seconds 1
 ```
