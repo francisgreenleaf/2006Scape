@@ -1,6 +1,6 @@
 ---
 name: 2006scape-agent-bridge-dev
-description: "Use when adding, debugging, reviewing, or documenting 2006Scape Codex agent bridge tools in /Users/kevin/Documents/2006Scape, including rs.* dynamic tools, AgentBridgeServer, AgentActionService, AgentToolService, AgentSessionManager, CodexAppServerClient tool metadata, bridge HTTP endpoints, session scoping, Maven checks, runtime restarts, compact XS/XXS aliases, and proving tools through agent-navigation/tools/rs-tool_XS.sh or agent-navigation/tools/rs-tool_XXS.sh."
+description: "Use when adding, debugging, reviewing, or documenting 2006Scape Codex agent bridge tools in $REPO_ROOT, including rs.* dynamic tools, AgentBridgeServer, AgentActionService, AgentToolService, AgentSessionManager, CodexAppServerClient tool metadata, bridge HTTP endpoints, session scoping, Maven checks, runtime restarts, compact XS/XXS aliases, and proving tools through agent-navigation/tools/rs-tool_XS.sh or agent-navigation/tools/rs-tool_XXS.sh."
 ---
 
 # 2006Scape Agent Bridge Dev
@@ -15,7 +15,7 @@ Keep tools server-authoritative. HTTP handlers must not mutate gameplay directly
 
 Prefer a primitive-first bridge boundary. New gameplay strategies should usually be Python scripts that compose stable primitives such as `use_item_on_item`, `use_item_on_object`, `click_interface_button`, `select_interface_item`, `interact_object`, `interact_npc`, movement, wait, bank, shop, and combat tools. Add Java only when the bridge is missing a reusable gameplay input primitive; do not add a new bespoke Java tool for each skill loop.
 
-All new or changed bridge primitives must be player/session scoped and profile-neutral. The claimed `AgentSession` player is the authority; do not hard-code MrFlame, default session files, profile-specific paths, or current-account assumptions into Java metadata, handlers, compact aliases, or result shaping. If a helper script is needed for proof or strategy, it must accept `--profile PROFILE` or honor `RS_PROFILE`/`RSBRIDGE_PROFILE` and pass that profile through to the bridge wrapper.
+All new or changed bridge primitives must be player/session scoped and profile-neutral. The claimed `AgentSession` player is the authority; do not hard-code a profile, default session files, profile-specific paths, or current-account assumptions into Java metadata, handlers, compact aliases, or result shaping. If a helper script is needed for proof or strategy, it must accept `--profile PROFILE` or honor `RS_PROFILE`/`RSBRIDGE_PROFILE` and pass that profile through to the bridge wrapper.
 
 Never print or copy bridge tokens. Use `agent-navigation/tools/rs-tool_XS.sh` or `agent-navigation/tools/rs-tool_XXS.sh` for routine live proof; use full `agent-navigation/tools/rs-tool.sh` only when a compact alias omits a named field needed to prove or debug the change.
 
@@ -38,7 +38,7 @@ When adding or changing an `rs.*` primitive:
 1. Define or update the tool metadata in `CodexAppServerClient.java`.
 2. Route the server-side tool name in `AgentToolService` or `AgentActionService`.
 3. Use existing mechanics such as `PlayerAssistant.playerWalk`, `CombatAssistant.attackNpc`, `ClickObject`, `NpcActions`, `UseItem`, shops, banking, or dialogue/interface/item handlers.
-4. Preserve session scoping: reject offline, disconnected, dead, expired-token, and wrong-player sessions. Multi-profile behavior must be correct by construction, not only for the legacy MrFlame default.
+4. Preserve session scoping: reject offline, disconnected, dead, expired-token, and wrong-player sessions. Multi-profile behavior must be correct by construction, not only for the legacy default profile.
 5. Return a useful JSON result with `success`, a concise message, and compact state when it helps the next decision. XS/XXS aliases should preserve the fields agents need to avoid follow-up full observes.
 6. Add or update focused tests when behavior is shared, risky, has already regressed, or could mix up two claimed players.
 

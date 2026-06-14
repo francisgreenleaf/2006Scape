@@ -254,7 +254,7 @@ Secrets shape:
 - Keep `data/secrets.json` ignored.
 - Support:
   - existing `bot-token` for legacy global bot.
-  - `agent-discord-bots`: array of `{ "agent": "MrFlame", "token": "...", "channelId": "..." }`.
+  - `agent-discord-bots`: array of `{ "agent": "ExampleAgent", "token": "...", "channelId": "..." }`.
 
 Behavior:
 
@@ -481,21 +481,21 @@ Bridge tools:
 
 ```sh
 agent-navigation/tools/rs-tool_XS.sh agent_chat_send '{"message":"hello","channel":"agent"}'
-agent-navigation/tools/rs-tool_XS.sh agent_chat_send '{"message":"need a hand at bank","agent":"MrGem"}'
-agent-navigation/tools/rs-tool_XS.sh agent_chat_send '{"message":"hello from the agent","player":"MrFlame"}'
+agent-navigation/tools/rs-tool_XS.sh agent_chat_send '{"message":"need a hand at bank","agent":"SecondAgent"}'
+agent-navigation/tools/rs-tool_XS.sh agent_chat_send '{"message":"hello from the agent","player":"ExampleAgent"}'
 agent-navigation/tools/rs-tool_XS.sh agent_chat_read '{"sinceId":0,"limit":10}'
 agent-navigation/tools/rs-tool_XS.sh agent_chat_status '{"sinceId":0}'
-python3 agent-navigation/tools/agent_chat_XS.py --profile MrFlame send "hello"
-python3 agent-navigation/tools/agent_chat_XS.py --profile MrFlame send "need a hand at bank" --agent MrGem
-python3 agent-navigation/tools/agent_chat_XS.py --profile MrFlame send "hello from the agent" --player MrFlame
+python3 agent-navigation/tools/agent_chat_XS.py --profile ExampleAgent send "hello"
+python3 agent-navigation/tools/agent_chat_XS.py --profile ExampleAgent send "need a hand at bank" --agent SecondAgent
+python3 agent-navigation/tools/agent_chat_XS.py --profile ExampleAgent send "hello from the agent" --player ExampleAgent
 ```
 
 Players can send a structured message from the game client:
 
 ```text
 ::agentchat hello agents
-::agentchat @agent:MrGem hello
-::agentchat @player:MrFlame hello
+::agentchat @agent:SecondAgent hello
+::agentchat @player:ExampleAgent hello
 ::agentchat @all hello
 ::agentchat #ops hello
 ```
@@ -538,8 +538,8 @@ Discord fan-out is implemented as a transport boundary, not direct gameplay cont
 - Malformed bot fields fail closed: the runtime ignores configs with non-string required fields, object-shaped allow lists, empty explicit allow lists, or non-boolean `allowBroadcast` values.
 - Messages in the configured bot channel enter `AgentChatService` as `fromType:"discord"` for that agent.
 - Discord text defaults to a direct message for the configured agent. Prefixes route intentionally:
-  - `@agent:MrGem hello` sends to another agent.
-  - `@player:MrFlame hello` queues delivery to an online player's game chatbox through `AgentChatService`.
+  - `@agent:SecondAgent hello` sends to another agent.
+  - `@player:ExampleAgent hello` queues delivery to an online player's game chatbox through `AgentChatService`.
   - `@all hello` broadcasts to the shared agent channel and queues delivery to online game clients.
 - Optional `allowedAgents`, `allowedPlayers`, and `allowBroadcast` fields restrict Discord-originated target routing before messages enter `AgentChatService`. Omit allow lists for compatible open routing; if present, they must contain at least one non-empty name as a JSON array or comma-separated string, and `allowBroadcast` must be a JSON boolean.
 - Agent/player messages mirror to the relevant configured bot channel with Discord mentions escaped so in-game/agent text cannot ping `@everyone`, `@here`, users, or roles.
@@ -552,12 +552,12 @@ Example ignored secrets shape. Copy `2006Scape Server/data/secrets.External.Samp
   "bot-token": "",
   "agent-discord-bots": [
     {
-      "agent": "MrFlame",
+      "agent": "ExampleAgent",
       "token": "DISCORD_BOT_TOKEN",
       "channelId": "123456789012345678",
       "channel": "agent",
-      "allowedAgents": ["MrFlame", "MrGem"],
-      "allowedPlayers": ["MrFlame", "MrGem"],
+      "allowedAgents": ["ExampleAgent", "SecondAgent"],
+      "allowedPlayers": ["ExampleAgent", "SecondAgent"],
       "allowBroadcast": true
     }
   ],
@@ -695,5 +695,5 @@ Still requires operator/runtime proof before external use:
 These are not blockers for the external-player MVP described above. The current regular-player MVP uses `direct_tcp` for simple client onboarding, operator-created PBKDF2 account records, host firewall rules, a loopback-only agent bridge, and the structured `AgentChatService` bus. Tailscale, WireGuard, VPN, and the packaged `client_tls_tunnel` path remain supported alternatives when encrypted/private external access is required.
 
 - Registration can stay operator-managed through `scripts/create-account.py` for the MVP. A separate HTTPS account page/API would be a future onboarding project and would need its own CSRF, rate-limit, password-reset, audit, and Discord-linking design.
-- Agents should keep using structured agent chat for coordination. If agent messages are mirrored into normal public chat later, decide whether they appear as the player name or with a visible source prefix such as `[Agent:MrFlame]`; that is a UX/moderation choice, not required for bridge or Discord transport correctness.
+- Agents should keep using structured agent chat for coordination. If agent messages are mirrored into normal public chat later, decide whether they appear as the player name or with a visible source prefix such as `[Agent:ExampleAgent]`; that is a UX/moderation choice, not required for bridge or Discord transport correctness.
 - Public non-VPN play can use `direct_tcp` when plaintext game/cache sockets are acceptable with PBKDF2 account auth, firewalling, and bridge non-exposure. If public non-VPN traffic must be encrypted, use the packaged client-side tunnel until a separate in-protocol TLS project exists. In-protocol TLS would require coordinated changes in the Java client's socket/cache layers and the server/Netty pipeline, plus downgrade and certificate handling rules.

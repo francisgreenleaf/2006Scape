@@ -9,15 +9,15 @@ The result is a fork that is part RSPS, part embodied-agent testbed. It has loca
 
 ## Current Agent Demo
 
-These screenshots were captured from this checkout on June 6, 2026 with the local client, server, and bridge running. The demonstration used the starter `MrFlame` profile, dismissed the post-login welcome interface through the bridge, then ran one bounded `cowhide_combat_runner.py` cycle. The runner walked from Lumbridge toward the cow pen, enabled run, opened the cow-pen gate, attacked a cow, gained combat XP, picked up one cowhide, and stopped at its `max_cycles` boundary.
+These screenshots were captured from this checkout on June 6, 2026 with the local client, server, and bridge running. The demonstration used a starter demo profile, dismissed the post-login welcome interface through the bridge, then ran one bounded `cowhide_combat_runner.py` cycle. The runner walked from Lumbridge toward the cow pen, enabled run, opened the cow-pen gate, attacked a cow, gained combat XP, picked up one cowhide, and stopped at its `max_cycles` boundary.
 
 | Starting In Lumbridge | Fighting Through The Bridge | Result In The Cow Pen |
 | --- | --- | --- |
-| ![MrFlame logged in near Lumbridge with starter inventory and the local agent terminal open.](docs/images/agent-lumbridge-start.png) | ![MrFlame fighting a cow while the local Codex app-server terminal is visible in the client side panel.](docs/images/agent-cow-combat.png) | ![MrFlame standing in the Lumbridge cow pen after the bounded run picked up a cowhide.](docs/images/agent-cow-result.png) |
+| ![Demo profile logged in near Lumbridge with starter inventory and the local agent terminal open.](docs/images/agent-lumbridge-start.png) | ![Demo profile fighting a cow while the local Codex app-server terminal is visible in the client side panel.](docs/images/agent-cow-combat.png) | ![Demo profile standing in the Lumbridge cow pen after the bounded run picked up a cowhide.](docs/images/agent-cow-result.png) |
 
-The final compact checks showed `MrFlame` alive at `3254,3266,0`, HP `9/10`, run still enabled, one cowhide in inventory, and recent Attack and Hitpoints XP from the fight. That small run is representative of the fork's design: a high-level goal becomes server-authoritative primitives, and the proof is visible in both the game client and the generated route/combat evidence.
+The final compact checks showed the demo profile alive at `3254,3266,0`, HP `9/10`, run still enabled, one cowhide in inventory, and recent Attack and Hitpoints XP from the fight. That small run is representative of the fork's design: a high-level goal becomes server-authoritative primitives, and the proof is visible in both the game client and the generated route/combat evidence.
 
-The in-client Agent Terminal is also live. In the same session, typing `/agent status` through the Java client opened the side-panel terminal, started and initialized the Codex app-server path, connected the game bridge, and reported `Status: ready for mrflame`.
+The in-client Agent Terminal is also live. In the same session, typing `/agent status` through the Java client opened the side-panel terminal, started and initialized the Codex app-server path, connected the game bridge, and reported readiness for the selected profile.
 
 ![The 2006Scape Agent Terminal after a client-side /agent status command connected the local app-server and game bridge.](docs/images/agent-terminal-status.png)
 
@@ -28,7 +28,7 @@ The in-client Agent Terminal is also live. In the same session, typing `/agent s
 - **The tool surface is compact enough for long runs.** Full observation exists for debugging, but normal agent loops use XS and XXS tools such as `observe_state_XS`, `observe_state_XXS`, `walk_to_tile_until_arrived_XS`, `wait_until_idle_XXS`, `wait_until_combat_event_smart_XXS`, `deposit_inventory_items_XS`, `withdraw_bank_items_XS`, and `bank_item_count_XS`. Those tools return the survival, inventory, movement, XP, and decision fields an agent needs without flooding the model with the whole world.
 - **Strategy lives outside Java.** The Java bridge provides reusable primitives: observe, walk, interact with objects/NPCs, use item on item/object, click interface buttons, select interface items, attack, eat, pick up drops, bury bones, bank, shop, and wait. Python runners compose those primitives into mining, woodcutting, fletching, food, smithing, combat, agility, crafting, route, and banking workflows.
 - **Routes are learned artifacts, not hidden behavior.** `agent-navigation/` stores places, hazards, route definitions, movement traces, object-transition evidence, screenshots, route tests, and helper scripts. ML2 route definitions are the preferred normal A-to-B route contract, while older route runners remain as diagnostics.
-- **Profiles are isolated.** `MrFlame` remains the legacy default, but other profiles such as `MrGem` use their own bridge session files, client pid files, logs, route trace filters, screenshots, runner status files, and sparse character memories.
+- **Profiles are isolated.** The legacy default profile remains supported, and named profiles use their own bridge session files, client pid files, logs, route trace filters, screenshots, runner status files, and sparse character memories.
 - **Every serious run can become evidence.** Agent sessions write raw JSONL events and readable Markdown summaries under `2006Scape Server/data/logs/agent-sessions/`. Passive movement telemetry records active players without model polling. Screenshot helpers capture compact client-window proof when live geometry or UI state matters.
 
 ## Agent Capabilities
@@ -53,7 +53,7 @@ Bridge sessions are local and scoped. The client claims a server-side session wi
 
 For a contributor-oriented inventory of fork work, see [canvrno's additions so far](docs/canvrno-additions.md). For the runtime flow that starts the server, launches a profile-aware client, claims the bridge, and verifies compact tools without printing tokens, see [Local Agent Startup](docs/local-agent-startup.md). For the route and runner harness, start with [agent-navigation/README.md](agent-navigation/README.md) and [Agent Scripting Primitives](agent-navigation/scripting-primitives.md).
 
-For external-player experiments, start with [External Deployment Quickstart](docs/external-deployment-quickstart.md), [Deployment Networking](docs/deployment-networking.md), and the current [VPS Direct TCP Deployment Notes](docs/vps-direct-tcp-deployment-notes.md). The packaged desktop client defaults to `client.scale=2` and `show_navbar=false`, using the client-owned scale path instead of JVM UI scaling so the larger window keeps normal in-game mouse coordinates. Keep the agent bridge on loopback only; remote `/agent` use needs an operator-approved SSH/VPN/tunnel path to `127.0.0.1:43610`, never a public bridge port.
+For external-player experiments, start with [External Deployment Quickstart](docs/external-deployment-quickstart.md), [Deployment Networking](docs/deployment-networking.md), [Player Agent Mode](docs/player-agent-mode/README.md), and [Agent Bridge Gateway](docs/agent-bridge-gateway.md). The packaged desktop client defaults to `client.scale=2` and `show_navbar=false`, using the client-owned scale path instead of JVM UI scaling so the larger window keeps normal in-game mouse coordinates. Keep the raw agent bridge on loopback only; remote `/agent` use should go through an operator HTTPS `/agent` gateway packaged as `agent.bridge.url`, or through a trusted private tunnel for local/dev fallback.
 
 ## External Deployment Quick Reference
 
@@ -74,7 +74,7 @@ There are two good ways to drive the agent.
 **In the game client:** use this when you want the 2006Scape window to be the main control surface.
 
 ```sh
-./scripts/run-local.sh -u "MrFlame"
+./scripts/run-local.sh -u "ExampleAgent"
 ```
 
 Then log in and type commands in chat:
@@ -93,21 +93,21 @@ If `/agent status` says Codex needs a key, run `/agent key` and enter the API ke
 
 ```sh
 JAVA_BIN=/opt/homebrew/opt/openjdk/bin/java \
-  python3 agent-navigation/tools/runtime_doctor.py claim --profile MrFlame --verify
+  python3 agent-navigation/tools/runtime_doctor.py claim --profile ExampleAgent --verify
 
 agent-navigation/tools/observe_XXS.sh
 agent-navigation/tools/observe_XS.sh
 python3 agent-navigation/tools/script_registry.py search combat
 ```
 
-For another profile, pass `--profile MrGem` or set `RS_PROFILE=MrGem`. The helper writes only ignored session files under `agent-navigation/.local/`, and the wrapper scripts read those files without printing bridge tokens.
+For another profile, pass `--profile PROFILE` or set `RS_PROFILE=PROFILE`. The helper writes only ignored session files under `agent-navigation/.local/`, and the wrapper scripts read those files without printing bridge tokens.
 
 ## Sample Workflows
 
 **Check readiness and player state**
 
 ```sh
-python3 agent-navigation/tools/runtime_doctor.py status --profile MrFlame --observe
+python3 agent-navigation/tools/runtime_doctor.py status --profile ExampleAgent --observe
 agent-navigation/tools/observe_XXS.sh
 agent-navigation/tools/observe_XS.sh
 agent-navigation/tools/rs-tool_XS.sh bank_item_count '{"names":["Cowhide","Coal","Iron ore"]}'
@@ -119,7 +119,7 @@ Use XXS for heartbeat checks such as tile, HP, food, combat, death, and run stat
 
 ```sh
 python3 agent-navigation/tools/cowhide_combat_runner.py \
-  --profile MrFlame \
+  --profile ExampleAgent \
   --max-cycles 1 \
   --no-final-bank \
   --no-buy-kebabs \
@@ -187,9 +187,9 @@ Use screenshots when the live client view matters: wrong side of a gate, a door 
 **Inspect session and runner evidence**
 
 ```sh
-python3 agent-navigation/tools/agent_session_XS.py --profile MrFlame --latest
-python3 agent-navigation/tools/runner_status_XS.py --profile MrFlame
-python3 agent-navigation/tools/route_failure_XS.py --profile MrFlame
+python3 agent-navigation/tools/agent_session_XS.py --profile ExampleAgent --latest
+python3 agent-navigation/tools/runner_status_XS.py --profile ExampleAgent
+python3 agent-navigation/tools/route_failure_XS.py --profile ExampleAgent
 ```
 
 These compact readers are meant for the agent loop. They summarize current status, last route outcome, blockers, and recent session usage without dumping full raw JSONL into the model context.
@@ -226,14 +226,14 @@ Launcher JVM options can be passed through environment variables:
 
 ```sh
 SERVER_JAVA_OPTS="-Dsun.zip.disableMemoryMapping=true" ./scripts/start-server.sh
-CLIENT_JAVA_OPTS="-Dsun.java2d.uiScale=2" ./scripts/start-client.sh -u "MrFlame"
-CLIENT_SINGLE_INSTANCE=0 ./scripts/start-client.sh -u "MrGem"
+CLIENT_JAVA_OPTS="-Dsun.java2d.uiScale=2" ./scripts/start-client.sh -u "ExampleAgent"
+CLIENT_SINGLE_INSTANCE=0 ./scripts/start-client.sh -u "SecondAgent"
 ```
 
 The client also supports a repo-native scale flag that doubles the game canvas while preserving normal in-game mouse coordinates:
 
 ```sh
-./scripts/start-client.sh -u "MrFlame" -scale 2 -no-nav
+./scripts/start-client.sh -u "ExampleAgent" -scale 2 -no-nav
 ```
 
 Client arguments can be appended to either client launcher, for example:
@@ -242,11 +242,11 @@ Client arguments can be appended to either client launcher, for example:
 ./scripts/run-local.sh -u myname -p mypass
 ```
 
-For current agent testing, prefill the default local profile, or choose another profile explicitly:
+For current agent testing, prefill a local profile, or choose another profile explicitly:
 
 ```sh
-./scripts/run-local.sh -u "MrFlame"
-./scripts/run-local.sh -u "MrGem"
+./scripts/run-local.sh -u "ExampleAgent"
+./scripts/run-local.sh -u "SecondAgent"
 ```
 
 For Codex-controlled exploration where repo tools such as `agent-navigation/tools/rs-tool.sh` need an active bridge session, use the dedicated startup runbook:
@@ -267,7 +267,7 @@ Basic flow:
 1. Start the local server and client:
 
    ```sh
-   ./scripts/run-local.sh -u "MrFlame"
+   ./scripts/run-local.sh -u "ExampleAgent"
    ```
 
    For another profile, use that profile name and set `RS_PROFILE=<name>` for repo-side bridge tools.

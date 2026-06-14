@@ -1,6 +1,6 @@
 ---
 name: 2006scape-screenshot-capture
-description: "Use when visually debugging the live 2006Scape Java client from /Users/kevin/Documents/2006Scape with compact screenshots, especially when an agent needs north/east/south/west camera angles around the selected profile, route blockers, walls, gates, doors, stairs, or ambiguous object geometry without loading oversized desktop screenshots."
+description: "Use when visually debugging the live 2006Scape Java client from $REPO_ROOT with compact screenshots, especially when an agent needs north/east/south/west camera angles around the selected profile, route blockers, walls, gates, doors, stairs, or ambiguous object geometry without loading oversized desktop screenshots."
 ---
 
 # 2006Scape Screenshot Capture

@@ -1,11 +1,11 @@
 ---
 name: 2006scape-character-memory
-description: "Use when reading, writing, reviewing, or updating sparse long-term memories and goals for a specific 2006Scape character/profile, including equipment goals, preferences, recurring blockers, strategic reminders, and future plans that should persist for MrFlame, MrGem, or another selected profile without polluting route data or session logs."
+description: "Use when reading, writing, reviewing, or updating sparse long-term memories and goals for a specific 2006Scape character/profile, including equipment goals, preferences, recurring blockers, strategic reminders, and future plans that should persist for the selected profile without polluting route data or session logs."
 ---
 
 # 2006Scape Character Memory
 
-Use this skill for intentional long-term character memory in `/Users/kevin/Documents/2006Scape`. This is not the route database, passive telemetry, or session-derived `agentPersonality`; it is a small profile-scoped notebook for things a future agent should deliberately remember.
+Use this skill for intentional long-term character memory in `$REPO_ROOT`. This is not the route database, passive telemetry, or session-derived `agentPersonality`; it is a small profile-scoped notebook for things a future agent should deliberately remember.
 
 ## Storage
 
@@ -15,7 +15,7 @@ The helper stores ignored local files under:
 agent-navigation/.local/character-memory/<profile-slug>/
 ```
 
-Each profile has separate `memories.jsonl`, `goals.jsonl`, and `summary.md` files. Always pass `--profile PROFILE` or set `RS_PROFILE=PROFILE`; the legacy default profile is used only when no profile is supplied. Known display variants such as `Mr. Flame` normalize to `MrFlame`, and `Mr. Gem` normalizes to `MrGem`.
+Each profile has separate `memories.jsonl`, `goals.jsonl`, and `summary.md` files. Always pass `--profile PROFILE` or set `RS_PROFILE=PROFILE`; the legacy default profile is used only when no profile is supplied. Display-name variants normalize to stable canonical profile ids.
 
 ## Read First
 

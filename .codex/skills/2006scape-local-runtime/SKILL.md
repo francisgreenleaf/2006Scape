@@ -1,6 +1,6 @@
 ---
 name: 2006scape-local-runtime
-description: "Use when managing the local 2006Scape runtime in /Users/kevin/Documents/2006Scape: starting, stopping, relaunching, or diagnosing the server, Java client, local agent bridge, profile auto-login, session claim flow, stale Codex app-server processes, ports 43594/43610, or agent-navigation/.local/rsbridge-session*.json. Use before touching running processes, launcher scripts, or bridge session files."
+description: "Use when managing the local 2006Scape runtime in $REPO_ROOT: starting, stopping, relaunching, or diagnosing the server, Java client, local agent bridge, profile auto-login, session claim flow, stale Codex app-server processes, ports 43594/43610, or agent-navigation/.local/rsbridge-session*.json. Use before touching running processes, launcher scripts, or bridge session files."
 ---
 
 # 2006Scape Local Runtime
@@ -17,7 +17,7 @@ Never print, paste, inspect, log, or commit bridge tokens. The only allowed toke
 
 - Game server: listens on `127.0.0.1:43594` for the game service.
 - Agent bridge: listens on `127.0.0.1:43610` from `AgentBridgeServer`.
-- Default profile: `MrFlame`; pass `--profile <name>` or set `RS_PROFILE=<name>` for another character.
+- Pass `--profile <name>` or set `RS_PROFILE=<name>` for the selected character.
 - Server launcher: `./scripts/start-server.sh`, which runs from the repo root and copies the jar to `/tmp/2006scape-run/`.
 - Client launcher: `./scripts/start-client.sh`.
 - Bridge wrappers: use `agent-navigation/tools/observe_XXS.sh` and `agent-navigation/tools/rs-tool_XXS.sh` for confirmation/status checks, and `agent-navigation/tools/observe_XS.sh` / `agent-navigation/tools/rs-tool_XS.sh` for compact decision context. `observe-slim.sh` and `rs-tool.sh` are fallback surfaces only; `rs-tool.sh observe_state` requires `RS_ALLOW_FULL_OBSERVE=1` for explicit debug/evidence work.
@@ -31,7 +31,7 @@ First determine whether a usable runtime already exists:
 
 ```sh
 python3 agent-navigation/tools/runtime_doctor.py status --observe
-python3 agent-navigation/tools/runtime_doctor.py status --profile MrGem --observe
+python3 agent-navigation/tools/runtime_doctor.py status --profile PROFILE --observe
 python3 agent-navigation/tools/server_tick_report.py --json
 ```
 
@@ -52,7 +52,7 @@ python3 agent-navigation/tools/runtime_doctor.py restart --replace-runtime --bui
 For a second profile against an existing server, claim that profile instead of replacing the whole runtime:
 
 ```sh
-python3 agent-navigation/tools/runtime_doctor.py claim --profile MrGem --verify
+python3 agent-navigation/tools/runtime_doctor.py claim --profile PROFILE --verify
 ```
 
 If route learning needs the fallback recorder because passive server telemetry is unavailable or extra NPC snapshots are explicitly useful:
@@ -69,7 +69,7 @@ Use focused commands for smaller repairs:
 python3 agent-navigation/tools/runtime_doctor.py claim --verify
 python3 agent-navigation/tools/runtime_doctor.py verify --navdb --recorder-status
 python3 agent-navigation/tools/runtime_doctor.py recorder status
-python3 agent-navigation/tools/runtime_doctor.py recorder --profile MrGem status
+python3 agent-navigation/tools/runtime_doctor.py recorder --profile PROFILE status
 ```
 
 The helper implements this flow:

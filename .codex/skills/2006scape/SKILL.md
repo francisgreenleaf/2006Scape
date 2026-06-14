@@ -1,11 +1,11 @@
 ---
 name: 2006scape
-description: "Use as the single entry skill for work in /Users/kevin/Documents/2006Scape, especially when a task broadly mentions 2006Scape or the right specialized workflow is unclear. Provides routing guidance, boundaries, starter commands, and child-skill pointers for runtime/bridge sessions, script discovery, route exploration, route-planner/ML graph development, object transitions, frontier exploration, compact screenshots, gameplay progression, custom quests/shops/gameplay content, profile-scoped character memories/goals, cache maps, map visualization, session logs, bridge-tool development, and general repo editing without preloading every specialized skill body."
+description: "Use as the single entry skill for work in $REPO_ROOT, especially when a task broadly mentions 2006Scape or the right specialized workflow is unclear. Provides routing guidance, boundaries, starter commands, and child-skill pointers for runtime/bridge sessions, script discovery, route exploration, route-planner/ML graph development, object transitions, frontier exploration, compact screenshots, gameplay progression, custom quests/shops/gameplay content, profile-scoped character memories/goals, cache maps, map visualization, session logs, bridge-tool development, and general repo editing without preloading every specialized skill body."
 ---
 
 # 2006Scape
 
-Use this as the umbrella skill for `/Users/kevin/Documents/2006Scape`. Load this first when a task is broadly about 2006Scape or when you are unsure which repo-local skill applies.
+Use this as the umbrella skill for `$REPO_ROOT`. Load this first when a task is broadly about 2006Scape or when you are unsure which repo-local skill applies.
 
 ## How To Use This Skill
 
@@ -17,11 +17,11 @@ Always keep bridge tokens, API keys, saved-character secrets, passwords, and non
 
 ## Profile-Agnostic Tool Rule
 
-`MrFlame` is the default local gameplay profile for backward compatibility only. Any new or modified tool, runner, wrapper, status command, map renderer, log reader, or skill workflow must work for any selected profile unless the user explicitly asks for a one-off MrFlame-only check.
+The legacy default local gameplay profile exists for backward compatibility only. Any new or modified tool, runner, wrapper, status command, map renderer, log reader, or skill workflow must work for any selected profile unless the user explicitly asks for a one-off profile-specific check.
 
 - Accept `--profile PROFILE` or honor `RS_PROFILE`/`RSBRIDGE_PROFILE`, and pass the resolved profile through to child processes, bridge calls, route trace readers, map helpers, and evidence writers. Set `RS_TRACE_PROFILE` when reading profile-filtered movement traces.
 - Write mutable local artifacts under profile-scoped names or directories, or include `profile`, `playerName`, and `sessionId` metadata when data is intentionally shared.
-- Treat legacy MrFlame paths, especially the default bridge session file, as compatibility read fallbacks only. Do not create new MrFlame-specific defaults.
+- Treat legacy default-profile paths, especially the default bridge session file, as compatibility read fallbacks only. Do not create new profile-specific defaults.
 - Keep Java bridge additions primitive and player/session scoped; put route, skilling, combat, banking, and recovery strategy in Python scripts and data that resolve the selected profile at their boundary.
 
 ## Context Budget Rule
@@ -289,7 +289,7 @@ For player-to-player trades, use the compact trade primitives and keep control s
 
 For new gameplay automation, keep strategy in Python scripts and data. Read `agent-navigation/scripting-primitives.md`; use stable primitives such as `use_item_on_item`, `use_item_on_object`, `click_interface_button`, `select_interface_item`, `interact_object`, `interact_npc`, bank/shop tools, combat tools, and `wait_until_idle_XS`/`wait_until_idle_XXS` before adding Java. Existing Java skill tools are quarantined compatibility surfaces, not the default place for new loops, and require `legacyCompatibility=true` for deliberate stale-runtime paths. Current primitive-backed runners cover mining, woodcutting/fletching, food, smithing, combat, and compact bank loadout policies. When a long runner exposes cooperative control, prefer its control-file modes over process inspection or `pkill`; use `--status` for occasional diagnosis, `--request-stop` to ask for a safe-boundary stop, and a tiny `--shutdown-status`/XS control wrapper for repeated stop polling so agents do not dump full runner status JSON every second. These modes use ignored files under `agent-navigation/.local/runners/` and let the runner stop at a safe boundary.
 
-For long autonomous gameplay or progression, load the selected character's sparse memory with `character_memory.py show --profile PROFILE --json`. Write new memory only for durable, decision-changing goals or lessons; do not log routine progress, temporary route details, secrets, or facts that belong in route data/session logs. Character memory is profile-scoped so `MrFlame` and `MrGem` stay separate.
+For long autonomous gameplay or progression, load the selected character's sparse memory with `character_memory.py show --profile PROFILE --json`. Write new memory only for durable, decision-changing goals or lessons; do not log routine progress, temporary route details, secrets, or facts that belong in route data/session logs. Character memory is profile-scoped so each character stays separate.
 
 For visual route ambiguity, use compact screenshots through `agent-navigation/tools/capture-cardinal-screenshots.sh --prefix REASON`; open only the angle(s) needed to answer the question, and do not load oversized full-screen captures.
 

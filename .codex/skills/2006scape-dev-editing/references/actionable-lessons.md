@@ -81,14 +81,14 @@ These notes are repo-specific operational memory from actual agent experience. A
 - **Observed:** Stale clients, old `codex app-server --listen stdio://` children, and expired `agent-navigation/.local/rsbridge-session.json` files make fresh bridge testing unreliable after server restarts.
 - **Cause:** The repo-side bridge session is scoped to a logged-in client claim; restarting only one part leaves the wrapper pointing at an invalid session.
 - **Use instead:** Prefer `python3 agent-navigation/tools/runtime_doctor.py restart --replace-runtime --build --verify`. It performs the documented cleanup, detached server/client launch, nonce claim, token-safe session-file write, and compact bridge verification. Use `docs/local-agent-startup.md` only for details or manual fallback.
-- **Validation:** `agent-navigation/tools/observe_XXS.sh` or `agent-navigation/tools/observe_XS.sh` returns `success:true` for player `mrflame`.
+- **Validation:** `agent-navigation/tools/observe_XXS.sh` or `agent-navigation/tools/observe_XS.sh` returns `success:true` for the selected player.
 
 ### Use Python detached launch instead of shell backgrounding
 
 - **Observed:** `nohup ./scripts/start-server.sh > /tmp/2006scape-server.log 2>&1 &` reported a PID but the server exited silently and no usable Java process remained.
 - **Cause:** Background processes launched from transient Codex shell commands can lose the intended process/session ownership.
 - **Use instead:** Use `agent-navigation/tools/runtime_doctor.py`, which launches server/client processes with Python `subprocess.Popen(..., start_new_session=True)` and writes pid/log files under predictable paths. If hand-launching is unavoidable, use the same Python detached-launch pattern.
-- **Validation:** `runtime_doctor.py status --observe` shows both ports open and a valid `mrflame` bridge session.
+- **Validation:** `runtime_doctor.py status --observe` shows both ports open and a valid selected-profile bridge session.
 
 ### Process inspection and shutdown may need sandbox escalation
 
@@ -176,7 +176,7 @@ These notes are repo-specific operational memory from actual agent experience. A
 - **Observed:** Polling Seers runner `--status` while waiting for a cooperative stop repeatedly dumped full JSON payloads with player, args, counts, and route fields into Codex context.
 - **Cause:** The diagnostic status surface was reused as a high-frequency stop check, even though the agent only needed to know whether the stop file had been honored and the runner had reached a terminal phase.
 - **Use instead:** For cooperative long runners, keep `--status` for occasional diagnosis, use `--request-stop` to ask for a safe-boundary stop, and poll a tiny `--shutdown-status`/XS control wrapper that reports only `phase`, `stopRequested`, `shutdownComplete`, `pid`, and `updatedAt`.
-- **Validation:** `python3 agent-navigation/tools/seers_yew_longbow_runner.py --profile Mrwood --shutdown-status` prints one compact JSON line instead of the full runner status blob.
+- **Validation:** `python3 agent-navigation/tools/seers_yew_longbow_runner.py --profile PROFILE --shutdown-status` prints one compact JSON line instead of the full runner status blob.
 
 ### Launching the GUI client from Codex requires escalation; sandboxed claim runs can fake progress
 
@@ -187,17 +187,17 @@ These notes are repo-specific operational memory from actual agent experience. A
 
 ### Sandboxed `pgrep`/`pkill` can miss live client processes on this macOS setup
 
-- **Observed:** `start-client.sh` and `runtime_doctor.py` emitted `sysmond service not found` / `Cannot get process list`, failed to detect an existing client, and allowed stale client instances to keep MrFlame logged in.
+- **Observed:** `start-client.sh` and `runtime_doctor.py` emitted `sysmond service not found` / `Cannot get process list`, failed to detect an existing client, and allowed stale client instances to keep the selected profile logged in.
 - **Cause:** macOS process enumeration from the sandbox is incomplete here, so `pgrep -f client-1.0-jar-with-dependencies.jar` is not reliable for single-instance enforcement or cleanup.
 - **Use instead:** Prefer the tracked client pid files for first-pass cleanup, and if the server still shows the player online, use an escalated `pkill -f client-1.0-jar-with-dependencies.jar` before retrying the bridge claim.
-- **Validation:** After the elevated `pkill`, the server log showed `[DEREGISTERED]: mrflame` and `Players: 0`, which allowed the next escalated claim to succeed cleanly.
+- **Validation:** After the elevated `pkill`, the server log showed the selected profile deregistered and `Players: 0`, which allowed the next escalated claim to succeed cleanly.
 
 ### Keep profile client relaunches scoped to that profile
 
-- **Observed:** While hardening multi-character support, `runtime_doctor.py claim --profile MrFlame` and non-runtime `--replace-client` flows could still choose broad client cleanup for the default profile, which would stop another profile's active client.
+- **Observed:** While hardening multi-character support, `runtime_doctor.py claim --profile PROFILE` and non-runtime `--replace-client` flows could still choose broad client cleanup for the default profile, which would stop another profile's active client.
 - **Cause:** The helper treated the legacy default profile as a single-client runtime and delegated to process-pattern cleanup instead of only the selected profile's pid file.
 - **Use instead:** For profile-scoped `claim` or client replacement, stop only `agent-navigation/.local/client.pid` or `client-<profile>.pid` for the selected profile, and launch with `CLIENT_SINGLE_INSTANCE=0`; reserve broad process cleanup for explicit full `--replace-runtime` work.
-- **Validation:** `python3 agent-navigation/tools/runtime_doctor.py status --profile MrGem` reports `client-mrgem.pid` and `/tmp/2006scape-client-mrgem.log`, while `mvn -q -DskipTests package` and focused bridge tests still pass.
+- **Validation:** `python3 agent-navigation/tools/runtime_doctor.py status --profile PROFILE` reports `client-<profile>.pid` and `/tmp/2006scape-client-<profile>.log`, while `mvn -q -DskipTests package` and focused bridge tests still pass.
 
 ### Guard `Game.method120()` when camera and player share the same tile
 
@@ -218,7 +218,7 @@ These notes are repo-specific operational memory from actual agent experience. A
 - **Observed:** `agent-navigation/tools/agility_brimhaven_runner.py` could spend 6-9 ticks oscillating while walking toward a farther preferred obstacle, then fallback-click a nearby obstacle that moved away from the next dispenser or repeated a weak rope/handhold edge.
 - **Cause:** The scorer overvalued avoiding recent objects/tiles and the failed-approach fallback treated any nearby click as useful recovery, even when `targetDistanceDelta` was positive.
 - **Use instead:** Keep per-choice `currentTargetDistance`, `predictedTargetDistance`, and `targetDistanceDelta` in logs; after a failed approach, prefer a safe nearby candidate with negative target-distance delta and suppress nearby fallbacks only when they combine away movement with loop-risk or repeated-edge penalties.
-- **Validation:** A fresh Mrathlete Brimhaven sample after the fallback suppression showed steady XP and saved tickets with `fallbackClicks:0` during the clean window; a follow-up check caught over-suppression, so the final guard allows small non-looping away fallbacks while still blocking repeated away edges.
+- **Validation:** A fresh Brimhaven sample after the fallback suppression showed steady XP and saved tickets with `fallbackClicks:0` during the clean window; a follow-up check caught over-suppression, so the final guard allows small non-looping away fallbacks while still blocking repeated away edges.
 
 ### Resume bank material loops from carried state, not assumed empty state
 
@@ -299,10 +299,10 @@ These notes are repo-specific operational memory from actual agent experience. A
 
 ### Detached gameplay runners need a Python launcher, not shell `&` or `nohup`
 
-- **Observed:** Launching `al_kharid_metals_runner.py` with shell backgrounding returned a pid, but the process died immediately and left MrFlame idle at `3270,3167,0`.
+- **Observed:** Launching `al_kharid_metals_runner.py` with shell backgrounding returned a pid, but the process died immediately and left the selected profile idle at `3270,3167,0`.
 - **Cause:** In this Codex shell environment, long gameplay runners did not survive reliably when detached through plain shell job control.
 - **Use instead:** Launch detached gameplay runners through a small Python wrapper that uses `subprocess.Popen(..., start_new_session=True)` and writes pid/log files, following the same pattern as `runtime_doctor.py`.
-- **Validation:** `agent-navigation/tools/launch_detached_runner.py` successfully kept the relaunched metals runner alive, and MrFlame resumed moving out of Al Kharid instead of staying idle at the bank.
+- **Validation:** `agent-navigation/tools/launch_detached_runner.py` successfully kept the relaunched metals runner alive, and the selected profile resumed moving out of Al Kharid instead of staying idle at the bank.
 
 ### XS wrapper names must hit server aliases, not client-side full observes
 
@@ -316,7 +316,7 @@ These notes are repo-specific operational memory from actual agent experience. A
 - **Observed:** `yew_longbow_stringer.py` requested an 84-tick `wait_ticks_XS`, but the server capped the wait at 25 ticks, then the runner spent roughly 12 extra seconds in a fallback `wait_until_idle_XS`.
 - **Cause:** `AgentActionService` clamps `wait_ticks` requests to `1..25` ticks, so a single long wait can return early while production is still active.
 - **Use instead:** Chunk exact production waits into 25-tick-or-smaller `wait_ticks_XS` calls, log each chunk's wall time, and only use `wait_until_idle_XS` as a verified fallback. Avoid separate bank-open calls when the next deposit/withdraw primitive already opens the bank.
-- **Validation:** A two-cycle Mrwood yew-longbow stringing proof completed `14` bows per cycle with `25+17` tick chunks, no fallback wait, final deposits containing only item `855`, and a steady-state cycle of `28.2s` / about `1,787` bows per hour.
+- **Validation:** A two-cycle yew-longbow stringing proof completed `14` bows per cycle with `25+17` tick chunks, no fallback wait, final deposits containing only item `855`, and a steady-state cycle of `28.2s` / about `1,787` bows per hour.
 
 ### Use launcher Docker discovery for Java 8 validation on macOS
 

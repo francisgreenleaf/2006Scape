@@ -1,6 +1,6 @@
 ---
 name: 2006scape-external-deployment
-description: Use when working in /Users/kevin/Documents/2006Scape on external-player networking, direct_tcp public transport, encrypted/private transport, PBKDF2 account auth, standalone client packaging, deployment readiness, live proof collection, Discord transport proof, or remote VPS/GCE/Tailscale/WireGuard/client_tls_tunnel deployment artifacts for the network-auth-chat worktree.
+description: Use when working in $REPO_ROOT on external-player networking, direct_tcp public transport, encrypted/private transport, PBKDF2 account auth, standalone client packaging, deployment readiness, live proof collection, Discord transport proof, or remote VPS/GCE/Tailscale/WireGuard/client_tls_tunnel deployment artifacts for the network-auth-chat worktree.
 ---
 
 # 2006Scape External Deployment

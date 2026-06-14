@@ -86,7 +86,7 @@ java -jar target/server-1.0-jar-with-dependencies.jar -c ServerConfig.json
 
 For active local development, prefer `./scripts/start-server.sh` from the repo root. It runs a copied jar from `/tmp/2006scape-run/` so Maven package builds do not replace the jar under a running Java 8 process. Do not rebuild `target/server-1.0-jar-with-dependencies.jar` while a live server is running directly from that same path; this previously caused a native `libzip` crash during lazy class loading after an object/bank click.
 
-For the reliable Codex-controlled server/client/login/bridge startup flow, use `docs/local-agent-startup.md`. The default local profile is `MrFlame`, but the helper is profile-aware: pass `--profile MrGem` or set `RS_PROFILE=MrGem` to use that character's saved password file, session file, client pid file, and route trace filter. Never print or inspect bridge tokens.
+For the reliable Codex-controlled server/client/login/bridge startup flow, use `docs/local-agent-startup.md`. The helper is profile-aware: pass `--profile PROFILE` or set `RS_PROFILE=PROFILE` to use that character's saved password file, session file, client pid file, and route trace filter. Never print or inspect bridge tokens.
 
 The server listens on:
 
@@ -122,11 +122,11 @@ Client controls:
 
 Agent testing profiles:
 
-- The default local testing profile is `MrFlame`. Use another profile only when the user asks or when validating multi-character behavior.
+- Use the profile selected by the user or task. When validating multi-character behavior, name each profile explicitly.
 - Keep repo-side tool calls scoped to the intended character. Use `RS_PROFILE=<name>` or `runtime_doctor.py --profile <name>` so `rs-tool.sh`, route traces, recorder output, and context maps use the matching session/profile.
-- New or modified tools, runners, status commands, map renderers, and evidence readers must be profile-capable. Accept `--profile` or honor `RS_PROFILE`/`RSBRIDGE_PROFILE`, pass the resolved profile to bridge calls and child processes, and avoid new MrFlame-only assumptions.
+- New or modified tools, runners, status commands, map renderers, and evidence readers must be profile-capable. Accept `--profile` or honor `RS_PROFILE`/`RSBRIDGE_PROFILE`, pass the resolved profile to bridge calls and child processes, and avoid new single-profile assumptions.
 - Writable status, evidence, logs, screenshots, maps, and caches should be profile-scoped or include explicit `profile`, `playerName`, and `sessionId` metadata when intentionally shared.
-- `MrFlame` keeps the legacy session file `agent-navigation/.local/rsbridge-session.json`; other profiles use `agent-navigation/.local/rsbridge-session-<profile>.json`.
+- The legacy default session file is `agent-navigation/.local/rsbridge-session.json`; named profiles use `agent-navigation/.local/rsbridge-session-<profile>.json`.
 - For unattended agent relaunches, prefer the documented startup flow in `docs/local-agent-startup.md`; it uses `-password-character-save`, `-agent-auto-login`, and `-agent-claim` so the local bridge session is claimed without manual typing.
 - Do not stop, replace, or relaunch an active client/server owned by another agent unless the user explicitly asks. Profile-specific launches should avoid clobbering the default client.
 

@@ -5,7 +5,7 @@ description: "Use when instrumenting, analyzing, or optimizing 2006Scape gamepla
 
 # 2006Scape Tick Analysis
 
-Use this skill for timing instrumentation and performance tuning of primitive-backed gameplay runners in `/Users/kevin/Documents/2006Scape`.
+Use this skill for timing instrumentation and performance tuning of primitive-backed gameplay runners in `$REPO_ROOT`.
 
 ## Core Workflow
 

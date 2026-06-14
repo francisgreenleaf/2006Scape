@@ -1,6 +1,6 @@
 ---
 name: 2006scape-custom-content
-description: "Use when adding, refactoring, reviewing, or documenting custom gameplay content in /Users/kevin/Documents/2006Scape, including custom quests, shop/store stock and price changes, custom rewards, NPC/object/item interactions, quest guides, and the custom-game-changes ledger."
+description: "Use when adding, refactoring, reviewing, or documenting custom gameplay content in $REPO_ROOT, including custom quests, shop/store stock and price changes, custom rewards, NPC/object/item interactions, quest guides, and the custom-game-changes ledger."
 ---
 
 # 2006Scape Custom Content
