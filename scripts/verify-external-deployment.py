@@ -37,6 +37,8 @@ SERVICE_NAME_RE = re.compile(r"^[A-Za-z0-9_.@-]{1,64}$")
 DEPLOYMENT_PATH_RE = re.compile(r"^/[A-Za-z0-9._@:+,=/-]+$")
 BASE_EXPECTED_CLIENT_FILES = {
     "2006scape-client.jar",
+    "Check-Setup.command",
+    "Run-2006Scape.command",
     "client.properties",
     "check-setup-macos-linux.sh",
     "check-setup-windows.bat",
@@ -492,6 +494,8 @@ def verify_client_package(config, config_path, client_dist, warnings):
     require_file(client_dist / "client.properties", "client properties")
     require_file(client_dist / "MANIFEST.txt", "client manifest")
     require_file(client_dist / "SHA256SUMS", "client checksums")
+    require_executable(client_dist / "Check-Setup.command", "macOS setup checker wrapper")
+    require_executable(client_dist / "Run-2006Scape.command", "macOS launcher wrapper")
     require_executable(client_dist / "check-setup-macos-linux.sh", "macOS/Linux setup checker")
     require_file(client_dist / "check-setup-windows.bat", "Windows setup checker")
     require_executable(client_dist / "run-macos-linux.sh", "macOS/Linux launcher")
@@ -531,6 +535,16 @@ def verify_client_package(config, config_path, client_dist, warnings):
 
 
 def verify_client_package_text(config, client_dist):
+    require_text(
+        client_dist / "Check-Setup.command",
+        "macOS setup checker wrapper",
+        "check-setup-macos-linux.sh",
+    )
+    require_text(
+        client_dist / "Run-2006Scape.command",
+        "macOS launcher wrapper",
+        "run-macos-linux.sh",
+    )
     require_text(
         client_dist / "check-setup-macos-linux.sh",
         "macOS/Linux setup checker",
@@ -608,6 +622,16 @@ def verify_client_package_text(config, client_dist):
     require_crlf_line_endings(
         client_dist / "run-windows.bat",
         "Windows launcher",
+    )
+    require_text(
+        client_dist / "README.txt",
+        "client README",
+        "double-click Check-Setup.command",
+    )
+    require_text(
+        client_dist / "README.txt",
+        "client README",
+        "double-click Run-2006Scape.command",
     )
     require_text(
         client_dist / "README.txt",
@@ -1072,7 +1096,13 @@ def verify_client_archive_permissions(entry, info):
         return
     if archive_unix_file_type(info) not in (0, stat.S_IFREG):
         fail("client archive file entry must be a regular file: {}".format(entry))
-    if entry.endswith("/run-macos-linux.sh"):
+    if entry.endswith("/Run-2006Scape.command"):
+        if not mode & 0o111:
+            fail("client archive macOS launcher wrapper is not executable: {}".format(entry))
+    elif entry.endswith("/Check-Setup.command"):
+        if not mode & 0o111:
+            fail("client archive macOS setup checker wrapper is not executable: {}".format(entry))
+    elif entry.endswith("/run-macos-linux.sh"):
         if not mode & 0o111:
             fail("client archive macOS/Linux launcher is not executable: {}".format(entry))
     elif entry.endswith("/check-setup-macos-linux.sh"):

@@ -17,7 +17,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from lib.deployment_proof_manifest import apply_proof_manifest
+from lib.deployment_proof_manifest import apply_proof_manifest, write_manifest_updates
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -660,6 +660,95 @@ def proof_coverage_rows(args):
     ]
 
 
+def add_manifest_value(updates, field, value):
+    if value is True:
+        updates[field] = value
+    elif isinstance(value, str) and value.strip():
+        updates[field] = value.strip()
+    elif isinstance(value, list) and value:
+        updates[field] = list(value)
+    elif isinstance(value, int) and value:
+        updates[field] = value
+    elif isinstance(value, float) and value:
+        updates[field] = value
+
+
+def proof_manifest_updates_from_args(args):
+    updates = {}
+    if args.live:
+        updates["live"] = True
+    add_manifest_value(updates, "tls_sni_host", args.tls_sni_host)
+    for field in ("live_login_username", "live_login_password_env", "live_login_hold_seconds"):
+        add_manifest_value(updates, field, getattr(args, field))
+    for field in (
+        "live_local_login_username",
+        "live_local_login_password_env",
+        "live_local_port",
+    ):
+        add_manifest_value(updates, field, getattr(args, field))
+    if args.live_local_login_username or args.live_local_host != "127.0.0.1":
+        add_manifest_value(updates, "live_local_host", args.live_local_host)
+    for field in (
+        "live_reject_login_username",
+        "live_reject_login_password_env",
+        "live_reject_login_expected_statuses",
+        "desktop_client_proof_file",
+        "runtime_data_backup_proof_file",
+    ):
+        add_manifest_value(updates, field, getattr(args, field))
+    if args.live_discord:
+        updates["live_discord"] = True
+    if args.agent_chat_log_text:
+        for field in (
+            "agent_chat_log_text",
+            "agent_chat_log_from_type",
+            "agent_chat_log_from_name",
+            "agent_chat_log_from_profile",
+            "agent_chat_log_from_bot",
+            "agent_chat_log_discord_message_id",
+            "agent_chat_log_to_type",
+            "agent_chat_log_to_name",
+            "agent_chat_log_channel",
+            "agent_chat_log_since_seconds",
+            "agent_chat_log_since_id",
+        ):
+            add_manifest_value(updates, field, getattr(args, field))
+        if args.agent_chat_log_root != str(DEFAULT_AGENT_CHAT_LOG_ROOT):
+            add_manifest_value(updates, "agent_chat_log_root", args.agent_chat_log_root)
+    if args.agent_chat_blocked_log_text:
+        for field in (
+            "agent_chat_blocked_log_root",
+            "agent_chat_blocked_log_text",
+            "agent_chat_blocked_log_channel",
+            "agent_chat_blocked_log_since_seconds",
+            "agent_chat_blocked_log_since_id",
+        ):
+            add_manifest_value(updates, field, getattr(args, field))
+    if args.agent_chat_delivery_log_text:
+        for field in (
+            "agent_chat_delivery_log_root",
+            "agent_chat_delivery_log_text",
+            "agent_chat_delivery_log_to_name",
+            "agent_chat_delivery_log_channel",
+            "agent_chat_delivery_log_since_seconds",
+            "agent_chat_delivery_log_since_id",
+        ):
+            add_manifest_value(updates, field, getattr(args, field))
+    if args.discord_channel_message_text:
+        for field in (
+            "discord_channel_message_text",
+            "discord_channel_message_agent",
+            "discord_channel_message_after_id",
+        ):
+            add_manifest_value(updates, field, getattr(args, field))
+        if args.discord_channel_message_limit != 50:
+            add_manifest_value(updates, "discord_channel_message_limit", args.discord_channel_message_limit)
+        if args.discord_channel_message_require_all:
+            updates["discord_channel_message_require_all"] = True
+        # Do not record discord_channel_message_allow_human_author; final readiness forbids it as weak proof.
+    return updates
+
+
 def git_revision():
     try:
         completed = subprocess.run(
@@ -995,6 +1084,19 @@ def build_discord_channel_message_args(args):
     return argv
 
 
+def maybe_update_proof_manifest(args, all_passed, proof_status):
+    if not args.update_proof_manifest:
+        return {}
+    if not all_passed:
+        return {}
+    if args.require_full_proof and proof_status not in FULL_PROOF_STATUSES:
+        return {}
+    updates = proof_manifest_updates_from_args(args)
+    if not updates:
+        return {}
+    return write_manifest_updates(args.update_proof_manifest, updates)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Write a redacted external-deployment readiness report.")
     parser.add_argument("--config", default=str(DEFAULT_CONFIG))
@@ -1006,6 +1108,9 @@ def main():
     parser.add_argument("--proof-manifest", default="",
             help=("Optional JSON file containing live/manual proof arguments. "
                   "CLI flags override manifest fields. Store password env var names, not passwords."))
+    parser.add_argument("--update-proof-manifest", default="",
+            help=("Optional copied JSON proof manifest to update after successful checks. "
+                  "Unlike --proof-manifest, this may still contain placeholders for unrelated proof fields."))
     parser.add_argument("--accounts-dir", default=str(DEFAULT_ACCOUNTS_DIR))
     parser.add_argument("--secrets", default=str(DEFAULT_SECRETS))
     parser.add_argument("--output", default=str(DEFAULT_OUTPUT))
@@ -1160,6 +1265,15 @@ def main():
             file=sys.stderr,
         )
         return 2
+    if args.update_proof_manifest:
+        try:
+            updated_fields = maybe_update_proof_manifest(args, all_passed, proof_status)
+        except ValueError as exc:
+            print("proof manifest update failed: {}".format(exc), file=sys.stderr)
+            return 1
+        if updated_fields:
+            print("proofManifestUpdated: {}".format(args.update_proof_manifest))
+            print("proofManifestFields: {}".format(", ".join(sorted(updated_fields))))
     return 0
 
 

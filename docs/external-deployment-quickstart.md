@@ -106,6 +106,8 @@ Add `--json-output dist/external-deployment/deployment-readiness-report.json` wh
 Important outputs:
 
 - `dist/external-deployment/2006scape-client.zip`
+- `dist/external-deployment/2006scape-client/Run-2006Scape.command`
+- `dist/external-deployment/2006scape-client/Check-Setup.command`
 - `dist/external-deployment/2006scape-client/check-setup-macos-linux.sh`
 - `dist/external-deployment/2006scape-client/check-setup-windows.bat`
 - `dist/external-deployment/2006scape-client/MANIFEST.txt`
@@ -120,17 +122,17 @@ Open the readiness report and check:
 
 That means the artifacts are statically valid but not live-proven yet.
 
-Before a player launches the client, have them run the package's setup checker for their OS if anything is unclear. It verifies Java, prints the packaged `client.properties`, and attempts game/cache TCP checks without logging in or changing server state. In `client_tls_tunnel` mode the launcher manages stunnel when possible, but the setup checker still expects the local tunnel endpoint to be reachable.
+Before a player launches the client, have them run the package's setup checker for their OS if anything is unclear. On macOS, they can double-click `Check-Setup.command`, then double-click `Run-2006Scape.command` to play; Terminal and Linux users can still run the shared shell scripts, and Windows users run the `.bat` files. The checker verifies Java, prints the packaged `client.properties`, and attempts game/cache TCP checks without logging in or changing server state. In `client_tls_tunnel` mode the macOS/Linux setup checker can start the bundled stunnel config temporarily when `stunnel` is installed; the Windows setup checker expects the local tunnel endpoint to be reachable first, while the launcher still manages stunnel when possible.
 
 ## 4. Back Up Runtime Data
 
 Before replacing deployed files, rotating credentials, or restarting into new deployment bits:
 
 ```sh
-scripts/backup-runtime-data.py --data-dir "2006Scape Server/data"
+scripts/deployment-readiness-status.py --prepared-dir dist/external-deployment --show-next-commands
 ```
 
-Save the printed proof path. You will pass it to readiness later as `--runtime-data-backup-proof-file`; if `deployment-proof-manifest.json` already exists, add `--proof-manifest deployment-proof-manifest.json` to update its `runtime_data_backup_proof_file` field automatically. The readiness report rejects symlinked proof notes, verifies owner-only proof/archive modes where supported, and requires the proof note to record the readiness argument plus the fact that the helper did not start, stop, or restart the runtime.
+Use the printed "Back up deployed runtime data" command on the deployed host. It will create the manifest parent directory and copy the manifest from the template if it is missing, then run `scripts/backup-runtime-data.py --data-dir "2006Scape Server/data" --proof-file dist/external-deployment/runtime-data-backup-proof.md --proof-manifest dist/external-deployment/deployment-proof-manifest.json` so the proof note sits beside the manifest and updates `runtime_data_backup_proof_file` automatically. The lower-level helper can still be run directly as `scripts/backup-runtime-data.py --data-dir "2006Scape Server/data"` when no manifest exists yet. Save the printed proof path either way. The readiness report rejects symlinked proof notes, verifies owner-only proof/archive modes where supported, and requires the proof note to record the readiness argument plus the fact that the helper did not start, stop, or restart the runtime.
 
 ## 5. Start Or Restart Intentionally
 
@@ -186,6 +188,8 @@ This proves:
 
 If only the simultaneous-login protocol proof needs isolation, run `scripts/probe-concurrent-logins.py --external-host HOST --external-username ExternalTest --external-password-env EXTERNAL_PASSWORD --local-host 127.0.0.1 --local-username LocalTest --local-password-env LOCAL_PASSWORD`; add `--tls --tls-sni-host HOST` for a public `client_tls_tunnel` endpoint.
 
+If you are following the generated `scripts/deployment-readiness-status.py --show-next-commands` flow, use its "Record live network/auth proof" command instead; it copies the proof manifest from the template when missing and adds `--update-proof-manifest` so successful live proof fields are recorded without requiring a final full-proof manifest yet.
+
 ## 7. Prove The Desktop Client Path
 
 Give the external tester:
@@ -210,10 +214,11 @@ scripts/write-desktop-client-proof.py \
   --external-client ExternalTest \
   --transport direct_tcp \
   --public-host HOST \
-  --evidence /path/to/desktop-client-coexistence-screenshot.png
+  --evidence /path/to/desktop-client-coexistence-screenshot.png \
+  --proof-manifest dist/external-deployment/deployment-proof-manifest.json
 ```
 
-It validates the existing evidence file and writes a proof note without starting, stopping, restarting, logging in, or probing anything. The generated note looks like:
+It validates the existing evidence file and writes a proof note without starting, stopping, restarting, logging in, or probing anything. When `--proof-manifest` is supplied, it updates only `desktop_client_proof_file` with the generated proof-note path. The generated note looks like:
 
 ```markdown
 # Desktop Client Coexistence Proof
@@ -226,7 +231,7 @@ It validates the existing evidence file and writes a proof note without starting
 - evidence: /path/to/desktop-client-coexistence-screenshot.png
 ```
 
-Save the proof note and the referenced screenshot/log artifact somewhere outside the client zip, then pass the note to readiness as `--desktop-client-proof-file`. Readiness rejects missing, empty, or symlinked evidence files.
+Save the proof note and the referenced screenshot/log artifact somewhere outside the client zip, then pass the note to readiness as `--desktop-client-proof-file` or through the proof manifest. Readiness rejects missing, empty, or symlinked evidence files.
 
 ## 8. Prove Direct Agent/Player Chat Delivery
 
@@ -253,10 +258,11 @@ scripts/verify-agent-chat-log.py \
   --to-name LocalTest \
   --delivered-to LocalTest \
   --no-undelivered \
-  --channel agent
+  --channel agent \
+  --proof-manifest dist/external-deployment/deployment-proof-manifest.json
 ```
 
-Use the real profile/player names that are online during the test. The final readiness report needs the same marker and player name through `--agent-chat-delivery-log-text` and `--agent-chat-delivery-log-to-name`.
+Use the real profile/player names that are online during the test. With `--proof-manifest`, the verifier updates only the direct delivery proof fields in the copied manifest after the audit event is found. Without a manifest, pass the same marker and player name through `--agent-chat-delivery-log-text` and `--agent-chat-delivery-log-to-name`.
 
 ## 9. Write The Final Readiness Report
 
@@ -288,7 +294,7 @@ scripts/package-deployment-proof.py \
   --prepared-dir dist/external-deployment
 ```
 
-This bundle intentionally excludes runtime backup archives, character saves, account records, `data/secrets.json`, passwords, bridge tokens, and Discord bot tokens. Keep the real runtime backup archive in the operator's secure backup location.
+This bundle intentionally excludes runtime backup archives, character saves, account records, `data/secrets.json`, passwords, bridge tokens, and Discord bot tokens. Keep the real runtime backup archive in the operator's secure backup location. For the final external-ready handoff, add `--require-full-proof`; it fails unless the readiness JSON records a full live proof status and the proof manifest passes full-proof plus proof-file validation.
 
 To re-check status later without rerunning probes or touching runtime:
 
@@ -319,14 +325,14 @@ scripts/probe-discord-agent-bots.py --secrets "2006Scape Server/data/secrets.jso
 Then prove both directions:
 
 ```sh
-scripts/verify-agent-chat-log.py --text-contains MARKER --from-type discord --from-bot false --channel agent
-scripts/verify-discord-channel-message.py --text-contains MARKER --agent PROFILE
+scripts/verify-agent-chat-log.py --text-contains MARKER --from-type discord --from-bot false --channel agent --proof-manifest dist/external-deployment/deployment-proof-manifest.json
+scripts/verify-discord-channel-message.py --text-contains MARKER --agent PROFILE --proof-manifest dist/external-deployment/deployment-proof-manifest.json
 ```
 
 Direct player delivery proof was already covered in step 8; keep it separate from Discord proof unless you are deliberately rechecking the player chatbox path:
 
 ```sh
-scripts/verify-agent-chat-log.py --event agent_chat_player_delivery --text-contains MARKER --to-type player --to-name PLAYER --delivered-to PLAYER --no-undelivered --channel agent
+scripts/verify-agent-chat-log.py --event agent_chat_player_delivery --text-contains MARKER --to-type player --to-name PLAYER --delivered-to PLAYER --no-undelivered --channel agent --proof-manifest dist/external-deployment/deployment-proof-manifest.json
 ```
 
 If Discord is enabled in the config, the full readiness report will require Discord proof before reporting full Discord readiness.

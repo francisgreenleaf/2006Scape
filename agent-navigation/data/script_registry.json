@@ -1329,7 +1329,7 @@
       "name": "Runtime Data Backup",
       "path": "scripts/backup-runtime-data.py",
       "kind": "deployment_tool",
-      "description": "Archives deployed runtime data directories and writes a readiness-compatible proof note for character saves, PBKDF2 account records, and Discord secrets without touching the running server; refuses symlinked runtime-data or output paths.",
+      "description": "Archives deployed runtime data directories and writes a readiness-compatible proof note for character saves, PBKDF2 account records, and Discord secrets without touching the running server, optionally updating runtime_data_backup_proof_file in a deployment proof manifest; refuses symlinked runtime-data or output paths.",
       "aliases": [
         "runtime data backup",
         "backup runtime data",
@@ -1345,8 +1345,8 @@
         "external"
       ],
       "examples": [
-        "python3 agent-navigation/tools/script_registry.py run runtime_data_backup -- --data-dir \"2006Scape Server/data\"",
-        "python3 scripts/backup-runtime-data.py --data-dir \"2006Scape Server/data\" --output-dir dist/runtime-data-backups"
+        "python3 agent-navigation/tools/script_registry.py run runtime_data_backup -- --data-dir \"2006Scape Server/data\" --proof-manifest dist/external-deployment/deployment-proof-manifest.json",
+        "python3 scripts/backup-runtime-data.py --data-dir \"2006Scape Server/data\" --output-dir dist/runtime-data-backups --proof-manifest dist/external-deployment/deployment-proof-manifest.json"
       ]
     },
     {
@@ -1354,7 +1354,7 @@
       "name": "Desktop Client Proof",
       "path": "scripts/write-desktop-client-proof.py",
       "kind": "deployment_tool",
-      "description": "Writes a readiness-compatible desktop client coexistence proof note from an existing same-host plus external Java client observation and a real non-symlink screenshot/log evidence file.",
+      "description": "Writes a readiness-compatible desktop client coexistence proof note from an existing same-host plus external Java client observation and a real non-symlink screenshot/log evidence file, optionally updating desktop_client_proof_file in a deployment proof manifest.",
       "aliases": [
         "desktop client proof",
         "desktop proof",
@@ -1370,8 +1370,8 @@
         "readiness"
       ],
       "examples": [
-        "python3 agent-navigation/tools/script_registry.py run desktop_client_proof -- --same-host-client LocalTest --external-client ExternalTest --transport tailscale --public-host HOST --evidence /path/to/evidence.png",
-        "python3 scripts/write-desktop-client-proof.py --same-host-client LocalTest --external-client ExternalTest --transport client_tls_tunnel --public-host HOST --evidence /path/to/evidence.log --output dist/deployment-proofs/desktop-client-proof.md"
+        "python3 agent-navigation/tools/script_registry.py run desktop_client_proof -- --same-host-client LocalTest --external-client ExternalTest --transport tailscale --public-host HOST --evidence /path/to/evidence.png --proof-manifest dist/external-deployment/deployment-proof-manifest.json",
+        "python3 scripts/write-desktop-client-proof.py --same-host-client LocalTest --external-client ExternalTest --transport client_tls_tunnel --public-host HOST --evidence /path/to/evidence.log --output dist/external-deployment/desktop-client-proof.md --proof-manifest dist/external-deployment/deployment-proof-manifest.json"
       ]
     },
     {
@@ -1379,7 +1379,7 @@
       "name": "Deployment Proof Bundle",
       "path": "scripts/package-deployment-proof.py",
       "kind": "deployment_tool",
-      "description": "Packages non-secret deployment proof handoff artifacts from a prepared deployment directory or explicit readiness/proof paths, including reports, a filled proof manifest, proof notes, and selected client/server metadata while deliberately excluding runtime backup archives, character saves, account records, and secrets.",
+      "description": "Packages non-secret deployment proof handoff artifacts from a prepared deployment directory or explicit readiness/proof paths, including reports, a filled proof manifest, proof notes, and selected client/server metadata while deliberately excluding runtime backup archives, character saves, account records, and secrets. Use --require-full-proof for the final external-ready bundle.",
       "aliases": [
         "deployment proof bundle",
         "proof bundle",
@@ -1395,7 +1395,7 @@
         "external"
       ],
       "examples": [
-        "python3 agent-navigation/tools/script_registry.py run deployment_proof_bundle -- --prepared-dir dist/external-deployment",
+        "python3 agent-navigation/tools/script_registry.py run deployment_proof_bundle -- --prepared-dir dist/external-deployment --require-full-proof",
         "python3 scripts/package-deployment-proof.py --readiness-report dist/deployment-readiness-report.md --readiness-json dist/deployment-readiness-report.json --proof-manifest dist/deployment-proof-manifest.json --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment"
       ]
     },
@@ -1454,7 +1454,7 @@
       "name": "Standalone Client Package",
       "path": "scripts/package-client.sh",
       "kind": "deployment_tool",
-      "description": "Packages the downloadable Java desktop client folder and zip from an external-player ServerConfig, including launcher scripts, setup-check scripts, client.properties, source config hash manifest, checksums, and transport guidance.",
+      "description": "Packages the downloadable Java desktop client folder and zip from an external-player ServerConfig, including launcher scripts, macOS double-click .command wrappers, setup-check scripts, client.properties, source config hash manifest, checksums, transport guidance, and symlinked output path rejection.",
       "aliases": [
         "package client",
         "client package",
@@ -1576,7 +1576,7 @@
       "name": "Agent Chat Log Verify",
       "path": "scripts/verify-agent-chat-log.py",
       "kind": "deployment_tool",
-      "description": "Verifies sanitized AgentChatService JSONL log entries for deployment proof, especially Discord-to-server ingestion, direct player delivery status, and blocked-route absence checks.",
+      "description": "Verifies sanitized AgentChatService JSONL log entries for deployment proof, especially Discord-to-server ingestion, direct player delivery status, and blocked-route absence checks; can update deployment-proof-manifest chat proof fields with --proof-manifest.",
       "aliases": [
         "agent chat log proof",
         "verify agent chat log",
@@ -1592,9 +1592,9 @@
         "external"
       ],
       "examples": [
-        "python3 agent-navigation/tools/script_registry.py run agent chat log proof -- --text-contains MARKER --from-type discord --from-bot false --channel agent",
-        "python3 scripts/verify-agent-chat-log.py --text-contains MARKER --from-type discord --from-bot false --channel agent",
-        "python3 scripts/verify-agent-chat-log.py --event agent_chat_player_delivery --text-contains MARKER --to-type player --to-name PLAYER --delivered-to PLAYER --no-undelivered --channel agent"
+        "python3 agent-navigation/tools/script_registry.py run agent chat log proof -- --text-contains MARKER --from-type discord --from-bot false --channel agent --proof-manifest dist/external-deployment/deployment-proof-manifest.json",
+        "python3 scripts/verify-agent-chat-log.py --text-contains MARKER --from-type discord --from-bot false --channel agent --proof-manifest dist/external-deployment/deployment-proof-manifest.json",
+        "python3 scripts/verify-agent-chat-log.py --event agent_chat_player_delivery --text-contains MARKER --to-type player --to-name PLAYER --delivered-to PLAYER --no-undelivered --channel agent --proof-manifest dist/external-deployment/deployment-proof-manifest.json"
       ]
     },
     {
@@ -1602,7 +1602,7 @@
       "name": "Discord Channel Message Verify",
       "path": "scripts/verify-discord-channel-message.py",
       "kind": "deployment_tool",
-      "description": "Verifies a recent configured-bot-authored Discord channel message for server-to-Discord mirroring proof.",
+      "description": "Verifies a recent configured-bot-authored Discord channel message for server-to-Discord mirroring proof; can update deployment-proof-manifest Discord mirror fields with --proof-manifest.",
       "aliases": [
         "discord channel proof",
         "discord mirror proof",
@@ -1617,8 +1617,8 @@
         "external"
       ],
       "examples": [
-        "python3 agent-navigation/tools/script_registry.py run discord channel proof -- --text-contains MARKER --agent PROFILE",
-        "python3 scripts/verify-discord-channel-message.py --text-contains MARKER --agent PROFILE"
+        "python3 agent-navigation/tools/script_registry.py run discord channel proof -- --text-contains MARKER --agent PROFILE --proof-manifest dist/external-deployment/deployment-proof-manifest.json",
+        "python3 scripts/verify-discord-channel-message.py --text-contains MARKER --agent PROFILE --proof-manifest dist/external-deployment/deployment-proof-manifest.json"
       ]
     },
     {
@@ -1626,7 +1626,7 @@
       "name": "Deployment Readiness Report",
       "path": "scripts/deployment-readiness-report.py",
       "kind": "deployment_tool",
-      "description": "Writes redacted Markdown and optional JSON readiness reports that separate command success from live/manual deployment proof coverage for external-player releases, including optional client_tls_tunnel operator template verification and JSON proof-manifest input.",
+      "description": "Writes redacted Markdown and optional JSON readiness reports that separate command success from live/manual deployment proof coverage for external-player releases, including optional client_tls_tunnel operator template verification, JSON proof-manifest input, and success-only --update-proof-manifest output.",
       "aliases": [
         "deployment readiness",
         "readiness report",
@@ -1643,6 +1643,7 @@
         "python3 agent-navigation/tools/script_registry.py run deployment readiness -- --config \"2006Scape Server/ServerConfig.json\" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --client-tls-tunnel-dir dist/client-tls-tunnel-operator",
         "python3 scripts/deployment-readiness-report.py --config \"2006Scape Server/ServerConfig.json\" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --require-full-proof",
         "python3 scripts/deployment-readiness-report.py --config \"2006Scape Server/ServerConfig.json\" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --proof-manifest dist/deployment-proof-manifest.json",
+        "python3 scripts/deployment-readiness-report.py --config \"2006Scape Server/ServerConfig.json\" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --live --update-proof-manifest dist/external-deployment/deployment-proof-manifest.json",
         "python3 scripts/deployment-readiness-report.py --config \"2006Scape Server/ServerConfig.json\" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --json-output dist/deployment-readiness-report.json"
       ]
     },
@@ -1703,7 +1704,7 @@
       "name": "External Account Create",
       "path": "scripts/create-account.py",
       "kind": "deployment_tool",
-      "description": "Creates or rotates ignored PBKDF2 account records for external auth with owner-only permissions, password-policy metadata, optional roles, allowed characters, and Discord user id.",
+      "description": "Creates or rotates ignored PBKDF2 account records for external auth with owner-only permissions, password-policy metadata, optional roles, allowed characters, and Discord user id. Supply real passwords through an environment variable named by --password-env, not as command arguments.",
       "aliases": [
         "create account",
         "external account create",
@@ -1718,8 +1719,8 @@
         "external"
       ],
       "examples": [
-        "ACCOUNT_PASSWORD=\"long throwaway password\" python3 agent-navigation/tools/script_registry.py run create account -- username --password-env ACCOUNT_PASSWORD",
-        "ACCOUNT_PASSWORD=\"new longer secret\" python3 scripts/create-account.py username --password-env ACCOUNT_PASSWORD --overwrite --preserve-metadata"
+        "read -s ACCOUNT_PASSWORD && export ACCOUNT_PASSWORD && python3 agent-navigation/tools/script_registry.py run external_account_create -- ExternalTest --password-env ACCOUNT_PASSWORD --allowed-character ExternalTest",
+        "read -s ACCOUNT_PASSWORD && export ACCOUNT_PASSWORD && python3 scripts/create-account.py ExternalTest --password-env ACCOUNT_PASSWORD --overwrite --preserve-metadata"
       ]
     },
     {
@@ -1727,7 +1728,7 @@
       "name": "External Account Admin",
       "path": "scripts/account-admin.py",
       "kind": "deployment_tool",
-      "description": "Audits, lists, shows, disables, or enables ignored PBKDF2 account records without rotating passwords.",
+      "description": "Audits, lists, shows, disables, or enables ignored PBKDF2 account records without rotating passwords. Use --require-password-policy audit before packaging or live proof.",
       "aliases": [
         "account admin",
         "external account admin",
@@ -1743,8 +1744,8 @@
         "external"
       ],
       "examples": [
-        "python3 agent-navigation/tools/script_registry.py run account admin -- --require-password-policy audit",
-        "python3 scripts/account-admin.py disable username"
+        "python3 agent-navigation/tools/script_registry.py run external_account_admin -- --require-password-policy audit",
+        "python3 scripts/account-admin.py disable ExternalTest"
       ]
     },
     {

@@ -169,6 +169,39 @@ def read_manifest(path):
     return data
 
 
+def reject_symlinked_output_path(path, label):
+    candidate = Path(path)
+    if candidate.is_symlink():
+        raise ValueError("refusing to write {} through symlink path: {}".format(label, candidate))
+    parent = candidate.parent
+    while True:
+        if parent.is_symlink():
+            raise ValueError("refusing to write {} through symlinked parent directory: {}".format(label, parent))
+        if parent.exists():
+            return
+        if parent == parent.parent:
+            break
+        parent = parent.parent
+
+
+def write_manifest_updates(path, updates):
+    manifest_path = Path(path)
+    reject_symlinked_output_path(manifest_path, "proof manifest")
+    data = read_manifest(manifest_path)
+    if not updates:
+        return {}
+    clean = {}
+    for key, value in updates.items():
+        normalized = normalize_key(key)
+        if normalized not in FIELD_TYPES:
+            raise ValueError("proof manifest update has unknown field {!r}".format(key))
+        expected_type = FIELD_TYPES[normalized]
+        clean[normalized] = convert_value(normalized, value, expected_type)
+    data.update(clean)
+    manifest_path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return clean
+
+
 def validate_manifest_data(data, allow_placeholders=False):
     values = {}
     for raw_key, raw_value in data.items():

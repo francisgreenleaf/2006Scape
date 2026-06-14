@@ -62,6 +62,38 @@ def validate_evidence(path):
     return path.resolve()
 
 
+def proof_manifest_value(proof_path, manifest_path):
+    resolved_proof = proof_path.resolve()
+    manifest_parent = manifest_path.parent.resolve()
+    try:
+        return str(resolved_proof.relative_to(manifest_parent))
+    except ValueError:
+        return str(resolved_proof)
+
+
+def read_proof_manifest(manifest_path):
+    manifest_path = Path(manifest_path)
+    reject_symlinked_output_path(manifest_path, "proof manifest")
+    if not manifest_path.is_file():
+        fail("proof manifest is missing or not a regular file: {}".format(manifest_path))
+    try:
+        data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        fail("proof manifest is not valid JSON: {}: {}".format(manifest_path, exc))
+    if not isinstance(data, dict):
+        fail("proof manifest must contain a JSON object: {}".format(manifest_path))
+    return data
+
+
+def write_proof_manifest(manifest_path, proof_path):
+    manifest_path = Path(manifest_path)
+    data = read_proof_manifest(manifest_path)
+    value = proof_manifest_value(proof_path, manifest_path)
+    data["desktop_client_proof_file"] = value
+    manifest_path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return value
+
+
 def read_config(path):
     config_path = Path(path)
     if not config_path.exists():
@@ -98,7 +130,7 @@ def write_proof(proof_path, values):
 - observed: both desktop clients remained online at the same time
 - evidence: {evidence}
 - readiness argument: --desktop-client-proof-file {proof}
-- command: scripts/write-desktop-client-proof.py --config {config_q} --same-host-client {same_host_q} --external-client {external_q} --transport {transport_q} --public-host {public_host_q} --evidence {evidence_q} --output {proof_q}
+- command: scripts/write-desktop-client-proof.py --config {config_q} --same-host-client {same_host_q} --external-client {external_q} --transport {transport_q} --public-host {public_host_q} --evidence {evidence_q} --output {proof_q}{manifest_arg}
 """.format(**values)
     proof_path.write_text(text, encoding="utf-8")
 
@@ -123,6 +155,9 @@ def main():
             help="Screenshot or log file proving both desktop clients were online together.")
     parser.add_argument("--output", default="",
             help="Proof note path. Defaults under dist/deployment-proofs with a UTC timestamp.")
+    parser.add_argument("--proof-manifest", default="",
+            help=("Optional existing deployment-proof-manifest JSON to update with the generated "
+                  "desktop_client_proof_file path. Other manifest fields are preserved."))
     parser.add_argument("--json", action="store_true",
             help="Print compact JSON instead of human lines.")
     args = parser.parse_args()
@@ -133,6 +168,9 @@ def main():
         DEFAULT_OUTPUT_DIR / "desktop-client-proof-{}.md".format(stamp)
     )
     reject_symlinked_output_path(proof_path, "proof")
+    proof_manifest_path = Path(args.proof_manifest) if args.proof_manifest else None
+    if proof_manifest_path:
+        read_proof_manifest(proof_manifest_path)
 
     evidence_path = validate_evidence(Path(args.evidence))
     config = read_config(args.config) if not args.public_host or not args.transport else {}
@@ -151,6 +189,10 @@ def main():
         "external_client": external_client,
         "external_q": shell_quote(external_client),
         "local_host": local_host,
+        "manifest_arg": (
+            " --proof-manifest {}".format(shell_quote(args.proof_manifest))
+            if args.proof_manifest else ""
+        ),
         "proof": proof_path,
         "proof_q": shell_quote(proof_path),
         "public_host": public_host,
@@ -162,18 +204,28 @@ def main():
         "transport_q": shell_quote(transport),
     }
     write_proof(proof_path, values)
+    manifest_value = ""
+    if proof_manifest_path:
+        manifest_value = write_proof_manifest(proof_manifest_path, proof_path)
 
     if args.json:
-        print(json.dumps({
+        payload = {
             "proof": str(proof_path),
             "evidence": str(evidence_path),
             "publicHost": public_host,
             "transport": transport,
             "runtimeTouched": False,
-        }, indent=2, sort_keys=True))
+        }
+        if args.proof_manifest:
+            payload["proofManifest"] = args.proof_manifest
+            payload["manifestDesktopClientProofFile"] = manifest_value
+        print(json.dumps(payload, indent=2, sort_keys=True))
     else:
         print("proof: {}".format(proof_path))
         print("evidence: {}".format(evidence_path))
+        if args.proof_manifest:
+            print("proof manifest: {}".format(args.proof_manifest))
+            print("manifest desktop_client_proof_file: {}".format(manifest_value))
         print("runtime: not started, stopped, or restarted")
     return 0
 

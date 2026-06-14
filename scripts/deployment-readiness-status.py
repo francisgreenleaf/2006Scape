@@ -121,10 +121,26 @@ def manifest_path_for(readiness_json_path):
     return "dist/external-deployment/deployment-proof-manifest.json"
 
 
+def proof_note_path_for(readiness_json_path, filename):
+    return str(Path(manifest_path_for(readiness_json_path)).parent / filename)
+
+
 def copy_manifest_template_command(template, manifest):
-    return "{} || {}".format(
+    commands = []
+    manifest_parent = Path(manifest).parent
+    if str(manifest_parent) not in ("", "."):
+        commands.append(shell_join(["mkdir", "-p", str(manifest_parent)]))
+    commands.append("{} || {}".format(
         shell_join(["test", "-f", manifest]),
         shell_join(["cp", template, manifest]),
+    ))
+    return "\n".join(commands)
+
+
+def command_with_manifest(template, manifest, argv):
+    return "{}\n{}".format(
+        copy_manifest_template_command(template, manifest),
+        shell_join(argv),
     )
 
 
@@ -164,11 +180,15 @@ def build_next_commands(data, readiness_json_path, require_discord=False):
             "--live-reject-login-username", "REJECT_TEST",
             "--live-reject-login-password-env", "REJECT_PASSWORD",
             "--live-reject-login-expected-statuses", "3,4",
+            "--update-proof-manifest", manifest,
         ])
         commands.append(command_entry(
             "Record live network/auth proof",
             "Run after the remote server is intentionally running; password values stay in environment variables.",
-            "EXTERNAL_PASSWORD='...' LOCAL_PASSWORD='...' REJECT_PASSWORD='...' {}".format(shell_join(live_args)),
+            "{}\nEXTERNAL_PASSWORD='...' LOCAL_PASSWORD='...' REJECT_PASSWORD='...' {}".format(
+                copy_manifest_template_command(template, manifest),
+                shell_join(live_args),
+            ),
         ))
 
     if coverage_status(data, "Runtime data backup before remote replacement/restart") != "MANUAL_PROOF_RECORDED":
@@ -180,6 +200,7 @@ def build_next_commands(data, readiness_json_path, require_discord=False):
                 shell_join([
                     "scripts/backup-runtime-data.py",
                     "--data-dir", "2006Scape Server/data",
+                    "--proof-file", proof_note_path_for(readiness_json_path, "runtime-data-backup-proof.md"),
                     "--proof-manifest", manifest,
                 ]),
             ),
@@ -189,7 +210,7 @@ def build_next_commands(data, readiness_json_path, require_discord=False):
         commands.append(command_entry(
             "Write desktop-client coexistence proof",
             "Run after one same-host Java client and one external Java client are online together.",
-            shell_join([
+            command_with_manifest(template, manifest, [
                 "scripts/write-desktop-client-proof.py",
                 "--config", config,
                 "--same-host-client", "LOCAL_PLAYER",
@@ -197,15 +218,16 @@ def build_next_commands(data, readiness_json_path, require_discord=False):
                 "--transport", "TRANSPORT",
                 "--public-host", "PUBLIC_HOST",
                 "--evidence", "PATH_TO_SCREENSHOT_OR_LOG",
-                "--output", "dist/external-deployment/desktop-client-proof.md",
+                "--output", proof_note_path_for(readiness_json_path, "desktop-client-proof.md"),
+                "--proof-manifest", manifest,
             ]),
         ))
 
     if coverage_status(data, "Agent-to-player chat delivery") != "DELIVERY_LOG_PROOF_REQUESTED":
         commands.append(command_entry(
             "Verify direct agent/player chat delivery",
-            "Run after sending one unique structured marker to an online player.",
-            shell_join([
+            "Run after sending one unique structured marker to an online player; updates the copied proof manifest.",
+            command_with_manifest(template, manifest, [
                 "scripts/verify-agent-chat-log.py",
                 "--event", "agent_chat_player_delivery",
                 "--text-contains", "CHAT_MARKER",
@@ -214,6 +236,7 @@ def build_next_commands(data, readiness_json_path, require_discord=False):
                 "--delivered-to", "PLAYER",
                 "--no-undelivered",
                 "--channel", "agent",
+                "--proof-manifest", manifest,
             ]),
         ))
 
@@ -233,36 +256,39 @@ def build_next_commands(data, readiness_json_path, require_discord=False):
     if discord_needed and coverage_status(data, "Discord-to-server chat ingestion") != "LOG_PROOF_REQUESTED":
         commands.append(command_entry(
             "Verify Discord-to-server chat ingestion",
-            "Run after a real human/non-bot Discord message with a unique marker.",
-            shell_join([
+            "Run after a real human/non-bot Discord message with a unique marker; updates the copied proof manifest.",
+            command_with_manifest(template, manifest, [
                 "scripts/verify-agent-chat-log.py",
                 "--text-contains", "DISCORD_TO_SERVER_MARKER",
                 "--from-type", "discord",
                 "--from-bot", "false",
                 "--channel", "agent",
+                "--proof-manifest", manifest,
             ]),
         ))
     if discord_needed and coverage_status(data, "Blocked Discord routing filters") == "MISSING_REQUIRED_FOR_CONFIGURED_FILTERS":
         commands.append(command_entry(
             "Verify blocked Discord routing absence",
-            "Run after sending a blocked human/non-bot Discord marker.",
-            shell_join([
+            "Run after sending a blocked human/non-bot Discord marker; updates the copied proof manifest.",
+            command_with_manifest(template, manifest, [
                 "scripts/verify-agent-chat-log.py",
                 "--text-contains", "BLOCKED_MARKER",
                 "--from-type", "discord",
                 "--from-bot", "false",
                 "--channel", "agent",
                 "--expect-absent",
+                "--proof-manifest", manifest,
             ]),
         ))
     if discord_needed and coverage_status(data, "Server-to-Discord chat mirroring") != "DISCORD_MESSAGE_PROOF_REQUESTED":
         commands.append(command_entry(
             "Verify server-to-Discord mirroring",
-            "Run after sending one in-game or agent marker that should mirror to Discord.",
-            shell_join([
+            "Run after sending one in-game or agent marker that should mirror to Discord; updates the copied proof manifest.",
+            command_with_manifest(template, manifest, [
                 "scripts/verify-discord-channel-message.py",
                 "--text-contains", "SERVER_TO_DISCORD_MARKER",
                 "--agent", "PROFILE",
+                "--proof-manifest", manifest,
             ]),
         ))
 

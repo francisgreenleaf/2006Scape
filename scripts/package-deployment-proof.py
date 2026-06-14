@@ -4,6 +4,7 @@
 import argparse
 import datetime as _datetime
 import hashlib
+import importlib.util
 import io
 import json
 import os
@@ -24,12 +25,20 @@ PREPARED_READINESS_JSON = "deployment-readiness-report.json"
 PREPARED_CLIENT_DIST = "2006scape-client"
 PREPARED_SERVER_DEPLOYMENT_DIR = "server-deployment"
 PREPARED_PROOF_MANIFEST = "deployment-proof-manifest.json"
+FULL_PROOF_STATUSES = {
+    "LIVE_NETWORK_AUTH_CLIENT_CHAT_BACKUP_PROOF_RECORDED_DISCORD_NOT_REQUESTED",
+    "FULL_LIVE_NETWORK_AUTH_CLIENT_CHAT_BACKUP_AND_DISCORD_PROOF_RECORDED",
+}
+FULL_DISCORD_PROOF_STATUS = "FULL_LIVE_NETWORK_AUTH_CLIENT_CHAT_BACKUP_AND_DISCORD_PROOF_RECORDED"
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR / "lib") not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR / "lib"))
 
 from deployment_proof_manifest import read_manifest_values  # noqa: E402
+
+MANIFEST_CHECKER_SCRIPT = SCRIPT_DIR / "check-deployment-proof-manifest.py"
+MANIFEST_CHECKER_MODULE = None
 
 
 CLIENT_METADATA_FILES = (
@@ -163,9 +172,22 @@ def load_json(path, label):
         fail("{} is not valid JSON: {}: {}".format(label, path, exc))
 
 
+def load_manifest_checker():
+    global MANIFEST_CHECKER_MODULE
+    if MANIFEST_CHECKER_MODULE is not None:
+        return MANIFEST_CHECKER_MODULE
+    spec = importlib.util.spec_from_file_location("deployment_manifest_checker", MANIFEST_CHECKER_SCRIPT)
+    if spec is None or spec.loader is None:
+        fail("could not load deployment proof manifest checker from {}".format(MANIFEST_CHECKER_SCRIPT))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    MANIFEST_CHECKER_MODULE = module
+    return module
+
+
 def add_readiness_summary(metadata, readiness_json_path):
     if readiness_json_path is None:
-        return
+        return None
     data = load_json(readiness_json_path, "readiness JSON")
     metadata["readiness"] = {
         "status": data.get("status"),
@@ -176,6 +198,61 @@ def add_readiness_summary(metadata, readiness_json_path):
         "proofCoverage": data.get("proofCoverage", []),
         "markdownReport": data.get("markdownReport"),
     }
+    return data
+
+
+def report_input(data, name, default=""):
+    inputs = data.get("inputs", {})
+    if not isinstance(inputs, dict):
+        return default
+    value = inputs.get(name)
+    if isinstance(value, str) and value.strip():
+        return value
+    return default
+
+
+def coverage_status(data, requirement):
+    coverage = data.get("proofCoverage", [])
+    if not isinstance(coverage, list):
+        return ""
+    for item in coverage:
+        if isinstance(item, dict) and item.get("requirement") == requirement:
+            return str(item.get("status") or "")
+    return ""
+
+
+def validate_final_proof_bundle(readiness_data, manifest_values, proof_manifest_path):
+    if not readiness_data:
+        fail("--require-full-proof requires a readiness JSON report")
+    if not proof_manifest_path:
+        fail("--require-full-proof requires --proof-manifest or a prepared-dir manifest")
+    if readiness_data.get("status") != "PASS":
+        fail("--require-full-proof requires readiness JSON status PASS")
+    proof_status = readiness_data.get("deploymentProofStatus")
+    if proof_status not in FULL_PROOF_STATUSES:
+        fail("--require-full-proof requires final deploymentProofStatus, got {}".format(proof_status))
+    remaining = readiness_data.get("remainingLiveProof", [])
+    if isinstance(remaining, list) and remaining:
+        fail("--require-full-proof requires no remainingLiveProof items")
+
+    checker = load_manifest_checker()
+    checker_args = argparse.Namespace(
+        require_full_proof=True,
+        discord_required=proof_status == FULL_DISCORD_PROOF_STATUS,
+        blocked_routing_required=(
+            proof_status == FULL_DISCORD_PROOF_STATUS
+            and coverage_status(readiness_data, "Blocked Discord routing filters") == "ABSENCE_PROOF_REQUESTED"
+        ),
+        check_env=False,
+        check_files=True,
+        config=report_input(readiness_data, "config"),
+        secrets=report_input(readiness_data, "secrets"),
+    )
+    result = checker.evaluate_manifest(manifest_values, checker_args)
+    if result["status"] != "PASS":
+        detail = "; ".join(result.get("errors", [])) or "manifest check failed"
+        fail("deployment proof manifest is not full-proof ready: {}".format(detail))
+    return result
 
 
 def runtime_archive_details(proof_path):
@@ -263,6 +340,9 @@ def main():
             help="Explicit output tar.gz path.")
     parser.add_argument("--include-desktop-evidence", action="store_true",
             help="Also include the desktop proof evidence file referenced by desktop proof notes.")
+    parser.add_argument("--require-full-proof", action="store_true",
+            help=("Fail unless the readiness JSON records full live proof and the proof manifest passes "
+                  "full-proof plus proof-file validation. Use for final handoff bundles only."))
     parser.add_argument("--json", action="store_true",
             help="Print compact JSON instead of human lines.")
     args = parser.parse_args()
@@ -299,10 +379,11 @@ def main():
     else:
         plan["skipped"].append({"label": "readiness report", "path": args.readiness_report, "reason": "missing"})
 
-    readiness_json = validate_source_file(args.readiness_json, "readiness JSON", False)
+    readiness_data = None
+    readiness_json = validate_source_file(args.readiness_json, "readiness JSON", args.require_full_proof)
     if readiness_json:
         add_file(plan, readiness_json, "readiness/deployment-readiness-report.json", "readiness JSON")
-        add_readiness_summary(metadata, readiness_json)
+        readiness_data = add_readiness_summary(metadata, readiness_json)
     else:
         plan["skipped"].append({"label": "readiness JSON", "path": args.readiness_json, "reason": "missing"})
 
@@ -320,6 +401,17 @@ def main():
             "requireFullProof": manifest_values.get("require_full_proof") is True,
             "live": manifest_values.get("live") is True,
             "liveDiscord": manifest_values.get("live_discord") is True,
+        }
+    elif args.require_full_proof:
+        fail("--require-full-proof requires --proof-manifest or a prepared-dir manifest")
+
+    if args.require_full_proof:
+        result = validate_final_proof_bundle(readiness_data, manifest_values, args.proof_manifest)
+        metadata["finalProofCheck"] = {
+            "status": result["status"],
+            "discordRequired": result["discordRequired"],
+            "blockedRoutingRequired": result["blockedRoutingRequired"],
+            "proofFileChecks": result.get("proofFileChecks", []),
         }
 
     proof_files = list(args.proof_file)

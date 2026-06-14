@@ -148,6 +148,33 @@ if any(ord(ch) < 32 for ch in value):
 PY
 }
 
+reject_symlinked_output_path() {
+    local label="$1"
+    local path="$2"
+    python3 - "$label" "$path" <<'PY'
+import sys
+from pathlib import Path
+
+label = sys.argv[1]
+raw_path = sys.argv[2]
+path = Path(raw_path)
+if not raw_path.strip() or path == Path("/"):
+    raise SystemExit("refusing to write {} to unsafe path: {}".format(label, raw_path))
+if path.is_symlink():
+    raise SystemExit("refusing to write {} through symlink path: {}".format(label, raw_path))
+
+parent = path.parent
+seen = set()
+while parent not in seen:
+    seen.add(parent)
+    if parent.is_symlink():
+        raise SystemExit("refusing to write {} through symlinked parent directory: {}".format(label, parent))
+    if parent == parent.parent:
+        break
+    parent = parent.parent
+PY
+}
+
 require_single_line_value "source server config" "$SERVER_CONFIG"
 require_single_line_value "client server.host" "$SERVER_HOST"
 require_single_line_value "client public_game_host" "$PUBLIC_GAME_HOST"
@@ -197,6 +224,8 @@ if [[ "${SKIP_BUILD:-0}" != "1" ]]; then
 fi
 
 launcher_require_file "$CLIENT_JAR" "Client jar is missing after build: $CLIENT_JAR"
+reject_symlinked_output_path "client distribution directory" "$DIST_DIR"
+reject_symlinked_output_path "client archive" "$ARCHIVE_PATH"
 
 transport_guidance() {
     case "$(lowercase "$SECURE_TRANSPORT")" in
@@ -378,6 +407,15 @@ exit "$status"
 EOF
 chmod +x "$DIST_DIR/run-macos-linux.sh"
 
+cat > "$DIST_DIR/Run-2006Scape.command" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "$DIR/run-macos-linux.sh" "$@"
+EOF
+chmod +x "$DIST_DIR/Run-2006Scape.command"
+
 {
     printf '%s\r\n' '@echo off'
     printf '%s\r\n' 'setlocal EnableExtensions'
@@ -472,6 +510,69 @@ tcp_check() {
     return 1
 }
 
+tcp_check_quiet() {
+    local host="$1"
+    local port="$2"
+    if [[ -z "$host" || -z "$port" ]]; then
+        return 1
+    fi
+    if command -v nc >/dev/null 2>&1; then
+        nc -G 1 -z "$host" "$port" >/dev/null 2>&1 || nc -w 1 -z "$host" "$port" >/dev/null 2>&1
+        return $?
+    fi
+    (echo >"/dev/tcp/$host/$port") >/dev/null 2>&1
+}
+
+wait_for_tunnel() {
+    local host="$1"
+    local port="$2"
+    local attempt
+    for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+        if tcp_check_quiet "$host" "$port"; then
+            return 0
+        fi
+        sleep 1
+    done
+    return 1
+}
+
+STUNNEL_PID=""
+
+cleanup_tunnel() {
+    if [[ -n "$STUNNEL_PID" ]]; then
+        kill "$STUNNEL_PID" >/dev/null 2>&1 || true
+        wait "$STUNNEL_PID" >/dev/null 2>&1 || true
+    fi
+}
+
+start_client_tls_tunnel_for_setup() {
+    local host="$1"
+    local port="$2"
+    local config="$DIR/client-tls-tunnel/stunnel-client.conf"
+    if tcp_check_quiet "$host" "$port"; then
+        echo "Client TLS tunnel is already reachable at $host:$port."
+        return 0
+    fi
+    if [[ ! -f "$config" ]]; then
+        echo "This package uses client_tls_tunnel, but $config is missing." >&2
+        return 1
+    fi
+    if ! command -v stunnel >/dev/null 2>&1; then
+        echo "This package uses client_tls_tunnel, but stunnel was not found on PATH." >&2
+        echo "Install stunnel, or start the tunnel manually before running this setup check:" >&2
+        echo "  stunnel \"$config\"" >&2
+        return 1
+    fi
+    echo "Starting stunnel temporarily for setup checks..."
+    stunnel "$config" &
+    STUNNEL_PID="$!"
+    trap cleanup_tunnel EXIT INT TERM
+    if ! wait_for_tunnel "$host" "$port"; then
+        echo "stunnel did not open $host:$port in time. Check client-tls-tunnel/stunnel-client.conf and server reachability." >&2
+        return 1
+    fi
+}
+
 if ! command -v java >/dev/null 2>&1; then
     echo "Java is required to run 2006Scape." >&2
     echo "Install Java 8 or newer, then run this checker again." >&2
@@ -500,9 +601,11 @@ echo "  jaggrab.port=$JAGGRAB_PORT"
 echo "  secure.transport=$TRANSPORT"
 echo
 
+status=0
 case "$(printf '%s' "$TRANSPORT" | tr '[:upper:]' '[:lower:]')" in
     client_tls_tunnel)
-        echo "Transport note: start stunnel first; these TCP checks target the local tunnel endpoint."
+        echo "Transport note: this checker starts the bundled stunnel config temporarily when stunnel is installed."
+        start_client_tls_tunnel_for_setup "$SERVER_HOST" "$SERVER_PORT" || status=1
         ;;
     direct_tcp)
         echo "Transport note: direct_tcp connects directly to the public host over plaintext TCP."
@@ -512,7 +615,6 @@ case "$(printf '%s' "$TRANSPORT" | tr '[:upper:]' '[:lower:]')" in
         ;;
 esac
 
-status=0
 tcp_check "Game TCP check" "$SERVER_HOST" "$SERVER_PORT" || status=1
 tcp_check "HTTP cache TCP check" "$SERVER_HOST" "$HTTP_PORT" || status=1
 tcp_check "JAGGRAB TCP check" "$SERVER_HOST" "$JAGGRAB_PORT" || status=1
@@ -525,6 +627,15 @@ fi
 exit "$status"
 EOF
 chmod +x "$DIST_DIR/check-setup-macos-linux.sh"
+
+cat > "$DIST_DIR/Check-Setup.command" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "$DIR/check-setup-macos-linux.sh" "$@"
+EOF
+chmod +x "$DIST_DIR/Check-Setup.command"
 
 {
     printf '%s\r\n' '@echo off'
@@ -558,7 +669,7 @@ chmod +x "$DIST_DIR/check-setup-macos-linux.sh"
     printf '%s\r\n' 'echo   jaggrab.port=%JAGGRAB_PORT%'
     printf '%s\r\n' 'echo   secure.transport=%TRANSPORT%'
     printf '%s\r\n' 'echo.'
-    printf '%s\r\n' 'if /I "%TRANSPORT%"=="client_tls_tunnel" echo Transport note: start stunnel first; these TCP checks target the local tunnel endpoint.'
+    printf '%s\r\n' 'if /I "%TRANSPORT%"=="client_tls_tunnel" echo Transport note: the launcher can start stunnel automatically, but this Windows checker expects the local tunnel endpoint to be reachable first.'
     printf '%s\r\n' 'if /I "%TRANSPORT%"=="direct_tcp" echo Transport note: direct_tcp connects directly to the public host over plaintext TCP.'
     printf '%s\r\n' 'if /I "%TRANSPORT%"=="tailscale" echo Transport note: connect the configured private network before running the client.'
     printf '%s\r\n' 'if /I "%TRANSPORT%"=="wireguard" echo Transport note: connect the configured private network before running the client.'
@@ -606,16 +717,20 @@ cat > "$DIST_DIR/README.txt" <<EOF
 2006Scape Client
 
 Check setup:
-  macOS/Linux: ./check-setup-macos-linux.sh
+  macOS: double-click Check-Setup.command, or run ./check-setup-macos-linux.sh from Terminal.
+  Linux: ./check-setup-macos-linux.sh
   Windows: double-click check-setup-windows.bat or run it from Command Prompt.
   The checker verifies Java, prints client.properties, and attempts TCP checks
   without logging in or changing server state.
 
 Run:
-  macOS/Linux: ./run-macos-linux.sh
+  macOS: double-click Run-2006Scape.command, or run ./run-macos-linux.sh from Terminal.
+  Linux: ./run-macos-linux.sh
   Windows: double-click run-windows.bat or run it from Command Prompt.
   For client_tls_tunnel packages, the launchers try to start the bundled
   stunnel config automatically when stunnel is installed.
+  macOS/Linux setup checker: can start stunnel temporarily for TCP checks.
+  Windows setup checker: expects the local tunnel endpoint to be reachable first.
 
 Java:
   Install Java 8 or newer first. The launchers print a short error if Java
@@ -692,6 +807,8 @@ EOF
     cd "$DIST_DIR"
     CHECKSUM_FILES=(
         2006scape-client.jar \
+        Check-Setup.command \
+        Run-2006Scape.command \
         client.properties \
         check-setup-macos-linux.sh \
         check-setup-windows.bat \
@@ -727,7 +844,12 @@ def zip_info(path, arcname):
     if path.is_dir():
         info.external_attr = (stat.S_IFDIR | 0o755) << 16
     else:
-        mode = 0o755 if path.name in {"run-macos-linux.sh", "check-setup-macos-linux.sh"} else 0o644
+        mode = 0o755 if path.name in {
+            "Check-Setup.command",
+            "Run-2006Scape.command",
+            "run-macos-linux.sh",
+            "check-setup-macos-linux.sh",
+        } else 0o644
         info.external_attr = (stat.S_IFREG | mode) << 16
     return info
 

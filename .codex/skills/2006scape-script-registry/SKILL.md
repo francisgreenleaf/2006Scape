@@ -67,22 +67,26 @@ python3 agent-navigation/tools/script_registry.py run food -- --mode fish-cook -
 python3 agent-navigation/tools/script_registry.py run smithing -- --mode smith --item sword --amount 10
 python3 agent-navigation/tools/script_registry.py run bank-loadout -- --preset cowhide-trip --dry-run --json
 python3 agent-navigation/tools/script_registry.py run agent chat -- --profile PROFILE status --since-id 0
-python3 agent-navigation/tools/script_registry.py run runtime_data_backup -- --data-dir "2006Scape Server/data"
-python3 agent-navigation/tools/script_registry.py run desktop_client_proof -- --same-host-client LocalTest --external-client ExternalTest --transport tailscale --public-host HOST --evidence /path/to/evidence.png
-python3 agent-navigation/tools/script_registry.py run deployment_proof_bundle -- --prepared-dir dist/external-deployment
+read -s ACCOUNT_PASSWORD && export ACCOUNT_PASSWORD && python3 agent-navigation/tools/script_registry.py run external_account_create -- ExternalTest --password-env ACCOUNT_PASSWORD --allowed-character ExternalTest
+read -s ACCOUNT_PASSWORD && export ACCOUNT_PASSWORD && python3 agent-navigation/tools/script_registry.py run external_account_create -- ExternalTest --password-env ACCOUNT_PASSWORD --overwrite --preserve-metadata
+python3 agent-navigation/tools/script_registry.py run external_account_admin -- --require-password-policy audit
+python3 agent-navigation/tools/script_registry.py run runtime_data_backup -- --data-dir "2006Scape Server/data" --proof-manifest dist/external-deployment/deployment-proof-manifest.json
+python3 agent-navigation/tools/script_registry.py run desktop_client_proof -- --same-host-client LocalTest --external-client ExternalTest --transport tailscale --public-host HOST --evidence /path/to/evidence.png --proof-manifest dist/external-deployment/deployment-proof-manifest.json
+python3 agent-navigation/tools/script_registry.py run deployment_proof_bundle -- --prepared-dir dist/external-deployment --require-full-proof
 python3 agent-navigation/tools/script_registry.py run prepare external deployment -- --config "2006Scape Server/ServerConfig.json"
 CLIENT_SERVER_CONFIG="2006Scape Server/ServerConfig.json" python3 agent-navigation/tools/script_registry.py run package client
 python3 agent-navigation/tools/script_registry.py run client tls tunnel -- --config "2006Scape Server/ServerConfig.json" --output-dir dist/client-tls-tunnel-operator
 python3 agent-navigation/tools/script_registry.py run server deployment files -- --config "2006Scape Server/ServerConfig.json" --output-dir dist/server-deployment
 python3 agent-navigation/tools/script_registry.py run network proof -- --config "2006Scape Server/ServerConfig.json"
 python3 agent-navigation/tools/script_registry.py run deployment readiness -- --config "2006Scape Server/ServerConfig.json" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --client-tls-tunnel-dir dist/client-tls-tunnel-operator
+python3 agent-navigation/tools/script_registry.py run deployment readiness -- --config "2006Scape Server/ServerConfig.json" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --live --update-proof-manifest dist/external-deployment/deployment-proof-manifest.json
 python3 agent-navigation/tools/script_registry.py show deployment_readiness_status --json
 python3 agent-navigation/tools/script_registry.py run deployment_readiness_status -- --prepared-dir dist/external-deployment --show-next-commands
 python3 agent-navigation/tools/script_registry.py run proof manifest check -- dist/external-deployment/deployment-proof-manifest.json --require-full-proof
 python3 agent-navigation/tools/script_registry.py run concurrent login proof -- --external-host HOST --external-username EXTERNAL_TEST --external-password-env EXTERNAL_PASSWORD --local-username LOCAL_TEST --local-password-env LOCAL_PASSWORD
-python3 agent-navigation/tools/script_registry.py run agent chat log proof -- --text-contains MARKER --from-type discord --from-bot false --channel agent
-python3 agent-navigation/tools/script_registry.py run agent chat log proof -- --event agent_chat_player_delivery --text-contains MARKER --to-type player --to-name PLAYER --delivered-to PLAYER --no-undelivered --channel agent
-python3 agent-navigation/tools/script_registry.py run discord channel proof -- --text-contains MARKER --agent PROFILE
+python3 agent-navigation/tools/script_registry.py run agent chat log proof -- --text-contains MARKER --from-type discord --from-bot false --channel agent --proof-manifest dist/external-deployment/deployment-proof-manifest.json
+python3 agent-navigation/tools/script_registry.py run agent chat log proof -- --event agent_chat_player_delivery --text-contains MARKER --to-type player --to-name PLAYER --delivered-to PLAYER --no-undelivered --channel agent --proof-manifest dist/external-deployment/deployment-proof-manifest.json
+python3 agent-navigation/tools/script_registry.py run discord channel proof -- --text-contains MARKER --agent PROFILE --proof-manifest dist/external-deployment/deployment-proof-manifest.json
 python3 agent-navigation/tools/script_registry.py run cowhide -- --stop-when-inventory-full --quiet
 python3 agent-navigation/tools/script_registry.py run character-memory -- show --profile PROFILE --json
 ```

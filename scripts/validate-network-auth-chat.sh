@@ -730,8 +730,10 @@ python3 agent-navigation/tools/script_registry.py search "agent chat" --json | g
 python3 agent-navigation/tools/script_registry.py show agent_chat_xs --json | grep -q '"path": "agent-navigation/tools/agent_chat_XS.py"'
 python3 agent-navigation/tools/script_registry.py search "runtime backup" --json | grep -q '"id": "runtime_data_backup"'
 python3 agent-navigation/tools/script_registry.py show runtime_data_backup --json | grep -q '"path": "scripts/backup-runtime-data.py"'
+python3 agent-navigation/tools/script_registry.py show runtime_data_backup --json | grep -q -- "--proof-manifest"
 python3 agent-navigation/tools/script_registry.py search "desktop proof" --json | grep -q '"id": "desktop_client_proof"'
 python3 agent-navigation/tools/script_registry.py show desktop_client_proof --json | grep -q '"path": "scripts/write-desktop-client-proof.py"'
+python3 agent-navigation/tools/script_registry.py show desktop_client_proof --json | grep -q -- "--proof-manifest"
 python3 agent-navigation/tools/script_registry.py search "deployment" --json | grep -q '"id": "external_deployment_prepare"'
 python3 agent-navigation/tools/script_registry.py search "deployment" --json | grep -q '"id": "external_deployment_verify"'
 python3 agent-navigation/tools/script_registry.py search "proof manifest" --json | grep -q '"id": "deployment_proof_manifest_check"'
@@ -754,16 +756,24 @@ python3 agent-navigation/tools/script_registry.py show client_tls_tunnel_config 
 python3 agent-navigation/tools/script_registry.py show server_deployment_files --json | grep -q '"path": "scripts/render-server-deployment-files.py"'
 python3 agent-navigation/tools/script_registry.py show external_deployment_verify --json | grep -q '"path": "scripts/verify-external-deployment.py"'
 python3 agent-navigation/tools/script_registry.py show deployment_readiness_report --json | grep -q '"path": "scripts/deployment-readiness-report.py"'
+python3 agent-navigation/tools/script_registry.py show deployment_readiness_report --json | grep -q -- "--update-proof-manifest"
 python3 agent-navigation/tools/script_registry.py show deployment_readiness_status --json | grep -q '"path": "scripts/deployment-readiness-status.py"'
 python3 agent-navigation/tools/script_registry.py show deployment_proof_manifest_check --json | grep -q '"path": "scripts/check-deployment-proof-manifest.py"'
 python3 agent-navigation/tools/script_registry.py show deployment_proof_bundle --json | grep -q '"path": "scripts/package-deployment-proof.py"'
+python3 agent-navigation/tools/script_registry.py show deployment_proof_bundle --json | grep -q -- "--require-full-proof"
 python3 agent-navigation/tools/script_registry.py show external_account_create --json | grep -q '"path": "scripts/create-account.py"'
+python3 agent-navigation/tools/script_registry.py show external_account_create --json | grep -q -- "read -s ACCOUNT_PASSWORD"
+python3 agent-navigation/tools/script_registry.py show external_account_create --json | grep -q -- "--password-env ACCOUNT_PASSWORD"
+python3 agent-navigation/tools/script_registry.py show external_account_create --json | grep -q -- "--overwrite --preserve-metadata"
 python3 agent-navigation/tools/script_registry.py show external_account_admin --json | grep -q '"path": "scripts/account-admin.py"'
+python3 agent-navigation/tools/script_registry.py show external_account_admin --json | grep -q -- "--require-password-policy audit"
 python3 agent-navigation/tools/script_registry.py show game_login_probe --json | grep -q '"path": "scripts/probe-game-login.py"'
 python3 agent-navigation/tools/script_registry.py show deployment_network_probe --json | grep -q '"path": "scripts/probe-deployment-network.py"'
 python3 agent-navigation/tools/script_registry.py show concurrent_login_probe --json | grep -q '"path": "scripts/probe-concurrent-logins.py"'
 python3 agent-navigation/tools/script_registry.py show agent_chat_log_verify --json | grep -q '"path": "scripts/verify-agent-chat-log.py"'
+python3 agent-navigation/tools/script_registry.py show agent_chat_log_verify --json | grep -q -- "--proof-manifest"
 python3 agent-navigation/tools/script_registry.py show discord_channel_message_verify --json | grep -q '"path": "scripts/verify-discord-channel-message.py"'
+python3 agent-navigation/tools/script_registry.py show discord_channel_message_verify --json | grep -q -- "--proof-manifest"
 python3 agent-navigation/tools/script_registry.py show discord_agent_probe --json | grep -q '"path": "scripts/probe-discord-agent-bots.py"'
 
 echo "Checking external-player documentation coverage..."
@@ -864,6 +874,23 @@ grep -q "scripts/probe-discord-agent-bots.py" docs/deployment-networking.md
 grep -q "scripts/probe-discord-agent-bots.py" docs/network-auth-agent-chat-design.md
 grep -q "scripts/verify-agent-chat-log.py" docs/deployment-networking.md
 grep -q "scripts/verify-discord-channel-message.py" docs/deployment-networking.md
+grep -q "macOS double-click .command wrappers" README.md
+grep -q "Run-2006Scape.command" docs/external-deployment-quickstart.md
+grep -q "Check-Setup.command" docs/external-deployment-quickstart.md
+grep -q "macOS .command wrappers plus" docs/network-auth-agent-chat-design.md
+grep -q "macOS double-click wrappers" docs/network-auth-agent-chat-design.md
+grep -q "refuses symlinked output directories" README.md
+grep -q "refuses symlinked output directories" docs/deployment-networking.md
+grep -q "refuses symlinked output directories" docs/network-auth-agent-chat-design.md
+grep -q "refuses symlinked output directories" .codex/skills/2006scape-agent-bridge-dev/SKILL.md
+grep -q "refuses symlinked output directories" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q "symlinked package output paths are rejected" .codex/skills/2006scape/SKILL.md
+python3 agent-navigation/tools/script_registry.py show standalone_client_package --json | grep -q "symlinked output path rejection"
+grep -q "macOS double-click \`.command\` wrappers" .codex/skills/2006scape/SKILL.md
+grep -q "Run-2006Scape.command" .codex/skills/2006scape-agent-bridge-dev/SKILL.md
+grep -q "Check-Setup.command" .codex/skills/2006scape-agent-bridge-dev/SKILL.md
+grep -q "Run-2006Scape.command" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q "macOS double-click .command wrappers" agent-navigation/data/script_registry.json
 grep -q "non-symlink screenshot/log evidence file" README.md
 grep -q "scripts/write-desktop-client-proof.py" README.md
 grep -q "scripts/write-desktop-client-proof.py" AGENTS.md
@@ -878,6 +905,10 @@ grep -q "non-symlink non-empty screenshot/log file" docs/network-auth-agent-chat
 grep -q "non-symlink screenshot/log evidence file" .codex/skills/2006scape-external-deployment/SKILL.md
 grep -q -- "--agent-chat-log-text" docs/network-auth-agent-chat-design.md
 grep -q -- "--discord-channel-message-text" docs/network-auth-agent-chat-design.md
+grep -q "direct agent/player delivery, real Discord-to-server ingress, or blocked-routing absence proof" docs/network-auth-agent-chat-design.md
+grep -q "updates only the \`discord_channel_message_\*\` fields" docs/network-auth-agent-chat-design.md
+grep -q "verify-agent-chat-log.py --proof-manifest PATH" docs/network-auth-agent-chat-design.md
+grep -q "verify-discord-channel-message.py --proof-manifest PATH" docs/network-auth-agent-chat-design.md
 grep -q -- "--desktop-client-proof-file" docs/deployment-networking.md
 grep -q -- "--runtime-data-backup-proof-file" docs/deployment-networking.md
 grep -q -- "--runtime-data-backup-proof-file" docs/network-auth-agent-chat-design.md
@@ -888,6 +919,15 @@ grep -q -- "--proof-manifest" docs/network-auth-agent-chat-design.md
 grep -q -- "--proof-manifest" .codex/skills/2006scape/SKILL.md
 grep -q -- "--proof-manifest" .codex/skills/2006scape-agent-bridge-dev/SKILL.md
 grep -q -- "--proof-manifest" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q -- "--update-proof-manifest" README.md
+grep -q -- "--update-proof-manifest" AGENTS.md
+grep -q -- "--update-proof-manifest" docs/deployment-networking.md
+grep -q -- "--update-proof-manifest" docs/external-deployment-quickstart.md
+grep -q -- "--update-proof-manifest" docs/network-auth-agent-chat-design.md
+grep -q -- "--update-proof-manifest" .codex/skills/2006scape/SKILL.md
+grep -q -- "--update-proof-manifest" .codex/skills/2006scape-agent-bridge-dev/SKILL.md
+grep -q -- "--update-proof-manifest" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q -- "--update-proof-manifest" .codex/skills/2006scape-script-registry/SKILL.md
 grep -q "scripts/check-deployment-proof-manifest.py" README.md
 grep -q "scripts/check-deployment-proof-manifest.py" AGENTS.md
 grep -q "scripts/check-deployment-proof-manifest.py" docs/deployment-networking.md
@@ -903,6 +943,14 @@ grep -q "scripts/package-deployment-proof.py" docs/external-deployment-quickstar
 grep -q "scripts/package-deployment-proof.py" docs/network-auth-agent-chat-design.md
 grep -q "scripts/package-deployment-proof.py" .codex/skills/2006scape/SKILL.md
 grep -q "scripts/package-deployment-proof.py" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q "final external-ready handoff" README.md
+grep -q "final external-ready handoff" AGENTS.md
+grep -q "final external-ready handoff" docs/deployment-networking.md
+grep -q "final external-ready handoff" docs/external-deployment-quickstart.md
+grep -q "final external-ready handoff" docs/network-auth-agent-chat-design.md
+grep -q "final external-ready handoff" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q "final external-ready bundle" .codex/skills/2006scape/SKILL.md
+grep -q -- "--require-full-proof" .codex/skills/2006scape-script-registry/SKILL.md
 grep -q -- "--prepared-dir dist/external-deployment" README.md
 grep -q -- "--prepared-dir dist/external-deployment" AGENTS.md
 grep -q -- "--prepared-dir dist/external-deployment" docs/deployment-networking.md
@@ -984,6 +1032,14 @@ grep -q "operator-provided login guidance" .codex/skills/2006scape-agent-bridge-
 grep -q "login guidance to use the server operator's supplied account" README.md
 grep -q "login guidance to use the server operator's supplied account" docs/deployment-networking.md
 grep -q "login guidance to use the server operator's supplied account" docs/network-auth-agent-chat-design.md
+grep -q "macOS/Linux setup checker can start the bundled stunnel config temporarily" README.md
+grep -q "macOS/Linux setup checker can start the bundled stunnel config temporarily" AGENTS.md
+grep -q "macOS/Linux setup checker can start the bundled stunnel config temporarily" docs/external-deployment-quickstart.md
+grep -q "macOS/Linux setup checker starts the bundled stunnel config temporarily" docs/deployment-networking.md
+grep -q "macOS/Linux setup checker can start the bundled stunnel config temporarily" docs/network-auth-agent-chat-design.md
+grep -q "macOS/Linux setup checker can start stunnel temporarily" .codex/skills/2006scape/SKILL.md
+grep -q "macOS/Linux setup checker can start it temporarily" .codex/skills/2006scape-agent-bridge-dev/SKILL.md
+grep -q "macOS/Linux setup checker may also start the bundled stunnel config temporarily" .codex/skills/2006scape-external-deployment/SKILL.md
 grep -q 'CLIENT_SECURE_TRANSPORT` must be one of `direct_tcp`, `tailscale`, `wireguard`, `vpn`, or `client_tls_tunnel`' docs/network-auth-agent-chat-design.md
 grep -q "not to reuse RuneScape.com or other service passwords" docs/external-deployment-quickstart.md
 if grep -q 'CLIENT_SECURE_TRANSPORT` must be `tailscale`, `wireguard`, or `vpn`' docs/network-auth-agent-chat-design.md; then
@@ -1006,6 +1062,14 @@ grep -q "backup archive sha256" docs/network-auth-agent-chat-design.md
 grep -q "backup archive sha256" .codex/skills/2006scape/SKILL.md
 grep -q "backup archive sha256" .codex/skills/2006scape-agent-bridge-dev/SKILL.md
 grep -q "backup archive sha256" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q "Back up deployed runtime data" docs/external-deployment-quickstart.md
+grep -q "create the manifest parent directory and copy the manifest from the template if it is missing" docs/external-deployment-quickstart.md
+grep -q "updates \`runtime_data_backup_proof_file\` automatically" docs/external-deployment-quickstart.md
+grep -q "create the proof manifest parent directory" README.md
+grep -q "create the proof manifest parent directory" AGENTS.md
+grep -q "create the proof manifest parent directory" docs/deployment-networking.md
+grep -q "creates the proof manifest parent directory" docs/network-auth-agent-chat-design.md
+grep -q "create the proof manifest parent directory" .codex/skills/2006scape-external-deployment/SKILL.md
 grep -q "live network/login/client/chat/backup/Discord evidence" AGENTS.md
 grep -q "live network/login/client/chat/backup/Discord evidence" .codex/skills/2006scape-agent-bridge-dev/SKILL.md
 grep -q "live network/login/client/chat/backup/Discord evidence" docs/deployment-networking.md
@@ -1035,8 +1099,10 @@ grep -q 'display_name: "2006Scape External Deployment"' .codex/skills/2006scape-
 grep -q 'default_prompt: "Use $2006scape-external-deployment' .codex/skills/2006scape-external-deployment/agents/openai.yaml
 grep -q "runtime_data_backup" .codex/skills/2006scape-script-registry/SKILL.md
 grep -q "run runtime_data_backup" .codex/skills/2006scape-script-registry/SKILL.md
+grep -q "run runtime_data_backup -- --data-dir \"2006Scape Server/data\" --proof-manifest" .codex/skills/2006scape-script-registry/SKILL.md
 grep -q "desktop_client_proof" .codex/skills/2006scape-script-registry/SKILL.md
 grep -q "run desktop_client_proof" .codex/skills/2006scape-script-registry/SKILL.md
+grep -q "run desktop_client_proof -- --same-host-client LocalTest --external-client ExternalTest --transport tailscale --public-host HOST --evidence /path/to/evidence.png --proof-manifest" .codex/skills/2006scape-script-registry/SKILL.md
 grep -q "deployment_proof_manifest_check" .codex/skills/2006scape-script-registry/SKILL.md
 grep -q "deployment_proof_bundle" .codex/skills/2006scape-script-registry/SKILL.md
 grep -q "run deployment_proof_bundle" .codex/skills/2006scape-script-registry/SKILL.md
@@ -1049,9 +1115,14 @@ grep -q "deployment_network_probe" .codex/skills/2006scape-script-registry/SKILL
 grep -q "run network proof" .codex/skills/2006scape-script-registry/SKILL.md
 grep -q "external_account_create" .codex/skills/2006scape-script-registry/SKILL.md
 grep -q "external_account_admin" .codex/skills/2006scape-script-registry/SKILL.md
+grep -q "run external_account_create -- ExternalTest --password-env ACCOUNT_PASSWORD" .codex/skills/2006scape-script-registry/SKILL.md
+grep -q "run external_account_create -- ExternalTest --password-env ACCOUNT_PASSWORD --overwrite --preserve-metadata" .codex/skills/2006scape-script-registry/SKILL.md
+grep -q "run external_account_admin -- --require-password-policy audit" .codex/skills/2006scape-script-registry/SKILL.md
 grep -q "game_login_probe" .codex/skills/2006scape-script-registry/SKILL.md
 grep -q "agent_chat_log_verify" .codex/skills/2006scape-script-registry/SKILL.md
 grep -q "agent_chat_player_delivery" .codex/skills/2006scape-script-registry/SKILL.md
+grep -q "agent chat log proof -- --text-contains MARKER --from-type discord --from-bot false --channel agent --proof-manifest" .codex/skills/2006scape-script-registry/SKILL.md
+grep -q "discord channel proof -- --text-contains MARKER --agent PROFILE --proof-manifest" .codex/skills/2006scape-script-registry/SKILL.md
 grep -q "discord_channel_message_verify" .codex/skills/2006scape-script-registry/SKILL.md
 grep -q "discord_agent_probe" .codex/skills/2006scape-script-registry/SKILL.md
 grep -q '"id": "runtime_data_backup"' agent-navigation/data/script_registry.json
@@ -1316,6 +1387,7 @@ python3 scripts/smoke-network-auth-chat-runtime.py
 
 echo "Smoke-testing standalone client packaging in a temporary dist directory..."
 TMP_DIR="$(mktemp -d)"
+TMP_DIR="$(cd "$TMP_DIR" && pwd -P)"
 cat > "$TMP_DIR/wildcard-public-host-config.json" <<'JSON'
 {
   "external_players_enabled": true,
@@ -1586,11 +1658,16 @@ grep -q "Transport setup:" "$TMP_DIR/client-tls-tunnel-client/README.txt"
 grep -q "launchers try to start the bundled" "$TMP_DIR/client-tls-tunnel-client/README.txt"
 grep -q "stunnel client-tls-tunnel/stunnel-client.conf" "$TMP_DIR/client-tls-tunnel-client/README.txt"
 grep -q "stunnel carries that" "$TMP_DIR/client-tls-tunnel-client/README.txt"
+grep -q "macOS/Linux setup checker: can start stunnel temporarily for TCP checks" "$TMP_DIR/client-tls-tunnel-client/README.txt"
+grep -q "Windows setup checker: expects the local tunnel endpoint" "$TMP_DIR/client-tls-tunnel-client/README.txt"
 grep -q "traffic over TLS to tls.example.net" "$TMP_DIR/client-tls-tunnel-client/README.txt"
 grep -q "Use the username and password provided by the server operator" "$TMP_DIR/client-tls-tunnel-client/README.txt"
 grep -q "Do not use a RuneScape.com password or reuse passwords from other services" "$TMP_DIR/client-tls-tunnel-client/README.txt"
 grep -q "Starting stunnel for encrypted 2006Scape transport" "$TMP_DIR/client-tls-tunnel-client/run-macos-linux.sh"
 grep -q "Starting stunnel for encrypted 2006Scape transport" "$TMP_DIR/client-tls-tunnel-client/run-windows.bat"
+grep -q "Starting stunnel temporarily for setup checks" "$TMP_DIR/client-tls-tunnel-client/check-setup-macos-linux.sh"
+grep -q "start_client_tls_tunnel_for_setup" "$TMP_DIR/client-tls-tunnel-client/check-setup-macos-linux.sh"
+grep -q "expects the local tunnel endpoint to be reachable first" "$TMP_DIR/client-tls-tunnel-client/check-setup-windows.bat"
 test -f "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/README.txt"
 test -f "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/stunnel-client.conf"
 grep -q "it starts this stunnel config" "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/README.txt"
@@ -1999,6 +2076,45 @@ if CLIENT_DIST_DIR="$TMP_DIR/control-character-env-client" \
 fi
 grep -q "client server.host must be a single-line value without control characters" "$TMP_DIR/control-character-env-client.out"
 
+mkdir -p "$TMP_DIR/package-output-target"
+ln -s "$TMP_DIR/package-output-target" "$TMP_DIR/package-output-link"
+if CLIENT_DIST_DIR="$TMP_DIR/package-output-link" \
+    CLIENT_ARCHIVE_PATH="$TMP_DIR/symlink-dist-client.zip" \
+    SKIP_BUILD=1 \
+    CLIENT_SERVER_HOST=localhost \
+    scripts/package-client.sh > "$TMP_DIR/symlink-dist-client.out" 2>&1; then
+    echo "package-client.sh unexpectedly accepted a symlinked client distribution directory." >&2
+    cat "$TMP_DIR/symlink-dist-client.out" >&2
+    exit 1
+fi
+grep -q "refusing to write client distribution directory through symlink path" "$TMP_DIR/symlink-dist-client.out"
+
+touch "$TMP_DIR/archive-target.zip"
+ln -s "$TMP_DIR/archive-target.zip" "$TMP_DIR/archive-link.zip"
+if CLIENT_DIST_DIR="$TMP_DIR/symlink-archive-client" \
+    CLIENT_ARCHIVE_PATH="$TMP_DIR/archive-link.zip" \
+    SKIP_BUILD=1 \
+    CLIENT_SERVER_HOST=localhost \
+    scripts/package-client.sh > "$TMP_DIR/symlink-archive-client.out" 2>&1; then
+    echo "package-client.sh unexpectedly accepted a symlinked client archive path." >&2
+    cat "$TMP_DIR/symlink-archive-client.out" >&2
+    exit 1
+fi
+grep -q "refusing to write client archive through symlink path" "$TMP_DIR/symlink-archive-client.out"
+
+mkdir -p "$TMP_DIR/package-parent-target"
+ln -s "$TMP_DIR/package-parent-target" "$TMP_DIR/package-parent-link"
+if CLIENT_DIST_DIR="$TMP_DIR/package-parent-link/client" \
+    CLIENT_ARCHIVE_PATH="$TMP_DIR/package-parent-client.zip" \
+    SKIP_BUILD=1 \
+    CLIENT_SERVER_HOST=localhost \
+    scripts/package-client.sh > "$TMP_DIR/symlink-parent-client.out" 2>&1; then
+    echo "package-client.sh unexpectedly accepted a symlinked client distribution parent directory." >&2
+    cat "$TMP_DIR/symlink-parent-client.out" >&2
+    exit 1
+fi
+grep -q "refusing to write client distribution directory through symlinked parent directory" "$TMP_DIR/symlink-parent-client.out"
+
 CLIENT_DIST_DIR="$TMP_DIR/2006scape-client" \
 CLIENT_ARCHIVE_PATH="$TMP_DIR/2006scape-client.zip" \
 SKIP_BUILD=1 \
@@ -2018,15 +2134,21 @@ test -f "$TMP_DIR/2006scape-client/2006scape-client.jar"
 test -f "$TMP_DIR/2006scape-client/client.properties"
 test -f "$TMP_DIR/2006scape-client/MANIFEST.txt"
 test -f "$TMP_DIR/2006scape-client/SHA256SUMS"
+test -x "$TMP_DIR/2006scape-client/Check-Setup.command"
+test -x "$TMP_DIR/2006scape-client/Run-2006Scape.command"
 test -x "$TMP_DIR/2006scape-client/check-setup-macos-linux.sh"
 test -f "$TMP_DIR/2006scape-client/check-setup-windows.bat"
 test -x "$TMP_DIR/2006scape-client/run-macos-linux.sh"
 test -f "$TMP_DIR/2006scape-client/run-windows.bat"
 test -f "$TMP_DIR/2006scape-client.zip"
+assert_archive_launcher_executable "$TMP_DIR/2006scape-client.zip" "2006scape-client/Check-Setup.command"
+assert_archive_launcher_executable "$TMP_DIR/2006scape-client.zip" "2006scape-client/Run-2006Scape.command"
 assert_archive_launcher_executable "$TMP_DIR/2006scape-client.zip" "2006scape-client/check-setup-macos-linux.sh"
 assert_archive_launcher_executable "$TMP_DIR/2006scape-client.zip" "2006scape-client/run-macos-linux.sh"
 assert_windows_launcher_crlf "$TMP_DIR/2006scape-client/check-setup-windows.bat"
 assert_windows_launcher_crlf "$TMP_DIR/2006scape-client/run-windows.bat"
+grep -q "check-setup-macos-linux.sh" "$TMP_DIR/2006scape-client/Check-Setup.command"
+grep -q "run-macos-linux.sh" "$TMP_DIR/2006scape-client/Run-2006Scape.command"
 grep -q "Java is required to run 2006Scape" "$TMP_DIR/2006scape-client/check-setup-macos-linux.sh"
 grep -q "Java is required to run 2006Scape" "$TMP_DIR/2006scape-client/check-setup-windows.bat"
 grep -q "Game TCP check" "$TMP_DIR/2006scape-client/check-setup-macos-linux.sh"
@@ -2038,6 +2160,8 @@ grep -q -- "-no-java-warnings" "$TMP_DIR/2006scape-client/run-windows.bat"
 grep -q "Check setup:" "$TMP_DIR/2006scape-client/README.txt"
 grep -q "without logging in" "$TMP_DIR/2006scape-client/README.txt"
 grep -q "Install Java 8 or newer" "$TMP_DIR/2006scape-client/README.txt"
+grep -q "double-click Check-Setup.command" "$TMP_DIR/2006scape-client/README.txt"
+grep -q "double-click Run-2006Scape.command" "$TMP_DIR/2006scape-client/README.txt"
 grep -q "suppress the legacy Parabot-focused Java-version warning" "$TMP_DIR/2006scape-client/README.txt"
 grep -q "Transport setup:" "$TMP_DIR/2006scape-client/README.txt"
 grep -q "Connect Tailscale before launching the client" "$TMP_DIR/2006scape-client/README.txt"
@@ -2067,15 +2191,21 @@ test -f "$TMP_DIR/2006scape-client-from-config/client.properties"
 test -f "$TMP_DIR/2006scape-client-from-config/2006scape-client.jar"
 test -f "$TMP_DIR/2006scape-client-from-config/MANIFEST.txt"
 test -f "$TMP_DIR/2006scape-client-from-config/SHA256SUMS"
+test -x "$TMP_DIR/2006scape-client-from-config/Check-Setup.command"
+test -x "$TMP_DIR/2006scape-client-from-config/Run-2006Scape.command"
 test -x "$TMP_DIR/2006scape-client-from-config/check-setup-macos-linux.sh"
 test -f "$TMP_DIR/2006scape-client-from-config/check-setup-windows.bat"
 test -x "$TMP_DIR/2006scape-client-from-config/run-macos-linux.sh"
 test -f "$TMP_DIR/2006scape-client-from-config/run-windows.bat"
 test -f "$TMP_DIR/2006scape-client-from-config.zip"
+assert_archive_launcher_executable "$TMP_DIR/2006scape-client-from-config.zip" "2006scape-client-from-config/Check-Setup.command"
+assert_archive_launcher_executable "$TMP_DIR/2006scape-client-from-config.zip" "2006scape-client-from-config/Run-2006Scape.command"
 assert_archive_launcher_executable "$TMP_DIR/2006scape-client-from-config.zip" "2006scape-client-from-config/check-setup-macos-linux.sh"
 assert_archive_launcher_executable "$TMP_DIR/2006scape-client-from-config.zip" "2006scape-client-from-config/run-macos-linux.sh"
 assert_windows_launcher_crlf "$TMP_DIR/2006scape-client-from-config/check-setup-windows.bat"
 assert_windows_launcher_crlf "$TMP_DIR/2006scape-client-from-config/run-windows.bat"
+grep -q "check-setup-macos-linux.sh" "$TMP_DIR/2006scape-client-from-config/Check-Setup.command"
+grep -q "run-macos-linux.sh" "$TMP_DIR/2006scape-client-from-config/Run-2006Scape.command"
 grep -q "Java is required to run 2006Scape" "$TMP_DIR/2006scape-client-from-config/check-setup-macos-linux.sh"
 grep -q "Java is required to run 2006Scape" "$TMP_DIR/2006scape-client-from-config/check-setup-windows.bat"
 grep -q "Game TCP check" "$TMP_DIR/2006scape-client-from-config/check-setup-macos-linux.sh"
@@ -2087,6 +2217,8 @@ grep -q -- "-no-java-warnings" "$TMP_DIR/2006scape-client-from-config/run-window
 grep -q "Check setup:" "$TMP_DIR/2006scape-client-from-config/README.txt"
 grep -q "without logging in" "$TMP_DIR/2006scape-client-from-config/README.txt"
 grep -q "Install Java 8 or newer" "$TMP_DIR/2006scape-client-from-config/README.txt"
+grep -q "double-click Check-Setup.command" "$TMP_DIR/2006scape-client-from-config/README.txt"
+grep -q "double-click Run-2006Scape.command" "$TMP_DIR/2006scape-client-from-config/README.txt"
 grep -q "suppress the legacy Parabot-focused Java-version warning" "$TMP_DIR/2006scape-client-from-config/README.txt"
 grep -q "No VPN or client-side tunnel is required for this package" "$TMP_DIR/2006scape-client-from-config/README.txt"
 grep -q "connects directly to server.example.com over plaintext TCP" "$TMP_DIR/2006scape-client-from-config/README.txt"
@@ -2300,8 +2432,23 @@ cat > "$AGENT_CHAT_LOG_TMP/2026-06-12/agent-chat.jsonl" <<'JSON'
 {"schemaVersion":1,"event":"agent_chat_message","id":41,"createdAt":1781300000000,"timestampMs":1781300000000,"fromType":"discord","fromName":"VerifierUser","fromProfile":"MrFlame","fromBot":false,"discordMessageId":"123456789012345678","toType":"agent","toName":"MrFlame","channel":"agent","text":"network-auth-chat-log-proof-marker","deliveredTo":[],"undeliveredTo":[]}
 {"schemaVersion":1,"event":"agent_chat_player_delivery","id":42,"createdAt":1781300000100,"timestampMs":1781300000100,"fromType":"agent","fromName":"MrFlame","fromProfile":"MrFlame","toType":"player","toName":"MrGem","channel":"agent","text":"network-auth-player-delivery-proof-marker","deliveredTo":["MrGem"],"undeliveredTo":[]}
 JSON
+CHAT_PROOF_MANIFEST="$TMP_DIR/chat-proof-manifest.json"
+cat > "$CHAT_PROOF_MANIFEST" <<'EOF'
+{
+  "_notes": "chat proof helper smoke",
+  "desktop_client_proof_file": "desktop-client-proof.md",
+  "runtime_data_backup_proof_file": "runtime-data-backup-proof.md"
+}
+EOF
 cat > "$TMP_DIR/desktop-client-proof-evidence.log" <<'EOF'
 2026-06-12T12:34:56Z local throwaway and tunnel throwaway desktop Java clients both online together.
+EOF
+cat > "$TMP_DIR/desktop-proof-manifest.json" <<'EOF'
+{
+  "_notes": "desktop proof helper smoke",
+  "desktop_client_proof_file": "PATH_TO_DESKTOP_CLIENT_PROOF.md",
+  "runtime_data_backup_proof_file": "runtime-data-backup-proof.md"
+}
 EOF
 scripts/write-desktop-client-proof.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
@@ -2310,12 +2457,25 @@ scripts/write-desktop-client-proof.py \
     --transport tailscale \
     --public-host "example-tailnet-host" \
     --evidence "$TMP_DIR/desktop-client-proof-evidence.log" \
-    --output "$TMP_DIR/desktop-client-proof.md" > "$TMP_DIR/desktop-client-proof.out"
+    --output "$TMP_DIR/desktop-client-proof.md" \
+    --proof-manifest "$TMP_DIR/desktop-proof-manifest.json" > "$TMP_DIR/desktop-client-proof.out"
 grep -q "runtime: not started, stopped, or restarted" "$TMP_DIR/desktop-client-proof.out"
+grep -q "proof manifest: $TMP_DIR/desktop-proof-manifest.json" "$TMP_DIR/desktop-client-proof.out"
+grep -q "manifest desktop_client_proof_file: desktop-client-proof.md" "$TMP_DIR/desktop-client-proof.out"
 grep -q "readiness argument: --desktop-client-proof-file" "$TMP_DIR/desktop-client-proof.md"
 grep -q "same-host/local Java client: local throwaway account connected through 127.0.0.1" "$TMP_DIR/desktop-client-proof.md"
 grep -q "external Java client: tunnel throwaway account connected through tailscale to example-tailnet-host" "$TMP_DIR/desktop-client-proof.md"
 grep -q "evidence: " "$TMP_DIR/desktop-client-proof.md"
+python3 - "$TMP_DIR/desktop-proof-manifest.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+assert data["desktop_client_proof_file"] == "desktop-client-proof.md", data
+assert data["runtime_data_backup_proof_file"] == "runtime-data-backup-proof.md", data
+assert data["_notes"] == "desktop proof helper smoke", data
+PY
 DESKTOP_PROOF_DEFAULT_OUT="$TMP_DIR/desktop-proof-default-output"
 scripts/write-desktop-client-proof.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
@@ -2375,6 +2535,19 @@ if scripts/write-desktop-client-proof.py \
     exit 1
 fi
 grep -q "refusing to write proof through symlinked parent directory" "$TMP_DIR/desktop-client-proof-symlink-output.out"
+ln -s "$TMP_DIR/desktop-proof-manifest.json" "$TMP_DIR/desktop-proof-manifest-link.json"
+if scripts/write-desktop-client-proof.py \
+    --same-host-client "local throwaway account" \
+    --external-client "tunnel throwaway account" \
+    --transport tailscale \
+    --public-host "example-tailnet-host" \
+    --evidence "$TMP_DIR/desktop-client-proof-evidence.log" \
+    --output "$TMP_DIR/desktop-client-proof-symlink-manifest.md" \
+    --proof-manifest "$TMP_DIR/desktop-proof-manifest-link.json" > "$TMP_DIR/desktop-client-proof-symlink-manifest.out" 2>&1; then
+    echo "write-desktop-client-proof.py unexpectedly accepted a symlinked proof manifest." >&2
+    exit 1
+fi
+grep -q "refusing to write proof manifest through symlink path" "$TMP_DIR/desktop-client-proof-symlink-manifest.out"
 RUNTIME_DATA_TMP="$TMP_DIR/runtime-data-source"
 RUNTIME_BACKUP_ARCHIVE="$TMP_DIR/runtime-data-backup/2006scape-runtime-data-test.tgz"
 mkdir -p "$RUNTIME_DATA_TMP/characters" "$RUNTIME_DATA_TMP/accounts" "$TMP_DIR/runtime-data-backup"
@@ -2559,9 +2732,11 @@ scripts/verify-agent-chat-log.py \
     --from-type discord \
     --from-bot false \
     --discord-message-id 123456789012345678 \
-    --channel agent > "$TMP_DIR/agent-chat-log-proof.out"
+    --channel agent \
+    --proof-manifest "$CHAT_PROOF_MANIFEST" > "$TMP_DIR/agent-chat-log-proof.out"
 grep -q "ok: matched 1 agent chat log entry" "$TMP_DIR/agent-chat-log-proof.out"
 grep -q "event=agent_chat_message" "$TMP_DIR/agent-chat-log-proof.out"
+grep -q "manifest proof kind: discord-ingress" "$TMP_DIR/agent-chat-log-proof.out"
 scripts/verify-agent-chat-log.py \
     --log-root "$AGENT_CHAT_LOG_TMP" \
     --event agent_chat_player_delivery \
@@ -2571,9 +2746,11 @@ scripts/verify-agent-chat-log.py \
     --to-name MrGem \
     --channel agent \
     --delivered-to MrGem \
-    --no-undelivered > "$TMP_DIR/agent-chat-delivery-log-proof.out"
+    --no-undelivered \
+    --proof-manifest "$CHAT_PROOF_MANIFEST" > "$TMP_DIR/agent-chat-delivery-log-proof.out"
 grep -q "ok: matched 1 agent chat log entry" "$TMP_DIR/agent-chat-delivery-log-proof.out"
 grep -q "event=agent_chat_player_delivery" "$TMP_DIR/agent-chat-delivery-log-proof.out"
+grep -q "manifest proof kind: agent-player-delivery" "$TMP_DIR/agent-chat-delivery-log-proof.out"
 if scripts/verify-agent-chat-log.py \
     --log-root "$AGENT_CHAT_LOG_TMP" \
     --event agent_chat_player_delivery \
@@ -2611,8 +2788,91 @@ scripts/verify-agent-chat-log.py \
     --from-type discord \
     --from-bot false \
     --channel agent \
-    --expect-absent > "$TMP_DIR/agent-chat-log-absent-proof.out"
+    --expect-absent \
+    --proof-manifest "$CHAT_PROOF_MANIFEST" > "$TMP_DIR/agent-chat-log-absent-proof.out"
 grep -q "ok: no matching agent chat log entries found" "$TMP_DIR/agent-chat-log-absent-proof.out"
+grep -q "manifest proof kind: blocked-routing" "$TMP_DIR/agent-chat-log-absent-proof.out"
+python3 - "$CHAT_PROOF_MANIFEST" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+assert data["_notes"] == "chat proof helper smoke", data
+assert data["desktop_client_proof_file"] == "desktop-client-proof.md", data
+assert data["runtime_data_backup_proof_file"] == "runtime-data-backup-proof.md", data
+assert data["agent_chat_log_text"] == "network-auth-chat-log-proof-marker", data
+assert data["agent_chat_log_from_type"] == "discord", data
+assert data["agent_chat_log_from_bot"] == "false", data
+assert data["agent_chat_log_discord_message_id"] == "123456789012345678", data
+assert data["agent_chat_log_channel"] == "agent", data
+assert data["agent_chat_delivery_log_text"] == "network-auth-player-delivery-proof-marker", data
+assert data["agent_chat_delivery_log_to_name"] == "MrGem", data
+assert data["agent_chat_delivery_log_channel"] == "agent", data
+assert data["agent_chat_blocked_log_text"] == "network-auth-blocked-routing-marker", data
+assert data["agent_chat_blocked_log_channel"] == "agent", data
+PY
+ln -s "$CHAT_PROOF_MANIFEST" "$TMP_DIR/chat-proof-manifest-link.json"
+if scripts/verify-agent-chat-log.py \
+    --log-root "$AGENT_CHAT_LOG_TMP" \
+    --text-contains "network-auth-chat-log-proof-marker" \
+    --from-type discord \
+    --from-bot false \
+    --channel agent \
+    --proof-manifest "$TMP_DIR/chat-proof-manifest-link.json" > "$TMP_DIR/agent-chat-log-symlink-manifest.out" 2>&1; then
+    echo "verify-agent-chat-log.py unexpectedly accepted a symlinked proof manifest." >&2
+    exit 1
+fi
+grep -q "refusing to write proof manifest through symlink path" "$TMP_DIR/agent-chat-log-symlink-manifest.out"
+cat > "$TMP_DIR/discord-proof-manifest.json" <<'EOF'
+{
+  "_notes": "discord proof helper smoke",
+  "agent_chat_log_text": "network-auth-chat-log-proof-marker"
+}
+EOF
+python3 - "$TMP_DIR/discord-proof-manifest.json" <<'PY'
+import importlib.util
+import json
+import sys
+from pathlib import Path
+from types import SimpleNamespace
+
+manifest = Path(sys.argv[1])
+spec = importlib.util.spec_from_file_location(
+    "verify_discord_channel_message",
+    Path("scripts/verify-discord-channel-message.py"),
+)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+args = SimpleNamespace(
+    proof_manifest=str(manifest),
+    allow_human_author=False,
+    text_contains="network-auth-discord-mirror-marker",
+    agent=["MrFlame"],
+    limit=50,
+    after_id="",
+    require_all=False,
+)
+updates = module.update_proof_manifest(args, [{
+    "matched": 1,
+    "agent": "MrFlame",
+    "latestMessageId": "987654321098765432",
+}])
+assert updates["discord_channel_message_text"] == "network-auth-discord-mirror-marker", updates
+assert updates["discord_channel_message_agent"] == ["MrFlame"], updates
+data = json.loads(manifest.read_text(encoding="utf-8"))
+assert data["_notes"] == "discord proof helper smoke", data
+assert data["agent_chat_log_text"] == "network-auth-chat-log-proof-marker", data
+assert data["discord_channel_message_text"] == "network-auth-discord-mirror-marker", data
+assert data["discord_channel_message_agent"] == ["MrFlame"], data
+args.allow_human_author = True
+try:
+    module.update_proof_manifest(args, [])
+except SystemExit as exc:
+    assert "--allow-human-author" in str(exc), exc
+else:
+    raise AssertionError("weak human-author Discord mirror proof was recorded")
+PY
 if scripts/verify-agent-chat-log.py \
     --log-root "$AGENT_CHAT_LOG_TMP" \
     --text-contains "network-auth-chat-log-proof-marker" \
@@ -2624,6 +2884,61 @@ if scripts/verify-agent-chat-log.py \
     exit 1
 fi
 grep -q "expected none" "$TMP_DIR/agent-chat-log-absent-fail.out"
+python3 - <<'PY'
+import importlib.util
+from pathlib import Path
+from types import SimpleNamespace
+
+spec = importlib.util.spec_from_file_location(
+    "deployment_readiness_report",
+    Path("scripts/deployment-readiness-report.py"),
+)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+args = SimpleNamespace(
+    live=True,
+    tls_sni_host="",
+    live_login_username="ExternalTest",
+    live_login_password_env="EXTERNAL_PASSWORD",
+    live_login_hold_seconds=5.0,
+    live_local_login_username="LocalTest",
+    live_local_login_password_env="LOCAL_PASSWORD",
+    live_local_host="127.0.0.1",
+    live_local_port=43594,
+    live_reject_login_username="RejectTest",
+    live_reject_login_password_env="REJECT_PASSWORD",
+    live_reject_login_expected_statuses="3,4",
+    desktop_client_proof_file="",
+    runtime_data_backup_proof_file="",
+    live_discord=False,
+    agent_chat_log_root=str(module.DEFAULT_AGENT_CHAT_LOG_ROOT),
+    agent_chat_log_text="",
+    agent_chat_blocked_log_text="",
+    agent_chat_delivery_log_text="",
+    discord_channel_message_text="",
+    discord_channel_message_agent=[],
+    discord_channel_message_limit=50,
+    discord_channel_message_require_all=False,
+)
+updates = module.proof_manifest_updates_from_args(args)
+assert updates["live"] is True, updates
+assert updates["live_login_username"] == "ExternalTest", updates
+assert updates["live_login_password_env"] == "EXTERNAL_PASSWORD", updates
+assert updates["live_login_hold_seconds"] == 5.0, updates
+assert updates["live_local_login_username"] == "LocalTest", updates
+assert updates["live_local_login_password_env"] == "LOCAL_PASSWORD", updates
+assert updates["live_local_host"] == "127.0.0.1", updates
+assert updates["live_local_port"] == 43594, updates
+assert updates["live_reject_login_expected_statuses"] == "3,4", updates
+assert "agent_chat_log_root" not in updates, updates
+assert "discord_channel_message_limit" not in updates, updates
+assert "discord_channel_message_allow_human_author" not in updates, updates
+PY
+cat > "$TMP_DIR/readiness-update-proof-manifest.json" <<'EOF'
+{
+  "_notes": "readiness update smoke"
+}
+EOF
 scripts/deployment-readiness-report.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
     --client-dist "$TMP_DIR/2006scape-client-from-config" \
@@ -2645,9 +2960,13 @@ scripts/deployment-readiness-report.py \
     --desktop-client-proof-file "$TMP_DIR/desktop-client-proof.md" \
     --runtime-data-backup-proof-file "$TMP_DIR/runtime-data-backup-proof.md" \
     --output "$TMP_DIR/deployment-readiness-report.md" \
-    --json-output "$TMP_DIR/deployment-readiness-report.json" > "$TMP_DIR/deployment-readiness-report.out"
+    --json-output "$TMP_DIR/deployment-readiness-report.json" \
+    --update-proof-manifest "$TMP_DIR/readiness-update-proof-manifest.json" > "$TMP_DIR/deployment-readiness-report.out"
 grep -q "report: $TMP_DIR/deployment-readiness-report.md" "$TMP_DIR/deployment-readiness-report.out"
 grep -q "jsonReport: $TMP_DIR/deployment-readiness-report.json" "$TMP_DIR/deployment-readiness-report.out"
+grep -q "proofManifestUpdated: $TMP_DIR/readiness-update-proof-manifest.json" "$TMP_DIR/deployment-readiness-report.out"
+grep -q "proofManifestFields: " "$TMP_DIR/deployment-readiness-report.out"
+grep -q "runtime_data_backup_proof_file" "$TMP_DIR/deployment-readiness-report.out"
 grep -q 'status: `PASS`' "$TMP_DIR/deployment-readiness-report.md"
 grep -q 'deploymentProofStatus: `STATIC_CHECKS_PASS_NEEDS_LIVE_PROOF`' "$TMP_DIR/deployment-readiness-report.md"
 grep -q 'liveChecksRequested: `no`' "$TMP_DIR/deployment-readiness-report.md"
@@ -2700,6 +3019,25 @@ assert data["commandSummary"][-1]["label"] == "deployment verification", data["c
 assert any("public reachability plus bridge non-exposure" in item for item in data["remainingLiveProof"]), data["remainingLiveProof"]
 assert data["markdownReport"].endswith("deployment-readiness-report.md"), data
 PY
+python3 - "$TMP_DIR/readiness-update-proof-manifest.json" "$TMP_DIR/desktop-client-proof.md" "$TMP_DIR/runtime-data-backup-proof.md" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+assert data["_notes"] == "readiness update smoke", data
+assert data["desktop_client_proof_file"] == sys.argv[2], data
+assert data["runtime_data_backup_proof_file"] == sys.argv[3], data
+assert data["agent_chat_log_text"] == "network-auth-chat-log-proof-marker", data
+assert data["agent_chat_log_from_type"] == "discord", data
+assert data["agent_chat_log_from_bot"] == "false", data
+assert data["agent_chat_log_discord_message_id"] == "123456789012345678", data
+assert data["agent_chat_delivery_log_text"] == "network-auth-player-delivery-proof-marker", data
+assert data["agent_chat_delivery_log_to_name"] == "MrGem", data
+assert data["agent_chat_blocked_log_text"] == "network-auth-blocked-routing-marker", data
+assert "live" not in data, data
+assert "discord_channel_message_allow_human_author" not in data, data
+PY
 scripts/deployment-readiness-status.py \
     --readiness-json "$TMP_DIR/deployment-readiness-report.json" > "$TMP_DIR/deployment-readiness-status.out"
 grep -q "deploymentProofStatus: STATIC_CHECKS_PASS_NEEDS_LIVE_PROOF" "$TMP_DIR/deployment-readiness-status.out"
@@ -2717,7 +3055,13 @@ grep -q "nextCommands:" "$TMP_DIR/deployment-readiness-status-next.out"
 grep -q "Record live network/auth proof" "$TMP_DIR/deployment-readiness-status-next.out"
 grep -q -- "--live-login-username EXTERNAL_TEST" "$TMP_DIR/deployment-readiness-status-next.out"
 grep -q -- "--live-reject-login-expected-statuses 3,4" "$TMP_DIR/deployment-readiness-status-next.out"
+grep -q -- "--update-proof-manifest" "$TMP_DIR/deployment-readiness-status-next.out"
+grep -q -- "--proof-manifest" "$TMP_DIR/deployment-readiness-status-next.out"
 grep -q "scripts/check-deployment-proof-manifest.py" "$TMP_DIR/deployment-readiness-status-next.out"
+if grep -q "Back up deployed runtime data" "$TMP_DIR/deployment-readiness-status-next.out"; then
+    echo "deployment-readiness-status.py suggested a runtime data backup after proof was already recorded." >&2
+    exit 1
+fi
 scripts/deployment-readiness-status.py \
     --readiness-json "$TMP_DIR/deployment-readiness-report.json" \
     --json > "$TMP_DIR/deployment-readiness-status.json"
@@ -2747,16 +3091,146 @@ assert isinstance(commands, list) and commands, data
 labels = {command["label"] for command in commands}
 assert "Record live network/auth proof" in labels, labels
 assert "Check final proof manifest and rerun final readiness" in labels, labels
-assert any("--live-login-username EXTERNAL_TEST" in command["command"] for command in commands), commands
+assert "Back up deployed runtime data" not in labels, labels
+live_commands = [command["command"] for command in commands if command["label"] == "Record live network/auth proof"]
+assert live_commands, commands
+live_command = live_commands[0]
+assert "--live-login-username EXTERNAL_TEST" in live_command, live_command
+assert "--update-proof-manifest" in live_command, live_command
+assert "mkdir -p" in live_command, live_command
+assert "test -f" in live_command, live_command
+assert "|| cp" in live_command, live_command
+assert live_command.index("mkdir -p") < live_command.index("test -f"), live_command
+assert live_command.index("test -f") < live_command.index("scripts/deployment-readiness-report.py"), live_command
 final_commands = [command["command"] for command in commands if command["label"] == "Check final proof manifest and rerun final readiness"]
 assert final_commands, commands
 final_command = final_commands[0]
 assert "--accounts-dir" in final_command, final_command
 assert "--secrets" in final_command, final_command
 assert "scripts/check-deployment-proof-manifest.py" in final_command, final_command
+assert "mkdir -p" in final_command, final_command
 assert "test -f" in final_command, final_command
 assert "|| cp" in final_command, final_command
+assert final_command.index("mkdir -p") < final_command.index("test -f"), final_command
 assert final_command.index("test -f") < final_command.index("scripts/check-deployment-proof-manifest.py"), final_command
+PY
+python3 - "$TMP_DIR/deployment-readiness-report.json" "$TMP_DIR/deployment-readiness-report-missing-backup.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+for item in data["proofCoverage"]:
+    if item["requirement"] == "Runtime data backup before remote replacement/restart":
+        item["status"] = "MISSING"
+        item.pop("evidence", None)
+remaining = data.setdefault("remainingLiveProof", [])
+if not any("runtime data backup" in item for item in remaining):
+    remaining.append("runtime data backup proof")
+Path(sys.argv[2]).write_text(json.dumps(data), encoding="utf-8")
+PY
+python3 - "$TMP_DIR/deployment-readiness-report.json" "$TMP_DIR/deployment-readiness-report-missing-desktop.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+for item in data["proofCoverage"]:
+    if item["requirement"] == "Desktop client coexistence":
+        item["status"] = "MISSING"
+        item.pop("evidence", None)
+remaining = data.setdefault("remainingLiveProof", [])
+if not any("desktop client" in item for item in remaining):
+    remaining.append("desktop client coexistence proof")
+Path(sys.argv[2]).write_text(json.dumps(data), encoding="utf-8")
+PY
+python3 - "$TMP_DIR/deployment-readiness-report.json" "$TMP_DIR/deployment-readiness-report-missing-chat.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+for item in data["proofCoverage"]:
+    if item["requirement"] == "Agent-to-player chat delivery":
+        item["status"] = "MISSING"
+        item.pop("evidence", None)
+remaining = data.setdefault("remainingLiveProof", [])
+if not any("agent/player chat" in item or "chat delivery" in item for item in remaining):
+    remaining.append("agent/player chat delivery proof")
+Path(sys.argv[2]).write_text(json.dumps(data), encoding="utf-8")
+PY
+scripts/deployment-readiness-status.py \
+    --readiness-json "$TMP_DIR/deployment-readiness-report-missing-backup.json" \
+    --show-next-commands \
+    --json > "$TMP_DIR/deployment-readiness-status-missing-backup-next.json"
+python3 - "$TMP_DIR/deployment-readiness-status-missing-backup-next.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+commands = data.get("nextCommands")
+assert isinstance(commands, list) and commands, data
+backup_commands = [command["command"] for command in commands if command["label"] == "Back up deployed runtime data"]
+assert backup_commands, commands
+backup_command = backup_commands[0]
+assert "scripts/backup-runtime-data.py" in backup_command, backup_command
+assert "--proof-file" in backup_command, backup_command
+assert "--proof-manifest" in backup_command, backup_command
+assert "dist/external-deployment/runtime-data-backup-proof.md" in backup_command, backup_command
+assert "mkdir -p" in backup_command, backup_command
+assert "test -f" in backup_command, backup_command
+assert "|| cp" in backup_command, backup_command
+assert backup_command.index("mkdir -p") < backup_command.index("test -f"), backup_command
+assert backup_command.index("test -f") < backup_command.index("scripts/backup-runtime-data.py"), backup_command
+PY
+scripts/deployment-readiness-status.py \
+    --readiness-json "$TMP_DIR/deployment-readiness-report-missing-desktop.json" \
+    --show-next-commands \
+    --json > "$TMP_DIR/deployment-readiness-status-missing-desktop-next.json"
+python3 - "$TMP_DIR/deployment-readiness-status-missing-desktop-next.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+commands = data.get("nextCommands")
+assert isinstance(commands, list) and commands, data
+desktop_commands = [command["command"] for command in commands if command["label"] == "Write desktop-client coexistence proof"]
+assert desktop_commands, commands
+desktop_command = desktop_commands[0]
+assert "--output" in desktop_command, desktop_command
+assert "--proof-manifest" in desktop_command, desktop_command
+assert "dist/external-deployment/desktop-client-proof.md" in desktop_command, desktop_command
+assert "mkdir -p" in desktop_command, desktop_command
+assert "test -f" in desktop_command, desktop_command
+assert "|| cp" in desktop_command, desktop_command
+assert desktop_command.index("mkdir -p") < desktop_command.index("test -f"), desktop_command
+assert desktop_command.index("test -f") < desktop_command.index("scripts/write-desktop-client-proof.py"), desktop_command
+PY
+scripts/deployment-readiness-status.py \
+    --readiness-json "$TMP_DIR/deployment-readiness-report-missing-chat.json" \
+    --show-next-commands \
+    --json > "$TMP_DIR/deployment-readiness-status-missing-chat-next.json"
+python3 - "$TMP_DIR/deployment-readiness-status-missing-chat-next.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+commands = data.get("nextCommands")
+assert isinstance(commands, list) and commands, data
+chat_commands = [command["command"] for command in commands if command["label"] == "Verify direct agent/player chat delivery"]
+assert chat_commands, commands
+chat_command = chat_commands[0]
+assert "scripts/verify-agent-chat-log.py" in chat_command, chat_command
+assert "--event agent_chat_player_delivery" in chat_command, chat_command
+assert "--proof-manifest" in chat_command, chat_command
+assert "mkdir -p" in chat_command, chat_command
+assert "test -f" in chat_command, chat_command
+assert "|| cp" in chat_command, chat_command
+assert chat_command.index("mkdir -p") < chat_command.index("test -f"), chat_command
+assert chat_command.index("test -f") < chat_command.index("scripts/verify-agent-chat-log.py"), chat_command
 PY
 mkdir -p "$TMP_DIR/prepared-status"
 cp "$TMP_DIR/deployment-readiness-report.json" "$TMP_DIR/prepared-status/deployment-readiness-report.json"
@@ -2776,6 +3250,51 @@ assert isinstance(commands, list) and commands, data
 final_commands = [command["command"] for command in commands if command["label"] == "Check final proof manifest and rerun final readiness"]
 assert final_commands, commands
 assert manifest_path in final_commands[0], final_commands[0]
+assert "mkdir -p" in final_commands[0], final_commands[0]
+assert not [command["command"] for command in commands if command["label"] == "Back up deployed runtime data"], commands
+PY
+mkdir -p "$TMP_DIR/prepared-status-missing-desktop"
+cp "$TMP_DIR/deployment-readiness-report-missing-desktop.json" "$TMP_DIR/prepared-status-missing-desktop/deployment-readiness-report.json"
+scripts/deployment-readiness-status.py \
+    --prepared-dir "$TMP_DIR/prepared-status-missing-desktop" \
+    --show-next-commands \
+    --json > "$TMP_DIR/deployment-readiness-status-prepared-missing-desktop-next.json"
+python3 - "$TMP_DIR/deployment-readiness-status-prepared-missing-desktop-next.json" "$TMP_DIR/prepared-status-missing-desktop/desktop-client-proof.md" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+desktop_path = sys.argv[2]
+commands = data.get("nextCommands")
+assert isinstance(commands, list) and commands, data
+desktop_commands = [command["command"] for command in commands if command["label"] == "Write desktop-client coexistence proof"]
+assert desktop_commands, commands
+assert desktop_path in desktop_commands[0], desktop_commands[0]
+assert "--proof-manifest" in desktop_commands[0], desktop_commands[0]
+assert str(Path(desktop_path).with_name("deployment-proof-manifest.json")) in desktop_commands[0], desktop_commands[0]
+assert "dist/external-deployment/desktop-client-proof.md" not in desktop_commands[0], desktop_commands[0]
+PY
+mkdir -p "$TMP_DIR/prepared-status-missing-backup"
+cp "$TMP_DIR/deployment-readiness-report-missing-backup.json" "$TMP_DIR/prepared-status-missing-backup/deployment-readiness-report.json"
+scripts/deployment-readiness-status.py \
+    --prepared-dir "$TMP_DIR/prepared-status-missing-backup" \
+    --show-next-commands \
+    --json > "$TMP_DIR/deployment-readiness-status-prepared-missing-backup-next.json"
+python3 - "$TMP_DIR/deployment-readiness-status-prepared-missing-backup-next.json" "$TMP_DIR/prepared-status-missing-backup/deployment-proof-manifest.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+manifest_path = sys.argv[2]
+commands = data.get("nextCommands")
+assert isinstance(commands, list) and commands, data
+backup_commands = [command["command"] for command in commands if command["label"] == "Back up deployed runtime data"]
+assert backup_commands, commands
+assert manifest_path in backup_commands[0], backup_commands[0]
+assert str(Path(manifest_path).with_name("runtime-data-backup-proof.md")) in backup_commands[0], backup_commands[0]
+assert "mkdir -p" in backup_commands[0], backup_commands[0]
 PY
 if scripts/deployment-readiness-status.py \
     --readiness-json "$TMP_DIR/deployment-readiness-report.json" \
@@ -3469,6 +3988,64 @@ assert data["preparedDir"] == sys.argv[2], data
 assert data["proofManifest"]["requireFullProof"] is True, data
 assert data["readiness"]["deploymentProofStatus"] == "STATIC_CHECKS_PASS_NEEDS_LIVE_PROOF", data
 PY
+if scripts/package-deployment-proof.py \
+    --prepared-dir "$PREPARED_PROOF_DIR" \
+    --archive "$TMP_DIR/deployment-proof-bundle-require-full-partial.tgz" \
+    --require-full-proof > "$TMP_DIR/deployment-proof-bundle-require-full-partial.out" 2>&1; then
+    echo "package-deployment-proof.py --require-full-proof accepted a partial readiness report." >&2
+    exit 1
+fi
+grep -q "requires final deploymentProofStatus" "$TMP_DIR/deployment-proof-bundle-require-full-partial.out"
+PREPARED_FULL_PROOF_DIR="$TMP_DIR/prepared-full-proof-dir"
+cp -R "$PREPARED_PROOF_DIR" "$PREPARED_FULL_PROOF_DIR"
+python3 - "$PREPARED_PROOF_DIR/deployment-readiness-report.json" "$PREPARED_FULL_PROOF_DIR/deployment-readiness-report.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+source, target = map(Path, sys.argv[1:3])
+data = json.loads(source.read_text(encoding="utf-8"))
+data["deploymentProofStatus"] = "LIVE_NETWORK_AUTH_CLIENT_CHAT_BACKUP_PROOF_RECORDED_DISCORD_NOT_REQUESTED"
+data["liveChecksRequested"] = True
+data["remainingLiveProof"] = []
+status_by_requirement = {
+    "Public reachability and bridge non-exposure": "REQUESTED",
+    "External PBKDF2 game-protocol login": "REQUESTED",
+    "Concurrent external plus same-host local protocol login": "REQUESTED",
+    "Desktop client coexistence": "MANUAL_PROOF_RECORDED",
+    "Runtime data backup before remote replacement/restart": "MANUAL_PROOF_RECORDED",
+    "Fail-closed login cases": "REQUESTED",
+    "Agent-to-player chat delivery": "DELIVERY_LOG_PROOF_REQUESTED",
+}
+for item in data.get("proofCoverage", []):
+    requirement = item.get("requirement")
+    if requirement in status_by_requirement:
+        item["status"] = status_by_requirement[requirement]
+        item["evidence"] = "validation fixture final-proof evidence"
+target.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+PY
+scripts/package-deployment-proof.py \
+    --prepared-dir "$PREPARED_FULL_PROOF_DIR" \
+    --archive "$TMP_DIR/deployment-proof-bundle-require-full.tgz" \
+    --require-full-proof \
+    --json > "$TMP_DIR/deployment-proof-bundle-require-full.out"
+grep -q '"runtimeTouched": false' "$TMP_DIR/deployment-proof-bundle-require-full.out"
+test -f "$TMP_DIR/deployment-proof-bundle-require-full.tgz"
+tar -xOf "$TMP_DIR/deployment-proof-bundle-require-full.tgz" bundle-metadata.json > "$TMP_DIR/deployment-proof-bundle-require-full-metadata.json"
+python3 - "$TMP_DIR/deployment-proof-bundle-require-full-metadata.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+assert data["runtimeTouched"] is False, data
+assert data["readiness"]["deploymentProofStatus"] == "LIVE_NETWORK_AUTH_CLIENT_CHAT_BACKUP_PROOF_RECORDED_DISCORD_NOT_REQUESTED", data
+assert data["proofManifest"]["requireFullProof"] is True, data
+assert data["finalProofCheck"]["status"] == "PASS", data
+checks = {check["field"]: check for check in data["finalProofCheck"]["proofFileChecks"]}
+assert checks["desktop_client_proof_file"]["status"] == "PASS", checks
+assert checks["runtime_data_backup_proof_file"]["status"] == "PASS", checks
+PY
 python3 agent-navigation/tools/script_registry.py run deployment_proof_bundle -- \
     --prepared-dir "$PREPARED_PROOF_DIR" \
     --archive "$TMP_DIR/deployment-proof-bundle-registry.tgz" \
@@ -4079,6 +4656,8 @@ printf '2006Scape Client\n' > "$TMP_DIR/2006scape-client-missing-readme-guidance
     cd "$TMP_DIR/2006scape-client-missing-readme-guidance"
     shasum -a 256 \
         2006scape-client.jar \
+        Check-Setup.command \
+        Run-2006Scape.command \
         client.properties \
         check-setup-macos-linux.sh \
         check-setup-windows.bat \
@@ -4114,6 +4693,8 @@ PY
     cd "$TMP_DIR/2006scape-client-missing-launcher-guidance"
     shasum -a 256 \
         2006scape-client.jar \
+        Check-Setup.command \
+        Run-2006Scape.command \
         client.properties \
         check-setup-macos-linux.sh \
         check-setup-windows.bat \
@@ -4149,6 +4730,8 @@ PY
     cd "$TMP_DIR/2006scape-client-missing-setup-guidance"
     shasum -a 256 \
         2006scape-client.jar \
+        Check-Setup.command \
+        Run-2006Scape.command \
         client.properties \
         check-setup-macos-linux.sh \
         check-setup-windows.bat \
@@ -4184,6 +4767,8 @@ PY
     cd "$TMP_DIR/2006scape-client-missing-warning-suppression"
     shasum -a 256 \
         2006scape-client.jar \
+        Check-Setup.command \
+        Run-2006Scape.command \
         client.properties \
         check-setup-macos-linux.sh \
         check-setup-windows.bat \
@@ -4216,6 +4801,8 @@ PY
     cd "$TMP_DIR/2006scape-client-lf-windows-launcher"
     shasum -a 256 \
         2006scape-client.jar \
+        Check-Setup.command \
+        Run-2006Scape.command \
         client.properties \
         check-setup-macos-linux.sh \
         check-setup-windows.bat \
@@ -4239,7 +4826,12 @@ def zip_info(path, arcname):
     if path.is_dir():
         info.external_attr = (stat.S_IFDIR | 0o755) << 16
     else:
-        mode = 0o755 if path.name in {"run-macos-linux.sh", "check-setup-macos-linux.sh"} else 0o644
+        mode = 0o755 if path.name in {
+            "Check-Setup.command",
+            "Run-2006Scape.command",
+            "run-macos-linux.sh",
+            "check-setup-macos-linux.sh",
+        } else 0o644
         info.external_attr = (stat.S_IFREG | mode) << 16
     return info
 
@@ -4588,7 +5180,7 @@ import zipfile
 
 source_path = sys.argv[1]
 target_path = sys.argv[2]
-launcher_name = "2006scape-client-from-config/run-macos-linux.sh"
+launcher_name = "2006scape-client-from-config/Run-2006Scape.command"
 with zipfile.ZipFile(source_path, "r") as source:
     with zipfile.ZipFile(target_path, "w", compression=zipfile.ZIP_DEFLATED) as target:
         for source_info in source.infolist():
@@ -4614,7 +5206,7 @@ if scripts/verify-external-deployment.py \
     cat "$TMP_DIR/noexec-archive-verify.out" >&2
     exit 1
 fi
-grep -q "client archive macOS/Linux launcher is not executable" "$TMP_DIR/noexec-archive-verify.out"
+grep -q "client archive macOS launcher wrapper is not executable" "$TMP_DIR/noexec-archive-verify.out"
 
 echo "Smoke-testing deployment verifier rejects symlink-type archive entries..."
 python3 - "$TMP_DIR/2006scape-client-from-config.zip" "$TMP_DIR/2006scape-client-from-config-symlink-entry.zip" <<'PY'
