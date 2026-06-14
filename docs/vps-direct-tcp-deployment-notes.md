@@ -22,7 +22,7 @@
 - 2026-06-14: Rotated `ExternalTest` to an 8-character convenience password for manual testing. Live game login accepted it, but strict deployment account audit now flags that account as weak-policy. Rotate to a 12+ character password before treating this deployment as final-readiness-grade.
 - 2026-06-14: Added VPS PBKDF2 accounts and copied character saves for `MrFlame`, `MrFish`, `MrWood`, and `MrAthlete`. Live protocol login probes accepted all four over the private public host and game port.
 - 2026-06-14: Packaged client launch defaults were changed to `client.scale=2` and `show_navbar=false` so the larger testing window uses repo-native canvas scaling instead of macOS JVM UI scaling.
-- 2026-06-14: Later SSH checks from the Mac to port `22` timed out, while public game/cache checks and `MrFlame` login still passed. Recheck SSH before VPS maintenance or `/agent` SSH-tunnel use.
+- 2026-06-14: A later SSH check from the Mac to port `22` timed out briefly, while public game/cache checks and `MrFlame` login still passed. A follow-up check recovered and `ssh` is currently reachable again.
 
 ## Local Test Credentials
 
@@ -36,7 +36,9 @@ To print the profile credentials on the repo machine:
 
 ```sh
 cd /Users/kevin/Documents/2006Scape-network-auth-chat
+set -a
 source dist/external-deployment/private/vps-character-credentials.env
+set +a
 printf 'MrFlame: %s\n' "$MRFLAME_PASSWORD"
 printf 'MrFish: %s\n' "$MRFISH_PASSWORD"
 printf 'MrWood: %s\n' "$MRWOOD_PASSWORD"
@@ -84,6 +86,14 @@ External players who do not have the private SSH/VPN/tunnel path should play nor
 ```sh
 cd /Users/kevin/Documents/2006Scape-network-auth-chat
 scripts/probe-deployment-network.py --config "2006Scape Server/ServerConfig.json"
+HOST="$(python3 - <<'PY'
+import json
+with open("2006Scape Server/ServerConfig.json", "r", encoding="utf-8") as handle:
+    print(json.load(handle)["public_game_host"])
+PY
+)"
+set -a
 source dist/external-deployment/private/vps-character-credentials.env
-python3 scripts/probe-game-login.py --host "$SERVER_HOST" --port 43594 --username "$MRFLAME_USERNAME" --password-env MRFLAME_PASSWORD --hold-seconds 1
+set +a
+python3 scripts/probe-game-login.py --host "$HOST" --port 43594 --username "$MRFLAME_USERNAME" --password-env MRFLAME_PASSWORD --hold-seconds 1
 ```
