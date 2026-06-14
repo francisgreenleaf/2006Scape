@@ -31,6 +31,8 @@ scripts/prepare-external-deployment.py --config "2006Scape Server/ServerConfig.j
 
 `scripts/prepare-external-deployment.py` is the normal operator bundle command once the final config exists. It calls the same package script, writes the client folder and zip under `dist/external-deployment/`, renders operator-side stunnel templates for `client_tls_tunnel`, writes `server-deployment/` with a systemd unit, environment file, copied `ServerConfig.json`, dry-run UFW helper, README with account/secrets install guidance plus runtime-data backup notes, and fill-in proof note templates, then writes a redacted readiness report. It does not start, stop, restart, or relaunch any server or client.
 
+Packaged desktop clients default to `client.scale=2` and `show_navbar=false`. Keep that default for normal external tester packages; it uses the client-owned scale path and avoids macOS HiDPI mouse-coordinate offsets caused by JVM UI scaling.
+
 8. Verify the packaged client folder, matching zip archive, and external config before distributing the zip:
 
 ```sh

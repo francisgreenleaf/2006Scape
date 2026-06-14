@@ -124,6 +124,8 @@ That means the artifacts are statically valid but not live-proven yet.
 
 Before a player launches the client, have them run the package's setup checker for their OS if anything is unclear. On macOS, they can double-click `Check-Setup.command`, then double-click `Run-2006Scape.command` to play; Terminal and Linux users can still run the shared shell scripts, and Windows users run the `.bat` files. The checker verifies Java, prints the packaged `client.properties`, and attempts game/cache TCP checks without logging in or changing server state. In `client_tls_tunnel` mode the macOS/Linux setup checker can start the bundled stunnel config temporarily when `stunnel` is installed; the Windows setup checker expects the local tunnel endpoint to be reachable first, while the launcher still manages stunnel when possible.
 
+The default package uses `client.scale=2` and `show_navbar=false`. Keep those defaults for normal external tester packages so the larger desktop window uses the client scale code path instead of JVM UI scaling, which avoids macOS mouse-click offset issues.
+
 ## 4. Back Up Runtime Data
 
 Before replacing deployed files, rotating credentials, or restarting into new deployment bits:

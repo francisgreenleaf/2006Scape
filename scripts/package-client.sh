@@ -71,8 +71,8 @@ HTTP_PORT="${CLIENT_HTTP_PORT:-${CONFIG_HTTP_PORT:-8080}}"
 JAGGRAB_PORT="${CLIENT_JAGGRAB_PORT:-${CONFIG_JAGGRAB_PORT:-43595}}"
 CHECK_CRC="${CLIENT_CHECK_CRC:-true}"
 SINGLE_ONDEMAND="${CLIENT_SINGLE_ONDEMAND:-true}"
-CLIENT_SCALE="${CLIENT_SCALE:-1}"
-SHOW_NAVBAR="${CLIENT_SHOW_NAVBAR:-true}"
+CLIENT_SCALE="${CLIENT_SCALE:-2}"
+SHOW_NAVBAR="${CLIENT_SHOW_NAVBAR:-false}"
 SECURE_TRANSPORT="${CLIENT_SECURE_TRANSPORT:-${CONFIG_SECURE_TRANSPORT:-external transport not specified}}"
 if [[ -z "${CLIENT_SERVER_HOST:-}" && "$(printf '%s' "$SECURE_TRANSPORT" | tr '[:upper:]' '[:lower:]')" == "client_tls_tunnel" ]]; then
     SERVER_HOST="${CONFIG_CLIENT_CONNECT_HOST:-127.0.0.1}"
@@ -737,6 +737,9 @@ Java:
   is not available on PATH.
   Packaged launchers suppress the legacy Parabot-focused Java-version warning
   dialogs; use a current 64-bit Java runtime for normal play.
+  The packaged client defaults to the repo-native 2x game scale with the old
+  web navbar hidden. That keeps the larger testing window while preserving
+  normal in-game mouse coordinates on macOS and other HiDPI desktops.
 
 Server:
   host: $SERVER_HOST
@@ -754,6 +757,12 @@ Login:
   Do not use a RuneScape.com password or reuse passwords from other services.
   For direct_tcp packages, use a password unique to this 2006Scape server because
   the legacy game/cache protocol is plaintext to the public host.
+
+AI agent mode:
+  The in-game /agent command needs the server-side agent bridge on port 43610,
+  but that bridge must stay private and loopback-only. For remote servers, use
+  an operator-approved SSH/VPN/tunnel path to 127.0.0.1:43610 before trying
+  /agent status, /agent key, or /agent <task>. Do not expose port 43610 publicly.
 
 Edit client.properties only if the server host or ports change.
 If this package uses Tailscale, WireGuard, or VPN, connect that transport first.

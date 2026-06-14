@@ -54,6 +54,8 @@ The package script preflights `CLIENT_SERVER_CONFIG`, reads `public_game_host`, 
 
 Package generation also refuses symlinked output directories, archive paths, or output parent directories before deleting or writing package artifacts.
 
+Packaged clients default to `client.scale=2` with `show_navbar=false`. This uses the client-owned scale path instead of JVM UI scaling, so the larger desktop window keeps normal in-game mouse coordinates on macOS and other HiDPI desktops.
+
 Browser play is documented as future research, not the external-player MVP. Modern browsers do not run the old Java applet path, and this client still uses AWT/Swing plus raw game/cache sockets, so the supported downloadable client is the packaged desktop Java client.
 
 For a deployment bundle, prefer `scripts/prepare-external-deployment.py --config "2006Scape Server/ServerConfig.json"`. It packages the client under `dist/external-deployment/`, writes `2006scape-client.zip`, renders `client-tls-tunnel-operator/` when the config uses `client_tls_tunnel`, writes `server-deployment/` hardened systemd/firewall templates plus account/secrets install guidance, runtime-data backup notes, and fill-in proof note templates, and writes a readiness report without starting, stopping, or restarting the runtime.
