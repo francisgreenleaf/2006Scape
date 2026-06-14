@@ -75,10 +75,11 @@ public class AgentActionServiceTest {
 
     @Test
     public void waitActionCompletesOnRequestedGameTickWithoutSleepingFirst() throws Exception {
+        final AgentActionService service = new AgentActionService();
         FutureTask<JsonObject> task = new FutureTask<JsonObject>(new Callable<JsonObject>() {
             @Override
             public JsonObject call() {
-                return AgentActionService.INSTANCE.submitAfterGameTicks(2, new Callable<JsonObject>() {
+                return service.submitAfterGameTicks(2, new Callable<JsonObject>() {
                     @Override
                     public JsonObject call() {
                         JsonObject result = AgentToolService.success("waited");
@@ -91,15 +92,15 @@ public class AgentActionServiceTest {
         Thread thread = new Thread(task, "AgentActionServiceWaitTest");
         thread.start();
 
-        for (int i = 0; i < 20 && AgentActionService.INSTANCE.pendingActionCountForTests() == 0; i++) {
+        for (int i = 0; i < 200 && service.pendingActionCountForTests() == 0; i++) {
             Thread.sleep(5L);
         }
-        assertTrue(AgentActionService.INSTANCE.pendingActionCountForTests() > 0);
+        assertTrue(service.pendingActionCountForTests() > 0);
 
-        AgentActionService.INSTANCE.processPendingActions();
+        service.processPendingActions();
         assertFalse(task.isDone());
 
-        AgentActionService.INSTANCE.processPendingActions();
+        service.processPendingActions();
         JsonObject result = task.get(1, TimeUnit.SECONDS);
         assertTrue(result.get("success").getAsBoolean());
         assertEquals(7, result.get("value").getAsInt());

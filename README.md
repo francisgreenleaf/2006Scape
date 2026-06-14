@@ -1,139 +1,198 @@
-# 2006Scape - an open source, actively developed emulation server. Pull requests welcome! ![Gameplay Image](https://i.imgur.com/WHnQz2W.png)
+# 2006Scape - but with codex ![Gameplay Image](https://i.imgur.com/WHnQz2W.png)
 
-## Discord Link: https://discord.gg/hZ6VfWG
-
-## How to Play
-
-### Client/Launcher Download: https://2006Scape.org/
-### Rune-Server project thread: [Project thread](https://www.rune-server.ee/runescape-development/rs2-server/projects/686444-2006rebotted-remake-server-will-allow-supply-creatable-bots.html)
 
 # About This Fork
 
-This fork adds a local Codex RuneScape agent bridge on top of the 2006Scape client and server. After logging into a local world, a player can type `/agent ...` in the normal chatbox to ask Codex to perform gameplay tasks through server-authoritative tools instead of screen automation or admin shortcuts.
+This fork turns 2006Scape into a local, instrumented RuneScape agent laboratory. The original private server and desktop client are still here, but they now carry a Codex bridge that lets a logged-in player type `/agent ...` in the normal chatbox and hand a bounded gameplay task to an AI agent. The interesting part is the constraint: the agent plays through the server's own mechanics. It walks, clicks objects, opens gates, fights NPCs, eats food, banks, shops, mines, cooks, smiths, and waits for real ticks. It does not teleport, spawn items, edit stats, or drive the screen with brittle mouse automation.
 
-The agent bridge currently supports:
+The result is a fork that is part RSPS, part embodied-agent testbed. It has local route memory, compact game-state tools, profile-scoped sessions, primitive-backed Python runners, passive telemetry, screenshot evidence, and readable session reports. A run is not just "the bot did a thing"; it leaves behind enough structured evidence to explain how the agent chose a route, what the world did back, where it got stuck, and what the harness should learn next.
 
-- Local client-to-Codex app-server sessions started from the game client.
-- A server-side HTTP bridge on loopback only, defaulting to `127.0.0.1:43610`, that exposes only the logged-in player's scoped session.
-- Dynamic `rs` tools for observing state, walking to known landmarks, dialogue/object interaction, NPC combat, food use, shops, banking, mining, woodcutting, smelting, and smithing.
-- Server-side batch tools for long-running actions such as landmark travel, tile walking, mining to a full inventory, woodcutting to a full inventory, and waiting until movement/skilling/combat activity settles. These avoid slow one-tick polling from the client or in-app chat.
-- Combat-training planning toward melee goals, including training-style selection, safer target choice, food thresholds, gear recommendations, and excess-coin banking.
-- Structured agent/player chat through `::agentchat` in the game client and compact `agent_chat_*_XS` bridge tools, with optional Discord mirroring for deployed agent coordination.
-- Starter world knowledge for Lumbridge, Varrock, Barbarian Village, Al Kharid shops, Falador, rock crabs, banks, mines, trees, and combat areas.
-- Agent session logs under `2006Scape Server/data/logs/agent-sessions/<yyyy-MM-dd>/`, with raw JSONL events and a readable Markdown summary.
+## Current Agent Demo
 
-The bridge is intentionally constrained. Agent actions go through existing game mechanics such as walking, combat, shops, banking, mining, and smithing. It does not add admin teleports, item spawning, direct player-stat edits, or screen automation.
+These screenshots were captured from this checkout on June 6, 2026 with the local client, server, and bridge running. The demonstration used the starter `MrFlame` profile, dismissed the post-login welcome interface through the bridge, then ran one bounded `cowhide_combat_runner.py` cycle. The runner walked from Lumbridge toward the cow pen, enabled run, opened the cow-pen gate, attacked a cow, gained combat XP, picked up one cowhide, and stopped at its `max_cycles` boundary.
 
-For structured chat, players can type `::agentchat message`, `::agentchat @agent:Name message`, `::agentchat @player:Name message`, `::agentchat @all message`, or `::agentchat #channel message` in the game client. Agents should use compact calls such as `agent-navigation/tools/rs-tool_XS.sh agent_chat_status '{"sinceId":0}'`, `agent-navigation/tools/rs-tool_XS.sh agent_chat_send '{"message":"need a hand","agent":"MrGem"}'`, or `python3 agent-navigation/tools/agent_chat_XS.py --profile MrFlame read --since-id 0`. Target shortcuts are mutually exclusive: use either `agent`/`player` or generic `to` plus `toType`, not both. Use these for coordination, not as a public chat replacement or a hot-loop polling primitive.
+| Starting In Lumbridge | Fighting Through The Bridge | Result In The Cow Pen |
+| --- | --- | --- |
+| ![MrFlame logged in near Lumbridge with starter inventory and the local agent terminal open.](docs/images/agent-lumbridge-start.png) | ![MrFlame fighting a cow while the local Codex app-server terminal is visible in the client side panel.](docs/images/agent-cow-combat.png) | ![MrFlame standing in the Lumbridge cow pen after the bounded run picked up a cowhide.](docs/images/agent-cow-result.png) |
 
-For a contributor-oriented summary of the fork work, see [canvrno's additions so far](docs/canvrno-additions.md).
+The final compact checks showed `MrFlame` alive at `3254,3266,0`, HP `9/10`, run still enabled, one cowhide in inventory, and recent Attack and Hitpoints XP from the fight. That small run is representative of the fork's design: a high-level goal becomes server-authoritative primitives, and the proof is visible in both the game client and the generated route/combat evidence.
 
-For the quickest regular-player external setup path, start with [External Deployment Quickstart](docs/external-deployment-quickstart.md). The default sample uses `direct_tcp`: the Java client connects directly to the configured public host over plaintext TCP, while PBKDF2 account auth, a host firewall, and a loopback-only agent bridge provide the MVP safety boundary. For the planned external-player networking, authentication, standalone client, agent chat, Discord transport, and hosting design, see [Network, Authentication, Client Distribution, And Agent Chat Design](docs/network-auth-agent-chat-design.md). For concrete `direct_tcp`, VPN/tunnel, and hosting notes, see [Deployment Networking](docs/deployment-networking.md).
+The in-client Agent Terminal is also live. In the same session, typing `/agent status` through the Java client opened the side-panel terminal, started and initialized the Codex app-server path, connected the game bridge, and reported `Status: ready for mrflame`.
 
-For external-player experiments, keep the local dev flow unchanged and start from an explicit sample config. Use `2006Scape Server/ServerConfig.External.Sample.json` for the simplest `direct_tcp` public test, or `2006Scape Server/ServerConfig.ClientTlsTunnel.Sample.json` when players will run a local stunnel client and the VPS terminates TLS before forwarding to loopback. Copy the chosen sample to the ignored runtime config, replace placeholders such as `REPLACE_WITH_PUBLIC_INTERFACE_IP`, `server.example.com`, and `REPLACE_WITH_PUBLIC_TLS_HOST`, then preflight before starting:
+![The 2006Scape Agent Terminal after a client-side /agent status command connected the local app-server and game bridge.](docs/images/agent-terminal-status.png)
 
-```sh
-cp "2006Scape Server/ServerConfig.External.Sample.json" "2006Scape Server/ServerConfig.json"
-$EDITOR "2006Scape Server/ServerConfig.json"
-scripts/preflight-external-config.py "2006Scape Server/ServerConfig.json"
-SERVER_CONFIG="2006Scape Server/ServerConfig.json" ./scripts/start-server.sh
-```
+## What Makes It Different
 
-Do not expose the local agent bridge port. It defaults to `127.0.0.1:43610`; `agent_bridge_port` may be changed for isolated local test deployments, but `agent_bridge_bind_host` must remain localhost/loopback. `direct_tcp` intentionally exposes the game/cache sockets as plaintext TCP for the simplest public-server test, so use PBKDF2 account auth, firewall only the required game/cache ports, and keep the bridge loopback-only. Use Tailscale, WireGuard, a generic VPN, or a paired client/server TLS tunnel when external traffic must be encrypted or private; the legacy Java client does not speak TLS by itself.
+- **The client can summon Codex from inside the game.** `/agent key`, `/agent status`, `/agent stop`, and `/agent <task>` live in the normal chat flow. The Java client launches `codex app-server --listen stdio://`, exposes dynamic `rs` tools, and keeps the player-facing experience inside the 2006Scape window.
+- **The server owns the truth.** The bridge runs on `127.0.0.1:43610`, scopes each session token to the logged-in player that claimed it, and queues gameplay work through `AgentActionService` so actions drain on normal server ticks. HTTP handlers do not mutate player state directly.
+- **The tool surface is compact enough for long runs.** Full observation exists for debugging, but normal agent loops use XS and XXS tools such as `observe_state_XS`, `observe_state_XXS`, `walk_to_tile_until_arrived_XS`, `wait_until_idle_XXS`, `wait_until_combat_event_smart_XXS`, `deposit_inventory_items_XS`, `withdraw_bank_items_XS`, and `bank_item_count_XS`. Those tools return the survival, inventory, movement, XP, and decision fields an agent needs without flooding the model with the whole world.
+- **Strategy lives outside Java.** The Java bridge provides reusable primitives: observe, walk, interact with objects/NPCs, use item on item/object, click interface buttons, select interface items, attack, eat, pick up drops, bury bones, bank, shop, and wait. Python runners compose those primitives into mining, woodcutting, fletching, food, smithing, combat, agility, crafting, route, and banking workflows.
+- **Routes are learned artifacts, not hidden behavior.** `agent-navigation/` stores places, hazards, route definitions, movement traces, object-transition evidence, screenshots, route tests, and helper scripts. ML2 route definitions are the preferred normal A-to-B route contract, while older route runners remain as diagnostics.
+- **Profiles are isolated.** `MrFlame` remains the legacy default, but other profiles such as `MrGem` use their own bridge session files, client pid files, logs, route trace filters, screenshots, runner status files, and sparse character memories.
+- **Every serious run can become evidence.** Agent sessions write raw JSONL events and readable Markdown summaries under `2006Scape Server/data/logs/agent-sessions/`. Passive movement telemetry records active players without model polling. Screenshot helpers capture compact client-window proof when live geometry or UI state matters.
 
-The direct external sample binds both `127.0.0.1` and a public interface placeholder through plural bind arrays, so same-host local clients and external clients can connect to one server process. It sets `external_transport_mode` to `direct_tcp`, `direct_tcp_external_transport_confirmed=true`, and `require_secure_external_transport=false` as an explicit plaintext acknowledgement. The client TLS tunnel sample keeps game/cache binds on loopback, sets `external_transport_mode=client_tls_tunnel`, and uses `REPLACE_WITH_PUBLIC_TLS_HOST` for the public stunnel endpoint. Keep bind host values as strings. For Tailscale/WireGuard/VPN modes with `file_server=true`, keep HTTP and JAGGRAB cache binds on the private/VPN interface too; Java startup and preflight reject malformed bind arrays or overlay configs whose cache services are loopback-only. `client_tls_tunnel` is the exception: the server game/cache listeners may stay loopback-only because the server-side tunnel forwards encrypted external traffic into those local listeners.
+## Agent Capabilities
 
-Package a standalone client folder:
+The current bridge and harness can support:
 
-```sh
-CLIENT_SERVER_CONFIG="2006Scape Server/ServerConfig.External.Sample.json" scripts/package-client.sh
-scripts/prepare-external-deployment.py --config "2006Scape Server/ServerConfig.json"
-```
+- compact state observation, profile memory hints, HP/food/run/combat checks, recent XP deltas, nearby NPC/object/ground-item context, and bank/item count queries;
+- safe movement through tiles, path steps, landmarks, route definitions, run-energy policy, and object transitions such as gates, doors, ladders, stairs, and trapdoors;
+- combat loops with style selection, target choice, HP thresholds, eating, combat-event waits, selected looting, bone burial, and banking/restock policy;
+- skilling loops for mining, woodcutting, fletching, fishing, cooking, firemaking, smithing, crafting, agility, and food production through primitive-backed scripts;
+- economy actions such as opening shops, buying/selling items, banking resources, preserving food counts, trimming coin floats, and checking exact bank quantities without a full observation dump;
+- route and map tooling, including passive movement traces, cache-backed map rendering, active movement/fog/heat maps, route risk checks, and failure summaries;
+- reusable script discovery through `agent-navigation/tools/script_registry.py`, so an agent can search for `combat`, `mining`, `food`, `smithing`, `route`, or other workflows before guessing filenames.
 
-The package script preflights `CLIENT_SERVER_CONFIG`, reads `public_game_host`, game/cache ports, world id, and `external_transport_mode` from it, then writes `dist/2006scape-client/`, `dist/2006scape-client.zip`, `client.properties`, `MANIFEST.txt`, and `SHA256SUMS`. Host, port, and transport values must be single-line strings so malformed config or environment overrides cannot inject extra package properties. For `direct_tcp`, the packaged Java client targets `public_game_host` directly and its README/manifest call out that the game/cache sockets are plaintext. For `client_tls_tunnel`, the packaged Java client targets loopback `client_connect_host` or defaults to `127.0.0.1`, because the local plaintext tunnel owns the encrypted connection to `public_game_host`; non-loopback `client_tls_tunnel` client targets are rejected. Those packages also include `client-tls-tunnel/README.txt` and `client-tls-tunnel/stunnel-client.conf`; the packaged launchers try to start that tunnel automatically when `stunnel` is installed, and still document the manual command as a fallback. The macOS/Linux setup checker can start the bundled stunnel config temporarily for its no-login TCP checks; the Windows setup checker expects the local tunnel endpoint to be reachable first. Generated stunnel configs require certificate-chain verification, hostname checking, and TLS 1.2 or newer. Generate the matching operator-side template with `scripts/render-client-tls-tunnel-config.py --config "2006Scape Server/ServerConfig.json" --output-dir dist/client-tls-tunnel-operator`; it binds the public stunnel accept side to `client_tls_tunnel_server_accept_host` or `public_game_host`, using a real non-placeholder, non-wildcard host so it does not collide with the loopback Java listener on the same ports. `prepare-external-deployment.py` does this automatically for `client_tls_tunnel` and passes the folder to readiness verification. `CLIENT_ALLOW_PLACEHOLDER_NETWORK_CONFIG=1` exists only so source validation can package tracked placeholder samples such as `ServerConfig.ClientTlsTunnel.Sample.json`; do not use it for real player packages. The top-level client README includes transport-specific launch guidance, login guidance to use the server operator's supplied account, a no-password-reuse warning for regular players, and setup-check commands. macOS players can double-click `Run-2006Scape.command` and `Check-Setup.command`; those macOS double-click .command wrappers delegate to `run-macos-linux.sh` and `check-setup-macos-linux.sh`, while Windows players use the `.bat` files. `check-setup-macos-linux.sh` and `check-setup-windows.bat` verify Java, print `client.properties`, and attempt TCP checks without logging in or changing server state. `MANIFEST.txt` records the client socket target, `public_game_host`, source config path, and `source_server_config_sha256` so deployment verification can tie a client package to the exact config file content that produced it. The zip preserves the macOS `.command` wrappers plus the macOS/Linux launcher and setup-checker executable bits, the Windows launch/check scripts are written with CRLF line endings, and the launchers/checkers print a Java 8+ install hint if `java` is missing from PATH. Packaged launchers also pass `-no-java-warnings` so external testers using a modern 64-bit Java runtime do not see the old Parabot-focused Java-version dialog. `client.properties` includes `secure.transport`/external transport metadata so the launcher can warn testers whether they are connecting directly or must connect a VPN/tunnel before login. `CLIENT_SERVER_HOST`, `CLIENT_SERVER_PORT`, `CLIENT_HTTP_PORT`, `CLIENT_JAGGRAB_PORT`, `CLIENT_WORLD`, and `CLIENT_SECURE_TRANSPORT` remain available as explicit overrides, but non-local hosts require `CLIENT_SECURE_TRANSPORT` to be one of `direct_tcp`, `tailscale`, `wireguard`, `vpn`, or `client_tls_tunnel`; `client_tls_tunnel` targets must still stay loopback. The script refuses wildcard client targets such as `0.0.0.0`; use the actual host clients should connect to.
+The most important design rule is that new gameplay automation should prefer these primitives and scripts before adding another Java strategy tool. Java is the control surface; Python and JSON own route choice, trip policy, recovery, banking strategy, and long-running skill logic.
 
-Package generation also refuses symlinked output directories, archive paths, or output parent directories before deleting or writing package artifacts.
+## Safety And Boundaries
 
-Packaged clients default to `client.scale=2` with `show_navbar=false`. This uses the client-owned scale path instead of JVM UI scaling, so the larger desktop window keeps normal in-game mouse coordinates on macOS and other HiDPI desktops.
+This fork deliberately avoids the shortcuts that would make the demo less interesting. Agent actions should stay server-authoritative and use existing mechanics such as walking, `ClickObject`, `CombatAssistant.attackNpc`, normal skill handlers, bank/shop handlers, dialogue buttons, and inventory interactions. Do not add admin teleports, item spawning, direct player-state edits, raw token logging, or screen automation for gameplay.
 
-Browser play is documented as future research, not the external-player MVP. Modern browsers do not run the old Java applet path, and this client still uses AWT/Swing plus raw game/cache sockets, so the supported downloadable client is the packaged desktop Java client.
+Bridge sessions are local and scoped. The client claims a server-side session with a one-time nonce, the repo wrappers read only ignored session files under `agent-navigation/.local/`, and secrets must not be printed, committed, or copied into logs. The generated traces, screenshots, runner logs, and local character files are ignored unless a specific artifact is intentionally curated, as the demo images above were.
 
-For a deployment bundle, prefer `scripts/prepare-external-deployment.py --config "2006Scape Server/ServerConfig.json"`. It packages the client under `dist/external-deployment/`, writes `2006scape-client.zip`, renders `client-tls-tunnel-operator/` when the config uses `client_tls_tunnel`, writes `server-deployment/` hardened systemd/firewall templates plus account/secrets install guidance, runtime-data backup notes, and fill-in proof note templates, and writes a readiness report without starting, stopping, or restarting the runtime.
+For a contributor-oriented inventory of fork work, see [canvrno's additions so far](docs/canvrno-additions.md). For the runtime flow that starts the server, launches a profile-aware client, claims the bridge, and verifies compact tools without printing tokens, see [Local Agent Startup](docs/local-agent-startup.md). For the route and runner harness, start with [agent-navigation/README.md](agent-navigation/README.md) and [Agent Scripting Primitives](agent-navigation/scripting-primitives.md).
 
-The deployment verifier rejects tracked sample network placeholders such as `server.example.com`, `REPLACE_WITH_PUBLIC_INTERFACE_IP`, `example-tailnet-host`, and `100.64.0.10`. Replace them with the real public or private host and interface IP before distributing a client. `--allow-placeholder-network-config` is only for source/sample validation.
+For external-player experiments, start with [External Deployment Quickstart](docs/external-deployment-quickstart.md), [Deployment Networking](docs/deployment-networking.md), and the current [VPS Direct TCP Deployment Notes](docs/vps-direct-tcp-deployment-notes.md). The packaged desktop client defaults to `client.scale=2` and `show_navbar=false`, using the client-owned scale path instead of JVM UI scaling so the larger window keeps normal in-game mouse coordinates. Keep the agent bridge on loopback only; remote `/agent` use needs an operator-approved SSH/VPN/tunnel path to `127.0.0.1:43610`, never a public bridge port.
 
-Create PBKDF2 account records for external auth:
+## External Deployment Quick Reference
 
-```sh
-scripts/create-account.py username
-# Compatibility fallback only for older Java 8 runtimes:
-scripts/create-account.py username --algorithm sha1
-# Rotate a password without dropping roles, allowed characters, or Discord metadata:
-scripts/create-account.py username --overwrite --preserve-metadata
-# Audit/list or disable/enable existing records without changing passwords:
-scripts/account-admin.py --require-password-policy audit
-scripts/account-admin.py list --json
-scripts/account-admin.py disable username
-scripts/account-admin.py enable username
-```
+For the simplest public-player test, use `direct_tcp`: copy `2006Scape Server/ServerConfig.External.Sample.json` to the ignored runtime config, replace `REPLACE_WITH_PUBLIC_INTERFACE_IP` and `server.example.com`, set `direct_tcp_external_transport_confirmed=true`, and acknowledge that this is plaintext TCP. `Server startup rejects external-player configs unless PBKDF2 account auth` is enabled with account auto-create and legacy auth disabled. For an encrypted client tunnel, start from `ServerConfig.ClientTlsTunnel.Sample.json`; packages include `client-tls-tunnel/stunnel-client.conf`, and operator-side templates use `client_tls_tunnel_server_accept_host` plus `--client-tls-tunnel-dir` with real non-placeholder hosts and `--tls-sni-host` only for the real certificate hostname. Browser play is documented as future research, not the external-player MVP.
 
-Account records are written under ignored `2006Scape Server/data/accounts/` with owner-only permissions where the filesystem supports them. The helper, Java auth service, account admin tool, and deployment verifier reject symlinked account records; deployment verification also rejects group/world-readable account directories or records on POSIX systems. The create helper uses `PBKDF2WithHmacSHA256` by default, rejects passwords shorter than 12 characters unless `--allow-weak-password` is explicitly passed for local throwaway/source-validation accounts, preserves the password exactly instead of trimming it before hashing, and stamps `passwordPolicy` metadata on new or rotated records. Deployment verification and `scripts/account-admin.py --require-password-policy audit` reject records that are missing that metadata or were created with the weak-password override. `--algorithm sha1` is only for a Java 8 runtime that cannot verify SHA-256 PBKDF2 records. Use `--overwrite --preserve-metadata` for password rotation so roles, allowed characters, Discord user id, and disabled state survive unless explicitly overridden. Use the strict account audit before deployment to check exact account-file shape without requiring a packaged client verification run, and use `disable`/`enable` for access control changes that should not rotate the password. Password verification uses each record's stored algorithm and iteration count; external-mode minimum iterations are enforced separately as a strength policy. Existing account-record audits cannot cryptographically prove the original plain-text password length, so create or rotate real external accounts through `scripts/create-account.py` instead of hand-writing hashes. External PBKDF2 account passwords are exact strings; unlike legacy character-password login, they are not trimmed before verification. The in-game `::password` command is blocked after an account-auth login because it only edits the legacy character save token; update PBKDF2 account records out of game. Repeated failed account-auth attempts are temporarily rate-limited per account and per connecting source address; missing-account attempts are source-throttled when legacy fallback is disabled. The in-memory throttle table is bounded and prunes expired entries.
+Account and package checks are source-side guardrails. Use `scripts/account-admin.py --require-password-policy audit`; `scripts/create-account.py` rejects passwords shorter than 12 characters unless explicitly overridden, and account records carry `passwordPolicy`. `scripts/package-client.sh` refuses symlinked output directories, records `source_server_config_sha256`, writes login guidance to use the server operator's supplied account, warns players not to reuse passwords, and ships macOS double-click .command wrappers. The macOS/Linux setup checker can start the bundled stunnel config temporarily for `client_tls_tunnel` no-login diagnostics.
 
-Real Discord bot secrets live in ignored `2006Scape Server/data/secrets.json`. If the server creates the default file because it is missing, it writes it owner-only where POSIX permissions are supported; when loading an existing regular file, the runtime tightens it to owner-only before reading. Symlinked secrets are refused. Use `scripts/probe-discord-agent-bots.py --secrets "2006Scape Server/data/secrets.json"` to prove configured bot tokens and `channelId` reachability without sending messages; add `--send-test-message` only when you intentionally want one sanitized probe message posted. To prove server-to-Discord mirroring, send a unique in-game/agent chat marker through the running server, then run `scripts/verify-discord-channel-message.py --text-contains MARKER --agent PROFILE --proof-manifest dist/external-deployment/deployment-proof-manifest.json`.
+Live proof is separate from source validation. Use `scripts/probe-deployment-network.py`, `scripts/probe-concurrent-logins.py`, `--live-login-username`, `--live-local-login-username`, `--live-local-host` on loopback, `--live-reject-login-username`, `--live-reject-login-expected-statuses 3,4` for final readiness so the accepted rejection codes are pinned, and focused `--expect-statuses` rejection probes when needed. Discord proof uses `--live-discord`; Direct player chatbox delivery proof is required through `agent_chat_player_delivery` and `--agent-chat-delivery-log-text MARKER --agent-chat-delivery-log-to-name PLAYER`. Expected readiness states include `LIVE_PROOF_PARTIAL_NEEDS_...`, `LIVE_NETWORK_AUTH_CLIENT_CHAT_BACKUP_PROOF_RECORDED_DISCORD_NOT_REQUESTED`, and `FULL_LIVE_NETWORK_AUTH_CLIENT_CHAT_BACKUP_AND_DISCORD_PROOF_RECORDED`.
 
-For deployment proof collection, add `--proof-manifest dist/external-deployment/deployment-proof-manifest.json` to `scripts/verify-agent-chat-log.py` and `scripts/verify-discord-channel-message.py` so successful direct-delivery, Discord-ingress, blocked-routing, and Discord-mirror checks update the copied proof manifest automatically.
+For final evidence, prefer `deployment-proof-manifest.json` with `--proof-manifest`, `--update-proof-manifest`, `--json-output`, and `scripts/deployment-readiness-status.py --prepared-dir dist/external-deployment --show-next-commands`. Use `scripts/write-desktop-client-proof.py` with a non-symlink screenshot/log evidence file, `scripts/backup-runtime-data.py` for an owner-only archive, `proof-templates/runtime-data-backup-proof.md`, and `scripts/check-deployment-proof-manifest.py` before `scripts/package-deployment-proof.py --prepared-dir dist/external-deployment` for the final external-ready handoff. Final-gate manifests must keep `require_full_proof:true`; `prepare-external-deployment.py --require-full-proof` runs the merged manifest plus CLI values before package/build work begins. Runtime backup validation rejects symlinked proof notes, checks `backup archive sha256`, and requires a no runtime start/stop/restart proof line plus create the proof manifest parent directory.
 
-Remote character saves live in ignored `2006Scape Server/data/characters/`. Treat that directory, `data/accounts/`, and `data/secrets.json` as operator-owned runtime data: back them up before replacing a deployed repo, rotating credentials, or restarting into a new config, and do not copy local development character saves to the remote host unless that is intentional. Prefer `scripts/backup-runtime-data.py --data-dir "2006Scape Server/data"` on the deployed host; it writes an owner-only archive plus a readiness-compatible owner-only proof note for `--runtime-data-backup-proof-file` without starting, stopping, or restarting the runtime, and records that fact in the proof note. If a copied deployment proof manifest already exists, pass `--proof-manifest PATH` to update only its `runtime_data_backup_proof_file` field with the generated proof note path. The helper refuses symlinked runtime-data paths and symlinked archive/proof/manifest output paths, including symlinked output directories or parent directories. Readiness validation rejects symlinked proof notes, verifies owner-only proof/archive modes where supported, and checks the proof's archive path, `backup archive sha256`, required tar entries for `characters`, `accounts`, and `secrets.json`, the no runtime start/stop/restart proof line, and the `readiness argument: --runtime-data-backup-proof-file ...` line.
+Structured coordination chat is available from the game with `::agentchat @agent:Name message`, `::agentchat @player:Name message`, or channel forms, and from scripts with `agent-navigation/tools/agent_chat_XS.py --profile`. Target shortcuts are mutually exclusive. Use these for coordination, not as a public chat replacement or a hot-loop polling primitive.
 
-Server startup rejects external-player configs unless PBKDF2 account auth is enabled with at least 120,000 iterations, account auto-create is disabled, and legacy auth fallback is disabled. `direct_tcp` configs must explicitly set `require_secure_external_transport=false`, `secure_external_transport_confirmed=false`, and `direct_tcp_external_transport_confirmed=true`; secure/private modes such as Tailscale, WireGuard, VPN, and `client_tls_tunnel` must set `require_secure_external_transport=true` and `secure_external_transport_confirmed=true`. Java startup and the Python deployment tools also reject network host/transport values containing control characters before they can become listener addresses, package properties, manifests, or stunnel lines. Direct TCP, Tailscale, WireGuard, and VPN modes require game binds to include a non-loopback host and, when `file_server=true`, HTTP/JAGGRAB cache binds to include a non-loopback host too. `client_tls_tunnel` may use loopback-only game/cache binds because the encrypted tunnel endpoint owns the external listener; its server-side stunnel accept host must be a specific public interface host, not loopback or wildcard. Wildcard bind hosts such as `0.0.0.0` require `wildcard_bind_confirmed=true` in the config plus `--allow-wildcard-bind`/`CLIENT_ALLOW_WILDCARD_BIND=1` in the helper tooling, and wildcard hosts must not be mixed with specific hosts in the same listener array.
+## Usage Quickstart
 
-Preflight an external config before starting a remote server:
+There are two good ways to drive the agent.
+
+**In the game client:** use this when you want the 2006Scape window to be the main control surface.
 
 ```sh
-scripts/preflight-external-config.py "2006Scape Server/ServerConfig.json"
+./scripts/run-local.sh -u "MrFlame"
 ```
 
-Verify that the packaged client folder and matching zip archive match the external config before distributing it:
+Then log in and type commands in chat:
+
+```text
+/agent status
+/agent travel to Lumbridge cows
+/agent kill one cow and pick up the cowhide
+/agent mine copper and tin, then bank the ores
+/agent stop
+```
+
+If `/agent status` says Codex needs a key, run `/agent key` and enter the API key in the Swing password dialog. The key is passed to Codex auth and is not written into repository files. Once the terminal says the app-server and game bridge are ready, ordinary `/agent <task>` commands become Codex turns with read-only filesystem policy, no network access at turn time, and dynamic `rs` tools scoped to the logged-in player.
+
+**From the repo harness:** use this when you want reproducible local automation, screenshots, route evidence, and compact wrapper commands.
 
 ```sh
-scripts/verify-external-deployment.py --config "2006Scape Server/ServerConfig.json" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment
-scripts/deployment-readiness-report.py --config "2006Scape Server/ServerConfig.json" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --json-output dist/deployment-readiness-report.json
-scripts/prepare-external-deployment.py --config "2006Scape Server/ServerConfig.json"
+JAVA_BIN=/opt/homebrew/opt/openjdk/bin/java \
+  python3 agent-navigation/tools/runtime_doctor.py claim --profile MrFlame --verify
+
+agent-navigation/tools/observe_XXS.sh
+agent-navigation/tools/observe_XS.sh
+python3 agent-navigation/tools/script_registry.py search combat
 ```
 
-Deployment verification also rejects symlinked client package files or nested package directories before trusting checksum or zip evidence, and the matching zip archive must contain ordinary file/directory entries rather than symlink-type entries, so the distributed client artifacts stay under the expected package tree.
+For another profile, pass `--profile MrGem` or set `RS_PROFILE=MrGem`. The helper writes only ignored session files under `agent-navigation/.local/`, and the wrapper scripts read those files without printing bridge tokens.
 
-The readiness report wraps preflight, account audit, and deployment verification, then writes a redacted Markdown artifact to `dist/deployment-readiness-report.md`; add `--json-output PATH` when automation or deployment handoff needs the same status, command summaries, proof coverage, and remaining live-proof list as structured JSON. Use `--server-deployment-dir` when you have rendered the systemd/firewall bundle separately; use `--client-tls-tunnel-dir` when you have rendered operator-side stunnel templates for `client_tls_tunnel`; `prepare-external-deployment.py` passes its generated `server-deployment/` and `client-tls-tunnel-operator/` directories automatically, and can pass `--json-output` through. It does not package, start, stop, or restart the server. Use `scripts/deployment-readiness-status.py --readiness-json dist/deployment-readiness-report.json` or `--prepared-dir dist/external-deployment` to read an existing JSON report and print the current `deploymentProofStatus`, `externallyReady` decision, proof coverage, and remaining live proof without rerunning probes or touching runtime; add `--show-next-commands` when you want command templates for the missing live/manual proof categories. Those templates preserve the report's config, account, secret, client, and deployment paths, create the proof manifest parent directory, copy the template only when the manifest is missing, write manual proof notes beside that manifest, pass that manifest to the desktop-proof and runtime-backup helpers with `--proof-manifest`, pass `--update-proof-manifest` to live readiness reports after successful checks, and the final manifest check passes the recorded secrets path so Discord routing-filter requirements are not skipped. For final evidence collection, put live/manual proof paths, usernames, markers, and password environment-variable names in a JSON proof manifest and pass `--proof-manifest PATH`; use `--update-proof-manifest PATH` when a successful readiness-report run should write supplied live proof fields into a copied manifest that may still contain unrelated placeholders. The generated server bundle includes `proof-templates/deployment-proof-manifest.json` as a fill-in starting point, and explicit CLI flags override manifest fields. Run `scripts/check-deployment-proof-manifest.py PATH --config "2006Scape Server/ServerConfig.json" --require-full-proof --check-files --secrets "2006Scape Server/data/secrets.json"` for a quick manifest completeness check before the heavier readiness/prep command. With `--check-files`, it validates desktop proof evidence and runtime-backup archive/checksum details, not just path existence. Final-gate manifests must keep `require_full_proof:true` in the manifest itself so the handoff remains self-describing. When `scripts/prepare-external-deployment.py` is run with `--require-full-proof`, it also runs this proof check early against the merged manifest plus CLI values, including proof-file, password-environment-variable, and `live_reject_login_expected_statuses` presence, before packaging. Unedited placeholder values in that template are rejected before proof checks run. Do not put passwords, tokens, or secrets in that manifest. Read both `status` and `deploymentProofStatus`: `status: PASS` means the requested commands passed, while `deploymentProofStatus: STATIC_CHECKS_PASS_NEEDS_LIVE_PROOF` means the package is still not live-proven. Add `--require-full-proof` to `scripts/deployment-readiness-report.py` or `scripts/prepare-external-deployment.py` only for a final deployment gate; it exits non-zero unless all required live/manual proof categories are recorded, and it refuses source/test-only allowances such as placeholder config/secrets, empty account dirs, or untrusted TLS checks. If `agent_chat_discord_enabled=true`, Discord bot/channel, Discord-to-server, and server-to-Discord proof are required automatically before readiness can report full Discord proof. Live reports use `LIVE_PROOF_PARTIAL_NEEDS_...` to name missing evidence, `LIVE_NETWORK_AUTH_CLIENT_CHAT_BACKUP_PROOF_RECORDED_DISCORD_NOT_REQUESTED` when network/auth/client/chat/backup proof is recorded with Discord disabled and no Discord flags, and `FULL_LIVE_NETWORK_AUTH_CLIENT_CHAT_BACKUP_AND_DISCORD_PROOF_RECORDED` when the live network/auth/client/chat/backup plus Discord round-trip proof set is recorded.
+## Sample Workflows
 
-After the final readiness report exists, `scripts/package-deployment-proof.py --prepared-dir dist/external-deployment` creates a non-secret handoff tarball from the normal `prepare-external-deployment.py` output directory. If you used lower-level commands, pass explicit paths instead, for example `--readiness-report dist/deployment-readiness-report.md --readiness-json dist/deployment-readiness-report.json --proof-manifest dist/deployment-proof-manifest.json`. For the final external-ready handoff, add `--require-full-proof`; it fails unless the readiness JSON records a full live proof status and the proof manifest passes full-proof plus proof-file validation. The bundle includes readiness reports, the filled proof manifest when present, proof notes, and selected client/server metadata, while deliberately excluding runtime backup archives, character saves, account records, `data/secrets.json`, passwords, bridge tokens, and Discord bot tokens.
-
-Direct player chatbox delivery proof is required even when Discord is disabled: verify an `agent_chat_player_delivery` audit event and pass `--agent-chat-delivery-log-text MARKER --agent-chat-delivery-log-to-name PLAYER --agent-chat-delivery-log-channel agent` to readiness/prep, or add `--proof-manifest deployment-proof-manifest.json` to `scripts/verify-agent-chat-log.py` so it records those manifest fields automatically after a successful check. For Discord proof in readiness/prep reports, `--agent-chat-log-text` must also include `--agent-chat-log-from-type discord --agent-chat-log-from-bot false`; the same verifier can write those manifest fields with `--proof-manifest`. Server-to-Discord proof must use the default bot-author verification, not `--discord-channel-message-allow-human-author`; `scripts/verify-discord-channel-message.py --proof-manifest deployment-proof-manifest.json` records the mirror proof fields after success. If routing allow-lists are configured, full Discord readiness also requires `--agent-chat-blocked-log-text BLOCKED_MARKER` proof that a blocked human/non-bot Discord marker did not enter `AgentChatService`; the blocked absence verifier can record that marker with `--expect-absent --proof-manifest`.
-
-After the remote server is intentionally running, use `scripts/probe-deployment-network.py --config "2006Scape Server/ServerConfig.json"` when you want a focused network-only check for public game/cache reachability and agent bridge non-exposure before running login or packaging proof. Add `--live` to the full verifier to record the same network proof with the deployment artifacts. For `client_tls_tunnel`, live verification performs TLS 1.2+ handshakes against the public tunnel endpoints; use `--tls-sni-host` only when the certificate name intentionally differs from `public_game_host`. To prove account auth through the same path, create a throwaway PBKDF2 account and pass `--live-login-username NAME --live-login-password-env ENV_VAR`; the password is read from the environment instead of the command line. To prove local and external players can coexist, add a second throwaway account with `--live-local-login-username LOCAL --live-local-login-password-env LOCAL_ENV`; the verifier keeps the external socket open while it logs in locally through `127.0.0.1` or the supplied `--live-local-host/--live-local-port`, and `--live-local-host` must remain `localhost` or a loopback IP address. For a focused protocol-only coexistence check, use `scripts/probe-concurrent-logins.py --external-host HOST --external-username EXTERNAL --external-password-env EXTERNAL_PASSWORD --local-username LOCAL --local-password-env LOCAL_PASSWORD`; this does not replace the desktop-client proof. After one same-host Java client and one external Java client are both online through the selected external transport, prefer `scripts/write-desktop-client-proof.py --same-host-client LOCAL --external-client EXTERNAL --transport TRANSPORT --public-host HOST --evidence PATH` to write the proof note for `--desktop-client-proof-file`; add `--proof-manifest deployment-proof-manifest.json` to update `desktop_client_proof_file` directly. The helper validates the existing non-symlink screenshot/log evidence file and writes the local client, external client, transport path, and concurrent-online observation without starting, stopping, restarting, logging in, or probing anything. The server deployment bundle includes `proof-templates/desktop-client-proof.md` as a fill-in fallback; unfilled placeholders are rejected. Run `scripts/backup-runtime-data.py --data-dir "2006Scape Server/data"` before replacement/restart and pass its generated proof note with `--runtime-data-backup-proof-file PATH`, or add `--proof-manifest deployment-proof-manifest.json` to update that manifest field directly; the note names character saves, account records, Discord secrets, the backup archive, timestamp, `backup archive sha256`, the readiness argument, and that the helper did not start, stop, or restart the runtime, and readiness validation verifies that archive checksum and required tar entries. The bundle includes `proof-templates/runtime-data-backup-proof.md` as a manual fallback; unfilled placeholders are rejected. To prove fail-closed auth through the same live path, pass `--live-reject-login-username NAME --live-reject-login-password-env ENV_VAR` with a wrong password, missing throwaway account, or disabled throwaway account; add `--live-reject-login-expected-statuses 3,4` for final readiness so the accepted rejection codes are pinned. For direct in-game player delivery proof, verify the delivery-status audit event with `scripts/verify-agent-chat-log.py --event agent_chat_player_delivery --text-contains MARKER --to-type player --to-name PLAYER --delivered-to PLAYER --no-undelivered --channel agent --proof-manifest deployment-proof-manifest.json`; this records the equivalent readiness manifest fields. If Discord agent chat is enabled, add `--live-discord` with real ignored secrets to authenticate bot tokens and check `channelId` reachability; readiness reports require it automatically for Discord-enabled configs. Then send a real human/non-bot Discord test message with a unique marker and prove the running server logged it with `scripts/verify-agent-chat-log.py --text-contains MARKER --from-type discord --from-bot false --discord-message-id DISCORD_MESSAGE_ID --channel agent --proof-manifest deployment-proof-manifest.json` when the Discord id is available. For configured blocked routing filters, send a blocked human/non-bot Discord marker and prove absence with `scripts/verify-agent-chat-log.py --text-contains BLOCKED_MARKER --from-type discord --from-bot false --channel agent --expect-absent --proof-manifest deployment-proof-manifest.json`; without that absence proof, full Discord readiness remains partial. For the reverse direction, send a unique in-game/agent chat marker and prove the bot-authored mirror appeared in Discord with `scripts/verify-discord-channel-message.py --text-contains MARKER --agent PROFILE --proof-manifest deployment-proof-manifest.json`. Save the emitted `live-check:`, `discord-check:`, desktop-client proof, runtime-data backup proof, player-delivery proof, chat-log proof, blocked-routing proof, and Discord mirror proof lines as deployment evidence.
-
-For focused rejection-only auth checks, use `scripts/probe-game-login.py --host HOST --port 43594 --username NAME --password-env ENV_VAR --expect-failure --expect-statuses 3,4`. Add `--tls --tls-sni-host HOST` when probing a public `client_tls_tunnel` endpoint.
-
-For focused coexistence checks, use `scripts/probe-concurrent-logins.py --external-host HOST --external-username EXTERNAL_TEST --external-password-env EXTERNAL_PASSWORD --local-host 127.0.0.1 --local-username LOCAL_TEST --local-password-env LOCAL_PASSWORD`. Add `--tls --tls-sni-host HOST` when the external path is a public `client_tls_tunnel` endpoint.
-
-Validate these source-side changes without restarting the live runtime:
+**Check readiness and player state**
 
 ```sh
-scripts/validate-network-auth-chat.sh
+python3 agent-navigation/tools/runtime_doctor.py status --profile MrFlame --observe
+agent-navigation/tools/observe_XXS.sh
+agent-navigation/tools/observe_XS.sh
+agent-navigation/tools/rs-tool_XS.sh bank_item_count '{"names":["Cowhide","Coal","Iron ore"]}'
 ```
 
-When Docker Desktop is running, include the Java 8 compatibility build:
+Use XXS for heartbeat checks such as tile, HP, food, combat, death, and run state. Use XS when the next decision needs compact inventory, bank, equipment, nearby object/NPC, route, or skill context.
+
+**Run a bounded early-combat trip**
 
 ```sh
-RUN_DOCKER_BUILD=1 scripts/validate-network-auth-chat.sh
+python3 agent-navigation/tools/cowhide_combat_runner.py \
+  --profile MrFlame \
+  --max-cycles 1 \
+  --no-final-bank \
+  --no-buy-kebabs \
+  --quiet
 ```
 
-The validation wrapper can use Docker Desktop's bundled macOS CLI and Compose plugin even when `docker` is not on the shell `PATH`.
+That is the workflow used for the screenshots above. It routes to the Lumbridge cow pen, handles the gate, attacks through combat primitives, watches HP/XP/drop state, picks up cowhide, and stops at a safe boundary.
 
-For a narrower runtime check after packaging, run the isolated smoke. It starts a child server from this worktree on random alternate localhost ports, checks game/cache listeners and bridge health, creates four unique throwaway PBKDF2 account records, proves two accounts can log in through the game TCP protocol at the same time, proves one rejects a wrong password, proves one disabled account rejects a correct password, then terminates that child process and removes the throwaway files without touching the active local runtime:
+**Route somewhere with the current ML2 route contract**
 
 ```sh
-scripts/smoke-network-auth-chat-runtime.py
+agent-navigation/tools/observe_XS.sh
+python3 agent-navigation/ml2-routing/route_ml_XS.py define \
+  --from 3254,3266,0 \
+  --to lumbridge_bank \
+  --combat-level 3 \
+  --food 2 \
+  --run-energy 80 \
+  --run-enabled
 ```
+
+If the returned route definition includes an execution command, run that command exactly when live movement is intended. The route definition is the contract: it captures the decision, safety notes, route steps, object transitions, and execution path.
+
+**Mine and bank resources**
+
+```sh
+python3 agent-navigation/tools/script_registry.py search mining
+python3 agent-navigation/tools/mining_runner.py --list-sites --ores copper,tin,iron
+python3 agent-navigation/tools/mining_runner.py --ores iron --max-loads 1 --quiet
+python3 agent-navigation/tools/mining_runner.py --target-mining-level 20 --auto-buy-bronze-pickaxe
+```
+
+The mining runner chooses live rocks from cache-backed site data, routes between mines and banks, mines through object primitives, waits for real idle/completion states, and records generated evidence under ignored local run folders.
+
+**Fish, cook, and bank food**
+
+```sh
+python3 agent-navigation/tools/script_registry.py search food
+python3 agent-navigation/tools/food_bank_XS.py
+python3 agent-navigation/tools/food_runner.py --mode fish-cook --quiet
+python3 agent-navigation/tools/catherby_food_runner.py --cycles 1 --quiet
+```
+
+The Catherby runner is a larger example of script-side strategy: it moves among shore, range, bank, and shop targets, opens known doors, chooses fish methods by both Fishing and Cooking requirements, drops burnt food, and banks useful output.
+
+**Smelt or smith through interface primitives**
+
+```sh
+python3 agent-navigation/tools/script_registry.py search smithing
+python3 agent-navigation/tools/smithing_runner.py --mode smelt --bar bronze --quiet
+python3 agent-navigation/tools/smithing_runner.py --mode smith --item sword --amount 10
+```
+
+Smithing uses ordinary furnace/anvil/object interactions, interface button clicks, item selection, and `wait_until_idle` rather than a one-off Java strategy shortcut.
+
+**Capture visual evidence**
+
+```sh
+agent-navigation/tools/capture-client-screenshot.sh --prefix route-proof --native-size
+agent-navigation/tools/capture-cardinal-screenshots.sh --prefix gate-debug
+```
+
+Use screenshots when the live client view matters: wrong side of a gate, a door state, a staircase, a wall pocket, an unexpected combat situation, or a README-quality demo. Generated captures under `agent-navigation/screenshots/` are ignored by default; copy only curated images into `docs/images/` when they belong in documentation.
+
+**Inspect session and runner evidence**
+
+```sh
+python3 agent-navigation/tools/agent_session_XS.py --profile MrFlame --latest
+python3 agent-navigation/tools/runner_status_XS.py --profile MrFlame
+python3 agent-navigation/tools/route_failure_XS.py --profile MrFlame
+```
+
+These compact readers are meant for the agent loop. They summarize current status, last route outcome, blockers, and recent session usage without dumping full raw JSONL into the model context.
 
 # Installation + Running (Developers)
 

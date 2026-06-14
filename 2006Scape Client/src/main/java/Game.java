@@ -6073,8 +6073,10 @@ public class Game extends RSApplet {
 			agentAutoClaimSent = false;
 			agentAutoClaimAttempts = 0;
 			agentAutoClaimLastAttemptCycle = 0;
+			agentAutoClaimAdoptLastAttemptCycle = 0;
 		}
 		if (agentAutoClaimSent) {
+			maybeAdoptLocalAgentSession();
 			return;
 		}
 		if (agentAutoClaimAttempts > 0 && loopCycle - agentAutoClaimLastAttemptCycle < 25) {
@@ -6085,7 +6087,22 @@ public class Game extends RSApplet {
 			agentAutoClaimAttempts++;
 			System.out.println("[AgentClient] auto-claim attempt sent count=" + agentAutoClaimAttempts);
 			agentAutoClaimSent = agentAutoClaimAttempts >= AGENT_AUTO_CLAIM_MAX_ATTEMPTS;
+			if (agentAutoClaimSent) {
+				maybeAdoptLocalAgentSession();
+			}
 		}
+	}
+
+	private void maybeAdoptLocalAgentSession() {
+		if (agentController == null) {
+			return;
+		}
+		if (agentAutoClaimAdoptLastAttemptCycle > 0
+				&& loopCycle - agentAutoClaimAdoptLastAttemptCycle < 25) {
+			return;
+		}
+		agentAutoClaimAdoptLastAttemptCycle = loopCycle;
+		agentController.adoptLocalSessionAsync();
 	}
 
 	private void maybeRunAgentAutoCommand() {
@@ -12714,6 +12731,7 @@ public class Game extends RSApplet {
 	private boolean agentAutoClaimSent;
 	private int agentAutoClaimAttempts;
 	private int agentAutoClaimLastAttemptCycle;
+	private int agentAutoClaimAdoptLastAttemptCycle;
 	private boolean agentAutoLoginAttempted;
 	private boolean agentAutoCommandSent;
 	private long agentNextAutoLoginAttemptAt;

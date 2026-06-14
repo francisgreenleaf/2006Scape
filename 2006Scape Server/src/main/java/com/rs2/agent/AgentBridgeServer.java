@@ -6,11 +6,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.Locale;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -42,10 +42,7 @@ public class AgentBridgeServer {
         int port = Constants.AGENT_BRIDGE_PORT > 0 ? Constants.AGENT_BRIDGE_PORT : DEFAULT_PORT;
         try {
             server = HttpServer.create(new InetSocketAddress(bindHost, port), 0);
-            server.createContext("/agent/health", new HealthHandler());
-            server.createContext("/agent/session/claim", new ClaimHandler());
-            server.createContext("/agent/session/event", new SessionEventHandler());
-            server.createContext("/agent/tool", new ToolHandler());
+            registerContexts(server);
             server.setExecutor(createExecutor());
             server.start();
             System.out.println("Agent bridge listening on " + bindHost + ":" + port + ".");
@@ -53,6 +50,13 @@ public class AgentBridgeServer {
             System.err.println("Unable to start agent bridge on " + bindHost + ":" + port + ": " + e.getMessage());
             server = null;
         }
+    }
+
+    static HttpServer createServerForTests(InetSocketAddress address) throws IOException {
+        HttpServer testServer = HttpServer.create(address, 0);
+        registerContexts(testServer);
+        testServer.setExecutor(createExecutor());
+        return testServer;
     }
 
     static ThreadPoolExecutor createExecutor() {
@@ -71,6 +75,16 @@ public class AgentBridgeServer {
                 new ThreadPoolExecutor.CallerRunsPolicy());
         executor.allowCoreThreadTimeOut(true);
         return executor;
+    }
+
+    private static void registerContexts(HttpServer target) {
+        target.createContext("/agent/health", new HealthHandler());
+        target.createContext("/agent/session/claim", new ClaimHandler());
+        target.createContext("/agent/session/event", new SessionEventHandler());
+        target.createContext("/agent/personality/pending", new PersonalityPendingHandler());
+        target.createContext("/agent/personality/complete", new PersonalityCompleteHandler());
+        target.createContext("/agent/personality/failed", new PersonalityFailedHandler());
+        target.createContext("/agent/tool", new ToolHandler());
     }
 
     private static class HealthHandler implements HttpHandler {
@@ -191,9 +205,98 @@ public class AgentBridgeServer {
         }
     }
 
+    private static class PersonalityPendingHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                sendError(exchange, 405, "GET required.");
+                return;
+            }
+            AgentSession session = authenticatedSession(exchange);
+            if (session == null) {
+                sendError(exchange, 401, "Invalid or expired agent session.");
+                return;
+            }
+            int limit = queryParamInt(exchange, "limit", 3);
+            JsonObject response = AgentPersonalityNarrator.INSTANCE.pendingForSession(session, limit);
+            sendJson(exchange, 200, response);
+        }
+    }
+
+    private static class PersonalityCompleteHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                sendError(exchange, 405, "POST required.");
+                return;
+            }
+            AgentSession session = authenticatedSession(exchange);
+            if (session == null) {
+                sendError(exchange, 401, "Invalid or expired agent session.");
+                return;
+            }
+            JsonObject request;
+            try {
+                request = readJson(exchange);
+            } catch (JsonRequestException e) {
+                sendError(exchange, e.status, e.getMessage());
+                return;
+            }
+            JsonObject response = AgentPersonalityNarrator.INSTANCE.complete(
+                    AgentSessionLog.INSTANCE, session, request);
+            sendJson(exchange, response.has("success") && response.get("success").getAsBoolean() ? 200 : 400, response);
+        }
+    }
+
+    private static class PersonalityFailedHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                sendError(exchange, 405, "POST required.");
+                return;
+            }
+            AgentSession session = authenticatedSession(exchange);
+            if (session == null) {
+                sendError(exchange, 401, "Invalid or expired agent session.");
+                return;
+            }
+            JsonObject request;
+            try {
+                request = readJson(exchange);
+            } catch (JsonRequestException e) {
+                sendError(exchange, e.status, e.getMessage());
+                return;
+            }
+            JsonObject response = AgentPersonalityNarrator.INSTANCE.failed(
+                    AgentSessionLog.INSTANCE, session, request);
+            sendJson(exchange, response.has("success") && response.get("success").getAsBoolean() ? 200 : 400, response);
+        }
+    }
+
     private static AgentSession authenticatedSession(HttpExchange exchange) {
         String token = exchange.getRequestHeaders().getFirst("X-Agent-Token");
         return token == null ? null : AgentSessionManager.INSTANCE.getSession(token);
+    }
+
+    static int queryParamInt(HttpExchange exchange, String name, int fallback) {
+        if (exchange == null || exchange.getRequestURI() == null || exchange.getRequestURI().getRawQuery() == null) {
+            return fallback;
+        }
+        String[] parts = exchange.getRequestURI().getRawQuery().split("&");
+        for (String part : parts) {
+            int equals = part.indexOf('=');
+            String key = equals >= 0 ? part.substring(0, equals) : part;
+            if (!name.equals(key)) {
+                continue;
+            }
+            String value = equals >= 0 ? part.substring(equals + 1) : "";
+            try {
+                return Integer.parseInt(value);
+            } catch (NumberFormatException ignored) {
+                return fallback;
+            }
+        }
+        return fallback;
     }
 
     private static JsonObject readJson(HttpExchange exchange) throws IOException, JsonRequestException {

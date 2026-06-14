@@ -1,9 +1,9 @@
 {
   "actionableCount": 30,
   "caseCount": 31,
-  "generatedAt": "2026-05-31T03:38:04Z",
+  "generatedAt": "2026-06-14T20:38:12Z",
   "okCount": 30,
-  "outputDir": "artifacts/benchmarks/20260531T033804Z",
+  "outputDir": "artifacts/benchmarks/20260614-all-characters-latest",
   "results": [
     {
       "actionable": true,
@@ -15,17 +15,16 @@
       "estimatedTicks": 272.0,
       "from": "lumbridge_castle_courtyard",
       "mlScore": {
-        "combatExposure": 0.000649,
-        "confidence": 0.682714,
-        "hpLossPerAttempt": 0.00052,
-        "maxCombatExposure": 0.048461,
-        "predictedTicks": 253.23,
-        "riskScore": 0.047726,
-        "score": 523.681,
+        "combatExposure": 0.0,
+        "confidence": 0.677251,
+        "hpLossPerAttempt": 0.0,
+        "maxCombatExposure": 0.0,
+        "predictedTicks": 250.44,
+        "riskScore": 0.005256,
+        "score": 481.018,
         "sourceMix": {
           "edge": 24,
-          "global": 2,
-          "region": 12
+          "region": 14
         }
       },
       "mode": "cache_direct",
@@ -39,7 +38,7 @@
       "routeDistance": 272,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "varrock_square",
         "--run-mode",
@@ -47,7 +46,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 39,
       "routeSteps": [
@@ -275,7 +274,7 @@
           }
         }
       ],
-      "score": 523.681,
+      "score": 481.018,
       "selectedOverLearned": {
         "previousQuality": "suspicious",
         "previousRouteDistance": 311,
@@ -298,12 +297,12 @@
       "from": "lumbridge_castle_courtyard",
       "mlScore": {
         "combatExposure": 0.0,
-        "confidence": 0.679018,
+        "confidence": 0.6846,
         "hpLossPerAttempt": 0.0,
         "maxCombatExposure": 0.0,
-        "predictedTicks": 336.1,
-        "riskScore": 0.047726,
-        "score": 676.937,
+        "predictedTicks": 313.88,
+        "riskScore": 0.005256,
+        "score": 613.589,
         "sourceMix": {
           "edge": 31,
           "region": 12
@@ -320,7 +319,7 @@
       "routeDistance": 322,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "falador_shield_shop",
         "--run-mode",
@@ -328,7 +327,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 44,
       "routeSteps": [
@@ -561,7 +560,7 @@
         "walkTileDistance": 322
       },
       "runSegments": null,
-      "score": 676.937,
+      "score": 613.589,
       "selectedOverLearned": {
         "previousQuality": "suspicious",
         "previousRouteDistance": 384,
@@ -583,15 +582,16 @@
       "estimatedTicks": 264.0,
       "from": "falador_shield_shop",
       "mlScore": {
-        "combatExposure": 0.038813,
-        "confidence": 0.917093,
+        "combatExposure": 0.042368,
+        "confidence": 0.894853,
         "hpLossPerAttempt": 0.0,
         "maxCombatExposure": 0.277778,
-        "predictedTicks": 196.75,
-        "riskScore": 0.312812,
-        "score": 760.05,
+        "predictedTicks": 180.24,
+        "riskScore": 0.217003,
+        "score": 657.128,
         "sourceMix": {
-          "region": 11
+          "edge": 1,
+          "region": 10
         }
       },
       "mode": null,
@@ -605,7 +605,7 @@
       "routeDistance": 206,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "port_sarim_dock",
         "--run-mode",
@@ -613,7 +613,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 28,
       "routeSteps": [
@@ -786,7 +786,7 @@
           }
         }
       ],
-      "score": 760.05,
+      "score": 657.128,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 1,
@@ -805,6 +805,14 @@
           "height": 0,
           "x": 3092,
           "y": 3246
+        },
+        "learnedExposure": {
+          "avgCombatExposure": 0.007166,
+          "avgConfidence": 0.986077,
+          "maxCombatExposure": 0.007634,
+          "maxHpLossPerAttempt": 0.0,
+          "sampledRegions": 6,
+          "source": "model_region"
         },
         "mode": "cache_direct",
         "next": {
@@ -831,13 +839,13 @@
       "estimatedTicks": 135.0,
       "from": "port_sarim_dock",
       "mlScore": {
-        "combatExposure": 0.0,
-        "confidence": 0.935416,
+        "combatExposure": 0.000197,
+        "confidence": 0.983077,
         "hpLossPerAttempt": 0.0,
-        "maxCombatExposure": 0.0,
-        "predictedTicks": 70.78,
-        "riskScore": 0.011771,
-        "score": 2410.464,
+        "maxCombatExposure": 0.006231,
+        "predictedTicks": 58.0,
+        "riskScore": 0.004867,
+        "score": 2384.536,
         "sourceMix": {
           "region": 5
         }
@@ -853,7 +861,7 @@
       "routeDistance": 143,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "draynor_bank",
         "--run-mode",
@@ -861,7 +869,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 22,
       "routeSteps": [
@@ -1025,7 +1033,7 @@
           }
         }
       ],
-      "score": 2410.464,
+      "score": 2384.536,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 6,
@@ -1046,8 +1054,8 @@
         "hpLossPerAttempt": 0.0,
         "maxCombatExposure": 0.0,
         "predictedTicks": 60.72,
-        "riskScore": 0.024418,
-        "score": 202.914,
+        "riskScore": 0.004756,
+        "score": 184.235,
         "sourceMix": {
           "region": 7
         }
@@ -1063,7 +1071,7 @@
       "routeDistance": 111,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "port_sarim_south_coast_frontier",
         "--run-mode",
@@ -1071,7 +1079,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 18,
       "routeSteps": [
@@ -1174,7 +1182,7 @@
         "walkTileDistance": 111
       },
       "runSegments": null,
-      "score": 202.914,
+      "score": 184.235,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 1,
@@ -1191,12 +1199,12 @@
       "from": "varrock_east_bank",
       "mlScore": {
         "combatExposure": 0.0,
-        "confidence": 0.982584,
+        "confidence": 0.984186,
         "hpLossPerAttempt": 0.0,
         "maxCombatExposure": 0.0,
-        "predictedTicks": 99.7,
-        "riskScore": 0.004609,
-        "score": 325.817,
+        "predictedTicks": 103.36,
+        "riskScore": 0.002221,
+        "score": 326.984,
         "sourceMix": {
           "region": 6
         }
@@ -1212,7 +1220,7 @@
       "routeDistance": 179,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "barbarian_village",
         "--run-mode",
@@ -1220,7 +1228,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 23,
       "routeSteps": [
@@ -1368,7 +1376,7 @@
           }
         }
       ],
-      "score": 325.817,
+      "score": 326.984,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 1,
@@ -1417,9 +1425,9 @@
         "confidence": 0.987308,
         "hpLossPerAttempt": 0.0,
         "maxCombatExposure": 0.0,
-        "predictedTicks": 15.72,
-        "riskScore": 0.001905,
-        "score": 334.447,
+        "predictedTicks": 16.42,
+        "riskScore": 0.00144,
+        "score": 334.705,
         "sourceMix": {
           "region": 2
         }
@@ -1435,7 +1443,7 @@
       "routeDistance": 43,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "varrock_general_store",
         "--run-mode",
@@ -1443,7 +1451,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 8,
       "routeSteps": [
@@ -1496,7 +1504,7 @@
         "walkTileDistance": 43
       },
       "runSegments": null,
-      "score": 334.447,
+      "score": 334.705,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 2,
@@ -1516,9 +1524,9 @@
         "confidence": 0.99,
         "hpLossPerAttempt": 0.0,
         "maxCombatExposure": 0.0,
-        "predictedTicks": 5.47,
-        "riskScore": 0.000838,
-        "score": 1972.046,
+        "predictedTicks": 5.39,
+        "riskScore": 0.000599,
+        "score": 1971.739,
         "sourceMix": {
           "region": 3
         }
@@ -1534,7 +1542,7 @@
       "routeDistance": 17,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "lumbridge_tree_stand",
         "--run-mode",
@@ -1542,7 +1550,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 4,
       "routeSteps": [
@@ -1575,7 +1583,7 @@
         "walkTileDistance": 17
       },
       "runSegments": null,
-      "score": 1972.046,
+      "score": 1971.739,
       "selectedOverLearned": {
         "previousQuality": "bad",
         "previousRouteDistance": 22,
@@ -1598,12 +1606,12 @@
       "from": "varrock_square",
       "mlScore": {
         "combatExposure": 0.0,
-        "confidence": 0.969271,
+        "confidence": 0.971393,
         "hpLossPerAttempt": 0.0,
         "maxCombatExposure": 0.0,
-        "predictedTicks": 126.53,
-        "riskScore": 0.017558,
-        "score": 296.332,
+        "predictedTicks": 119.44,
+        "riskScore": 0.00442,
+        "score": 276.464,
         "sourceMix": {
           "region": 11
         }
@@ -1619,7 +1627,7 @@
       "routeDistance": 267,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "falador_shield_shop",
         "--run-mode",
@@ -1627,7 +1635,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 34,
       "routeSteps": [
@@ -1830,7 +1838,7 @@
           }
         }
       ],
-      "score": 296.332,
+      "score": 276.464,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 0,
@@ -1849,6 +1857,14 @@
           "height": 0,
           "x": 3093,
           "y": 3246
+        },
+        "learnedExposure": {
+          "avgCombatExposure": 0.012629,
+          "avgConfidence": 0.988477,
+          "maxCombatExposure": 0.016598,
+          "maxHpLossPerAttempt": 0.0,
+          "sampledRegions": 12,
+          "source": "model_region"
         },
         "mode": "cache_direct",
         "next": {
@@ -1875,16 +1891,16 @@
       "estimatedTicks": 182.0,
       "from": "lumbridge_castle_courtyard",
       "mlScore": {
-        "combatExposure": 0.008167,
-        "confidence": 0.973508,
-        "hpLossPerAttempt": 0.00052,
-        "maxCombatExposure": 0.048461,
-        "predictedTicks": 73.89,
-        "riskScore": 0.029227,
-        "score": 394.693,
+        "combatExposure": 0.000408,
+        "confidence": 0.952303,
+        "hpLossPerAttempt": 8e-05,
+        "maxCombatExposure": 0.006231,
+        "predictedTicks": 72.92,
+        "riskScore": 0.004867,
+        "score": 370.275,
         "sourceMix": {
-          "global": 3,
-          "region": 4
+          "global": 2,
+          "region": 5
         }
       },
       "mode": null,
@@ -1898,7 +1914,7 @@
       "routeDistance": 163,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "draynor_bank",
         "--run-mode",
@@ -1906,7 +1922,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 23,
       "routeSteps": [
@@ -2056,7 +2072,7 @@
           }
         }
       ],
-      "score": 394.693,
+      "score": 370.275,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 2,
@@ -2101,17 +2117,16 @@
       "estimatedTicks": 418.0,
       "from": "port_sarim_dock",
       "mlScore": {
-        "combatExposure": 0.005899,
-        "confidence": 0.961537,
-        "hpLossPerAttempt": 0.00052,
-        "maxCombatExposure": 0.048461,
-        "predictedTicks": 181.26,
-        "riskScore": 0.034539,
-        "score": 1047.033,
+        "combatExposure": 0.0,
+        "confidence": 0.862669,
+        "hpLossPerAttempt": 0.0,
+        "maxCombatExposure": 0.0,
+        "predictedTicks": 216.87,
+        "riskScore": 0.005256,
+        "score": 1066.17,
         "sourceMix": {
-          "edge": 1,
-          "global": 5,
-          "region": 10
+          "edge": 3,
+          "region": 13
         }
       },
       "mode": null,
@@ -2125,7 +2140,7 @@
       "routeDistance": 355,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "varrock_square",
         "--run-mode",
@@ -2133,7 +2148,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 47,
       "routeSteps": [
@@ -2421,7 +2436,7 @@
           }
         }
       ],
-      "score": 1047.033,
+      "score": 1066.17,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 6,
@@ -2437,17 +2452,17 @@
       "estimatedTicks": 362.0,
       "from": "rimmington_center",
       "mlScore": {
-        "combatExposure": 0.004917,
-        "confidence": 0.846606,
-        "hpLossPerAttempt": 0.00052,
-        "maxCombatExposure": 0.048461,
-        "predictedTicks": 240.41,
-        "riskScore": 0.047726,
-        "score": 1074.128,
+        "combatExposure": 8.2e-05,
+        "confidence": 0.826092,
+        "hpLossPerAttempt": 8e-05,
+        "maxCombatExposure": 0.005057,
+        "predictedTicks": 259.37,
+        "riskScore": 0.005256,
+        "score": 1053.568,
         "sourceMix": {
           "edge": 14,
-          "global": 16,
-          "region": 20
+          "global": 4,
+          "region": 32
         }
       },
       "mode": "cache_direct",
@@ -2461,7 +2476,7 @@
       "routeDistance": 362,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "varrock_square",
         "--run-mode",
@@ -2469,7 +2484,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 51,
       "routeSteps": [
@@ -2776,7 +2791,7 @@
           }
         }
       ],
-      "score": 1074.128,
+      "score": 1053.568,
       "selectedOverLearned": {
         "previousQuality": "suspicious",
         "previousRouteDistance": 441,
@@ -2801,6 +2816,14 @@
           "height": 0,
           "x": 3092,
           "y": 3246
+        },
+        "learnedExposure": {
+          "avgCombatExposure": 0.007166,
+          "avgConfidence": 0.986077,
+          "maxCombatExposure": 0.007634,
+          "maxHpLossPerAttempt": 0.0,
+          "sampledRegions": 6,
+          "source": "model_region"
         },
         "mode": "cache_direct",
         "next": {
@@ -2827,13 +2850,13 @@
       "estimatedTicks": 214.0,
       "from": "falador_shield_shop",
       "mlScore": {
-        "combatExposure": 0.0,
-        "confidence": 0.961119,
+        "combatExposure": 0.000114,
+        "confidence": 0.986355,
         "hpLossPerAttempt": 0.0,
-        "maxCombatExposure": 0.0,
-        "predictedTicks": 134.16,
-        "riskScore": 0.011771,
-        "score": 1021.906,
+        "maxCombatExposure": 0.006231,
+        "predictedTicks": 100.51,
+        "riskScore": 0.004867,
+        "score": 978.212,
         "sourceMix": {
           "region": 9
         }
@@ -2849,7 +2872,7 @@
       "routeDistance": 225,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "draynor_bank",
         "--run-mode",
@@ -2857,7 +2880,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 36,
       "routeSteps": [
@@ -3071,7 +3094,7 @@
           }
         }
       ],
-      "score": 1021.906,
+      "score": 978.212,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 8,
@@ -3090,6 +3113,14 @@
           "height": 0,
           "x": 3206,
           "y": 3428
+        },
+        "learnedExposure": {
+          "avgCombatExposure": 0.010469,
+          "avgConfidence": 0.98822,
+          "maxCombatExposure": 0.016598,
+          "maxHpLossPerAttempt": 0.0,
+          "sampledRegions": 8,
+          "source": "model_region"
         },
         "mode": "cache_direct",
         "next": {
@@ -3116,17 +3147,16 @@
       "estimatedTicks": 289.0,
       "from": "draynor_bank",
       "mlScore": {
-        "combatExposure": 0.009244,
-        "confidence": 0.957967,
-        "hpLossPerAttempt": 0.00052,
-        "maxCombatExposure": 0.048461,
-        "predictedTicks": 123.69,
-        "riskScore": 0.034539,
-        "score": 1016.587,
+        "combatExposure": 0.0,
+        "confidence": 0.88795,
+        "hpLossPerAttempt": 0.0,
+        "maxCombatExposure": 0.0,
+        "predictedTicks": 156.42,
+        "riskScore": 0.005256,
+        "score": 1027.4,
         "sourceMix": {
-          "edge": 1,
-          "global": 5,
-          "region": 7
+          "edge": 2,
+          "region": 11
         }
       },
       "mode": null,
@@ -3140,7 +3170,7 @@
       "routeDistance": 294,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "varrock_square",
         "--run-mode",
@@ -3148,7 +3178,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 40,
       "routeSteps": [
@@ -3402,7 +3432,7 @@
           }
         }
       ],
-      "score": 1016.587,
+      "score": 1027.4,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 7,
@@ -3418,17 +3448,17 @@
       "estimatedTicks": 248.0,
       "from": "barbarian_village",
       "mlScore": {
-        "combatExposure": 0.002871,
-        "confidence": 0.912518,
-        "hpLossPerAttempt": 0.00052,
-        "maxCombatExposure": 0.048461,
-        "predictedTicks": 160.49,
-        "riskScore": 0.047726,
-        "score": 356.141,
+        "combatExposure": 3.2e-05,
+        "confidence": 0.919487,
+        "hpLossPerAttempt": 8e-05,
+        "maxCombatExposure": 0.005057,
+        "predictedTicks": 167.33,
+        "riskScore": 0.005256,
+        "score": 320.451,
         "sourceMix": {
           "edge": 2,
-          "global": 5,
-          "region": 25
+          "global": 1,
+          "region": 29
         }
       },
       "mode": "cache_direct",
@@ -3442,7 +3472,7 @@
       "routeDistance": 248,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "port_sarim_dock",
         "--run-mode",
@@ -3450,7 +3480,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 33,
       "routeSteps": [
@@ -3668,7 +3698,7 @@
           }
         }
       ],
-      "score": 356.141,
+      "score": 320.451,
       "selectedOverLearned": {
         "previousQuality": "suspicious",
         "previousRouteDistance": 336,
@@ -3690,13 +3720,13 @@
       "estimatedTicks": 257.0,
       "from": "lumbridge_castle_courtyard",
       "mlScore": {
-        "combatExposure": 0.010326,
-        "confidence": 0.95326,
-        "hpLossPerAttempt": 0.00052,
-        "maxCombatExposure": 0.048461,
-        "predictedTicks": 114.53,
-        "riskScore": 0.040076,
-        "score": 351.741,
+        "combatExposure": 0.000842,
+        "confidence": 0.968457,
+        "hpLossPerAttempt": 8e-05,
+        "maxCombatExposure": 0.005057,
+        "predictedTicks": 101.07,
+        "riskScore": 0.005148,
+        "score": 298.973,
         "sourceMix": {
           "edge": 1,
           "global": 16,
@@ -3714,7 +3744,7 @@
       "routeDistance": 257,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "barbarian_village",
         "--run-mode",
@@ -3722,7 +3752,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 41,
       "routeSteps": [
@@ -3960,7 +3990,7 @@
           }
         }
       ],
-      "score": 351.741,
+      "score": 298.973,
       "selectedOverLearned": {
         "previousQuality": "bad",
         "previousRouteDistance": 436,
@@ -3987,8 +4017,8 @@
         "hpLossPerAttempt": 0.0,
         "maxCombatExposure": 0.0,
         "predictedTicks": 23.0,
-        "riskScore": 0.047726,
-        "score": 288.26,
+        "riskScore": 0.005256,
+        "score": 247.913,
         "sourceMix": {
           "edge": 1
         }
@@ -4004,7 +4034,7 @@
       "routeDistance": 25,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "al_kharid_scimitar_shop",
         "--run-mode",
@@ -4012,7 +4042,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 6,
       "routeSteps": [
@@ -4055,7 +4085,7 @@
         "walkTileDistance": 25
       },
       "runSegments": null,
-      "score": 288.26,
+      "score": 247.913,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 0,
@@ -4072,12 +4102,12 @@
       "from": "al_kharid_bank",
       "mlScore": {
         "combatExposure": 0.0,
-        "confidence": 0.964113,
+        "confidence": 0.984157,
         "hpLossPerAttempt": 0.0,
         "maxCombatExposure": 0.0,
-        "predictedTicks": 170.97,
-        "riskScore": 0.017558,
-        "score": 4060.954,
+        "predictedTicks": 154.01,
+        "riskScore": 0.002182,
+        "score": 4026.581,
         "sourceMix": {
           "region": 12
         }
@@ -4093,7 +4123,7 @@
       "routeDistance": 297,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "varrock_east_bank",
         "--run-mode",
@@ -4101,7 +4131,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 39,
       "routeSteps": [
@@ -4309,7 +4339,7 @@
         "walkTileDistance": 297
       },
       "runSegments": null,
-      "score": 4060.954,
+      "score": 4026.581,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 2,
@@ -4326,12 +4356,12 @@
       "from": "varrock_west_bank",
       "mlScore": {
         "combatExposure": 0.0,
-        "confidence": 0.97358,
+        "confidence": 0.978244,
         "hpLossPerAttempt": 0.0,
         "maxCombatExposure": 0.0,
-        "predictedTicks": 23.98,
-        "riskScore": 0.003664,
-        "score": 283.68,
+        "predictedTicks": 25.22,
+        "riskScore": 0.001975,
+        "score": 282.662,
         "sourceMix": {
           "region": 2
         }
@@ -4347,7 +4377,7 @@
       "routeDistance": 45,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "varrock_sword_shop",
         "--run-mode",
@@ -4355,7 +4385,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 8,
       "routeSteps": [
@@ -4428,7 +4458,7 @@
           }
         }
       ],
-      "score": 283.68,
+      "score": 282.662,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 1,
@@ -4445,12 +4475,12 @@
       "from": "varrock_west_bank",
       "mlScore": {
         "combatExposure": 0.0,
-        "confidence": 0.967285,
+        "confidence": 0.969533,
         "hpLossPerAttempt": 0.0,
         "maxCombatExposure": 0.0,
-        "predictedTicks": 120.89,
-        "riskScore": 0.017558,
-        "score": 281.51,
+        "predictedTicks": 114.39,
+        "riskScore": 0.00442,
+        "score": 262.214,
         "sourceMix": {
           "region": 10
         }
@@ -4466,7 +4496,7 @@
       "routeDistance": 259,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "falador_west_bank",
         "--run-mode",
@@ -4474,7 +4504,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 32,
       "routeSteps": [
@@ -4667,7 +4697,7 @@
           }
         }
       ],
-      "score": 281.51,
+      "score": 262.214,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 0,
@@ -4684,12 +4714,12 @@
       "from": "falador_west_bank",
       "mlScore": {
         "combatExposure": 0.0,
-        "confidence": 0.985556,
+        "confidence": 0.987537,
         "hpLossPerAttempt": 0.0,
         "maxCombatExposure": 0.0,
-        "predictedTicks": 16.38,
-        "riskScore": 0.002227,
-        "score": 258.078,
+        "predictedTicks": 15.31,
+        "riskScore": 0.001408,
+        "score": 255.952,
         "sourceMix": {
           "region": 2
         }
@@ -4705,7 +4735,7 @@
       "routeDistance": 31,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "falador_shield_shop",
         "--run-mode",
@@ -4713,7 +4743,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 6,
       "routeSteps": [
@@ -4756,7 +4786,7 @@
         "walkTileDistance": 31
       },
       "runSegments": null,
-      "score": 258.078,
+      "score": 255.952,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 1,
@@ -4772,13 +4802,13 @@
       "estimatedTicks": 173.0,
       "from": "falador_east_bank",
       "mlScore": {
-        "combatExposure": 0.055726,
-        "confidence": 0.899066,
+        "combatExposure": 0.058476,
+        "confidence": 0.918907,
         "hpLossPerAttempt": 0.0,
         "maxCombatExposure": 0.277778,
-        "predictedTicks": 137.04,
-        "riskScore": 0.312812,
-        "score": 766.127,
+        "predictedTicks": 130.59,
+        "riskScore": 0.217003,
+        "score": 667.036,
         "sourceMix": {
           "region": 7
         }
@@ -4794,7 +4824,7 @@
       "routeDistance": 178,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "port_sarim_dock",
         "--run-mode",
@@ -4802,7 +4832,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 22,
       "routeSteps": [
@@ -4945,7 +4975,7 @@
           }
         }
       ],
-      "score": 766.127,
+      "score": 667.036,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 3,
@@ -4990,16 +5020,16 @@
       "estimatedTicks": 191.0,
       "from": "falador_west_bank",
       "mlScore": {
-        "combatExposure": 0.005641,
-        "confidence": 0.962973,
-        "hpLossPerAttempt": 0.00052,
-        "maxCombatExposure": 0.048461,
-        "predictedTicks": 114.47,
-        "riskScore": 0.029227,
-        "score": 500.207,
+        "combatExposure": 6.8e-05,
+        "confidence": 0.960246,
+        "hpLossPerAttempt": 8e-05,
+        "maxCombatExposure": 0.005057,
+        "predictedTicks": 131.63,
+        "riskScore": 0.003996,
+        "score": 491.423,
         "sourceMix": {
-          "global": 3,
-          "region": 6
+          "global": 1,
+          "region": 8
         }
       },
       "mode": null,
@@ -5013,7 +5043,7 @@
       "routeDistance": 198,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "rimmington_center",
         "--run-mode",
@@ -5021,7 +5051,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 28,
       "routeSteps": [
@@ -5174,7 +5204,7 @@
         "walkTileDistance": 198
       },
       "runSegments": null,
-      "score": 500.207,
+      "score": 491.423,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 4,
@@ -5193,6 +5223,14 @@
           "height": 0,
           "x": 3040,
           "y": 3203
+        },
+        "learnedExposure": {
+          "avgCombatExposure": 0.006792,
+          "avgConfidence": 0.987152,
+          "maxCombatExposure": 0.007634,
+          "maxHpLossPerAttempt": 0.0,
+          "sampledRegions": 10,
+          "source": "model_region"
         },
         "mode": "cache_direct",
         "next": {
@@ -5220,12 +5258,12 @@
       "from": "draynor_bank",
       "mlScore": {
         "combatExposure": 0.0,
-        "confidence": 0.951263,
+        "confidence": 0.973683,
         "hpLossPerAttempt": 0.0,
         "maxCombatExposure": 0.0,
-        "predictedTicks": 105.99,
-        "riskScore": 0.016406,
-        "score": 2543.019,
+        "predictedTicks": 107.54,
+        "riskScore": 0.0037,
+        "score": 2529.359,
         "sourceMix": {
           "region": 7
         }
@@ -5241,7 +5279,7 @@
       "routeDistance": 142,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "port_sarim_dock",
         "--run-mode",
@@ -5249,7 +5287,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 23,
       "routeSteps": [
@@ -5398,7 +5436,7 @@
           }
         }
       ],
-      "score": 2543.019,
+      "score": 2529.359,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 10,
@@ -5414,16 +5452,16 @@
       "estimatedTicks": 134.0,
       "from": "draynor_bank",
       "mlScore": {
-        "combatExposure": 0.014247,
-        "confidence": 0.979321,
-        "hpLossPerAttempt": 0.00052,
-        "maxCombatExposure": 0.048461,
-        "predictedTicks": 47.56,
-        "riskScore": 0.029227,
-        "score": 237.223,
+        "combatExposure": 0.000401,
+        "confidence": 0.950685,
+        "hpLossPerAttempt": 8e-05,
+        "maxCombatExposure": 0.005057,
+        "predictedTicks": 49.08,
+        "riskScore": 0.004582,
+        "score": 213.508,
         "sourceMix": {
-          "global": 3,
-          "region": 3
+          "global": 2,
+          "region": 4
         }
       },
       "mode": null,
@@ -5437,7 +5475,7 @@
       "routeDistance": 138,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "lumbridge_general_store",
         "--run-mode",
@@ -5445,7 +5483,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 22,
       "routeSteps": [
@@ -5590,7 +5628,7 @@
           }
         }
       ],
-      "score": 237.223,
+      "score": 213.508,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 0,
@@ -5636,15 +5674,15 @@
       "from": "edgeville_bank",
       "mlScore": {
         "combatExposure": 0.0,
-        "confidence": 0.973723,
+        "confidence": 0.910428,
         "hpLossPerAttempt": 0.0,
         "maxCombatExposure": 0.0,
-        "predictedTicks": 92.22,
-        "riskScore": 0.005526,
-        "score": 2182.268,
+        "predictedTicks": 90.61,
+        "riskScore": 0.005256,
+        "score": 2189.263,
         "sourceMix": {
-          "edge": 1,
-          "region": 6
+          "edge": 2,
+          "region": 5
         }
       },
       "mode": null,
@@ -5658,7 +5696,7 @@
       "routeDistance": 168,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "varrock_west_bank",
         "--run-mode",
@@ -5666,7 +5704,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 23,
       "routeSteps": [
@@ -5814,7 +5852,7 @@
           }
         }
       ],
-      "score": 2182.268,
+      "score": 2189.263,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 7,
@@ -5831,12 +5869,12 @@
       "from": "edgeville_bank",
       "mlScore": {
         "combatExposure": 0.0,
-        "confidence": 0.904909,
+        "confidence": 0.956019,
         "hpLossPerAttempt": 0.0,
         "maxCombatExposure": 0.0,
-        "predictedTicks": 43.56,
-        "riskScore": 0.024418,
-        "score": 206.45,
+        "predictedTicks": 49.44,
+        "riskScore": 0.003756,
+        "score": 185.546,
         "sourceMix": {
           "region": 3
         }
@@ -5852,7 +5890,7 @@
       "routeDistance": 71,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "barbarian_village",
         "--run-mode",
@@ -5860,7 +5898,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 11,
       "routeSteps": [
@@ -5948,7 +5986,7 @@
           }
         }
       ],
-      "score": 206.45,
+      "score": 185.546,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 0,
@@ -5965,21 +6003,21 @@
       },
       "edgeSources": {
         "cache_mesh": 368,
-        "object_transition": 2
+        "object_transition": 1
       },
       "estimatedTicks": 370.0,
       "from": "catherby_bank",
       "mlScore": {
-        "combatExposure": 0.078552,
-        "confidence": 0.923783,
-        "hpLossPerAttempt": 0.17647,
-        "maxCombatExposure": 0.633333,
-        "predictedTicks": 202.84,
-        "riskScore": 0.382653,
-        "score": 3358.239,
+        "combatExposure": 0.072935,
+        "confidence": 0.933547,
+        "hpLossPerAttempt": 0.11869,
+        "maxCombatExposure": 0.546375,
+        "predictedTicks": 196.21,
+        "riskScore": 0.329386,
+        "score": 3295.257,
         "sourceMix": {
-          "edge": 7,
-          "region": 46
+          "edge": 9,
+          "region": 45
         }
       },
       "mode": "cache_mesh",
@@ -5993,7 +6031,7 @@
       "routeDistance": 370,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "falador_west_bank",
         "--run-mode",
@@ -6001,277 +6039,656 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
-      "routeStepCount": 54,
+      "routeStepCount": 55,
       "routeSteps": [
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2814,
+            "y": 3440
+          },
+          "type": "walk",
           "x": 2814,
           "y": 3440
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2821,
+            "y": 3438
+          },
+          "type": "walk",
           "x": 2821,
           "y": 3438
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2831,
+            "y": 3438
+          },
+          "type": "walk",
           "x": 2831,
           "y": 3438
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2841,
+            "y": 3436
+          },
+          "type": "walk",
           "x": 2841,
           "y": 3436
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2851,
+            "y": 3435
+          },
+          "type": "walk",
           "x": 2851,
           "y": 3435
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2855,
+            "y": 3442
+          },
+          "type": "walk",
           "x": 2855,
           "y": 3442
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2852,
+            "y": 3446
+          },
+          "type": "walk",
           "x": 2852,
           "y": 3446
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2848,
+            "y": 3450
+          },
+          "type": "walk",
           "x": 2848,
           "y": 3450
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2849,
+            "y": 3455
+          },
+          "type": "walk",
           "x": 2849,
           "y": 3455
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2846,
+            "y": 3460
+          },
+          "type": "walk",
           "x": 2846,
           "y": 3460
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2844,
+            "y": 3469
+          },
+          "type": "walk",
           "x": 2844,
           "y": 3469
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2848,
+            "y": 3473
+          },
+          "type": "walk",
           "x": 2848,
           "y": 3473
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2848,
+            "y": 3478
+          },
+          "type": "walk",
           "x": 2848,
           "y": 3478
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2852,
+            "y": 3483
+          },
+          "type": "walk",
           "x": 2852,
           "y": 3483
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2851,
+            "y": 3488
+          },
+          "type": "walk",
           "x": 2851,
           "y": 3488
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2852,
+            "y": 3493
+          },
+          "type": "walk",
           "x": 2852,
           "y": 3493
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2846,
+            "y": 3497
+          },
+          "type": "walk",
           "x": 2846,
           "y": 3497
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2842,
+            "y": 3503
+          },
+          "type": "walk",
           "x": 2842,
           "y": 3503
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2846,
+            "y": 3508
+          },
+          "type": "walk",
           "x": 2846,
           "y": 3508
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2856,
+            "y": 3508
+          },
+          "type": "walk",
           "x": 2856,
           "y": 3508
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2861,
+            "y": 3503
+          },
+          "type": "walk",
           "x": 2861,
           "y": 3503
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2863,
+            "y": 3498
+          },
+          "type": "walk",
           "x": 2863,
           "y": 3498
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2862,
+            "y": 3492
+          },
+          "type": "walk",
           "x": 2862,
           "y": 3492
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2859,
+            "y": 3486
+          },
+          "type": "walk",
           "x": 2859,
           "y": 3486
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2857,
+            "y": 3479
+          },
+          "type": "walk",
           "x": 2857,
           "y": 3479
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2856,
+            "y": 3474
+          },
+          "type": "walk",
           "x": 2856,
           "y": 3474
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2861,
+            "y": 3465
+          },
+          "type": "walk",
           "x": 2861,
           "y": 3465
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2868,
+            "y": 3457
+          },
+          "type": "walk",
           "x": 2868,
           "y": 3457
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2866,
+            "y": 3450
+          },
+          "type": "walk",
           "x": 2866,
           "y": 3450
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2866,
+            "y": 3444
+          },
+          "type": "walk",
           "x": 2866,
           "y": 3444
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2868,
+            "y": 3439
+          },
+          "type": "walk",
           "x": 2868,
           "y": 3439
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2874,
+            "y": 3433
+          },
+          "type": "walk",
           "x": 2874,
           "y": 3433
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2880,
+            "y": 3429
+          },
+          "type": "walk",
           "x": 2880,
           "y": 3429
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2886,
+            "y": 3428
+          },
+          "type": "walk",
           "x": 2886,
           "y": 3428
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2896,
+            "y": 3438
+          },
+          "type": "walk",
           "x": 2896,
           "y": 3438
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2898,
+            "y": 3443
+          },
+          "type": "walk",
           "x": 2898,
           "y": 3443
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2903,
+            "y": 3444
+          },
+          "type": "walk",
           "x": 2903,
           "y": 3444
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2913,
+            "y": 3445
+          },
+          "type": "walk",
           "x": 2913,
           "y": 3445
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2922,
+            "y": 3451
+          },
+          "type": "walk",
           "x": 2922,
           "y": 3451
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2931,
+            "y": 3452
+          },
+          "type": "walk",
           "x": 2931,
           "y": 3452
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2934,
+            "y": 3451
+          },
+          "type": "walk",
+          "x": 2934,
+          "y": 3451
+        },
+        {
+          "approachTile": {
+            "height": 0,
+            "x": 2934,
+            "y": 3451
+          },
+          "bidirectional": true,
+          "height": 0,
+          "objectId": 1596,
+          "objectName": "Gate",
+          "objectTile": {
+            "height": 0,
+            "x": 2935,
+            "y": 3451
+          },
+          "option": "open",
+          "postTile": {
+            "height": 0,
+            "x": 2936,
+            "y": 3451
+          },
+          "preTile": {
+            "height": 0,
+            "x": 2934,
+            "y": 3451
+          },
+          "routeId": "taverley_white_wolf_gate_west_to_east_transition_static_source",
+          "routeName": "Taverley White Wolf Gate West to East Transition",
+          "sourceRouteStatus": "verified",
+          "to": {
+            "height": 0,
+            "x": 2936,
+            "y": 3451
+          },
+          "transitionProof": {
+            "objectTile": {
+              "height": 0,
+              "x": 2935,
+              "y": 3451
+            },
+            "postTile": {
+              "height": 0,
+              "x": 2936,
+              "y": 3451
+            },
+            "preTile": {
+              "height": 0,
+              "x": 2934,
+              "y": 3451
+            }
+          },
+          "type": "object_transition",
           "x": 2936,
           "y": 3451
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2941,
+            "y": 3450
+          },
+          "type": "walk",
           "x": 2941,
           "y": 3450
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2946,
+            "y": 3445
+          },
+          "type": "walk",
           "x": 2946,
           "y": 3445
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2946,
+            "y": 3435
+          },
+          "type": "walk",
           "x": 2946,
           "y": 3435
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2948,
+            "y": 3425
+          },
+          "type": "walk",
           "x": 2948,
           "y": 3425
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2956,
+            "y": 3415
+          },
+          "type": "walk",
           "x": 2956,
           "y": 3415
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2959,
+            "y": 3409
+          },
+          "type": "walk",
           "x": 2959,
           "y": 3409
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2960,
+            "y": 3400
+          },
+          "type": "walk",
           "x": 2960,
           "y": 3400
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2964,
+            "y": 3395
+          },
+          "type": "walk",
           "x": 2964,
           "y": 3395
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2964,
+            "y": 3387
+          },
+          "type": "walk",
           "x": 2964,
           "y": 3387
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2956,
+            "y": 3379
+          },
+          "type": "walk",
           "x": 2956,
           "y": 3379
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2949,
+            "y": 3374
+          },
+          "type": "walk",
           "x": 2949,
           "y": 3374
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2946,
+            "y": 3369
+          },
+          "type": "walk",
           "x": 2946,
           "y": 3369
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2947,
+            "y": 3368
+          },
+          "type": "walk",
           "x": 2947,
           "y": 3368
         }
@@ -6279,12 +6696,70 @@
       "runPlan": {
         "policy": "conserve_run_until_hazard_segments",
         "routeDistance": 370,
-        "runTileDistance": 0,
-        "segmentCount": 0,
-        "walkTileDistance": 370
+        "runTileDistance": 147,
+        "segmentCount": 3,
+        "walkTileDistance": 223
       },
-      "runSegments": null,
-      "score": 3358.239,
+      "runSegments": [
+        {
+          "distance": 14,
+          "endIndex": 52,
+          "from": {
+            "height": 0,
+            "x": 2850,
+            "y": 3435
+          },
+          "hazardIds": [
+            "white_wolf_north_low_level_run_band"
+          ],
+          "minRunEnergy": 70,
+          "startIndex": 38,
+          "to": {
+            "height": 0,
+            "x": 2851,
+            "y": 3446
+          }
+        },
+        {
+          "distance": 73,
+          "endIndex": 160,
+          "from": {
+            "height": 0,
+            "x": 2848,
+            "y": 3478
+          },
+          "hazardIds": [
+            "white_wolf_middle_low_level_contact"
+          ],
+          "minRunEnergy": 70,
+          "startIndex": 87,
+          "to": {
+            "height": 0,
+            "x": 2857,
+            "y": 3479
+          }
+        },
+        {
+          "distance": 60,
+          "endIndex": 232,
+          "from": {
+            "height": 0,
+            "x": 2859,
+            "y": 3467
+          },
+          "hazardIds": [
+            "white_wolf_north_low_level_run_band"
+          ],
+          "minRunEnergy": 70,
+          "startIndex": 172,
+          "to": {
+            "height": 0,
+            "x": 2895,
+            "y": 3437
+          }
+        }
+      ],
+      "score": 3295.257,
       "selectedOverLearned": {
         "previousQuality": "bad",
         "previousRouteDistance": 371,
@@ -6336,14 +6811,15 @@
       "from": "ardougne_south_bank",
       "mlScore": {
         "combatExposure": 0.0,
-        "confidence": 0.897557,
+        "confidence": 0.819907,
         "hpLossPerAttempt": 0.0,
         "maxCombatExposure": 0.0,
-        "predictedTicks": 44.5,
-        "riskScore": 0.024418,
-        "score": 336.319,
+        "predictedTicks": 39.4,
+        "riskScore": 0.005256,
+        "score": 323.886,
         "sourceMix": {
-          "region": 3
+          "edge": 1,
+          "region": 2
         }
       },
       "mode": null,
@@ -6357,7 +6833,7 @@
       "routeDistance": 60,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "ardougne_north_bank",
         "--run-mode",
@@ -6365,7 +6841,7 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
       "routeStepCount": 11,
       "routeSteps": [
@@ -6433,7 +6909,7 @@
         "walkTileDistance": 60
       },
       "runSegments": null,
-      "score": 336.319,
+      "score": 323.886,
       "selectedOverLearned": null,
       "status": "ok",
       "targetDistanceIncreases": 1,
@@ -6450,20 +6926,20 @@
       },
       "edgeSources": {
         "cache_mesh": 245,
-        "object_transition": 2
+        "object_transition": 1
       },
       "estimatedTicks": 248.0,
       "from": "ardougne_north_bank",
       "mlScore": {
-        "combatExposure": 0.003929,
-        "confidence": 0.776161,
-        "hpLossPerAttempt": 0.00052,
-        "maxCombatExposure": 0.048461,
-        "predictedTicks": 185.91,
-        "riskScore": 0.047726,
-        "score": 1043.096,
+        "combatExposure": 0.000252,
+        "confidence": 0.782246,
+        "hpLossPerAttempt": 8e-05,
+        "maxCombatExposure": 0.005057,
+        "predictedTicks": 168.91,
+        "riskScore": 0.005256,
+        "score": 983.337,
         "sourceMix": {
-          "edge": 13,
+          "edge": 14,
           "global": 8,
           "region": 11
         }
@@ -6479,7 +6955,7 @@
       "routeDistance": 248,
       "routeExecutionCommand": [
         "python3",
-        "agent-navigation/tools/execute_route_definition.py",
+        "agent-navigation/ml2-routing/tools/execute_route_definition.py",
         "--to",
         "gnome_agility_course",
         "--run-mode",
@@ -6487,172 +6963,425 @@
         "--eat-at",
         "10",
         "--evidence-jsonl",
-        "agent-navigation/.local/run-evidence/ml-route-executor.routes.jsonl"
+        "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
       ],
-      "routeStepCount": 33,
+      "routeStepCount": 34,
       "routeSteps": [
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2618,
+            "y": 3332
+          },
+          "type": "walk",
           "x": 2618,
           "y": 3332
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2616,
+            "y": 3337
+          },
+          "type": "walk",
           "x": 2616,
           "y": 3337
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2612,
+            "y": 3342
+          },
+          "type": "walk",
           "x": 2612,
           "y": 3342
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2613,
+            "y": 3352
+          },
+          "type": "walk",
           "x": 2613,
           "y": 3352
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2610,
+            "y": 3362
+          },
+          "type": "walk",
           "x": 2610,
           "y": 3362
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2603,
+            "y": 3365
+          },
+          "type": "walk",
           "x": 2603,
           "y": 3365
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2593,
+            "y": 3372
+          },
+          "type": "walk",
           "x": 2593,
           "y": 3372
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2583,
+            "y": 3376
+          },
+          "type": "walk",
           "x": 2583,
           "y": 3376
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2574,
+            "y": 3381
+          },
+          "type": "walk",
           "x": 2574,
           "y": 3381
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2568,
+            "y": 3381
+          },
+          "type": "walk",
           "x": 2568,
           "y": 3381
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2561,
+            "y": 3382
+          },
+          "type": "walk",
           "x": 2561,
           "y": 3382
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2551,
+            "y": 3392
+          },
+          "type": "walk",
           "x": 2551,
           "y": 3392
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2546,
+            "y": 3395
+          },
+          "type": "walk",
           "x": 2546,
           "y": 3395
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2541,
+            "y": 3397
+          },
+          "type": "walk",
           "x": 2541,
           "y": 3397
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2531,
+            "y": 3400
+          },
+          "type": "walk",
           "x": 2531,
           "y": 3400
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2521,
+            "y": 3401
+          },
+          "type": "walk",
           "x": 2521,
           "y": 3401
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2511,
+            "y": 3395
+          },
+          "type": "walk",
           "x": 2511,
           "y": 3395
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2506,
+            "y": 3390
+          },
+          "type": "walk",
           "x": 2506,
           "y": 3390
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2496,
+            "y": 3389
+          },
+          "type": "walk",
           "x": 2496,
           "y": 3389
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2489,
+            "y": 3389
+          },
+          "type": "walk",
           "x": 2489,
           "y": 3389
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2479,
+            "y": 3388
+          },
+          "type": "walk",
           "x": 2479,
           "y": 3388
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2475,
+            "y": 3387
+          },
+          "type": "walk",
           "x": 2475,
           "y": 3387
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2470,
+            "y": 3387
+          },
+          "type": "walk",
           "x": 2470,
           "y": 3387
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2466,
+            "y": 3382
+          },
+          "type": "walk",
           "x": 2466,
           "y": 3382
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2459,
+            "y": 3382
+          },
+          "type": "walk",
           "x": 2459,
           "y": 3382
         },
         {
+          "approachTile": {
+            "height": 0,
+            "x": 2459,
+            "y": 3382
+          },
+          "bidirectional": true,
           "height": 0,
+          "objectId": 190,
+          "objectName": "Gate",
+          "objectTile": {
+            "height": 0,
+            "x": 2459,
+            "y": 3383
+          },
+          "option": "open",
+          "postTile": {
+            "height": 0,
+            "x": 2459,
+            "y": 3385
+          },
+          "preTile": {
+            "height": 0,
+            "x": 2459,
+            "y": 3382
+          },
+          "routeId": "tree_gnome_stronghold_south_gate_transition_static_source",
+          "routeName": "Tree Gnome Stronghold South Gate Transition",
+          "sourceRouteStatus": "verified",
+          "to": {
+            "height": 0,
+            "x": 2459,
+            "y": 3385
+          },
+          "transitionProof": {
+            "objectTile": {
+              "height": 0,
+              "x": 2459,
+              "y": 3383
+            },
+            "postTile": {
+              "height": 0,
+              "x": 2459,
+              "y": 3385
+            },
+            "preTile": {
+              "height": 0,
+              "x": 2459,
+              "y": 3382
+            }
+          },
+          "type": "object_transition",
           "x": 2459,
-          "y": 3392
+          "y": 3385
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2459,
+            "y": 3394
+          },
+          "type": "walk",
           "x": 2459,
-          "y": 3402
+          "y": 3394
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2459,
+            "y": 3404
+          },
+          "type": "walk",
           "x": 2459,
-          "y": 3412
+          "y": 3404
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2459,
+            "y": 3414
+          },
+          "type": "walk",
+          "x": 2459,
+          "y": 3414
+        },
+        {
+          "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2459,
+            "y": 3421
+          },
+          "type": "walk",
           "x": 2459,
           "y": 3421
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2464,
+            "y": 3426
+          },
+          "type": "walk",
           "x": 2464,
           "y": 3426
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2464,
+            "y": 3431
+          },
+          "type": "walk",
           "x": 2464,
           "y": 3431
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2467,
+            "y": 3434
+          },
+          "type": "walk",
           "x": 2467,
           "y": 3434
         },
         {
           "height": 0,
+          "to": {
+            "height": 0,
+            "x": 2474,
+            "y": 3436
+          },
+          "type": "walk",
           "x": 2474,
           "y": 3436
         }
@@ -6665,7 +7394,7 @@
         "walkTileDistance": 248
       },
       "runSegments": null,
-      "score": 1043.096,
+      "score": 983.337,
       "selectedOverLearned": {
         "previousQuality": "bad",
         "previousRouteDistance": 360,
@@ -6697,8 +7426,8 @@
         "hpLossPerAttempt": 0.00442,
         "maxCombatExposure": 0.706796,
         "predictedTicks": 136.1,
-        "riskScore": 0.424559,
-        "score": 7678.042,
+        "riskScore": 0.424523,
+        "score": 7678.008,
         "sourceMix": {
           "region": 11
         }
@@ -6874,14 +7603,14 @@
         "walkTileDistance": 226
       },
       "runSegments": null,
-      "score": 7678.042,
+      "score": 7678.008,
       "selectedOverLearned": null,
       "status": "error",
       "targetDistanceIncreases": 24,
       "to": "varrock_sewer_moss_giants"
     }
   ],
-  "runId": "20260531T033804Z",
+  "runId": "20260614-all-characters-latest",
   "schemaVersion": 1,
   "suspiciousOrBadCount": 11
 }

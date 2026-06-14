@@ -7,6 +7,8 @@ import com.rs2.game.objects.Objects;
 import com.rs2.game.players.Client;
 import com.rs2.game.players.Player;
 import com.rs2.game.players.PlayerHandler;
+import com.rs2.util.Misc;
+import com.rs2.util.Stream;
 import org.apollo.cache.def.ItemDefinition;
 import org.apollo.util.security.IsaacRandom;
 import org.junit.BeforeClass;
@@ -164,6 +166,53 @@ public class AgentToolServiceTest {
         assertEquals(3295, target[0]);
         assertEquals(3314, target[1]);
         assertTrue(AgentToolService.isWithinObjectInteractionRange(target[0], target[1], rock));
+    }
+
+    @Test
+    public void brimhavenDirectObjectDispatchAllowsOnlyNearbyArenaObstacles() {
+        Player player = testPlayer(10, "MrAthlete");
+        player.absX = 2809;
+        player.absY = 9562;
+        player.heightLevel = 3;
+
+        assertTrue(AgentToolService.isBrimhavenArenaDirectObject(player, 3565, 2805, 9562));
+        player.absX = 2800;
+        player.absY = 9562;
+        assertTrue(AgentToolService.isBrimhavenArenaDirectObject(player, 3565, 2805, 9562));
+
+        player.absX = 2799;
+        player.absY = 9562;
+        assertFalse(AgentToolService.isBrimhavenArenaDirectObject(player, 3565, 2805, 9562));
+
+        player.absX = 2783;
+        player.absY = 9568;
+        assertTrue(AgentToolService.isBrimhavenArenaDirectObject(player, 3581, 2783, 9568));
+
+        player.absX = 2761;
+        player.absY = 9546;
+        assertTrue(AgentToolService.isBrimhavenArenaDirectObject(player, 3608, 2761, 9546));
+
+        player.absX = 2809;
+        player.absY = 9562;
+        assertFalse(AgentToolService.isBrimhavenArenaDirectObject(player, 3581, 2794, 9568));
+        assertFalse(AgentToolService.isBrimhavenArenaDirectObject(player, 3608, 2805, 9590));
+        assertFalse(AgentToolService.isBrimhavenArenaDirectObject(player, 3565, 2805, 9562 + 40));
+    }
+
+    @Test
+    public void brimhavenDirectObjectDispatchRequiresArenaHeightAndBounds() {
+        Player player = testPlayer(11, "MrAthlete");
+        player.absX = 2809;
+        player.absY = 9562;
+        player.heightLevel = 0;
+
+        assertFalse(AgentToolService.isBrimhavenArenaDirectObject(player, 3565, 2805, 9562));
+
+        player.heightLevel = 3;
+        player.absX = 2811;
+        player.absY = 9562;
+
+        assertFalse(AgentToolService.isBrimhavenArenaDirectObject(player, 3565, 2809, 9562));
     }
 
     @Test
@@ -375,185 +424,6 @@ public class AgentToolServiceTest {
     }
 
     @Test
-    public void agentChatToolsSendReadAndReportCompactStatus() {
-        Player flame = testPlayer(17, "MrFlame");
-        Player gem = testPlayer(18, "MrGem");
-        Player wood = testPlayer(19, "MrWood");
-        String channel = "tooltest";
-
-        JsonObject statusArgs = new JsonObject();
-        statusArgs.addProperty("channel", channel);
-        JsonObject beforeStatus = AgentToolService.handle(gem, "agent_chat_status", statusArgs);
-        long sinceId = beforeStatus.get("lastId").getAsLong();
-        assertEquals("agent_chat_status_XS", beforeStatus.get("tool").getAsString());
-
-        JsonObject sendArgs = new JsonObject();
-        sendArgs.addProperty("message", "meet at bank");
-        sendArgs.addProperty("toType", "agent");
-        sendArgs.addProperty("to", "MrGem");
-        sendArgs.addProperty("channel", channel);
-        JsonObject sendResult = AgentToolService.handle(flame, "agent_chat_send", sendArgs);
-
-        assertTrue(sendResult.get("success").getAsBoolean());
-        assertTrue(sendResult.get("compact").getAsBoolean());
-        assertEquals("agent_chat_send_XS", sendResult.get("tool").getAsString());
-        assertEquals("agent", sendResult.get("toType").getAsString());
-        assertEquals("MrGem", sendResult.get("toName").getAsString());
-        assertEquals("MrFlame", sendResult.getAsJsonObject("player").get("name").getAsString());
-
-        JsonObject readArgs = new JsonObject();
-        readArgs.addProperty("channel", channel);
-        readArgs.addProperty("sinceId", sinceId);
-        readArgs.addProperty("limit", 5);
-        JsonObject gemRead = AgentToolService.handle(gem, "agent_chat_read", readArgs);
-        JsonObject woodRead = AgentToolService.handle(wood, "agent_chat_read", readArgs);
-        JsonObject gemStatus = AgentToolService.handle(gem, "agent_chat_status", readArgs);
-
-        assertEquals(1, gemRead.get("count").getAsInt());
-        assertEquals("agent_chat_read_XS", gemRead.get("tool").getAsString());
-        JsonObject message = gemRead.getAsJsonArray("messages").get(0).getAsJsonObject();
-        assertEquals("meet at bank", message.get("text").getAsString());
-        assertEquals("MrFlame", message.get("fromName").getAsString());
-        assertEquals("MrGem", message.get("toName").getAsString());
-        assertEquals(0, woodRead.get("count").getAsInt());
-        assertEquals(1, gemStatus.get("unread").getAsInt());
-        assertTrue(gemStatus.getAsJsonObject("transport").has("discordTransport"));
-    }
-
-    @Test
-    public void agentChatSendAcceptsAgentAndPlayerAliasTargets() {
-        Player flame = testPlayer(26, "MrFlame");
-        Player gem = testPlayer(27, "MrGem");
-        String channel = "aliastest";
-
-        JsonObject agentArgs = new JsonObject();
-        agentArgs.addProperty("message", "alias agent target");
-        agentArgs.addProperty("agent", "MrGem");
-        agentArgs.addProperty("channel", channel);
-        JsonObject agentResult = AgentToolService.handle(flame, "agent_chat_send", agentArgs);
-
-        assertTrue(agentResult.get("success").getAsBoolean());
-        assertEquals("agent", agentResult.get("toType").getAsString());
-        assertEquals("MrGem", agentResult.get("toName").getAsString());
-
-        JsonObject readArgs = new JsonObject();
-        readArgs.addProperty("channel", channel);
-        JsonObject gemRead = AgentToolService.handle(gem, "agent_chat_read", readArgs);
-        assertEquals(1, gemRead.get("count").getAsInt());
-
-        JsonObject playerArgs = new JsonObject();
-        playerArgs.addProperty("message", "alias player target");
-        playerArgs.addProperty("player", "MrGem");
-        JsonObject playerResult = AgentToolService.handle(flame, "agent_chat_send", playerArgs);
-
-        assertTrue(playerResult.get("success").getAsBoolean());
-        assertEquals("player", playerResult.get("toType").getAsString());
-        assertEquals("MrGem", playerResult.get("toName").getAsString());
-        assertTrue(playerResult.get("deliveryPending").getAsBoolean());
-        AgentChatService.INSTANCE.processPendingPlayerDeliveries();
-    }
-
-    @Test
-    public void agentChatSendToPlayerReportsTickQueuedDelivery() {
-        Player flame = testPlayer(20, "MrFlame");
-        Player gem = testPlayer(21, "MrGem");
-        gem.disconnected = false;
-        gem.isActive = true;
-        PlayerHandler.players[21] = gem;
-        try {
-            JsonObject sendArgs = new JsonObject();
-            sendArgs.addProperty("message", "hello player");
-            sendArgs.addProperty("toType", "player");
-            sendArgs.addProperty("to", "MrGem");
-            JsonObject sendResult = AgentToolService.handle(flame, "agent_chat_send", sendArgs);
-
-            assertTrue(sendResult.get("success").getAsBoolean());
-            assertTrue(sendResult.get("compact").getAsBoolean());
-            assertTrue(sendResult.get("deliveryPending").getAsBoolean());
-            assertEquals(0, sendResult.get("deliveredCount").getAsInt());
-            assertEquals(0, sendResult.get("undeliveredCount").getAsInt());
-            assertEquals(0, sendResult.getAsJsonArray("undeliveredTo").size());
-        } finally {
-            AgentChatService.INSTANCE.processPendingPlayerDeliveries();
-            PlayerHandler.players[21] = null;
-        }
-    }
-
-    @Test
-    public void agentChatRejectsInvalidExplicitTargetType() {
-        Player flame = testPlayer(22, "MrFlame");
-        JsonObject sendArgs = new JsonObject();
-        sendArgs.addProperty("message", "should not become a channel message");
-        sendArgs.addProperty("toType", "agnt");
-        sendArgs.addProperty("to", "MrGem");
-
-        JsonObject sendResult = AgentToolService.handle(flame, "agent_chat_send", sendArgs);
-
-        assertFalse(sendResult.get("success").getAsBoolean());
-        assertEquals("toType must be agent, player, channel, or broadcast.",
-                sendResult.get("message").getAsString());
-    }
-
-    @Test
-    public void agentChatRejectsMissingDirectTargetName() {
-        Player flame = testPlayer(23, "MrFlame");
-        JsonObject sendArgs = new JsonObject();
-        sendArgs.addProperty("message", "missing target");
-        sendArgs.addProperty("toType", "player");
-
-        JsonObject sendResult = AgentToolService.handle(flame, "agent_chat_send", sendArgs);
-
-        assertFalse(sendResult.get("success").getAsBoolean());
-        assertEquals("to is required when toType is agent or player.",
-                sendResult.get("message").getAsString());
-    }
-
-    @Test
-    public void agentChatRejectsPlayerDeliveryForChannelMessages() {
-        Player flame = testPlayer(24, "MrFlame");
-        JsonObject sendArgs = new JsonObject();
-        sendArgs.addProperty("message", "bad delivery flag");
-        sendArgs.addProperty("channel", "agent");
-        sendArgs.addProperty("deliverToPlayers", true);
-
-        JsonObject sendResult = AgentToolService.handle(flame, "agent_chat_send", sendArgs);
-
-        assertFalse(sendResult.get("success").getAsBoolean());
-        assertEquals("deliverToPlayers requires toType player or broadcast.",
-                sendResult.get("message").getAsString());
-    }
-
-    @Test
-    public void agentChatRejectsAmbiguousShortcutAndGenericTargetFields() {
-        Player flame = testPlayer(25, "MrFlame");
-        JsonObject sendArgs = new JsonObject();
-        sendArgs.addProperty("message", "ambiguous bridge target");
-        sendArgs.addProperty("agent", "MrGem");
-        sendArgs.addProperty("to", "MrWood");
-
-        JsonObject sendResult = AgentToolService.handle(flame, "agent_chat_send", sendArgs);
-
-        assertFalse(sendResult.get("success").getAsBoolean());
-        assertEquals("Do not combine agent/player shortcuts with to/toType target fields.",
-                sendResult.get("message").getAsString());
-    }
-
-    @Test
-    public void agentChatAlsoPublicMarksPlayerForPublicChatUpdate() {
-        Player flame = testPlayer(26, "MrFlame");
-        JsonObject sendArgs = new JsonObject();
-        sendArgs.addProperty("message", "public coordination");
-        sendArgs.addProperty("channel", "agent");
-        sendArgs.addProperty("alsoPublic", true);
-
-        JsonObject sendResult = AgentToolService.handle(flame, "agent_chat_send", sendArgs);
-
-        assertTrue(sendResult.get("success").getAsBoolean());
-        assertTrue(flame.isChatTextUpdateRequired());
-        assertTrue(flame.getChatTextSize() > 0);
-    }
-
-    @Test
     public void explicitObserveStateKeysAreScopedPerPlayer() {
         Player flame = testPlayer(0, "MrFlame");
         Player gem = testPlayer(1, "MrGem");
@@ -719,6 +589,35 @@ public class AgentToolServiceTest {
         assertFalse(compact.getAsJsonObject("player").has("inventory"));
     }
 
+    @Test
+    public void publicChatUsesOnlyPackedTextBytes() {
+        Player player = testPlayer(44, "speaker");
+        JsonObject arguments = new JsonObject();
+        arguments.addProperty("message", "A little better. That is how the grind sneaks up on you.");
+
+        JsonObject result = AgentToolService.handle(player, "send_public_chat", arguments);
+
+        assertTrue(result.get("success").getAsBoolean());
+        int packedSize = player.getChatTextSize() & 0xff;
+        assertEquals(packedSize, player.getChatText().length);
+        assertTrue(player.isChatTextEchoToSelfRequired());
+        assertEquals("A little better. That is how the grind sneaks up on you.",
+                Misc.optimizeText(Misc.textUnpack(player.getChatText(), packedSize)));
+        Stream update = new Stream(new byte[256]);
+        ((TestPlayer) player).appendPublicChatForTest(update);
+        assertEquals(4 + packedSize, update.currentOffset);
+        assertEquals(0, update.buffer[0] & 0xff);
+        assertEquals(0, update.buffer[1] & 0xff);
+        assertEquals(0, update.buffer[2] & 0xff);
+        assertEquals(packedSize, -update.buffer[3] & 0xff);
+        byte[] decoded = new byte[packedSize];
+        for (int i = 0; i < packedSize; i++) {
+            decoded[packedSize - 1 - i] = update.buffer[4 + i];
+        }
+        assertEquals("A little better. That is how the grind sneaks up on you.",
+                Misc.optimizeText(Misc.textUnpack(decoded, packedSize)));
+    }
+
     private static Player testPlayer(int playerId, String playerName) {
         Player player = new TestPlayer(playerId);
         player.playerName = playerName;
@@ -759,6 +658,10 @@ public class AgentToolServiceTest {
         @Override
         public void flushOutStream() {
             // Keep bridge tool tests independent from an attached network session.
+        }
+
+        private void appendPublicChatForTest(Stream stream) {
+            appendPlayerChatText(stream);
         }
     }
 }

@@ -5,6 +5,7 @@ import com.rs2.game.content.StaticNpcList;
 import com.rs2.game.content.custom.CustomContent;
 import com.rs2.game.content.custom.shops.CustomShops;
 import com.rs2.game.content.quests.QuestAssistant;
+import com.rs2.game.content.skills.agility.BrimhavenAgility;
 import com.rs2.game.content.skills.agility.PyramidAgility;
 import com.rs2.game.content.skills.core.Fishing;
 import com.rs2.game.content.skills.crafting.Tanning;
@@ -50,6 +51,12 @@ public class NpcActions {
             return;
         }
         switch (npcType) {
+            case CAPN_IZZY_NOBEARD:
+                BrimhavenAgility.enterArena(player);
+                break;
+            case PIRATE_JACKIE_THE_FRUIT:
+                player.getShopAssistant().openShop(ShopAssistant.BRIMHAVEN_AGILITY_SHOP);
+                break;
             case SIMON_TEMPLETON:
                 PyramidAgility.sellPyramidTops(player);
                 break;
@@ -977,6 +984,9 @@ public class NpcActions {
             }
         }
         switch (npcType) {
+            case PIRATE_JACKIE_THE_FRUIT:
+                player.getShopAssistant().openShop(ShopAssistant.BRIMHAVEN_AGILITY_SHOP);
+                break;
             case SIMON_TEMPLETON:
                 PyramidAgility.sellPyramidTops(player);
                 break;
@@ -1104,6 +1114,9 @@ public class NpcActions {
             }
         }
         switch (npcType) {
+            case PIRATE_JACKIE_THE_FRUIT:
+                BrimhavenAgility.exchangeTickets(player);
+                break;
 
             /**
              * Banker

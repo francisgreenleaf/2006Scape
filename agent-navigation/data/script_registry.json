@@ -2065,6 +2065,31 @@
         "python3 agent-navigation/tools/script_registry.py run navdb -- validate",
         "python3 agent-navigation/tools/navdb.py graph-summary"
       ]
+    },
+    {
+      "id": "agility_brimhaven_runner",
+      "name": "Brimhaven Agility Arena Runner",
+      "path": "agent-navigation/tools/agility_brimhaven_runner.py",
+      "kind": "gameplay_runner",
+      "description": "Brimhaven Agility Arena physical course runner. Enters through Cap'n Izzy, keeps run enabled, crosses nearby arena obstacles toward active dispensers, tags tickets only when physically near the target platform, exchanges with Pirate Jackie, can bank-restock food/coins, and records compact obstacle/ticket/XP evidence.",
+      "aliases": [
+        "brimhaven agility runner",
+        "brimhaven arena runner",
+        "brimhaven agility arena",
+        "agility ticket runner"
+      ],
+      "tags": [
+        "gameplay",
+        "agility",
+        "brimhaven",
+        "training",
+        "runner"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/agility_brimhaven_runner.py --profile Mrathlete --readiness",
+        "python3 agent-navigation/tools/agility_brimhaven_runner.py --profile Mrathlete --launch-detached --cash-out-after 25 --coin-float 25000 --food-target 15 --steps 20000",
+        "python3 agent-navigation/tools/agility_brimhaven_runner.py --profile Mrathlete --status"
+      ]
     }
   ]
 }

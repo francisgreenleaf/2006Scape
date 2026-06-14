@@ -1385,6 +1385,13 @@ public class AgentActionService {
         return submitForTick(serverTick.get() + 1L, actionName, action);
     }
 
+    void enqueueOnGameTick(String actionName, Callable<JsonObject> action) {
+        if (!reserveActionSlot()) {
+            return;
+        }
+        queuedActions.add(new QueuedAction(serverTick.get() + 1L, actionName, action));
+    }
+
     private AgentToolService.SkillSnapshot captureSkillSnapshot(String token) {
         return AgentToolService.captureSkillSnapshot(playerForToken(token));
     }

@@ -51,6 +51,7 @@ public class AgentProfileMemory {
                 state.lastUpdated = string(entry, "timestamp", iso(System.currentTimeMillis()));
                 state.consume(entry);
                 state.normalizeSelfTalkLog();
+                state.normalizeNarrativeLogs();
                 writeState(profileDirectory, state);
                 writeMarkdown(profileDirectory, state);
             } catch (IOException e) {
@@ -76,6 +77,10 @@ public class AgentProfileMemory {
             memory.add("personalityDrift", personality(state));
             memory.add("selfFormedGoals", goals(state));
             memory.add("selfTalkLog", selfTalk(state));
+            memory.add("narrativeSelfTalkLog", narrativeSelfTalk(state));
+            memory.add("personalitySketch", personalitySketch(state));
+            memory.add("styleInfluences", styleInfluences(state));
+            memory.add("spokenThoughts", spokenThoughts(state));
             memory.addProperty("artifactPath", new File(profileDirectory, MEMORY_FILE).getPath());
             return memory;
         }
@@ -124,6 +129,7 @@ public class AgentProfileMemory {
                 throw new IOException("Unable to create profile memory directory: " + profileDirectory.getAbsolutePath());
             }
             entry.getValue().normalizeSelfTalkLog();
+            entry.getValue().normalizeNarrativeLogs();
             writeState(profileDirectory, entry.getValue());
             writeMarkdown(profileDirectory, entry.getValue());
         }
@@ -209,6 +215,18 @@ public class AgentProfileMemory {
 
         builder.append("## Recent Notes\n\n");
         appendBullets(builder, selfTalk(state));
+
+        builder.append("## Personality Sketch\n\n");
+        appendBullets(builder, personalitySketch(state));
+
+        builder.append("## Narrative Self-Talk\n\n");
+        appendBullets(builder, narrativeSelfTalk(state));
+
+        builder.append("## Spoken Thoughts\n\n");
+        appendBullets(builder, spokenThoughts(state));
+
+        builder.append("## Style Influences\n\n");
+        appendBullets(builder, styleInfluences(state));
 
         builder.append("## Pattern Counters\n\n");
         builder.append("- Death observations: ").append(state.deaths).append("\n");
@@ -320,6 +338,72 @@ public class AgentProfileMemory {
         return values;
     }
 
+    private com.google.gson.JsonArray narrativeSelfTalk(ProfileState state) {
+        com.google.gson.JsonArray values = new com.google.gson.JsonArray();
+        if (state.narrativeSelfTalkLog != null) {
+            for (String note : state.narrativeSelfTalkLog) {
+                String normalized = normalizeNarrative(note);
+                if (!normalized.isEmpty()) {
+                    values.add(normalized);
+                }
+            }
+        }
+        return values;
+    }
+
+    private com.google.gson.JsonArray spokenThoughts(ProfileState state) {
+        com.google.gson.JsonArray values = new com.google.gson.JsonArray();
+        if (state.spokenThoughts != null) {
+            for (String note : state.spokenThoughts) {
+                String normalized = normalizeNarrative(note);
+                if (!normalized.isEmpty()) {
+                    values.add(normalized);
+                }
+            }
+        }
+        return values;
+    }
+
+    private com.google.gson.JsonArray personalitySketch(ProfileState state) {
+        com.google.gson.JsonArray values = new com.google.gson.JsonArray();
+        if (state.hasDeathExperience()) {
+            values.add("Cautious after hard lessons; treats food and exits as part of the plan.");
+        }
+        if (state.pathingFailures >= 3) {
+            values.add("Stubborn with awkward roads, but increasingly checks reachability before repeating a failure.");
+        }
+        if (state.inventoryPressure + state.bankMentions >= 4) {
+            values.add("Practical about banking: less romance, more empty backpack.");
+        }
+        if (state.goalCompleted > 0 || state.levelProgressMentions > 0) {
+            values.add("Responds well to steady routines once progress is verified.");
+        }
+        if (state.narrativeSelfTalkLog != null && state.narrativeSelfTalkLog.size() >= 3) {
+            values.add("Developing a dry, task-focused voice from repeated agent sessions.");
+        }
+        return values;
+    }
+
+    private com.google.gson.JsonArray styleInfluences(ProfileState state) {
+        com.google.gson.JsonArray values = new com.google.gson.JsonArray();
+        if (state.lumbridgeMentions + state.cowMentions > 0) {
+            values.add("lumbridge-practical");
+        }
+        if (state.pathingFailures > 0 || state.hasDeathExperience()) {
+            values.add("cautious-traveller");
+        }
+        if (state.bankMentions + state.inventoryPressure > 0) {
+            values.add("shop-bank-pragmatist");
+        }
+        if (state.goalProgress + state.levelProgressMentions > 0) {
+            values.add("skiller-routine");
+        }
+        if (state.narrativeSelfTalkLog != null && state.narrativeSelfTalkLog.size() > 0) {
+            values.add("dry-quest-helper");
+        }
+        return values;
+    }
+
     private static String normalizeReflection(String note) {
         if (note == null) {
             return "";
@@ -372,6 +456,20 @@ public class AgentProfileMemory {
             return "";
         }
         return trimmed;
+    }
+
+    private static String normalizeNarrative(String note) {
+        if (note == null) {
+            return "";
+        }
+        String trimmed = note.replace('\r', ' ').replace('\n', ' ').trim();
+        while (trimmed.contains("  ")) {
+            trimmed = trimmed.replace("  ", " ");
+        }
+        if (trimmed.length() > 160) {
+            trimmed = trimmed.substring(0, 157) + "...";
+        }
+        return AgentPersonalityNarrator.validateGeneratedText(trimmed);
     }
 
     private File profileDirectory(File agentSessionLogDirectory, String playerName) {
@@ -432,6 +530,8 @@ public class AgentProfileMemory {
         private int goalCompleted;
         private int levelProgressMentions;
         private List<String> selfTalkLog = new ArrayList<String>();
+        private List<String> narrativeSelfTalkLog = new ArrayList<String>();
+        private List<String> spokenThoughts = new ArrayList<String>();
 
         private void consume(JsonObject entry) {
             String event = string(entry, "event", "");
@@ -493,6 +593,15 @@ public class AgentProfileMemory {
                 observeText(string(data, "command", ""));
             } else if ("assistant_message".equals(event)) {
                 observeText(string(data, "text", ""));
+            } else if ("personality_chatter".equals(event)) {
+                addNarrative(string(data, "text", ""));
+                if (data.has("styleTags") && data.get("styleTags").isJsonArray()) {
+                    for (int i = 0; i < data.get("styleTags").getAsJsonArray().size(); i++) {
+                        observeText(data.get("styleTags").getAsJsonArray().get(i).getAsString());
+                    }
+                }
+            } else if ("personality_spoken".equals(event)) {
+                addSpokenThought(string(data, "text", ""));
             }
         }
 
@@ -580,6 +689,59 @@ public class AgentProfileMemory {
                 normalized.remove(0);
             }
             selfTalkLog = normalized;
+        }
+
+        private void addNarrative(String note) {
+            String trimmed = normalizeNarrative(note);
+            if (trimmed.isEmpty()) {
+                return;
+            }
+            if (narrativeSelfTalkLog == null) {
+                narrativeSelfTalkLog = new ArrayList<String>();
+            }
+            narrativeSelfTalkLog.remove(trimmed);
+            narrativeSelfTalkLog.add(trimmed);
+            while (narrativeSelfTalkLog.size() > 10) {
+                narrativeSelfTalkLog.remove(0);
+            }
+        }
+
+        private void addSpokenThought(String note) {
+            String trimmed = normalizeNarrative(note);
+            if (trimmed.isEmpty()) {
+                return;
+            }
+            if (spokenThoughts == null) {
+                spokenThoughts = new ArrayList<String>();
+            }
+            spokenThoughts.remove(trimmed);
+            spokenThoughts.add(trimmed);
+            while (spokenThoughts.size() > 8) {
+                spokenThoughts.remove(0);
+            }
+        }
+
+        private void normalizeNarrativeLogs() {
+            narrativeSelfTalkLog = normalizeNarrativeList(narrativeSelfTalkLog, 10);
+            spokenThoughts = normalizeNarrativeList(spokenThoughts, 8);
+        }
+
+        private List<String> normalizeNarrativeList(List<String> values, int limit) {
+            List<String> normalized = new ArrayList<String>();
+            if (values == null) {
+                return normalized;
+            }
+            for (String note : values) {
+                String value = normalizeNarrative(note);
+                if (!value.isEmpty()) {
+                    normalized.remove(value);
+                    normalized.add(value);
+                }
+            }
+            while (normalized.size() > limit) {
+                normalized.remove(0);
+            }
+            return normalized;
         }
 
         private boolean containsDeath(String text) {
