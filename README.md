@@ -1,6 +1,5 @@
 # 2006Scape - but with codex ![Gameplay Image](https://i.imgur.com/WHnQz2W.png)
 
-## Discord Link: https://discord.gg/hZ6VfWG
 
 ## How to Play
 
