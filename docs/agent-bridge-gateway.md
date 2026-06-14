@@ -34,6 +34,39 @@ sudo systemctl reload nginx
 scripts/probe-agent-bridge-gateway.py --gateway-url https://agents.example.com
 ```
 
+## Temporary Self-Signed Gateway
+
+If no DNS name exists yet, a short-lived self-signed certificate on the VPS IP
+is acceptable for operator testing. Keep it temporary: normal players should use
+a real domain certificate from a trusted CA.
+
+For a self-signed IP certificate, the gateway probe can skip trust validation
+while still checking the endpoint allow-list and raw bridge non-exposure:
+
+```sh
+scripts/probe-agent-bridge-gateway.py \
+  --gateway-url https://VPS_IP_OR_HOST \
+  --allow-untrusted-tls
+```
+
+Repo-side `remote_claim.py` intentionally does not have an "allow untrusted TLS"
+flag. Export the gateway certificate to an ignored local path and point Python at
+it with `SSL_CERT_FILE`:
+
+```sh
+export AGENT_BRIDGE_URL=https://VPS_IP_OR_HOST
+export SSL_CERT_FILE=agent-navigation/.local/certs/agent-gateway-selfsigned.crt
+python3 agent-navigation/tools/remote_claim.py \
+  --profile PROFILE \
+  --bridge-url "$AGENT_BRIDGE_URL" \
+  --verify
+```
+
+Packaged Java clients also need the certificate trusted by the OS/JVM trust
+store before remote `/agent` over a self-signed gateway will behave like a normal
+HTTPS endpoint. Prefer a real domain certificate before sharing the package with
+non-operator users.
+
 For client packaging, set one of:
 
 ```sh

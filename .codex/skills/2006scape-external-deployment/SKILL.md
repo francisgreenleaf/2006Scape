@@ -109,6 +109,16 @@ scripts/probe-agent-bridge-gateway.py --gateway-url https://AGENT_GATEWAY_HOST
 
 The gateway proof is separate from public game/cache proof: it must show approved `/agent` endpoints reachable, unapproved `/agent/` paths rejected, and raw TCP `43610` not reachable from the external path.
 
+For temporary self-signed IP gateways, run the gateway probe with
+`--allow-untrusted-tls`. For repo-side `remote_claim.py`, set `SSL_CERT_FILE`
+to an ignored local copy of the gateway certificate; do not commit the cert or
+session file:
+
+```sh
+scripts/probe-agent-bridge-gateway.py --gateway-url https://AGENT_GATEWAY_HOST --allow-untrusted-tls
+SSL_CERT_FILE=agent-navigation/.local/certs/agent-gateway-selfsigned.crt python3 agent-navigation/tools/remote_claim.py --profile PROFILE --bridge-url https://AGENT_GATEWAY_HOST --verify
+```
+
 For a repo Codex thread controlling one named VPS character, use the player-agent README and VPS notes. Do not paste passwords or tokens. Source private credentials only into the shell when launching or probing a client login, then claim through the HTTPS gateway:
 
 ```sh

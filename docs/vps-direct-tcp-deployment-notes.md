@@ -24,6 +24,7 @@
 - 2026-06-14: Packaged client launch defaults were changed to `client.scale=2` and `show_navbar=false` so the larger testing window uses repo-native canvas scaling instead of macOS JVM UI scaling.
 - 2026-06-14: A later SSH check from the local machine to port `22` timed out briefly, while public game/cache checks and a profile login still passed. A follow-up check recovered and `ssh` is currently reachable again.
 - 2026-06-14: The current local packaged `client.properties` is enough for direct-TCP game login but does not include `agent.bridge.url`. Repo-side Codex control of a VPS character still needs the HTTPS gateway URL packaged or supplied as `AGENT_BRIDGE_URL`, then a profile-scoped `remote_claim.py` session.
+- 2026-06-14: Temporary HTTPS `/agent` gateway on the operator-provided host was enabled with a self-signed IP certificate. Gateway probe with `--allow-untrusted-tls` passed, `remote_claim.py --verify` passed for a logged-in profile, and raw TCP `43610` remained private.
 
 ## Local Test Credentials
 
@@ -89,6 +90,14 @@ For one named profile from the repo machine:
      --profile MrFlame \
      --bridge-url "$AGENT_BRIDGE_URL" \
      --verify
+   ```
+
+   If the operator gateway is using a temporary self-signed certificate, also set
+   `SSL_CERT_FILE` to the ignored local certificate copy before running
+   `remote_claim.py`. Do not commit the certificate or session file.
+
+   ```sh
+   export SSL_CERT_FILE=agent-navigation/.local/certs/agent-gateway-selfsigned.crt
    ```
 
 4. Type the exact claim command printed by `remote_claim.py` in the logged-in
