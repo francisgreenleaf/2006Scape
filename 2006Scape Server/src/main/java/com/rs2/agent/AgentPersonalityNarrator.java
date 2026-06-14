@@ -631,6 +631,7 @@ public class AgentPersonalityNarrator {
                 player.setChatTextSize((byte) stream.currentOffset);
                 player.setChatText(Arrays.copyOf(stream.buffer, stream.currentOffset));
                 player.setChatTextUpdateRequired(true);
+                player.setChatTextEchoToSelfRequired(true);
                 JsonObject spoken = new JsonObject();
                 spoken.addProperty("text", text);
                 spoken.addProperty("reason", reason);

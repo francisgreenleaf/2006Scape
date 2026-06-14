@@ -1097,6 +1097,7 @@ public class AgentToolService {
         player.setChatTextSize((byte) stream.currentOffset);
         player.setChatText(Arrays.copyOf(stream.buffer, stream.currentOffset));
         player.setChatTextUpdateRequired(true);
+        player.setChatTextEchoToSelfRequired(true);
         JsonObject result = success("Sent public chat.");
         result.addProperty("chatMessage", message);
         result.addProperty("color", color);

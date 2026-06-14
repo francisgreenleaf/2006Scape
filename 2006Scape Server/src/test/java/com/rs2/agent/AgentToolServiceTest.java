@@ -502,6 +502,7 @@ public class AgentToolServiceTest {
         assertTrue(result.get("success").getAsBoolean());
         int packedSize = player.getChatTextSize() & 0xff;
         assertEquals(packedSize, player.getChatText().length);
+        assertTrue(player.isChatTextEchoToSelfRequired());
         assertEquals("A little better. That is how the grind sneaks up on you.",
                 Misc.optimizeText(Misc.textUnpack(player.getChatText(), packedSize)));
         Stream update = new Stream(new byte[256]);

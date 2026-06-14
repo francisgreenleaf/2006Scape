@@ -2250,6 +2250,7 @@ public abstract class Player {
 	}
 
 	public void updateThisPlayerMovement(Stream str) {
+		boolean chatTextEcho = shouldSendChatTextUpdateToSelf();
 
 		if (str != null) {
 			if (mapRegionDidChange) {
@@ -2265,7 +2266,7 @@ public abstract class Player {
 				str.writeBits(2, 3);
 				str.writeBits(2, heightLevel);
 				str.writeBits(1, 1);
-				str.writeBits(1, updateRequired ? 1 : 0);
+				str.writeBits(1, updateRequired || chatTextEcho ? 1 : 0);
 				str.writeBits(7, currentY);
 				str.writeBits(7, currentX);
 				return;
@@ -2277,7 +2278,7 @@ public abstract class Player {
 				str.createFrameVarSizeWord(81);
 				str.initBitAccess();
 				isMoving = false;
-				if (updateRequired) {
+				if (updateRequired || chatTextEcho) {
 					// tell client there's an update block appended at the end
 					str.writeBits(1, 1);
 					str.writeBits(2, 0);
@@ -2301,7 +2302,7 @@ public abstract class Player {
 				if (str != null) {
 					str.writeBits(2, 1);
 					str.writeBits(3, Misc.xlateDirectionToClient[dir1]);
-					if (updateRequired) {
+					if (updateRequired || chatTextEcho) {
 						str.writeBits(1, 1);
 					} else {
 						str.writeBits(1, 0);
@@ -2313,7 +2314,7 @@ public abstract class Player {
 					str.writeBits(2, 2);
 					str.writeBits(3, Misc.xlateDirectionToClient[dir1]);
 					str.writeBits(3, Misc.xlateDirectionToClient[dir2]);
-					if (updateRequired) {
+					if (updateRequired || chatTextEcho) {
 						str.writeBits(1, 1);
 					} else {
 						str.writeBits(1, 0);
@@ -2591,6 +2592,7 @@ public abstract class Player {
 	}
 
 	private boolean chatTextUpdateRequired = false;
+	private boolean chatTextEchoToSelfRequired = false;
 	private byte chatText[] = new byte[4096];
 	private byte chatTextSize = 0;
 	private int chatTextColor = 0;
@@ -2825,6 +2827,7 @@ public abstract class Player {
 	public void clearUpdateFlags() {
 		updateRequired = false;
 		setChatTextUpdateRequired(false);
+		setChatTextEchoToSelfRequired(false);
 		setAppearanceUpdateRequired(false);
 		setHitUpdateRequired(false);
 		hitUpdateRequired2 = false;
@@ -3052,6 +3055,18 @@ public abstract class Player {
 
 	public boolean isChatTextUpdateRequired() {
 		return chatTextUpdateRequired;
+	}
+
+	public void setChatTextEchoToSelfRequired(boolean chatTextEchoToSelfRequired) {
+		this.chatTextEchoToSelfRequired = chatTextEchoToSelfRequired;
+	}
+
+	public boolean isChatTextEchoToSelfRequired() {
+		return chatTextEchoToSelfRequired;
+	}
+
+	public boolean shouldSendChatTextUpdateToSelf() {
+		return isChatTextUpdateRequired() && isChatTextEchoToSelfRequired();
 	}
 
 	public void setChatText(byte chatText[]) {

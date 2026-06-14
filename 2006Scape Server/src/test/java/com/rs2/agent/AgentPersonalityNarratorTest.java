@@ -9,6 +9,8 @@ import com.google.gson.JsonObject;
 import com.rs2.game.players.Player;
 import com.rs2.game.players.PlayerHandler;
 import com.rs2.util.Misc;
+import com.rs2.util.Stream;
+import org.apollo.util.security.IsaacRandom;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -219,8 +221,16 @@ public class AgentPersonalityNarratorTest {
 
         assertFalse(player.forcedChatUpdateRequired);
         assertTrue(player.isChatTextUpdateRequired());
+        assertTrue(player.isChatTextEchoToSelfRequired());
         assertEquals("a little better. that is how the grind sneaks up on you.",
                 Misc.textUnpack(player.getChatText(), player.getChatTextSize()));
+        player.appendedPublicChat = false;
+        Stream outbound = new Stream(new byte[4096]);
+        outbound.packetEncryption = new IsaacRandom(new int[] {0, 0, 0, 0});
+        new PlayerHandler().updatePlayer(player, outbound);
+        assertTrue(player.appendedPublicChat);
+        player.clearUpdateFlags();
+        assertFalse(player.isChatTextEchoToSelfRequired());
         File logFile = findSessionFile(logDirectory, session.getSessionId(), ".jsonl");
         String content = new String(Files.readAllBytes(logFile.toPath()), StandardCharsets.UTF_8);
         assertEquals(1, countOccurrences(content, "\"event\":\"personality_spoken\""));
@@ -300,8 +310,16 @@ public class AgentPersonalityNarratorTest {
     }
 
     private static class TestPlayer extends Player {
+        private boolean appendedPublicChat;
+
         private TestPlayer(int playerId) {
             super(playerId);
+        }
+
+        @Override
+        protected void appendPlayerChatText(Stream stream) {
+            appendedPublicChat = true;
+            super.appendPlayerChatText(stream);
         }
     }
 }
