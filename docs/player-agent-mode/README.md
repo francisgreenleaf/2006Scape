@@ -214,6 +214,18 @@ gateway is reachable and the raw bridge is still private:
 scripts/probe-agent-bridge-gateway.py --gateway-url https://agents.example.com
 ```
 
+For a temporary self-signed gateway on an IP address, the probe can allow
+untrusted TLS for testing, but repo-side tools should trust the exported
+certificate through `SSL_CERT_FILE`:
+
+```sh
+scripts/probe-agent-bridge-gateway.py \
+  --gateway-url https://VPS_IP_OR_HOST \
+  --allow-untrusted-tls
+export AGENT_BRIDGE_URL=https://VPS_IP_OR_HOST
+export SSL_CERT_FILE=agent-navigation/.local/certs/agent-gateway-selfsigned.crt
+```
+
 To prove repo-side control end to end, claim a logged-in character and run a
 harmless compact observe:
 
@@ -250,6 +262,11 @@ remote agent mode.
 
 If repo Codex tools fail with an invalid session, rerun the remote claim helper
 and type the new claim command while your character is logged in.
+
+If repo Codex tools fail with a certificate verification error against a
+temporary self-signed gateway, set `SSL_CERT_FILE` to the ignored local copy of
+the gateway certificate or replace the temporary gateway with a trusted
+certificate.
 
 If the agent is doing the wrong thing, use `/agent stop` in the client or ask
 Codex to call `cancel_current_action` for the claimed profile.
