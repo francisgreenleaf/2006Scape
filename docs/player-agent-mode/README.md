@@ -105,12 +105,14 @@ This gives the agent richer navigation, runner, memory, map, and script context.
 1. Clone the repo and open it in Codex.
 2. Launch the packaged client and log in to your character.
 3. In Codex, ask it to use the 2006Scape skill and claim your remote character.
+   Tell it the profile name to use, but do not paste passwords or bridge tokens.
 4. Codex runs the remote claim helper:
 
    ```sh
    python3 agent-navigation/tools/remote_claim.py \
      --profile YOUR_CHARACTER \
-     --bridge-url "$AGENT_BRIDGE_URL"
+     --bridge-url "$AGENT_BRIDGE_URL" \
+     --verify
    ```
 
 5. The helper prints a short claim command. Type exactly that command in the
@@ -127,13 +129,15 @@ This gives the agent richer navigation, runner, memory, map, and script context.
    ::agentbridge claim ABCD-1234
    ```
 
-6. The helper stores an ignored local session file under `agent-navigation/.local/`.
+6. The helper stores an ignored local session file under
+   `agent-navigation/.local/rsbridge-session-YOUR_CHARACTER.json`. That file
+   contains a scoped bridge token; do not print or paste it.
 7. Codex can now use compact bridge tools and scripts for your character, for
    example:
 
    ```sh
    RS_PROFILE=YOUR_CHARACTER agent-navigation/tools/observe_XS.sh
-   RS_PROFILE=YOUR_CHARACTER agent-navigation/tools/rs-tool_XS.sh bank_item_count '{"names":["coal","iron ore"]}'
+   RS_PROFILE=YOUR_CHARACTER agent-navigation/tools/rs-tool_XS.sh bank_item_count_XS '{"names":["coal","iron ore"]}'
    ```
 
 For normal gameplay tasks, tell Codex what you want in plain English:
@@ -146,6 +150,24 @@ bridge session and train fishing for a short safe run.
 Behavior: Codex in the repo uses the same scoped server bridge as the
 in-client flow, but it controls the player from the repo's scripts instead of
 from the Java client's embedded Codex app-server.
+
+For operator-run named profiles on a VPS, keep the account passwords in an
+ignored local env file and pass only profile names to Codex. A Codex thread that
+controls one of those profiles should:
+
+- read this README and the operator's VPS notes;
+- source the private credentials only into environment variables when launching
+  or testing a client login;
+- log in as exactly one profile, such as `MrFlame`;
+- claim the remote bridge with `remote_claim.py --profile MrFlame --verify`;
+- set `RS_PROFILE=MrFlame` for all repo-side tools;
+- use compact tools such as `observe_XS.sh`, `rs-tool_XS.sh`, and
+  `rs-tool_XXS.sh` by default.
+
+Direct game TCP access is not the same thing as repo-side agent control. Repo
+Codex control requires either the configured HTTPS agent gateway URL or a
+trusted private operator tunnel. If no gateway URL or valid profile session file
+is available, stop and ask the operator instead of trying to expose TCP `43610`.
 
 ## Operator Gateway Setup
 
