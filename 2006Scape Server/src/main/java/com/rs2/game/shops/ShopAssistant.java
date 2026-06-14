@@ -2,6 +2,7 @@ package com.rs2.game.shops;
 
 import com.rs2.Constants;
 import com.rs2.game.bots.BotHandler;
+import com.rs2.game.content.StaticItemList;
 import com.rs2.game.content.custom.shops.CustomShops;
 import com.rs2.game.items.DeprecatedItems;
 import com.rs2.game.items.ItemConstants;
@@ -23,7 +24,8 @@ public class ShopAssistant {
 		player = player2;
 	}
 
-	public static final int RANGE_SHOP = 111, PEST_SHOP = 175, CASTLE_SHOP = 112;
+	public static final int RANGE_SHOP = 111, PEST_SHOP = 175, CASTLE_SHOP = 112,
+			BRIMHAVEN_AGILITY_SHOP = 151;
 
 	/**
 	 * Shops
@@ -152,6 +154,10 @@ public class ShopAssistant {
 			player.getPacketSender().sendMessage(DeprecatedItems.getItemName(itemID)+": currently costs " + getRGItemValue(itemID) + " archery tickets.");
 			return;
 		}
+		if (player.shopId == BRIMHAVEN_AGILITY_SHOP) {
+			player.getPacketSender().sendMessage(DeprecatedItems.getItemName(itemID)+": currently costs " + getBrimhavenTicketItemValue(itemID) + " agility arena tickets.");
+			return;
+		}
 		if (ShopValue >= 1000 && ShopValue < 1000000) {
 			ShopAdd = " (" + ShopValue / 1000 + "K)";
 		} else if (ShopValue >= 1000000) {
@@ -223,6 +229,18 @@ public class ShopAssistant {
 			return 100;
 		case 892:
 			return 40;
+		}
+		return 0;
+	}
+
+	public int getBrimhavenTicketItemValue(int id) {
+		switch (id) {
+		case StaticItemList.TOADFLAX:
+			return 3;
+		case StaticItemList.SNAPDRAGON:
+			return 10;
+		case StaticItemList.PIRATES_HOOK:
+			return 800;
 		}
 		return 0;
 	}
@@ -340,7 +358,7 @@ public class ShopAssistant {
 					player.getPacketSender().sendMessage(itemName + ": you are selling this item for " + BotHandler.getItemPrice(player.shopId, unNotedItemID) + " coins.");
 				else
 					player.getPacketSender().sendMessage(itemName + ": you haven't set your sell price.");
-			} else if (player.shopId != RANGE_SHOP && player.shopId != PEST_SHOP && player.shopId != CASTLE_SHOP && player.shopId != 138 && player.shopId != 58 && player.shopId != 139) {
+			} else if (player.shopId != RANGE_SHOP && player.shopId != PEST_SHOP && player.shopId != CASTLE_SHOP && player.shopId != BRIMHAVEN_AGILITY_SHOP && player.shopId != 138 && player.shopId != 58 && player.shopId != 139) {
 				player.getPacketSender().sendMessage(itemName + ": shop will buy for " + ShopValue + " coins." + ShopAdd);
 			} else if (player.shopId == 138 || player.shopId == 139 || player.shopId == 58) {
 				player.getPacketSender().sendMessage(itemName + ": shop will buy for " + tokkulValue + " tokkul.");
@@ -350,6 +368,8 @@ public class ShopAssistant {
 				player.getPacketSender().sendMessage(itemName + ": shop will buy for " + getPestItemValue(unNotedItemID) + " pest control points." + ShopAdd);
 			} else if (player.shopId == CASTLE_SHOP) {
 				player.getPacketSender().sendMessage(itemName + ": shop will buy for " + getCastleItemValue(unNotedItemID) + " castle war tickets." + ShopAdd);
+			} else if (player.shopId == BRIMHAVEN_AGILITY_SHOP) {
+				player.getPacketSender().sendMessage("Pirate Jackie does not buy rewards back.");
 			}
 		}
 	}
@@ -369,6 +389,10 @@ public class ShopAssistant {
 		}
 		if(!player.isShopping) {
 	        return false;
+		}
+		if (player.shopId == BRIMHAVEN_AGILITY_SHOP) {
+			player.getPacketSender().sendMessage("Pirate Jackie does not buy rewards back.");
+			return false;
 		}
 		// We can only store 40 items per shop
 		if (player.totalShopItems >= 40) {
@@ -567,6 +591,13 @@ public class ShopAssistant {
 			} else if (player.shopId == CASTLE_SHOP) {
 				value = getCastleItemValue(itemID);
 				currency = 4067; // castle wars tickets
+			} else if (player.shopId == BRIMHAVEN_AGILITY_SHOP) {
+				value = getBrimhavenTicketItemValue(itemID);
+				currency = StaticItemList.AGILITY_ARENA_TICKET;
+				if (value <= 0) {
+					player.getPacketSender().sendMessage("Pirate Jackie does not sell that reward.");
+					return false;
+				}
 			} else {
 				value = getItemShopValue(itemID, 0, false);
 				currency = 995; //gp

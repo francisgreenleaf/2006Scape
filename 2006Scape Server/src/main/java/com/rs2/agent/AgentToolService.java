@@ -3131,8 +3131,19 @@ public class AgentToolService {
         }
         Objects actionObject = object == null ? new Objects(objectId, x, y, player.heightLevel, 0, 10, 0) : object;
         boolean requireReachable = getBoolean(arguments, "requireReachable", true);
+        boolean directIfUnreachable = getBoolean(arguments, "directIfUnreachable", false);
         boolean inRange = isWithinObjectInteractionRange(player.absX, player.absY, actionObject);
         int[] walkTarget = inRange ? null : objectInteractionWalkTarget(player, actionObject);
+        if (!inRange && directIfUnreachable && isBrimhavenArenaDirectObject(player, objectId, x, y)) {
+            directObjectAction(player, objectId, x, y, optionNumber);
+            JsonObject result = success("Interacting with object.");
+            result.add("object", objectJson(player, actionObject,
+                    AgentKnowledgeBase.distance(player.absX, player.absY, x, y)));
+            result.addProperty("objectReachable", false);
+            result.addProperty("directObjectAction", true);
+            addPlayerState(result, player);
+            return result;
+        }
         if (requireReachable && !inRange && walkTarget == null) {
             JsonObject result = failure("That object is visible but not reachable from the current side.");
             result.add("object", objectJson(player, actionObject,
@@ -3150,6 +3161,61 @@ public class AgentToolService {
         }
         addPlayerState(result, player);
         return result;
+    }
+
+    static boolean isBrimhavenArenaDirectObject(Player player, int objectId, int x, int y) {
+        if (player == null || player.heightLevel != 3) {
+            return false;
+        }
+        if (player.absX < 2760 || player.absX > 2810 || player.absY < 9543 || player.absY > 9593) {
+            return false;
+        }
+        if (objectId == 3618 && x == 2805 && y == 9590) {
+            return true;
+        }
+        if (objectId == 3581 || objectId == 3608) {
+            return AgentKnowledgeBase.distance(player.absX, player.absY, x, y) <= 4
+                    && ((x == 2761 && y == 9546)
+                    || (x == 2772 && y == 9546)
+                    || (x == 2783 && y == 9546)
+                    || (x == 2794 && y == 9546)
+                    || (x == 2805 && y == 9546)
+                    || (x == 2761 && y == 9557)
+                    || (x == 2772 && y == 9557)
+                    || (x == 2783 && y == 9557)
+                    || (x == 2794 && y == 9557)
+                    || (x == 2805 && y == 9557)
+                    || (x == 2761 && y == 9568)
+                    || (x == 2772 && y == 9568)
+                    || (x == 2783 && y == 9568)
+                    || (x == 2794 && y == 9568)
+                    || (x == 2805 && y == 9568)
+                    || (x == 2761 && y == 9579)
+                    || (x == 2772 && y == 9579)
+                    || (x == 2783 && y == 9579)
+                    || (x == 2794 && y == 9579)
+                    || (x == 2805 && y == 9579)
+                    || (x == 2761 && y == 9590)
+                    || (x == 2772 && y == 9590)
+                    || (x == 2783 && y == 9590)
+                    || (x == 2794 && y == 9590));
+        }
+        if (objectId >= 3551 && objectId <= 3585) {
+            return AgentKnowledgeBase.distance(player.absX, player.absY, x, y) <= 5;
+        }
+        return false;
+    }
+
+    private static void directObjectAction(Player player, int objectId, int x, int y, int option) {
+        player.clickObjectType = option;
+        player.objectId = objectId;
+        player.objectX = x;
+        player.objectY = y;
+        player.getPlayerAssistant().resetFollow();
+        player.getCombatAssistant().resetPlayerAttack();
+        player.getPlayerAssistant().requestUpdates();
+        player.endCurrentTask();
+        player.getObjects().firstClickObject(objectId, x, y);
     }
 
     private static JsonObject setCombatStyle(Player player, JsonObject arguments) {

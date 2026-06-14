@@ -128,6 +128,7 @@ public abstract class Player {
 	private final WildernessAgility wildernessAgility = new WildernessAgility(this);
 	private final BarbarianAgility barbarianAgility = new BarbarianAgility(this);
 	private final PyramidAgility pyramidAgility = new PyramidAgility(this);
+	private final BrimhavenAgility brimhavenAgility = new BrimhavenAgility(this);
 	private final WerewolfAgility werewolfAgility = new WerewolfAgility(this);
 	private final ApeAtollAgility apeAtollAgility = new ApeAtollAgility(this);
 	private final Smithing smithing = new Smithing();
@@ -303,6 +304,10 @@ public abstract class Player {
 
 	public PyramidAgility getPyramidAgility() {
 		return pyramidAgility;
+	}
+
+	public BrimhavenAgility getBrimhavenAgility() {
+		return brimhavenAgility;
 	}
 
 	public BarbarianAgility getBarbarianAgility() {
@@ -914,6 +919,7 @@ public abstract class Player {
 		if (Boundary.isIn(this, Boundary.DESERT) && heightLevel == 0) {
 			DesertHeat.callHeat(this);
 		}
+		getBrimhavenAgility().process();
 		if (playerEnergy < 100 && System.currentTimeMillis() - lastIncrease >= getPlayerAssistant().raiseTimer()) {
 			playerEnergy += 1;
 			lastIncrease = System.currentTimeMillis();

@@ -11973,5 +11973,25 @@
         "itemAmount": 5
       }
     ]
+  },
+  {
+    "buyModifier": 2,
+    "sellModifier": 3,
+    "name": "Brimhaven Agility Ticket Exchange",
+    "id": 151,
+    "items": [
+      {
+        "itemId": 2998,
+        "itemAmount": 100000
+      },
+      {
+        "itemId": 3000,
+        "itemAmount": 100000
+      },
+      {
+        "itemId": 2997,
+        "itemAmount": 100000
+      }
+    ]
   }
 ]

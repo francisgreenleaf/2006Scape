@@ -199,6 +199,13 @@ These notes are repo-specific operational memory from actual agent experience. A
 - **Use instead:** After walking to an agility step's approach tile, refresh nearby objects and overwrite the step's object tile before interacting; if the first interact fails, refresh once and retry against the newly observed tile.
 - **Validation:** Cache-derived course definitions such as the Barbarian Outpost course can use server hotspot approach tiles plus observed nearby-object correction instead of requiring perfect hand-guessed object coordinates on the first pass.
 
+### Prefer nearby Brimhaven progress over far approach walks
+
+- **Observed:** `agent-navigation/tools/agility_brimhaven_runner.py` could spend 6-9 ticks oscillating while walking toward a farther preferred obstacle, then fallback-click a nearby obstacle that moved away from the next dispenser or repeated a weak rope/handhold edge.
+- **Cause:** The scorer overvalued avoiding recent objects/tiles and the failed-approach fallback treated any nearby click as useful recovery, even when `targetDistanceDelta` was positive.
+- **Use instead:** Keep per-choice `currentTargetDistance`, `predictedTargetDistance`, and `targetDistanceDelta` in logs; after a failed approach, prefer a safe nearby candidate with negative target-distance delta and suppress nearby fallbacks only when they combine away movement with loop-risk or repeated-edge penalties.
+- **Validation:** A fresh Mrathlete Brimhaven sample after the fallback suppression showed steady XP and saved tickets with `fallbackClicks:0` during the clean window; a follow-up check caught over-suppression, so the final guard allows small non-looping away fallbacks while still blocking repeated away edges.
+
 ### Resume bank material loops from carried state, not assumed empty state
 
 - **Observed:** The Guam cleaner failed after withdrawing a full inventory of grimy herbs, then immediately tried to continue the bank loop and raised `No inventory space available`.
@@ -296,3 +303,10 @@ These notes are repo-specific operational memory from actual agent experience. A
 - **Cause:** `AgentActionService` clamps `wait_ticks` requests to `1..25` ticks, so a single long wait can return early while production is still active.
 - **Use instead:** Chunk exact production waits into 25-tick-or-smaller `wait_ticks_XS` calls, log each chunk's wall time, and only use `wait_until_idle_XS` as a verified fallback. Avoid separate bank-open calls when the next deposit/withdraw primitive already opens the bank.
 - **Validation:** A two-cycle Mrwood yew-longbow stringing proof completed `14` bows per cycle with `25+17` tick chunks, no fallback wait, final deposits containing only item `855`, and a steady-state cycle of `28.2s` / about `1,787` bows per hour.
+
+### Refresh compact skill state after XXS recovery calls
+
+- **Observed:** `agility_brimhaven_runner.py` logged one obstacle as gaining millions of Agility XP immediately after eating.
+- **Cause:** `eat_best_food_XXS` returned only critical state and omitted `skills`, so the next before/after XP calculation treated the pre-action Agility XP as zero.
+- **Use instead:** After XXS recovery calls such as food, refresh with `observe_xs()` before computing XP deltas or other skill-derived progress.
+- **Validation:** `python3 -m py_compile agent-navigation/tools/agility_brimhaven_runner.py` passed, and the relaunched Brimhaven runner logged normal per-obstacle XP deltas while continuing live course progress.

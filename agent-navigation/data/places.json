@@ -3121,6 +3121,41 @@
         "minFood": 3,
         "notes": "Reachable moss-giant combat anchor learned from MrFlame's Varrock sewer run on 2026-05-27. Older runner data used 3160,9903 as an area target, but the passive trace proves 3159,9900 as a pathable terminal tile inside the target area."
       }
+    },
+    {
+      "id": "brimhaven_agility_entrance",
+      "name": "Brimhaven Agility Arena Entrance",
+      "aliases": [
+        "brimhaven agility",
+        "brimhaven agility arena",
+        "brimhaven agility course",
+        "capn izzy",
+        "cap'n izzy",
+        "pirate jackie"
+      ],
+      "kind": "training_area",
+      "region": "brimhaven",
+      "tile": {
+        "x": 2809,
+        "y": 3193,
+        "height": 0
+      },
+      "arrivalRadius": 4,
+      "tags": [
+        "surface",
+        "members",
+        "agility",
+        "brimhaven",
+        "karamja",
+        "agility-course",
+        "restock-return"
+      ],
+      "safety": {
+        "risk": "low",
+        "minCombatLevel": 3,
+        "minFood": 0,
+        "notes": "Live-proven Brimhaven Agility Arena entrance near Cap'n Izzy and Pirate Jackie. Use this as the return target after Catherby bank restocks before entering the arena."
+      }
     }
   ]
 }

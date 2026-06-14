@@ -168,6 +168,53 @@ public class AgentToolServiceTest {
     }
 
     @Test
+    public void brimhavenDirectObjectDispatchAllowsOnlyNearbyArenaObstacles() {
+        Player player = testPlayer(10, "MrAthlete");
+        player.absX = 2809;
+        player.absY = 9562;
+        player.heightLevel = 3;
+
+        assertTrue(AgentToolService.isBrimhavenArenaDirectObject(player, 3565, 2805, 9562));
+        player.absX = 2800;
+        player.absY = 9562;
+        assertTrue(AgentToolService.isBrimhavenArenaDirectObject(player, 3565, 2805, 9562));
+
+        player.absX = 2799;
+        player.absY = 9562;
+        assertFalse(AgentToolService.isBrimhavenArenaDirectObject(player, 3565, 2805, 9562));
+
+        player.absX = 2783;
+        player.absY = 9568;
+        assertTrue(AgentToolService.isBrimhavenArenaDirectObject(player, 3581, 2783, 9568));
+
+        player.absX = 2761;
+        player.absY = 9546;
+        assertTrue(AgentToolService.isBrimhavenArenaDirectObject(player, 3608, 2761, 9546));
+
+        player.absX = 2809;
+        player.absY = 9562;
+        assertFalse(AgentToolService.isBrimhavenArenaDirectObject(player, 3581, 2794, 9568));
+        assertFalse(AgentToolService.isBrimhavenArenaDirectObject(player, 3608, 2805, 9590));
+        assertFalse(AgentToolService.isBrimhavenArenaDirectObject(player, 3565, 2805, 9562 + 40));
+    }
+
+    @Test
+    public void brimhavenDirectObjectDispatchRequiresArenaHeightAndBounds() {
+        Player player = testPlayer(11, "MrAthlete");
+        player.absX = 2809;
+        player.absY = 9562;
+        player.heightLevel = 0;
+
+        assertFalse(AgentToolService.isBrimhavenArenaDirectObject(player, 3565, 2805, 9562));
+
+        player.heightLevel = 3;
+        player.absX = 2811;
+        player.absY = 9562;
+
+        assertFalse(AgentToolService.isBrimhavenArenaDirectObject(player, 3565, 2809, 9562));
+    }
+
+    @Test
     public void nearbyMineableRockFallbackIsLimitedToVisibleRocks() {
         Objects coal = new Objects(2096, 3302, 3317, 0, 2, 10, 0);
         Objects notRock = new Objects(100, 3302, 3317, 0, 0, 10, 0);
