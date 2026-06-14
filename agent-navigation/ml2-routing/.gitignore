@@ -4,9 +4,9 @@ artifacts/*
 !artifacts/models/
 artifacts/models/*
 !artifacts/models/latest.json
-!artifacts/models/20260531T182020Z/
-artifacts/models/20260531T182020Z/*
-!artifacts/models/20260531T182020Z/model.json
+!artifacts/models/20260614T202822Z-all-characters-latest/
+artifacts/models/20260614T202822Z-all-characters-latest/*
+!artifacts/models/20260614T202822Z-all-characters-latest/model.json
 !artifacts/datasets/
 artifacts/datasets/*
 !artifacts/datasets/latest.json
@@ -20,5 +20,8 @@ artifacts/benchmarks/*
 !artifacts/benchmarks/20260531T033804Z/
 artifacts/benchmarks/20260531T033804Z/*
 !artifacts/benchmarks/20260531T033804Z/benchmark.json
+!artifacts/benchmarks/20260614-all-characters-latest/
+artifacts/benchmarks/20260614-all-characters-latest/*
+!artifacts/benchmarks/20260614-all-characters-latest/benchmark.json
 __pycache__/
 *.py[cod]
