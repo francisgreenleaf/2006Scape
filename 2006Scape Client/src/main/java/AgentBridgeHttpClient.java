@@ -8,8 +8,10 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 
 public class AgentBridgeHttpClient {
 
@@ -21,7 +23,50 @@ public class AgentBridgeHttpClient {
     private String playerName;
 
     public AgentBridgeHttpClient(int port) {
-        this.baseUrl = "http://127.0.0.1:" + port;
+        this("http://127.0.0.1:" + port);
+    }
+
+    public AgentBridgeHttpClient(String baseUrl) {
+        this.baseUrl = normalizeBaseUrl(baseUrl);
+    }
+
+    public String getBaseUrl() {
+        return baseUrl;
+    }
+
+    static String normalizeBaseUrlForTests(String baseUrl) {
+        return normalizeBaseUrl(baseUrl);
+    }
+
+    private static String normalizeBaseUrl(String baseUrl) {
+        String value = baseUrl == null ? "" : baseUrl.trim();
+        if (value.length() == 0) {
+            value = "http://127.0.0.1:43610";
+        }
+        for (int i = 0; i < value.length(); i++) {
+            if (value.charAt(i) < 32) {
+                throw new IllegalArgumentException("agent bridge URL must be a single-line http(s) URL");
+            }
+        }
+        while (value.endsWith("/") && value.length() > "https://x".length()) {
+            value = value.substring(0, value.length() - 1);
+        }
+        try {
+            URL parsed = new URL(value);
+            String protocol = parsed.getProtocol() == null ? "" : parsed.getProtocol().toLowerCase(Locale.US);
+            if (!"http".equals(protocol) && !"https".equals(protocol)) {
+                throw new IllegalArgumentException("agent bridge URL must use http or https");
+            }
+            if (parsed.getHost() == null || parsed.getHost().trim().length() == 0) {
+                throw new IllegalArgumentException("agent bridge URL must include a host");
+            }
+            if (parsed.getQuery() != null || parsed.getRef() != null || parsed.getUserInfo() != null) {
+                throw new IllegalArgumentException("agent bridge URL must not include user info, query, or fragment");
+            }
+            return value;
+        } catch (MalformedURLException e) {
+            throw new IllegalArgumentException("invalid agent bridge URL: " + baseUrl);
+        }
     }
 
     public boolean health() {

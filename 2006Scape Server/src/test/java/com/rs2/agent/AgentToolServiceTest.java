@@ -6,6 +6,7 @@ import com.rs2.game.content.StaticObjectList;
 import com.rs2.game.objects.Objects;
 import com.rs2.game.players.Client;
 import com.rs2.game.players.Player;
+import com.rs2.game.players.PlayerHandler;
 import com.rs2.util.Misc;
 import com.rs2.util.Stream;
 import org.apollo.cache.def.ItemDefinition;

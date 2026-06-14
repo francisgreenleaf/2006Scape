@@ -1,11 +1,11 @@
 ---
 name: 2006scape-route-agent
-description: "Use when working in the /Users/kevin/Documents/2006Scape repo on the RuneScape navigation harness for the selected profile: observing state with XS output, using ML2 route definitions, updating route/places/hazards data, rendering topology PNGs, or continuing heartbeat-driven navigation. Pair with 2006scape-route-planner-dev for ML2 route_ml_XS.py/legacy ML1 route_runner.py graph semantics, 2006scape-frontier-exploration for unknown-area probes, and 2006scape-object-transitions for doors/gates/stairs/trapdoors."
+description: "Use when working in the $REPO_ROOT repo on the RuneScape navigation harness for the selected profile: observing state with XS output, using ML2 route definitions, updating route/places/hazards data, rendering topology PNGs, or continuing heartbeat-driven navigation. Pair with 2006scape-route-planner-dev for ML2 route_ml_XS.py/legacy ML1 route_runner.py graph semantics, 2006scape-frontier-exploration for unknown-area probes, and 2006scape-object-transitions for doors/gates/stairs/trapdoors."
 ---
 
 # 2006Scape Route Agent
 
-Use this skill for local exploration and route-learning work in `/Users/kevin/Documents/2006Scape`. `MrFlame` is the default profile; set `RS_PROFILE=<name>` or pass profile-aware tool flags when working as another character.
+Use this skill for local exploration and route-learning work in `$REPO_ROOT`. Set `RS_PROFILE=<name>` or pass profile-aware tool flags for the selected character.
 
 ## When To Switch Skills
 
@@ -23,7 +23,7 @@ Use the smallest observe that answers the next routing question. XXS is the defa
 ```sh
 agent-navigation/tools/observe_XXS.sh
 agent-navigation/tools/observe_XS.sh
-RS_PROFILE=MrGem agent-navigation/tools/observe_XS.sh
+RS_PROFILE=PROFILE agent-navigation/tools/observe_XS.sh
 ```
 
 Use full or legacy state only for a named missing field, deep debugging, session/personality context, or complete evidence capture. Do not call full observe in normal movement loops or after every compact route batch:
@@ -31,7 +31,7 @@ Use full or legacy state only for a named missing field, deep debugging, session
 ```sh
 agent-navigation/tools/observe-slim.sh
 RS_ALLOW_FULL_OBSERVE=1 agent-navigation/tools/rs-tool.sh observe_state '{}'
-RS_PROFILE=MrGem RS_ALLOW_FULL_OBSERVE=1 agent-navigation/tools/rs-tool.sh observe_state '{}'
+RS_PROFILE=PROFILE RS_ALLOW_FULL_OBSERVE=1 agent-navigation/tools/rs-tool.sh observe_state '{}'
 ```
 
 Direct `rs-tool.sh observe_state` is blocked without `RS_ALLOW_FULL_OBSERVE=1` so a routine command cannot dump full state into Codex context by accident.

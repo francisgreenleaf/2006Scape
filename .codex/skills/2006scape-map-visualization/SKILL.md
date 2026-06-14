@@ -1,6 +1,6 @@
 ---
 name: 2006scape-map-visualization
-description: "Use when designing, rendering, reviewing, or improving 2006Scape map visual outputs in /Users/kevin/Documents/2006Scape, including movement-topology PNGs, cache-world-map artifacts, route overlays, movement trace styling, grid/label readability, canonical image paths, visual QA, and sharing map images with users. Use with 2006scape-cache-map when renderer internals or cache decoding are involved."
+description: "Use when designing, rendering, reviewing, or improving 2006Scape map visual outputs in $REPO_ROOT, including movement-topology PNGs, cache-world-map artifacts, route overlays, movement trace styling, grid/label readability, canonical image paths, visual QA, and sharing map images with users. Use with 2006scape-cache-map when renderer internals or cache decoding are involved."
 ---
 
 # 2006Scape Map Visualization
@@ -9,7 +9,7 @@ Use this skill for how map outputs should look and be reviewed. Use `2006scape-c
 
 ## Canonical Outputs
 
-- `agent-navigation/topology/<profile>-map.png`: active profile movement map, such as `mrflame-map.png`.
+- `agent-navigation/topology/<profile>-map.png`: active profile movement map.
 - `agent-navigation/topology/<profile>-heatmap.png`: active `Heat Map` with transparent coverage density for route-learning/ML inspection.
 - `agent-navigation/topology/<profile>-fog-map.png`: active profile fog topology with route/icon overlays and dimmed unvisited map context.
 - `agent-navigation/topology/cache-world-map-full.png`: reusable full cache-bounds base map export with labels and no movement overlays.
@@ -123,7 +123,7 @@ Maps should be useful at a glance:
 When the user asks to see an image, render or reference it with an absolute path:
 
 ```markdown
-![Profile movement map](/Users/kevin/Documents/2006Scape/agent-navigation/topology/mrflame-map.png)
+Use the generated profile map path when sharing an image, for example `$REPO_ROOT/agent-navigation/topology/<profile>-map.png`.
 ```
 
 ## Review Workflow

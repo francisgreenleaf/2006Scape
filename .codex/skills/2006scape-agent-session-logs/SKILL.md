@@ -1,6 +1,6 @@
 ---
 name: 2006scape-agent-session-logs
-description: "Use when reading, summarizing, debugging, or improving 2006Scape agent session logging in /Users/kevin/Documents/2006Scape, including 2006Scape Server/data/logs/agent-sessions JSONL and Markdown files, AgentSessionLog, AgentSessionReport, rollout transcript enrichment, redaction, canonical reports, and profile/personality artifacts exposed through rs.observe_state."
+description: "Use when reading, summarizing, debugging, or improving 2006Scape agent session logging in $REPO_ROOT, including 2006Scape Server/data/logs/agent-sessions JSONL and Markdown files, AgentSessionLog, AgentSessionReport, rollout transcript enrichment, redaction, canonical reports, and profile/personality artifacts exposed through rs.observe_state."
 ---
 
 # 2006Scape Agent Session Logs

@@ -1,10 +1,12 @@
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Properties;
 import java.awt.Image;
 import java.net.URL;
 import javax.swing.ImageIcon;
@@ -22,6 +24,7 @@ public final class Main {
 	public static void main(String[] args) {
 		try {
 			configureDesktopProperties();
+			loadClientConfigFromArgs(args);
 			// Process client arguments to connect to
 			for (int i = 0; i < args.length; i++) {
 				switch(args[i]) {
@@ -92,9 +95,27 @@ public final class Main {
 						case "-ip":
 							ClientSettings.SERVER_IP = args[++i];
 							break;
-						case "-agent-command":
-						case "-agent-auto-command":
-							ClientSettings.AGENT_AUTO_COMMAND = args[++i];
+						case "-port":
+						case "-game-port":
+							ClientSettings.SERVER_PORT = parsePositiveInt(args[++i], ClientSettings.SERVER_PORT, "game port");
+							break;
+						case "-http-port":
+						case "-cache-http-port":
+							ClientSettings.HTTP_PORT = parsePositiveInt(args[++i], ClientSettings.HTTP_PORT, "HTTP cache port");
+							break;
+							case "-jaggrab-port":
+								ClientSettings.JAGGRAB_PORT = parsePositiveInt(args[++i], ClientSettings.JAGGRAB_PORT, "JAGGRAB port");
+								break;
+							case "-agent-bridge-port":
+								setAgentBridgePort(parsePositiveInt(args[++i], ClientSettings.AGENT_BRIDGE_PORT, "agent bridge port"));
+								break;
+							case "-agent-bridge-url":
+							case "-agent-gateway-url":
+								setAgentBridgeUrl(args[++i]);
+								break;
+							case "-agent-command":
+							case "-agent-auto-command":
+								ClientSettings.AGENT_AUTO_COMMAND = args[++i];
 							ClientSettings.AGENT_AUTO_LOGIN = true;
 							ClientSettings.SHOW_JAVA_VERSION_WARNINGS = false;
 							break;
@@ -102,6 +123,10 @@ public final class Main {
 						case "-client-scale":
 						case "-window-scale":
 							ClientSettings.CLIENT_SCALE = parseClientScale(args[++i]);
+							break;
+						case "-client-config":
+						case "-config":
+							i++;
 							break;
 					}
 				}
@@ -135,6 +160,18 @@ public final class Main {
 						case "-world":
 							ClientSettings.SERVER_WORLD = Integer.parseInt(args[++i]);
 							break;
+						case "-port":
+						case "-game-port":
+							case "-http-port":
+							case "-cache-http-port":
+							case "-jaggrab-port":
+							case "-agent-bridge-port":
+							case "-agent-bridge-url":
+							case "-agent-gateway-url":
+							case "-client-config":
+							case "-config":
+								i++;
+							break;
 						case "-agent-claim":
 						case "-agent-claim-nonce":
 							ClientSettings.AGENT_AUTO_CLAIM_NONCE = args[++i];
@@ -152,19 +189,20 @@ public final class Main {
 						+ " usernameSet=" + (game.myUsername != null && !game.myUsername.trim().isEmpty())
 						+ " passwordLength=" + (game.myPassword == null ? 0 : game.myPassword.length())
 						+ " autoClaimSet=" + (ClientSettings.AGENT_AUTO_CLAIM_NONCE != null
-								&& !ClientSettings.AGENT_AUTO_CLAIM_NONCE.trim().isEmpty())
-						+ " autoCommandSet=" + (ClientSettings.AGENT_AUTO_COMMAND != null
-								&& !ClientSettings.AGENT_AUTO_COMMAND.trim().isEmpty())
-						+ " server=" + ClientSettings.SERVER_IP + ":" + ((ClientSettings.SERVER_WORLD == 1) ? 43594
-								: 43596 + ClientSettings.SERVER_WORLD + Game.portOff));
-			}
+									&& !ClientSettings.AGENT_AUTO_CLAIM_NONCE.trim().isEmpty())
+							+ " autoCommandSet=" + (ClientSettings.AGENT_AUTO_COMMAND != null
+									&& !ClientSettings.AGENT_AUTO_COMMAND.trim().isEmpty())
+							+ " server=" + ClientSettings.SERVER_IP + ":" + ClientSettings.gamePort()
+							+ " bridge=" + ClientSettings.AGENT_BRIDGE_URL);
+				}
+			printExternalTransportNotice();
 
 			Game.nodeID = 10;
 			Game.portOff = 0;
 			Game.setHighMem();
 			Game.isMembers = true;
 			Signlink.storeid = 32;
-			Signlink.startpriv(InetAddress.getLocalHost());
+			Signlink.startpriv(InetAddress.getByName(ClientSettings.SERVER_IP));
 			setApplicationIcon(loadClientIcon());
 			game.createClientFrame(503, 765);
 		} catch (UnknownHostException e) {
@@ -221,6 +259,147 @@ public final class Main {
 			System.out.println("[Client] invalid scale value, using 1: " + value);
 			return 1;
 		}
+	}
+
+	private static void loadClientConfigFromArgs(String[] args) {
+		for (int i = 0; i < args.length; i++) {
+			if (("-client-config".equals(args[i]) || "-config".equals(args[i])) && (i + 1) < args.length) {
+				loadClientConfig(Paths.get(args[i + 1]));
+				i++;
+			}
+		}
+	}
+
+	private static void loadClientConfig(Path path) {
+		Properties properties = new Properties();
+		try (InputStream in = Files.newInputStream(path)) {
+			properties.load(in);
+		} catch (IOException e) {
+			System.out.println("[Client] could not read client config: " + path);
+			return;
+		}
+		String host = firstNonBlank(properties, "server.host", "server", "host");
+		if (host != null) {
+			ClientSettings.SERVER_IP = host;
+		}
+		String gamePort = firstNonBlank(properties, "server.port", "game.port", "port");
+		if (gamePort != null) {
+			ClientSettings.SERVER_PORT = parsePositiveInt(gamePort, ClientSettings.SERVER_PORT, "game port");
+		}
+		String httpPort = firstNonBlank(properties, "http.port", "cache.http.port");
+		if (httpPort != null) {
+			ClientSettings.HTTP_PORT = parsePositiveInt(httpPort, ClientSettings.HTTP_PORT, "HTTP cache port");
+		}
+		String jaggrabPort = firstNonBlank(properties, "jaggrab.port", "cache.port");
+		if (jaggrabPort != null) {
+			ClientSettings.JAGGRAB_PORT = parsePositiveInt(jaggrabPort, ClientSettings.JAGGRAB_PORT, "JAGGRAB port");
+		}
+		String agentBridgePort = firstNonBlank(properties, "agent.bridge.port", "agent_bridge_port");
+		if (agentBridgePort != null) {
+			setAgentBridgePort(parsePositiveInt(agentBridgePort, ClientSettings.AGENT_BRIDGE_PORT, "agent bridge port"));
+		}
+		String agentBridgeUrl = firstNonBlank(properties, "agent.bridge.url", "agent_bridge_url", "agentBridgeUrl");
+		if (agentBridgeUrl != null) {
+			setAgentBridgeUrl(agentBridgeUrl);
+		}
+		String world = firstNonBlank(properties, "server.world", "world");
+		if (world != null) {
+			ClientSettings.SERVER_WORLD = parsePositiveInt(world, ClientSettings.SERVER_WORLD, "world");
+		}
+		String checkCrc = firstNonBlank(properties, "check_crc", "checkCrc");
+		if (checkCrc != null) {
+			ClientSettings.CHECK_CRC = Boolean.parseBoolean(checkCrc);
+		}
+		String singleOnDemand = firstNonBlank(properties, "single_ondemand", "singleOnDemand");
+		if (singleOnDemand != null) {
+			ClientSettings.SINGLE_ONDEMAND = Boolean.parseBoolean(singleOnDemand);
+		}
+		String showNavbar = firstNonBlank(properties, "show_navbar", "showNavbar");
+		if (showNavbar != null) {
+			ClientSettings.SHOW_NAVBAR = Boolean.parseBoolean(showNavbar);
+		}
+		String scale = firstNonBlank(properties, "client.scale", "scale");
+		if (scale != null) {
+			ClientSettings.CLIENT_SCALE = parseClientScale(scale);
+		}
+		String secureTransport = firstNonBlank(properties, "secure.transport", "external.transport",
+				"expected_external_transport");
+		if (secureTransport != null) {
+			ClientSettings.EXPECTED_SECURE_TRANSPORT = secureTransport;
+		}
+	}
+
+	private static void setAgentBridgePort(int port) {
+		ClientSettings.AGENT_BRIDGE_PORT = port;
+		ClientSettings.AGENT_BRIDGE_URL = "http://127.0.0.1:" + port;
+	}
+
+	private static void setAgentBridgeUrl(String value) {
+		try {
+			ClientSettings.AGENT_BRIDGE_URL = AgentBridgeHttpClient.normalizeBaseUrlForTests(value);
+		} catch (IllegalArgumentException e) {
+			System.out.println("[Client] invalid agent bridge URL, keeping "
+					+ ClientSettings.AGENT_BRIDGE_URL + ": " + e.getMessage());
+		}
+	}
+
+	private static void printExternalTransportNotice() {
+		String transport = ClientSettings.EXPECTED_SECURE_TRANSPORT == null
+				? ""
+				: ClientSettings.EXPECTED_SECURE_TRANSPORT.trim();
+		if (transport.length() == 0 || "local".equalsIgnoreCase(transport)
+				|| "external transport not specified".equalsIgnoreCase(transport)) {
+			return;
+		}
+		if ("direct_tcp".equalsIgnoreCase(transport)) {
+			System.out.println("[Client] external transport: direct_tcp. This client connects directly over plaintext TCP; use only with the operator-provided server package.");
+			return;
+		}
+		System.out.println("[Client] expected external transport: " + transport
+				+ ". Connect that VPN/tunnel before logging in; the legacy game protocol is plaintext without it.");
+	}
+
+	private static String firstNonBlank(Properties properties, String... keys) {
+		for (String key : keys) {
+			String value = properties.getProperty(key);
+			if (value != null && !value.trim().isEmpty()) {
+				return value.trim();
+			}
+		}
+		return null;
+	}
+
+	private static int parsePositiveInt(String value, int defaultValue, String label) {
+		try {
+			int parsed = Integer.parseInt(value);
+			if (parsed > 0) {
+				return parsed;
+			}
+		} catch (NumberFormatException e) {
+			// Fall through to the warning below.
+		}
+		int fallback = safePositiveDefault(defaultValue, label);
+		System.out.println("[Client] invalid " + label + " value, using " + fallback + ": " + value);
+		return fallback;
+	}
+
+	private static int safePositiveDefault(int defaultValue, String label) {
+		if (defaultValue > 0) {
+			return defaultValue;
+		}
+		if ("game port".equals(label)) {
+			return 43594;
+		}
+		if ("HTTP cache port".equals(label)) {
+			return 8080;
+		}
+		if ("JAGGRAB port".equals(label)) {
+			return 43595;
+		}
+		if ("world".equals(label)) {
+			return 1;
+		}
+		return 1;
 	}
 
 	private static String readEnvironmentValue(String variableName, String label) {

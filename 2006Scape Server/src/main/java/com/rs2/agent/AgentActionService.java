@@ -5,6 +5,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.HashMap;
 import java.util.Locale;
@@ -35,6 +37,7 @@ public class AgentActionService {
     public static final AgentActionService INSTANCE = new AgentActionService();
 
     private static final long ACTION_TIMEOUT_MS = 5000L;
+    static final int MAX_PENDING_ACTIONS = 256;
     private static final int DEFAULT_GOAL_TARGET_LEVEL = 60;
     private static final int DEFAULT_GOAL_STEP_INTERVAL_TICKS = 5;
     private static final int DEFAULT_GOAL_MAX_ACTIONS = 250000;
@@ -252,6 +255,7 @@ public class AgentActionService {
     };
 
     private final ConcurrentLinkedQueue<QueuedAction> queuedActions = new ConcurrentLinkedQueue<QueuedAction>();
+    private final AtomicInteger queuedActionSlots = new AtomicInteger(0);
     private final AtomicLong serverTick = new AtomicLong(0L);
     private final ConcurrentHashMap<String, CombatGoal> combatGoals = new ConcurrentHashMap<String, CombatGoal>();
 
@@ -1382,6 +1386,9 @@ public class AgentActionService {
     }
 
     void enqueueOnGameTick(String actionName, Callable<JsonObject> action) {
+        if (!reserveActionSlot()) {
+            return;
+        }
         queuedActions.add(new QueuedAction(serverTick.get() + 1L, actionName, action));
     }
 
@@ -1440,14 +1447,21 @@ public class AgentActionService {
     }
 
     private JsonObject submitForTick(long targetTick, String actionName, Callable<JsonObject> action, long timeoutMs) {
+        if (!reserveActionSlot()) {
+            return AgentToolService.failure("Agent action queue is full; retry shortly.");
+        }
         QueuedAction queuedAction = new QueuedAction(targetTick, actionName, action);
         queuedActions.add(queuedAction);
         try {
             if (!queuedAction.await(timeoutMs)) {
+                queuedAction.cancel();
+                releaseActionSlot(queuedAction);
                 return AgentToolService.failure("Timed out waiting for the next game tick.");
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            queuedAction.cancel();
+            releaseActionSlot(queuedAction);
             return AgentToolService.failure("Interrupted while waiting for game tick.");
         }
         return queuedAction.getResult();
@@ -1456,24 +1470,49 @@ public class AgentActionService {
     public TickStats processPendingActions() {
         long tick = serverTick.incrementAndGet();
         int processed = 0;
-        int queuedAtStart = queuedActions.size();
+        int queuedAtStart = queuedActionSlots.get();
+        int queueItemsAtStart = queuedActions.size();
         Map<String, ActionTiming> timings = new HashMap<String, ActionTiming>();
         QueuedAction queuedAction;
-        for (int scanned = 0; scanned < queuedAtStart && processed < 100; scanned++) {
+        for (int scanned = 0; scanned < queueItemsAtStart && processed < 100; scanned++) {
             queuedAction = queuedActions.poll();
             if (queuedAction == null) {
                 break;
             }
+            if (queuedAction.isCancelled()) {
+                releaseActionSlot(queuedAction);
+                continue;
+            }
             if (queuedAction.isReady(tick)) {
                 queuedAction.execute(tick);
+                releaseActionSlot(queuedAction);
                 recordActionTiming(timings, queuedAction);
                 processed++;
             } else {
                 queuedActions.add(queuedAction);
             }
         }
+        AgentChatService.INSTANCE.processPendingPlayerDeliveries();
         processCombatGoals();
-        return new TickStats(tick, queuedAtStart, processed, queuedActions.size(), combatGoals.size(), timings);
+        return new TickStats(tick, queuedAtStart, processed, queuedActionSlots.get(), combatGoals.size(), timings);
+    }
+
+    private boolean reserveActionSlot() {
+        while (true) {
+            int current = queuedActionSlots.get();
+            if (current >= MAX_PENDING_ACTIONS) {
+                return false;
+            }
+            if (queuedActionSlots.compareAndSet(current, current + 1)) {
+                return true;
+            }
+        }
+    }
+
+    private void releaseActionSlot(QueuedAction queuedAction) {
+        if (queuedAction != null && queuedAction.releaseSlot()) {
+            queuedActionSlots.decrementAndGet();
+        }
     }
 
     private static void recordActionTiming(Map<String, ActionTiming> timings, QueuedAction action) {
@@ -7482,7 +7521,7 @@ public class AgentActionService {
     }
 
     int pendingActionCountForTests() {
-        return queuedActions.size();
+        return queuedActionSlots.get();
     }
 
     private static int getInt(JsonObject object, String name, int fallback) {
@@ -7993,6 +8032,8 @@ public class AgentActionService {
         private final String actionName;
         private final Callable<JsonObject> action;
         private final CountDownLatch latch = new CountDownLatch(1);
+        private final AtomicBoolean cancelled = new AtomicBoolean(false);
+        private final AtomicBoolean slotReleased = new AtomicBoolean(false);
         private JsonObject result;
         private long durationMs;
 
@@ -8006,9 +8047,22 @@ public class AgentActionService {
             return tick >= targetTick;
         }
 
+        private boolean isCancelled() {
+            return cancelled.get();
+        }
+
+        private void cancel() {
+            cancelled.set(true);
+        }
+
         private void execute(long tick) {
             long startedAt = System.currentTimeMillis();
             try {
+                if (isCancelled()) {
+                    result = AgentToolService.failure("Agent action was cancelled before execution.");
+                    result.addProperty("serverTick", tick);
+                    return;
+                }
                 result = action.call();
                 if (result != null && !result.has("serverTick")) {
                     result.addProperty("serverTick", tick);
@@ -8036,6 +8090,10 @@ public class AgentActionService {
 
         private JsonObject getResult() {
             return result == null ? AgentToolService.failure("Agent action did not return a result.") : result;
+        }
+
+        private boolean releaseSlot() {
+            return slotReleased.compareAndSet(false, true);
         }
     }
 

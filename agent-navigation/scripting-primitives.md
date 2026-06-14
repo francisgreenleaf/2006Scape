@@ -59,6 +59,8 @@ Use these from external scripts through `agent-navigation/tools/rs-tool.sh`, pre
   `open_nearest_shop`, `buy_shop_item`, `sell_inventory_item`,
   `sell_inventory_items`, `deposit_excess_coins`, `trade_status_XS`,
   `request_player_trade_XS`, `offer_trade_item_XS`, `accept_trade_XS`
+- Structured coordination primitives: `agent_chat_send_XS`,
+  `agent_chat_read_XS`, `agent_chat_status_XS`
 
 The main compact dynamic surfaces are `observe_state_XS`,
 `observe_state_if_changed_XS`, `combat_state_XS`, `walk_path_steps_XS`,
@@ -68,6 +70,7 @@ The main compact dynamic surfaces are `observe_state_XS`,
 `interact_object_XS`, `find_nearest_object_XS`, `find_nearest_rock_XS`,
 `find_nearest_tree_XS`,
 `bury_bones_XS`, `bank_item_count_XS`, `deposit_inventory_items_XS`, `withdraw_bank_items_XS`,
+`agent_chat_send_XS`, `agent_chat_read_XS`, `agent_chat_status_XS`,
 `unequip_items_XS`, `trade_status_XS`, `request_player_trade_XS`,
 `offer_trade_item_XS`, `accept_trade_XS`, and `food_bank_XS`.
 They use the same mechanics as their
@@ -111,6 +114,49 @@ runtimes or partial-state recovery. For receiving-only flows, prefer
 `python3 agent-navigation/tools/receive_trade.py --profile PROFILE --from NAME
 --item coins --min-amount N`; it polls compact status and controls only the
 selected profile.
+
+For structured agent/player coordination, use `agent_chat_status_XS` to check
+for unread messages, `agent_chat_read_XS` with `sinceId` to read only new
+messages, and `agent_chat_send_XS` to send short messages to a channel, a
+player, or another agent. Prefer the compact `agent` or `player` alias fields
+when targeting a name; use `to` plus `toType` only when a generic caller needs
+the explicit shape. Target shortcuts are mutually exclusive: use either
+`agent`/`player` or generic `to` plus `toType`, not both. Valid `toType` values
+are `agent`, `player`, `channel`, and `broadcast`; invalid explicit values fail
+closed instead of falling back to a channel message. Direct `agent` and `player`
+targets require a target name, and
+`deliverToPlayers` is valid only for `player` or `broadcast` targets.
+Direct messages are visible to the target, sender name, and sender profile; for
+Discord ingress, `fromName` is the Discord display name and `fromProfile` is the
+configured agent/profile for that bot.
+The bridge wrapper auto-adds `_XS`, so these are equivalent:
+
+```sh
+agent-navigation/tools/rs-tool_XS.sh agent_chat_status '{"sinceId":0}'
+agent-navigation/tools/rs-tool_XS.sh agent_chat_send '{"message":"hello","channel":"agent"}'
+agent-navigation/tools/rs-tool_XS.sh agent_chat_send '{"message":"need a hand at bank","agent":"MrGem"}'
+agent-navigation/tools/rs-tool_XS.sh agent_chat_send '{"message":"hello from the agent","player":"MrFlame"}'
+python3 agent-navigation/tools/agent_chat_XS.py --profile PROFILE read --since-id 0
+python3 agent-navigation/tools/agent_chat_XS.py --profile PROFILE send "need a hand at bank" --agent MrGem
+python3 agent-navigation/tools/agent_chat_XS.py --profile PROFILE send "hello from the agent" --player MrFlame
+```
+
+Use chat tools only when coordination is useful; do not poll chat in every
+gameplay loop. Players can send messages into the same service with
+`::agentchat message` from the game client. Player commands also support
+`::agentchat @agent:Name message`, `::agentchat @player:Name message`,
+`::agentchat @all message`, and `::agentchat #channel message`. `@all` is a
+broadcast: it remains visible in the shared agent channel and queues delivery
+to online game clients. Discord fan-out attaches to the same service boundary
+and should not directly mutate gameplay state or write client packets. Direct
+player delivery is queued in a bounded server-side queue and drained on the
+server tick, so `agent_chat_send_XS` may return `deliveryPending:true`.
+If the target player is offline when that queue drains, or if that client's
+chatbox send fails, the message is not kept as offline mail; later
+`agent_chat_read_XS` output records the failed direct delivery in
+`undeliveredTo`.
+`agent_chat_status_XS` reports whether Discord transport and the optional
+server-side chat JSONL log are enabled.
 
 For cooking, use a raw cookable item on a cooking object with
 `use_item_on_object`, click the make-all cooking button with

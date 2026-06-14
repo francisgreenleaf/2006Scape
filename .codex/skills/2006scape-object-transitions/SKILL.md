@@ -1,6 +1,6 @@
 ---
 name: 2006scape-object-transitions
-description: "Use when learning, debugging, recording, or validating 2006Scape route transitions through doors, gates, ladders, stairs, trapdoors, ships, portals, tolls, member gates, or other object-chain blockers in /Users/kevin/Documents/2006Scape. Covers approach tiles, object ids, interactionWalkTarget, interact_object, post-state proof, screenshots, and transitionProof records for agent-navigation routes."
+description: "Use when learning, debugging, recording, or validating 2006Scape route transitions through doors, gates, ladders, stairs, trapdoors, ships, portals, tolls, member gates, or other object-chain blockers in $REPO_ROOT. Covers approach tiles, object ids, interactionWalkTarget, interact_object, post-state proof, screenshots, and transitionProof records for agent-navigation routes."
 ---
 
 # 2006Scape Object Transitions
@@ -67,7 +67,7 @@ Use `bridge_script.cross_al_kharid_toll_gate(...)` from scripts instead of inlin
 
 ## Taverley White Wolf Gate
 
-Use `bridge_script.cross_taverley_white_wolf_gate(...)` for the Falador/Taverley gate near White Wolf Mountain. The live proof used Gate `1596` at `2935,3451,0`, approached from `2936,3451,0`, opened the gate, immediately queued `2935,3451,0 -> 2934,3451,0` with `walk_path_steps` and `allowObjectTransition=true`, then proved the player was west of the gate. This only solves the gate; the White Wolf Mountain path beyond it remains a high combat-contact route segment, although current MrFlame-class stats with food have walked/tanked it successfully.
+Use `bridge_script.cross_taverley_white_wolf_gate(...)` for the Falador/Taverley gate near White Wolf Mountain. The live proof used Gate `1596` at `2935,3451,0`, approached from `2936,3451,0`, opened the gate, immediately queued `2935,3451,0 -> 2934,3451,0` with `walk_path_steps` and `allowObjectTransition=true`, then proved the player was west of the gate. This only solves the gate; the White Wolf Mountain path beyond it remains a high combat-contact route segment, although prepared mid-level profiles with food have walked/tanked it successfully.
 
 ## Catherby Southern Range Door
 

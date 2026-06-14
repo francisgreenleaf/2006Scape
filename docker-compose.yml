@@ -1,5 +1,3 @@
-
-version: "3"
 services:
   rsps-2006scape-build:
     image: maven:3.8.2-jdk-8
@@ -17,7 +15,8 @@ services:
     volumes:
       - ./2006Scape Server:/usr/src/server
     working_dir: /usr/src/server
-    ports: # You will need to open other ports if your world ID is not 1 (43598 for world 2)
-      - 43594:43594 # Server
-      - 43595-43596:43595-43596 # File Server
+    ports: # Local helper only. External deployments should use docs/deployment-networking.md.
+      - 127.0.0.1:43594:43594 # Server
+      - 127.0.0.1:43595:43595 # JAGGRAB cache
+      - 127.0.0.1:8080:8080 # HTTP cache
     restart: unless-stopped

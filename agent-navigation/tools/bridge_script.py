@@ -8,6 +8,7 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+from urllib.parse import urlparse
 from pathlib import Path
 
 from profile_utils import (
@@ -23,14 +24,24 @@ RS_TOOL = SCRIPT_DIR / "rs-tool.sh"
 ROUTE_ML = ROOT / "ml-routing" / "route_ml.py"
 ROUTE_EXECUTOR = SCRIPT_DIR / "execute_route_definition.py"
 COINS = 995
-DEFAULT_BRIDGE_TOOL_URL = "http://127.0.0.1:43610/agent/tool"
 
 
 def expected_player_for_profile(profile=""):
     return os.environ.get("RSBRIDGE_EXPECT_PLAYER", profile or os.environ.get("RS_PROFILE") or os.environ.get("RSBRIDGE_PROFILE") or "")
 
 
-def read_session(profile=""):
+def normalize_bridge_url(value):
+    text = str(value or "").strip() or "http://127.0.0.1:43610"
+    if any(ord(ch) < 32 for ch in text):
+        raise RuntimeError("bridgeUrl must be a single-line URL")
+    text = text.rstrip("/")
+    parsed = urlparse(text)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc or parsed.username or parsed.password or parsed.query or parsed.fragment:
+        raise RuntimeError("bridgeUrl must be a plain http(s) base URL")
+    return text
+
+
+def read_session_data(profile=""):
     path = session_file_for_profile(profile)
     if not path.exists():
         raise RuntimeError("bridge session file not found: {}".format(path))
@@ -42,7 +53,19 @@ def read_session(profile=""):
     session_key = data.get("token")
     if not session_key:
         raise RuntimeError("bridge session credential missing: {}".format(path))
-    return session_key
+    data["bridgeUrl"] = normalize_bridge_url(data.get("bridgeUrl") or data.get("bridge_url") or "http://127.0.0.1:43610")
+    return data
+
+
+def read_session(profile=""):
+    return read_session_data(profile).get("token")
+
+
+def bridge_tool_url(profile=""):
+    override = os.environ.get("RSBRIDGE_TOOL_URL")
+    if override:
+        return override
+    return read_session_data(profile).get("bridgeUrl").rstrip("/") + "/agent/tool"
 
 
 def log_tool_usage(tool_name, arguments):
@@ -88,10 +111,14 @@ def call_tool_shell(tool_name, arguments=None, profile=""):
 def call_tool_direct(tool_name, arguments=None, profile=""):
     """Call an rs bridge tool in-process and return the raw JSON response."""
     args = arguments or {}
-    session_key = read_session(profile)
+    session = read_session_data(profile)
+    session_key = session.get("token")
+    tool_url = os.environ.get("RSBRIDGE_TOOL_URL")
+    if not tool_url:
+        tool_url = session.get("bridgeUrl", "http://127.0.0.1:43610").rstrip("/") + "/agent/tool"
     payload = json.dumps({"tool": tool_name, "arguments": args}, separators=(",", ":")).encode("utf-8")
     request = urllib.request.Request(
-        os.environ.get("RSBRIDGE_TOOL_URL", DEFAULT_BRIDGE_TOOL_URL),
+        tool_url,
         data=payload,
         headers={
             "X-Agent-Token": session_key,

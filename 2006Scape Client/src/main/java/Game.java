@@ -6487,7 +6487,7 @@ public class Game extends RSApplet {
 				loginMessage2 = "Connecting to server...";
 				drawLoginScreen(true);
 			}
-			socketStream = new RSSocket(this, openSocket((ClientSettings.SERVER_WORLD == 1) ? 43594 : 43596 + ClientSettings.SERVER_WORLD + portOff));
+			socketStream = new RSSocket(this, openSocket(ClientSettings.gamePort()));
 			long l = TextClass.longForName(s);
 			int i = (int) (l >> 16 & 31L);
 			stream.currentOffset = 0;
@@ -8013,7 +8013,7 @@ public class Game extends RSApplet {
 		// }
 		try {
 			// if (super.gameFrame != null) {
-			return new URL("http://" + server + ":" + (8080 + portOff));
+			return new URL("http://" + server + ":" + ClientSettings.HTTP_PORT);
 			// }
 		} catch (Exception _ex) {
 		}
@@ -10237,7 +10237,7 @@ public class Game extends RSApplet {
 			}
 			aSocket832 = null;
 		}
-		aSocket832 = openSocket(43595);
+		aSocket832 = openSocket(ClientSettings.JAGGRAB_PORT);
 		aSocket832.setSoTimeout(10000);
 		java.io.InputStream inputstream = aSocket832.getInputStream();
 		OutputStream outputstream = aSocket832.getOutputStream();

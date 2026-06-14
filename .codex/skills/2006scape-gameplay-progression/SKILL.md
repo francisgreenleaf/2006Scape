@@ -14,8 +14,8 @@ Use only repo-side bridge tools:
 ```sh
 agent-navigation/tools/observe_XXS.sh
 agent-navigation/tools/observe_XS.sh
-RS_PROFILE=MrGem agent-navigation/tools/observe_XXS.sh
-RS_PROFILE=MrGem agent-navigation/tools/observe_XS.sh
+RS_PROFILE=PROFILE agent-navigation/tools/observe_XXS.sh
+RS_PROFILE=PROFILE agent-navigation/tools/observe_XS.sh
 agent-navigation/tools/rs-tool_XS.sh <tool-or-tool_XS> '<json-args>'
 agent-navigation/tools/rs-tool_XXS.sh <tool-or-tool_XXS> '<json-args>'
 agent-navigation/tools/rs-tool_XS.sh observe_state_XS '{}'
@@ -43,7 +43,7 @@ In Python runners, use `bridge_script.observe_xxs()` for confirmation loops and 
 
 Do not use admin teleports, item spawning, direct player-state edits, raw bridge tokens, screen automation, or game-source changes. Other agents may be active; observe first and treat unexpected state as possibly user-driven. Never interrupt another player's active runner, movement, skilling batch, combat, trade, bank, shop, dialogue, or interface to unblock your own task. If another profile is busy, be patient: send the request from the controlled profile, wait for the other player to respond, and report a blocker if patience is exhausted. Do not cancel actions, kill processes, close interfaces, move, bank, withdraw, or drive the other profile unless the user explicitly names that profile and asks you to take control of it.
 
-New and changed progression tools must be profile-safe. Runners, status commands, stop requests, evidence readers, and helper scripts should accept `--profile PROFILE` or honor `RS_PROFILE`/`RSBRIDGE_PROFILE`, pass the resolved profile to every bridge call and child process, and write profile-scoped status/evidence/log artifacts or explicit `profile`, `playerName`, and `sessionId` metadata. Long runners with cooperative stop files should also expose a tiny shutdown poll such as `--shutdown-status` that reports only fields like `phase`, `stopRequested`, `shutdownComplete`, `pid`, and `updatedAt`; keep verbose `--status` for occasional diagnosis, not repeated stop monitoring. Do not assume MrFlame's current stats, bank, gear, routes, or active session when designing a reusable progression loop.
+New and changed progression tools must be profile-safe. Runners, status commands, stop requests, evidence readers, and helper scripts should accept `--profile PROFILE` or honor `RS_PROFILE`/`RSBRIDGE_PROFILE`, pass the resolved profile to every bridge call and child process, and write profile-scoped status/evidence/log artifacts or explicit `profile`, `playerName`, and `sessionId` metadata. Long runners with cooperative stop files should also expose a tiny shutdown poll such as `--shutdown-status` that reports only fields like `phase`, `stopRequested`, `shutdownComplete`, `pid`, and `updatedAt`; keep verbose `--status` for occasional diagnosis, not repeated stop monitoring. Do not assume any one profile's current stats, bank, gear, routes, or active session when designing a reusable progression loop.
 
 When local item names, NPCs, object spots, requirements, or mechanics are unclear, use `2006scape-osrs-wiki` for modern OSRS hints before guessing. Treat the wiki as advisory only and verify anything that affects the live 2006Scape server.
 

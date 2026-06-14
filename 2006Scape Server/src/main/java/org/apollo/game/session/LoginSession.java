@@ -6,7 +6,9 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 
 import org.apollo.net.codec.login.LoginRequest;
 import org.apollo.util.security.IsaacRandomPair;
@@ -14,6 +16,7 @@ import org.apollo.util.security.PlayerCredentials;
 
 import com.rs2.Connection;
 import com.rs2.GameEngine;
+import com.rs2.auth.AccountAuthService;
 import com.rs2.game.players.Client;
 import com.rs2.game.players.PlayerHandler;
 import com.rs2.game.players.PlayerSave;
@@ -48,13 +51,12 @@ public final class LoginSession extends Session {
 		
 		int returnCode = 2;
 		
-		String username = credentials.getUsername().trim();
-		String password = credentials.getPassword().trim();
-		username = username.toLowerCase();
+		String username = normalizeLoginUsername(credentials.getUsername());
+		String submittedPassword = submittedPassword(credentials);
+		String legacyPassword = legacyPassword(submittedPassword);
 		//	pass = pass.toLowerCase();
 
-		String hostName = ((InetSocketAddress) channel.remoteAddress())
-				.getAddress().getHostName();
+		String hostAddress = remoteHostAddress(credentials, channel.remoteAddress());
 
 //		if (uid != 314268572) {
 //			channel.close();
@@ -64,31 +66,35 @@ public final class LoginSession extends Session {
 //			returnCode = 31;
 //		}
 		
-		if (HostBlacklist.isBlocked(hostName)) {
+		if (HostBlacklist.isBlocked(hostAddress)) {
 			returnCode = 11;
 		}
 		
-		if (!username.matches("[A-Za-z0-9 .]+")) {
+		if (username.length() == 0 || !username.matches("[A-Za-z0-9 .]+")) {
 			returnCode = 4;
 		}
 		if (username.length() > 12) {
 			returnCode = 8;
 		}
 		
-        if (password.length() == 0) {
-            returnCode = 4;
-        }
+		if (isMissingPassword(submittedPassword, legacyPassword)) {
+			returnCode = 4;
+		}
 		GameSession session = new GameSession(channel, null, reconnecting);
 		Client cl = new Client(session, -1);
 		session.setPlayer(cl);
 		cl.playerName = username;
 		cl.playerName2 = cl.playerName;
-		cl.playerPass = password;
+		cl.playerPass = Constants.ACCOUNT_AUTH_ENABLED ? submittedPassword : legacyPassword;
 		cl.outStream.packetEncryption = randomPair.getEncodingRandom();
 		cl.saveCharacter = false;
-		char first = username.charAt(0);
-		cl.properName = Character.toUpperCase(first)
-				+ username.substring(1, username.length());		
+		if (username.length() > 0) {
+			char first = username.charAt(0);
+			cl.properName = Character.toUpperCase(first)
+					+ username.substring(1, username.length());
+		} else {
+			cl.properName = username;
+		}
 		if (Connection.isNamedBanned(cl.playerName)) {
 			returnCode = 4;
 		}
@@ -105,8 +111,24 @@ public final class LoginSession extends Session {
 			returnCode = 14;
 		}
 		
+		boolean accountAuthVerified = false;
+		if (returnCode == 2 && Constants.ACCOUNT_AUTH_ENABLED) {
+			AccountAuthService.AuthResult authResult = AccountAuthService.INSTANCE.authenticate(
+					username, submittedPassword, hostAddress);
+			if (authResult.success) {
+				accountAuthVerified = true;
+				cl.accountAuthVerified = true;
+			} else if (!Constants.ACCOUNT_AUTH_LEGACY_FALLBACK || !authResult.legacyFallbackAllowed) {
+				returnCode = 3;
+				cl.saveFile = false;
+			}
+		}
+
 		if (returnCode == 2) {
-			int load = PlayerSave.loadGame(cl, cl.playerName, cl.playerPass);
+			int load = accountAuthVerified
+					? PlayerSave.loadPlayerInfo(cl, cl.playerName, cl.playerPass, false)
+					: PlayerSave.loadGame(cl, cl.playerName, legacyPassword);
+			PlayerSave.protectAccountAuthPassword(cl, submittedPassword, load);
 			if (load == 0)
 				cl.addStarter = true;
 			if (load == 3) {
@@ -151,6 +173,45 @@ public final class LoginSession extends Session {
 		channel.pipeline().addBefore("handler", "gameDecoder", new RS2ProtocolDecoder(randomPair.getDecodingRandom()));
 		channel.pipeline().remove("loginDecoder");
 		channel.pipeline().remove("loginEncoder");
+	}
+
+	static String normalizeLoginUsername(String username) {
+		return username == null ? "" : username.trim().toLowerCase();
+	}
+
+	static String submittedPassword(PlayerCredentials credentials) {
+		if (credentials == null || credentials.getPassword() == null) {
+			return "";
+		}
+		return credentials.getPassword();
+	}
+
+	static String remoteHostAddress(PlayerCredentials credentials, SocketAddress remoteAddress) {
+		String credentialHost = credentials == null ? "" : credentials.getHostAddress();
+		if (credentialHost != null && !credentialHost.trim().isEmpty()) {
+			return credentialHost.trim().toLowerCase();
+		}
+		if (remoteAddress instanceof InetSocketAddress) {
+			InetSocketAddress socketAddress = (InetSocketAddress) remoteAddress;
+			InetAddress address = socketAddress.getAddress();
+			if (address != null) {
+				return address.getHostAddress();
+			}
+			String hostString = socketAddress.getHostString();
+			return hostString == null ? "" : hostString.trim().toLowerCase();
+		}
+		return "";
+	}
+
+	static String legacyPassword(String submittedPassword) {
+		return submittedPassword == null ? "" : submittedPassword.trim();
+	}
+
+	static boolean isMissingPassword(String submittedPassword, String legacyPassword) {
+		if (Constants.ACCOUNT_AUTH_ENABLED) {
+			return submittedPassword == null || submittedPassword.length() == 0;
+		}
+		return legacyPassword == null || legacyPassword.length() == 0;
 	}
 	
 	/**

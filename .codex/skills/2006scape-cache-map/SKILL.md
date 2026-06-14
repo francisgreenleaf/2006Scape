@@ -1,11 +1,11 @@
 ---
 name: 2006scape-cache-map
-description: Use when working in the /Users/kevin/Documents/2006Scape repo on the cache-backed world map, GameCache/minimap-style renderer, active movement maps (profile map, Heat Map, profile fog), terrain/water/object/mapscene rendering, or documentation/export of map data for other applications. Trigger for tasks involving agent-navigation/tools/cache_world_map.py, render_profile_map.py, render_heat_map.py, render_fog_map.py, cache-world-map artifacts, active movement topology PNG outputs, missing map layers such as water/buildings/objects, or replacing the retired screenshot/minimap fog workflow.
+description: Use when working in the $REPO_ROOT repo on the cache-backed world map, GameCache/minimap-style renderer, active movement maps (profile map, Heat Map, profile fog), terrain/water/object/mapscene rendering, or documentation/export of map data for other applications. Trigger for tasks involving agent-navigation/tools/cache_world_map.py, render_profile_map.py, render_heat_map.py, render_fog_map.py, cache-world-map artifacts, active movement topology PNG outputs, missing map layers such as water/buildings/objects, or replacing the retired screenshot/minimap fog workflow.
 ---
 
 # 2006Scape Cache Map
 
-Use this skill for the static cache-backed map system in `/Users/kevin/Documents/2006Scape`.
+Use this skill for the static cache-backed map system in `$REPO_ROOT`.
 
 ## Core Rule
 
@@ -30,7 +30,7 @@ Use the cache renderer as the source of static world context. Do not restart or 
 - `agent-navigation/.local/context-maps/<date>/*.json`: matching context-map summaries with bounds, center, mapfunction markers, and place markers.
 - `agent-navigation/topology/cache-world-map-full.png`: reusable full cache-bounds base map export with labels, 4 px/tile, no movement overlays.
 - `agent-navigation/topology/cache-world-map-level0.png`: reusable level-0 surface base map export with labels, 4 px/tile, cropped to the main surface region.
-- `agent-navigation/topology/<profile>-map.png`: active profile movement map, such as `mrflame-map.png`.
+- `agent-navigation/topology/<profile>-map.png`: active profile movement map.
 - `agent-navigation/topology/<profile>-heatmap.png`: active `Heat Map` with run tinting and transparent coverage density.
 - `agent-navigation/topology/<profile>-fog-map.png`: active profile fog map with unvisited map areas dimmed.
 - `agent-navigation/.local/map-summaries/*.json`: ignored metadata summaries for active maps, cache-map renders, and route overview renders.

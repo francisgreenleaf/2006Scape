@@ -1888,6 +1888,7 @@ public abstract class Player {
 	public String playerName = null;
 	public String playerName2 = null;
 	public String playerPass = null;
+	public boolean accountAuthVerified = false;
 	public int playerRights;
 	public PlayerHandler handler = null;
 	public int playerItems[] = new int[28];

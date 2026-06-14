@@ -1,23 +1,23 @@
 # Local Agent Startup
 
-This is the reliable restart path for local 2006Scape agent work. `MrFlame` is the default local profile, and alternate profiles such as `MrGem` are selected with `--profile <name>` or `RS_PROFILE=<name>`.
+This is the reliable restart path for local 2006Scape agent work. Select the intended profile with `--profile <name>` or `RS_PROFILE=<name>`.
 
-Profile-specific runs keep bridge session files, client pid files, client logs, recorder output, and trace filtering separate. The default `MrFlame` session remains `agent-navigation/.local/rsbridge-session.json`; other profiles use `agent-navigation/.local/rsbridge-session-<profile>.json`.
+Profile-specific runs keep bridge session files, client pid files, client logs, recorder output, and trace filtering separate. The legacy default session remains `agent-navigation/.local/rsbridge-session.json`; named profiles use `agent-navigation/.local/rsbridge-session-<profile>.json`.
 
 ## Quick Human Launch
 
 Use this when you want to play or manually type `/agent ...` in the client:
 
 ```sh
-./scripts/run-local.sh -u "MrFlame"
-./scripts/run-local.sh -u "MrGem"
+./scripts/run-local.sh -u "ExampleAgent"
+./scripts/run-local.sh -u "SecondAgent"
 ```
 
 This builds if needed, starts the server, waits for port `43594`, and launches the client against localhost. Log in when the client opens. If you only need the client attached to an already-running server:
 
 ```sh
-./scripts/start-client.sh -u "MrFlame" -scale 1 -no-nav
-CLIENT_SINGLE_INSTANCE=0 ./scripts/start-client.sh -u "MrGem" -scale 1 -no-nav
+./scripts/start-client.sh -u "ExampleAgent" -scale 1 -no-nav
+CLIENT_SINGLE_INSTANCE=0 ./scripts/start-client.sh -u "SecondAgent" -scale 1 -no-nav
 ```
 
 ## Agent-Owned Relaunch
@@ -30,7 +30,7 @@ Use the runtime helper instead of retyping the nonce/claim flow:
 
 ```sh
 python3 agent-navigation/tools/runtime_doctor.py status --observe
-python3 agent-navigation/tools/runtime_doctor.py status --profile MrGem --observe
+python3 agent-navigation/tools/runtime_doctor.py status --profile PROFILE --observe
 ```
 
 If the status check shows a usable `observe_XS` session for the intended profile, reuse it. If the user asked for a clean restart or the runtime is stale, run:
@@ -42,13 +42,13 @@ python3 agent-navigation/tools/runtime_doctor.py restart --replace-runtime --bui
 For a brand-new profile, create the initial saved character file before claiming the client. This writes `2006Scape Server/data/characters/<profile>.txt` with a generated local password for `-password-character-save`; it does not print the password.
 
 ```sh
-python3 agent-navigation/tools/runtime_doctor.py init-profile --profile MrFish
+python3 agent-navigation/tools/runtime_doctor.py init-profile --profile NEW_PROFILE
 ```
 
 For a second profile against an existing server, prefer claiming only that profile so the default active client is not replaced:
 
 ```sh
-python3 agent-navigation/tools/runtime_doctor.py claim --profile MrGem --verify
+python3 agent-navigation/tools/runtime_doctor.py claim --profile PROFILE --verify
 ```
 
 For route learning sessions that still need the fallback recorder because passive server telemetry is unavailable or a deliberate debug recording needs extra NPC snapshots, add:
@@ -110,7 +110,7 @@ print(secrets.token_urlsafe(32))
 PY
 )"
 
-   profile="MrFlame"
+   profile="${RS_PROFILE:-PROFILE}"
    profile_file="$(printf '%s' "$profile" | tr '[:upper:]' '[:lower:]')"
 
    ./scripts/start-client.sh \
@@ -139,11 +139,9 @@ import urllib.request
 from pathlib import Path
 
 nonce = sys.argv[1]
-profile = "MrFlame"
+profile = os.environ.get("RS_PROFILE", "PROFILE")
 safe_profile = "".join(ch for ch in profile.lower() if ch.isalnum() or ch in ("-", "_"))
-session_file = Path("agent-navigation/.local/rsbridge-session.json")
-if safe_profile != "mrflame":
-    session_file = Path("agent-navigation/.local/rsbridge-session-%s.json" % safe_profile)
+session_file = Path("agent-navigation/.local/rsbridge-session-%s.json" % safe_profile)
 session_file.parent.mkdir(parents=True, exist_ok=True)
 body = json.dumps({"nonce": nonce}).encode("utf-8")
 request = urllib.request.Request(
@@ -193,9 +191,9 @@ PY
    For non-default profiles, set `RS_PROFILE` so wrappers validate and use the matching session:
 
    ```sh
-   RS_PROFILE=MrGem agent-navigation/tools/observe_XXS.sh
-   RS_PROFILE=MrGem agent-navigation/tools/observe_XS.sh
-   RS_PROFILE=MrGem agent-navigation/tools/rs-tool_XXS.sh observe_state '{}'
+   RS_PROFILE=PROFILE agent-navigation/tools/observe_XXS.sh
+   RS_PROFILE=PROFILE agent-navigation/tools/observe_XS.sh
+   RS_PROFILE=PROFILE agent-navigation/tools/rs-tool_XXS.sh observe_state '{}'
    ```
 
 ## What Made This Reliable

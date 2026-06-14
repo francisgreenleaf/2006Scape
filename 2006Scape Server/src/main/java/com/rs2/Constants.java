@@ -39,11 +39,24 @@ public class Constants {
      * WEBSITE_INTEGRATION Enables/Disables Website Features(Total Accounts Registered & Players Online)
      */
     public static String SERVER_NAME = "2006Scape", WEBSITE_LINK = "https://2006Scape.org";
-    public static int WORLD = 1, HTTP_PORT = 8080, JAGGRAB_PORT = 43595, MAX_PLAYERS = 200, SAVE_TIMER = 120, TIMEOUT = 60, RESPAWN_X = 3222, RESPAWN_Y = 3218,  CYCLE_LOGGING_TICK = 10;
+    public static String GAME_BIND_HOST = "127.0.0.1", HTTP_BIND_HOST = "127.0.0.1", JAGGRAB_BIND_HOST = "127.0.0.1";
+    public static String[] GAME_BIND_HOSTS = new String[0], HTTP_BIND_HOSTS = new String[0], JAGGRAB_BIND_HOSTS = new String[0];
+    public static String PUBLIC_GAME_HOST = "localhost", AGENT_BRIDGE_BIND_HOST = "127.0.0.1";
+    public static String EXTERNAL_TRANSPORT_MODE = "local";
+    public static int WORLD = 1, GAME_PORT = -1, HTTP_PORT = 8080, JAGGRAB_PORT = 43595, MAX_PLAYERS = 200, SAVE_TIMER = 120, TIMEOUT = 60, RESPAWN_X = 3222, RESPAWN_Y = 3218,  CYCLE_LOGGING_TICK = 10;
     public static boolean GUI_ENABLED = false, FILE_SERVER = true, SERVER_DEBUG = false, MEMBERS_ONLY = false, TUTORIAL_ISLAND = false,
             PARTY_ROOM_DISABLED = false, CLUES_ENABLED = true, ITEM_REQUIREMENTS = true,
             ADMIN_CAN_TRADE = false, ADMIN_DROP_ITEMS = false, ADMIN_CAN_SELL_ITEMS = false, VARIABLE_XP_RATE = false,
-            WEBSITE_INTEGRATION = false, CYCLE_LOGGING = true, PERFORMANCE_LOGGING = false;
+            WEBSITE_INTEGRATION = false, CYCLE_LOGGING = true, PERFORMANCE_LOGGING = false,
+            EXTERNAL_PLAYERS_ENABLED = false, REQUIRE_SECURE_EXTERNAL_TRANSPORT = true,
+            SECURE_EXTERNAL_TRANSPORT_CONFIRMED = false,
+            DIRECT_TCP_EXTERNAL_TRANSPORT_CONFIRMED = false,
+            WILDCARD_BIND_CONFIRMED = false,
+            AGENT_CHAT_DISCORD_ENABLED = false,
+            AGENT_CHAT_LOG_ENABLED = false,
+            ACCOUNT_AUTH_ENABLED = false, ACCOUNT_AUTH_AUTO_CREATE = false,
+            ACCOUNT_AUTH_LEGACY_FALLBACK = true;
+    public static int ACCOUNT_AUTH_PBKDF2_ITERATIONS = 120000, AGENT_BRIDGE_PORT = 43610;
     public static int[] VARIABLE_XP_RATES = new int[] {1, 2, 5, 10};
     public static double TEST_VERSION = 2.3, XP_RATE = 1.0;
 

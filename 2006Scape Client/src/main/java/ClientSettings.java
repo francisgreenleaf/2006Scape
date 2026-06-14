@@ -74,6 +74,10 @@ public class ClientSettings {
      * World 2 Will Connect On Port 43598
      */
     public static int SERVER_WORLD = 1;
+    public static int SERVER_PORT = -1;
+    public static int HTTP_PORT = 8080;
+    public static int JAGGRAB_PORT = 43595;
+    public static String EXPECTED_SECURE_TRANSPORT = "local";
 
     /**
      * @QoL
@@ -97,6 +101,7 @@ public class ClientSettings {
 
     public static boolean AGENT_ENABLED = true;
     public static int AGENT_BRIDGE_PORT = 43610;
+    public static String AGENT_BRIDGE_URL = "http://127.0.0.1:43610";
     public static String AGENT_WORKSPACE_DIR = "";
     public static String AGENT_AUTO_CLAIM_NONCE = "";
     public static String AGENT_AUTO_COMMAND = "";
@@ -150,5 +155,16 @@ public class ClientSettings {
 
     public static final BigInteger RSA_MODULUS = new BigInteger("91553247461173033466542043374346300088148707506479543786501537350363031301992107112953015516557748875487935404852620239974482067336878286174236183516364787082711186740254168914127361643305190640280157664988536979163450791820893999053469529344247707567448479470137716627440246788713008490213212272520901741443");
     public static final BigInteger RSA_EXPONENT = new BigInteger("65537");
+
+    public static int gamePort() {
+        return SERVER_PORT > 0 ? SERVER_PORT : ((SERVER_WORLD == 1) ? 43594 : 43596 + SERVER_WORLD + Game.portOff);
+    }
+
+    public static int onDemandPort() {
+        if (SERVER_PORT > 0) {
+            return SERVER_PORT;
+        }
+        return (SINGLE_ONDEMAND || SERVER_WORLD == 1) ? 43594 : 43596 + SERVER_WORLD + Game.portOff;
+    }
 
 }

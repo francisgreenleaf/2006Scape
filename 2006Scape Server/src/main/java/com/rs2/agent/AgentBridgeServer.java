@@ -1,16 +1,23 @@
 package com.rs2.agent;
 
-import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.Executors;
+import java.util.Locale;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
+import com.rs2.Constants;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
@@ -18,6 +25,10 @@ import com.sun.net.httpserver.HttpServer;
 public class AgentBridgeServer {
 
     public static final int DEFAULT_PORT = 43610;
+    static final int BRIDGE_CORE_THREADS = 2;
+    static final int BRIDGE_MAX_THREADS = 16;
+    static final int BRIDGE_QUEUE_CAPACITY = 128;
+    static final int MAX_JSON_REQUEST_BYTES = 64 * 1024;
 
     private static final Gson GSON = new Gson();
     private static HttpServer server;
@@ -26,18 +37,17 @@ public class AgentBridgeServer {
         if (server != null) {
             return;
         }
+        String bindHost = Constants.AGENT_BRIDGE_BIND_HOST == null || Constants.AGENT_BRIDGE_BIND_HOST.trim().length() == 0
+                ? "127.0.0.1" : Constants.AGENT_BRIDGE_BIND_HOST.trim();
+        int port = Constants.AGENT_BRIDGE_PORT > 0 ? Constants.AGENT_BRIDGE_PORT : DEFAULT_PORT;
         try {
-            server = HttpServer.create(new InetSocketAddress("127.0.0.1", DEFAULT_PORT), 0);
+            server = HttpServer.create(new InetSocketAddress(bindHost, port), 0);
             registerContexts(server);
-            server.setExecutor(Executors.newCachedThreadPool(r -> {
-                Thread thread = new Thread(r, "AgentBridgeServer");
-                thread.setDaemon(true);
-                return thread;
-            }));
+            server.setExecutor(createExecutor());
             server.start();
-            System.out.println("Agent bridge listening on 127.0.0.1:" + DEFAULT_PORT + ".");
+            System.out.println("Agent bridge listening on " + bindHost + ":" + port + ".");
         } catch (IOException e) {
-            System.err.println("Unable to start agent bridge on 127.0.0.1:" + DEFAULT_PORT + ": " + e.getMessage());
+            System.err.println("Unable to start agent bridge on " + bindHost + ":" + port + ": " + e.getMessage());
             server = null;
         }
     }
@@ -45,12 +55,26 @@ public class AgentBridgeServer {
     static HttpServer createServerForTests(InetSocketAddress address) throws IOException {
         HttpServer testServer = HttpServer.create(address, 0);
         registerContexts(testServer);
-        testServer.setExecutor(Executors.newCachedThreadPool(r -> {
-            Thread thread = new Thread(r, "AgentBridgeServerTest");
+        testServer.setExecutor(createExecutor());
+        return testServer;
+    }
+
+    static ThreadPoolExecutor createExecutor() {
+        ThreadFactory threadFactory = r -> {
+            Thread thread = new Thread(r, "AgentBridgeServer");
             thread.setDaemon(true);
             return thread;
-        }));
-        return testServer;
+        };
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(
+                BRIDGE_CORE_THREADS,
+                BRIDGE_MAX_THREADS,
+                60L,
+                TimeUnit.SECONDS,
+                new ArrayBlockingQueue<Runnable>(BRIDGE_QUEUE_CAPACITY),
+                threadFactory,
+                new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.allowCoreThreadTimeOut(true);
+        return executor;
     }
 
     private static void registerContexts(HttpServer target) {
@@ -82,7 +106,13 @@ public class AgentBridgeServer {
                 sendError(exchange, 405, "POST required.");
                 return;
             }
-            JsonObject request = readJson(exchange);
+            JsonObject request;
+            try {
+                request = readJson(exchange);
+            } catch (JsonRequestException e) {
+                sendError(exchange, e.status, e.getMessage());
+                return;
+            }
             String nonce = request.has("nonce") ? request.get("nonce").getAsString() : "";
             AgentSessionManager.ClaimResult claim = AgentSessionManager.INSTANCE.consumeClaim(nonce);
             if (!claim.isSuccess()) {
@@ -112,7 +142,13 @@ public class AgentBridgeServer {
                 sendError(exchange, 401, "Invalid or expired agent session.");
                 return;
             }
-            JsonObject request = readJson(exchange);
+            JsonObject request;
+            try {
+                request = readJson(exchange);
+            } catch (JsonRequestException e) {
+                sendError(exchange, e.status, e.getMessage());
+                return;
+            }
             String event = request.has("event") ? request.get("event").getAsString() : "";
             JsonObject data = request.has("data") && request.get("data").isJsonObject()
                     ? request.get("data").getAsJsonObject()
@@ -136,7 +172,13 @@ public class AgentBridgeServer {
                 sendError(exchange, 401, "Invalid or expired agent session.");
                 return;
             }
-            JsonObject request = readJson(exchange);
+            JsonObject request;
+            try {
+                request = readJson(exchange);
+            } catch (JsonRequestException e) {
+                sendError(exchange, e.status, e.getMessage());
+                return;
+            }
             String tool = request.has("tool") ? request.get("tool").getAsString() : "";
             JsonObject arguments = request.has("arguments") && request.get("arguments").isJsonObject()
                     ? request.get("arguments").getAsJsonObject()
@@ -152,8 +194,12 @@ public class AgentBridgeServer {
                     AgentSessionLog.INSTANCE.toolFailed(session, tool, arguments, response, durationMs);
                 }
             } catch (RuntimeException e) {
-                AgentSessionLog.INSTANCE.toolFailed(session, tool, arguments, e.getMessage(), System.currentTimeMillis() - startedAt);
-                throw e;
+                response = unexpectedToolFailure(tool);
+                AgentSessionLog.INSTANCE.toolFailed(session, tool, arguments, response, System.currentTimeMillis() - startedAt);
+                System.err.println("Unhandled agent tool failure for session " + session.getSessionId()
+                        + " tool " + safeToolNameForLog(tool) + ": " + e.getClass().getName());
+                sendJson(exchange, 500, response);
+                return;
             }
             sendJson(exchange, response.has("success") && response.get("success").getAsBoolean() ? 200 : 400, response);
         }
@@ -189,8 +235,15 @@ public class AgentBridgeServer {
                 sendError(exchange, 401, "Invalid or expired agent session.");
                 return;
             }
+            JsonObject request;
+            try {
+                request = readJson(exchange);
+            } catch (JsonRequestException e) {
+                sendError(exchange, e.status, e.getMessage());
+                return;
+            }
             JsonObject response = AgentPersonalityNarrator.INSTANCE.complete(
-                    AgentSessionLog.INSTANCE, session, readJson(exchange));
+                    AgentSessionLog.INSTANCE, session, request);
             sendJson(exchange, response.has("success") && response.get("success").getAsBoolean() ? 200 : 400, response);
         }
     }
@@ -207,8 +260,15 @@ public class AgentBridgeServer {
                 sendError(exchange, 401, "Invalid or expired agent session.");
                 return;
             }
+            JsonObject request;
+            try {
+                request = readJson(exchange);
+            } catch (JsonRequestException e) {
+                sendError(exchange, e.status, e.getMessage());
+                return;
+            }
             JsonObject response = AgentPersonalityNarrator.INSTANCE.failed(
-                    AgentSessionLog.INSTANCE, session, readJson(exchange));
+                    AgentSessionLog.INSTANCE, session, request);
             sendJson(exchange, response.has("success") && response.get("success").getAsBoolean() ? 200 : 400, response);
         }
     }
@@ -239,18 +299,49 @@ public class AgentBridgeServer {
         return fallback;
     }
 
-    private static JsonObject readJson(HttpExchange exchange) throws IOException {
-        StringBuilder builder = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(exchange.getRequestBody(), StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                builder.append(line);
+    private static JsonObject readJson(HttpExchange exchange) throws IOException, JsonRequestException {
+        return parseJsonBody(readRequestBody(exchange.getRequestBody()));
+    }
+
+    private static byte[] readRequestBody(InputStream input) throws IOException, JsonRequestException {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        byte[] buffer = new byte[4096];
+        int total = 0;
+        int read;
+        while ((read = input.read(buffer)) != -1) {
+            total += read;
+            if (total > MAX_JSON_REQUEST_BYTES) {
+                throw new JsonRequestException(413, "Request JSON body is too large.");
             }
+            output.write(buffer, 0, read);
         }
-        if (builder.length() == 0) {
+        return output.toByteArray();
+    }
+
+    static JsonObject parseJsonBodyForTests(byte[] body) throws JsonRequestException {
+        return parseJsonBody(body);
+    }
+
+    private static JsonObject parseJsonBody(byte[] body) throws JsonRequestException {
+        if (body == null || body.length == 0) {
             return new JsonObject();
         }
-        return new JsonParser().parse(builder.toString()).getAsJsonObject();
+        if (body.length > MAX_JSON_REQUEST_BYTES) {
+            throw new JsonRequestException(413, "Request JSON body is too large.");
+        }
+        String text = new String(body, StandardCharsets.UTF_8).trim();
+        if (text.length() == 0) {
+            return new JsonObject();
+        }
+        try {
+            JsonElement parsed = new JsonParser().parse(text);
+            if (parsed == null || !parsed.isJsonObject()) {
+                throw new JsonRequestException(400, "Request JSON body must be an object.");
+            }
+            return parsed.getAsJsonObject();
+        } catch (JsonParseException | IllegalStateException e) {
+            throw new JsonRequestException(400, "Request JSON body is not valid JSON.");
+        }
     }
 
     private static void sendError(HttpExchange exchange, int status, String message) throws IOException {
@@ -260,12 +351,48 @@ public class AgentBridgeServer {
         sendJson(exchange, status, response);
     }
 
+    static JsonObject unexpectedToolFailureForTests(String tool) {
+        return unexpectedToolFailure(tool);
+    }
+
+    private static JsonObject unexpectedToolFailure(String tool) {
+        JsonObject response = new JsonObject();
+        response.addProperty("success", false);
+        response.addProperty("message", "Agent tool failed unexpectedly. Check the server log.");
+        response.addProperty("errorCode", "tool_runtime_exception");
+        response.addProperty("tool", safeToolNameForLog(tool));
+        return response;
+    }
+
+    private static String safeToolNameForLog(String tool) {
+        if (tool == null) {
+            return "";
+        }
+        String cleaned = tool.trim().replaceAll("[^A-Za-z0-9_\\-.]", "_");
+        String lower = cleaned.toLowerCase(Locale.ENGLISH);
+        if (lower.contains("token") || lower.contains("password") || lower.contains("secret")
+                || lower.contains("cookie") || lower.contains("api_key") || lower.contains("apikey")
+                || lower.contains("auth_key")) {
+            return "invalid_tool_name";
+        }
+        return cleaned.length() > 80 ? cleaned.substring(0, 80) : cleaned;
+    }
+
     private static void sendJson(HttpExchange exchange, int status, JsonObject response) throws IOException {
         byte[] bytes = GSON.toJson(response).getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8");
         exchange.sendResponseHeaders(status, bytes.length);
         try (OutputStream output = exchange.getResponseBody()) {
             output.write(bytes);
+        }
+    }
+
+    static final class JsonRequestException extends IOException {
+        final int status;
+
+        private JsonRequestException(int status, String message) {
+            super(message);
+            this.status = status;
         }
     }
 }

@@ -4,6 +4,7 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Map;
 
@@ -11,6 +12,7 @@ import com.rs2.game.content.custom.CustomContent;
 import com.rs2.util.Misc;
 
 public class PlayerSave {
+	private static final SecureRandom ACCOUNT_AUTH_RANDOM = new SecureRandom();
 
 	/**
 	 * Loading
@@ -67,16 +69,17 @@ public class PlayerSave {
 				token3 = token2.split("\t+");
 				switch (ReadMode) {
 					case 1:
-					    if (!doRealLogin)
-							break;
 						if (token.equals("character-password")) {
-							if (playerPass.equalsIgnoreCase(token2) || passwordHash(playerPass).equalsIgnoreCase(token2)) {
-								player.playerPass = token2; //Valid password
-							} else {
-							    System.out.println("hash doesn't match: " + passwordHash(playerPass).toLowerCase());
-							    System.out.println("currently is: " + passwordHash(token2).toLowerCase());
-	 							return 3; //Invalid password
-							}
+								if (!doRealLogin) {
+									player.playerPass = token2;
+									break;
+								}
+								if (playerPass.equalsIgnoreCase(token2) || passwordHash(playerPass).equalsIgnoreCase(token2)) {
+									player.playerPass = token2; //Valid password
+								} else {
+								    System.out.println(playerName + ": invalid character password.");
+									return 3; //Invalid password
+								}
 						}
 						break;
 					case 2:
@@ -580,6 +583,22 @@ public class PlayerSave {
 		return hashed;
 	}
 
+	public static String generateAccountAuthOnlyLegacyPassword() {
+		byte[] random = new byte[32];
+		ACCOUNT_AUTH_RANDOM.nextBytes(random);
+		return passwordHash("account-auth-only:" + Base64.getEncoder().encodeToString(random));
+	}
+
+	public static void protectAccountAuthPassword(Player player, String submittedPassword, int loadCode) {
+		if (player == null || !player.accountAuthVerified) {
+			return;
+		}
+		if (loadCode == 0 || player.playerPass == null || player.playerPass.trim().isEmpty()
+				|| player.playerPass.equals(submittedPassword)) {
+			player.playerPass = generateAccountAuthOnlyLegacyPassword();
+		}
+	}
+
 	/**
 	 * Saving
 	 **/
@@ -610,6 +629,9 @@ public class PlayerSave {
 			characterfile.newLine();
 			characterfile.write("character-username = " + player.playerName);
 			characterfile.newLine();
+			if (player.accountAuthVerified && (player.playerPass == null || player.playerPass.trim().isEmpty())) {
+				player.playerPass = generateAccountAuthOnlyLegacyPassword();
+			}
 			if (player.playerPass.length() < 40) {
 				player.playerPass = passwordHash(player.playerPass);
 			}

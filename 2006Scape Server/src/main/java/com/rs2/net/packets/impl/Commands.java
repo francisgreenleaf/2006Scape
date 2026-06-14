@@ -7,6 +7,7 @@ import java.util.*;
 import com.rs2.Connection;
 import com.rs2.Constants;
 import com.rs2.GameEngine;
+import com.rs2.agent.AgentChatService;
 import com.rs2.agent.AgentSessionManager;
 import com.rs2.game.bots.BotHandler;
 import com.rs2.game.npcs.NPCDefinition;
@@ -52,6 +53,26 @@ public class Commands implements PacketType {
             case "agentbridge":
                 if (arguments.length >= 2 && "claim".equalsIgnoreCase(arguments[0])) {
                     AgentSessionManager.INSTANCE.registerClaim(player, arguments[1]);
+                }
+                break;
+            case "agent":
+                if (arguments.length >= 2 && "claim".equalsIgnoreCase(arguments[0])) {
+                    AgentSessionManager.INSTANCE.registerClaim(player, arguments[1]);
+                    player.getPacketSender().sendMessage("Agent bridge claim registered.");
+                    break;
+                }
+            case "agentchat":
+                String agentMessage = joinArguments(arguments);
+                if (agentMessage.trim().isEmpty()) {
+                    player.getPacketSender().sendMessage(
+                            "Usage: ::agentchat message, @agent:Name message, @player:Name message, @all message, or #channel message");
+                    break;
+                }
+                try {
+                    AgentChatService.AgentChatMessage sent = AgentChatService.INSTANCE.sendFromPlayerCommand(player, agentMessage);
+                    player.getPacketSender().sendMessage("Agent chat sent. Message id: " + sent.id + ".");
+                } catch (IllegalArgumentException e) {
+                    player.getPacketSender().sendMessage(e.getMessage());
                 }
                 break;
             case "stuck":
@@ -198,6 +219,10 @@ public class Commands implements PacketType {
             case "password":
             case "changepassword":
             case "pwd":
+                if (usesAccountAuth(player)) {
+                    player.getPacketSender().sendMessage("This login uses account auth; ask an operator to update the PBKDF2 account record.");
+                    return;
+                }
                 if (arguments.length < 2) {
                     player.getPacketSender().sendMessage("Must have 2 arguments: ::password oldpassword newpassword");
                     return;
@@ -604,6 +629,24 @@ public class Commands implements PacketType {
 
         }
 
+    }
+
+    static boolean usesAccountAuth(Player player) {
+        return player != null && player.accountAuthVerified;
+    }
+
+    private static String joinArguments(String[] arguments) {
+        if (arguments == null || arguments.length == 0) {
+            return "";
+        }
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < arguments.length; i++) {
+            if (i > 0) {
+                builder.append(' ');
+            }
+            builder.append(arguments[i]);
+        }
+        return builder.toString();
     }
 
     public static void moderatorCommands(Player player, String playerCommand, String[] arguments) {
