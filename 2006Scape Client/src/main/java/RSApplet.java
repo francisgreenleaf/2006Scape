@@ -772,6 +772,12 @@ public class RSApplet extends Applet implements Runnable, MouseListener, MouseWh
 		charQueue = new int[128];
 	}
 
+	protected final void updateClientFrameTitle(String playerName) {
+		if (gameFrame != null) {
+			gameFrame.updateTitle(playerName);
+		}
+	}
+
 	private int anInt4;
 	private int delayTime;
 	int minDelay;

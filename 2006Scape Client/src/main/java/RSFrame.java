@@ -15,7 +15,7 @@ final class RSFrame extends Frame {
 	public RSFrame(RSApplet applet) {
 		rsApplet = applet;
 
-		setTitle(ClientSettings.SERVER_NAME + " World: " + ClientSettings.SERVER_WORLD + ((ClientSettings.SERVER_IP.equals("localhost") || ClientSettings.SERVER_IP.equals("127.0.0.1")) ?  " [Local]" : ""));
+		updateTitle("");
 		setIconImage(loadClientIcon());
 		setMenuBar(createMenuBar());
 		this.setResizable(true);
@@ -29,6 +29,26 @@ final class RSFrame extends Frame {
 		this.setVisible(true);
 		this.toFront();
 		this.transferFocus();
+	}
+
+	public void updateTitle(String playerName) {
+		String title = ClientSettings.SERVER_NAME;
+		if (playerName != null && playerName.trim().length() > 0) {
+			title += " - " + playerName.trim();
+			String profile = System.getenv("RS_PROFILE");
+			if (profile == null || profile.trim().length() == 0) {
+				profile = System.getenv("PROFILE");
+			}
+			if (profile != null && profile.trim().length() > 0
+					&& !profile.trim().equalsIgnoreCase(playerName.trim())) {
+				title += " (" + profile.trim() + ")";
+			}
+		}
+		title += " World: " + ClientSettings.SERVER_WORLD;
+		if (ClientSettings.SERVER_IP.equals("localhost") || ClientSettings.SERVER_IP.equals("127.0.0.1")) {
+			title += " [Local]";
+		}
+		setTitle(title);
 	}
 
 	private Image loadClientIcon() {
