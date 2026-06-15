@@ -18,6 +18,7 @@ __pycache__/
 hs_err_pid*.log
 **/hs_err_pid*.log
 agent-navigation/.local/
+agent-navigation/.local/certs/
 agent-navigation/data/marathons/
 agent-navigation/data/mining/
 agent-navigation/data/**/runs/
@@ -31,6 +32,8 @@ agent-navigation/screenshots/**
 agent-navigation/analysis/walk-distance-estimate/latest-result.json
 rsmod/
 dist/
+dist/external-deployment/private/
+dist/external-deployment/private/*.env
 
 # Ignore any json files in the server root (should only be config files, the sample file should still be updated)
 2006Scape Server/*.json
