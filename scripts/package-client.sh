@@ -421,8 +421,13 @@ if [[ "$(printf '%s' "$TRANSPORT" | tr '[:upper:]' '[:lower:]')" == "client_tls_
     start_client_tls_tunnel_if_needed "$SERVER_HOST" "$SERVER_PORT"
 fi
 
+JAVA_DOCK_OPTS=()
+if [[ "$(uname -s)" == "Darwin" ]]; then
+    JAVA_DOCK_OPTS=(-Xdock:name=Agentscape)
+fi
+
 set +e
-java -jar "$DIR/2006scape-client.jar" -no-java-warnings -client-config "$PROPERTIES" "$@"
+java "${JAVA_DOCK_OPTS[@]}" -jar "$DIR/2006scape-client.jar" -no-java-warnings -client-config "$PROPERTIES" "$@"
 status=$?
 set -e
 exit "$status"
