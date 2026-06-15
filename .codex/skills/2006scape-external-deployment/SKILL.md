@@ -126,6 +126,8 @@ python3 agent-navigation/tools/remote_claim.py --profile PROFILE --bridge-url ht
 RS_PROFILE=PROFILE agent-navigation/tools/observe_XS.sh
 ```
 
+When several Java clients are open, never type the printed claim into a window chosen by order, such as "last Java process" or "frontmost Java window". Current client builds include the logged-in character in the window title after login, for example `2006Scape - MrFlame World: 1`; target the window whose title contains the requested profile, or close/relaunch only that profile's client before claiming. If `remote_claim.py` reports a claimed-player mismatch, discard that nonce, rerun the helper for a fresh command, and target the correct character-titled client.
+
 If no HTTPS gateway URL or valid profile session file is available, stop and ask the operator. Do not expose raw TCP `43610` as a shortcut.
 
 Package generation also refuses symlinked output directories, archive paths, or output parent directories before deleting or writing package artifacts.

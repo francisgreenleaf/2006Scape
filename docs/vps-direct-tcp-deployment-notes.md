@@ -82,7 +82,9 @@ For one named profile from the repo machine:
    ```
 
 2. Launch the packaged client and log in as the target profile, such as
-   `MrFlame`, with the matching env vars from the private file.
+   `MrFlame`, with the matching env vars from the private file. After login,
+   current clients include the character in the title bar, for example
+   `2006Scape - MrFlame World: 1`.
 3. Claim the profile-scoped remote bridge session through the operator gateway:
 
    ```sh
@@ -101,7 +103,36 @@ For one named profile from the repo machine:
    ```
 
 4. Type the exact claim command printed by `remote_claim.py` in the logged-in
-   game client when prompted.
+   target game client when prompted. If multiple Java clients are open, target
+   the window whose title contains the profile name; do not target by window
+   order or by a generic `2006Scape World: 1` title.
+
+   On macOS, a Codex operator can use a title-targeted AppleScript pattern after
+   replacing the placeholder claim command:
+
+   ```sh
+   osascript <<'APPLESCRIPT'
+   tell application "System Events"
+     repeat with p in (every process whose name contains "java")
+       repeat with w in windows of p
+         if (name of w as text) contains "MrFlame" then
+           set frontmost of p to true
+           perform action "AXRaise" of w
+           delay 0.3
+           keystroke "::agent claim ABCD-1234"
+           key code 36
+           return
+         end if
+       end repeat
+     end repeat
+   end tell
+   error "MrFlame client window not found"
+   APPLESCRIPT
+   ```
+
+   If `remote_claim.py` reports a player mismatch, the claim went to the wrong
+   client. Discard that attempt, run `remote_claim.py` again for a fresh claim
+   command, and target the correct character-titled window.
 5. Use profile-scoped compact tools from the repo:
 
    ```sh
