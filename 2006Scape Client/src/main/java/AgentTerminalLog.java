@@ -22,7 +22,7 @@ public class AgentTerminalLog {
     private Runnable changeListener;
 
     public AgentTerminalLog() {
-        system("Agent terminal ready. Type status, stop, key, or a task.");
+        system("Agent Terminal ready. Try /agent status, /agent key, /agent stop, or describe a task.");
     }
 
     public void system(String message) {

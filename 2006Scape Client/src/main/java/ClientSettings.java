@@ -56,7 +56,7 @@ public class ClientSettings {
     /**
      * The Servers Name
      */
-    public final static String SERVER_NAME = "2006Scape";
+    public final static String SERVER_NAME = "Agentscape";
     /**
      * The Servers Website
      */
