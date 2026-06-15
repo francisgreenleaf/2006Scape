@@ -116,7 +116,7 @@ This gives the agent richer navigation, runner, memory, map, and script context.
    ```
 
 5. The helper prints a short claim command. Type exactly that command in the
-   game client, for example:
+   target character's logged-in game client, for example:
 
    ```text
    ::agent claim ABCD-1234
@@ -129,9 +129,13 @@ This gives the agent richer navigation, runner, memory, map, and script context.
    ::agentbridge claim ABCD-1234
    ```
 
-6. The helper stores an ignored local session file under
-   `agent-navigation/.local/rsbridge-session-YOUR_CHARACTER.json`. That file
-   contains a scoped bridge token; do not print or paste it.
+   Claim commands are short-lived and single-use. If the helper reports a
+   player mismatch, the command was typed into the wrong client; start a fresh
+   `remote_claim.py` run and type the new command into the correct window.
+6. The helper stores an ignored local session file. Non-default profiles use
+   `agent-navigation/.local/rsbridge-session-YOUR_CHARACTER.json`; the legacy
+   default profile may still use `agent-navigation/.local/rsbridge-session.json`.
+   That file contains a scoped bridge token; do not print or paste it.
 7. Codex can now use compact bridge tools and scripts for your character, for
    example:
 
@@ -160,6 +164,8 @@ controls one of those profiles should:
   or testing a client login;
 - log in as exactly one profile, such as `MrFlame`;
 - claim the remote bridge with `remote_claim.py --profile MrFlame --verify`;
+- when several Java clients are open, target the client window whose title
+  includes that character name, such as `2006Scape - MrFlame World: 1`;
 - set `RS_PROFILE=MrFlame` for all repo-side tools;
 - use compact tools such as `observe_XS.sh`, `rs-tool_XS.sh`, and
   `rs-tool_XXS.sh` by default.
@@ -241,6 +247,10 @@ RS_PROFILE=YOUR_CHARACTER agent-navigation/tools/observe_XXS.sh
 
 - A bridge session belongs to one logged-in player.
 - A claim must be proven through that player's active game connection.
+- In multi-client sessions, do not type a claim into "the last Java window" or
+  any other order-dependent target. Current client builds include the logged-in
+  character in the title bar after login; use that title, or close/relaunch only
+  the intended profile's client before claiming.
 - Tool calls must use the scoped bridge token returned by the claim.
 - The server executes gameplay actions through normal game mechanics and server
   ticks. Agents do not teleport, spawn items, edit stats, or bypass gameplay.
@@ -262,6 +272,12 @@ remote agent mode.
 
 If repo Codex tools fail with an invalid session, rerun the remote claim helper
 and type the new claim command while your character is logged in.
+
+If another character is claimed by mistake, stop using that session immediately.
+Rerun `remote_claim.py --profile YOUR_CHARACTER --verify` and target the window
+whose title contains `YOUR_CHARACTER`. The helper verifies the returned player
+name and refuses to write the session file when the claimed player does not
+match the requested profile.
 
 If repo Codex tools fail with a certificate verification error against a
 temporary self-signed gateway, set `SSL_CERT_FILE` to the ignored local copy of
