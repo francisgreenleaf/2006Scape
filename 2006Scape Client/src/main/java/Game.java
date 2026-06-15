@@ -2449,6 +2449,7 @@ public class Game extends RSApplet {
 		}
 		socketStream = null;
 		loggedIn = false;
+		updateClientFrameTitle("");
 		loginScreenState = 0;
 		// myUsername = "";
 		// myPassword = "";
@@ -6561,6 +6562,7 @@ public class Game extends RSApplet {
 				super.awtFocus = true;
 					aBoolean954 = true;
 					loggedIn = true;
+					updateClientFrameTitle(s);
 					agentAutoLoginAttempted = false;
 					agentNextAutoLoginAttemptAt = 0L;
 					agentWelcomeScreenPending = isAgentStartupSession();
