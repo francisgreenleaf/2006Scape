@@ -104,6 +104,10 @@ public class AgentClientController {
         return codexClient.status();
     }
 
+    public boolean isReady() {
+        return codexClient.isReady();
+    }
+
     public void adoptLocalSessionAsync() {
         executor.submit(() -> {
             if (bridgeHttpClient.hasSession()) {
