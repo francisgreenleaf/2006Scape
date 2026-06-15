@@ -19,24 +19,6 @@ dist/external-deployment/private/vps-operator-runbook.md
 - Transport: `direct_tcp` for the first live test. This is plaintext game/cache TCP; use only throwaway or unique passwords.
 - Agent bridge boundary: `43610` must stay loopback-only and must not be exposed.
 
-## Rollout Sources
-
-The setup was reconstructed from existing repo docs, live VPS checks, and Codex
-rollout searches for the remote deployment side threads. Useful searched
-strings included `direct_tcp`, `vps-character-credentials`,
-`agent.bridge.url`, `AGENT_BRIDGE_URL`, `remote_claim.py`, `agent-gateway`,
-`self-signed`, `Nginx`, `UFW`, and `43610`.
-
-The relevant side-thread work covered these phases:
-
-- prepare and validate the external-player direct-TCP packaging path;
-- deploy the repo to the VPS and run it under systemd;
-- open only the game/cache ports plus SSH and HTTPS;
-- create PBKDF2 account records and copy character saves for named test profiles;
-- package a desktop client configured for the VPS;
-- add the HTTPS `/agent` gateway in front of loopback-only `43610`;
-- prove normal game login and remote repo-side claim/observe flows.
-
 ## Architecture
 
 The current VPS path has three separate surfaces:
@@ -50,12 +32,22 @@ service should run as a non-root service user, start with
 `scripts/start-server.sh`, and use the deployed
 `2006Scape Server/ServerConfig.json`.
 
-## Setup History
+## VPS Setup
 
-The first live path used `direct_tcp` because it is the simplest thing regular
-players can connect to with the existing Java client. The external config was
-preflighted, server deployment files were generated, account auth was enabled,
-and a packaged client was produced from the same config.
+The VPS is set up as a minimal direct-TCP external deployment. It uses
+`direct_tcp` because that is the simplest path regular players can connect to
+with the existing Java client. The deployment uses PBKDF2 account auth, a
+packaged desktop client, and an HTTPS `/agent` gateway for remote agent control.
+
+The server-side deployment shape is:
+
+- repo checkout installed under the VPS deploy directory;
+- systemd service running `scripts/start-server.sh` from that deploy directory;
+- `2006Scape Server/ServerConfig.json` configured for external-player mode and direct TCP;
+- PBKDF2 account records under `2006Scape Server/data/accounts/`;
+- character saves under `2006Scape Server/data/characters/`;
+- Nginx HTTPS gateway forwarding only approved `/agent/*` paths to loopback bridge `43610`;
+- UFW allowing SSH, game/cache ports, and HTTPS while keeping raw `43610` private.
 
 On the VPS:
 
