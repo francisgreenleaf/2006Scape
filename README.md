@@ -236,6 +236,13 @@ The client also supports a repo-native scale flag that doubles the game canvas w
 ./scripts/start-client.sh -u "ExampleAgent" -scale 2 -no-nav
 ```
 
+On macOS, use `Command+Shift+N` or `File > New Client Window` from a running packaged client to open another client without copying login credentials or agent claim state. The current and new windows tile automatically: the second client uses the other half of the display, and third/fourth clients use quadrants. You can also request tiling directly at launch:
+
+```sh
+./scripts/start-client.sh -scale 1 -no-nav -tile 1/2
+CLIENT_SINGLE_INSTANCE=0 ./scripts/start-client.sh -scale 1 -no-nav -tile 2/2
+```
+
 Client arguments can be appended to either client launcher, for example:
 
 ```sh

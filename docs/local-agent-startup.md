@@ -20,6 +20,15 @@ This builds if needed, starts the server, waits for port `43594`, and launches t
 CLIENT_SINGLE_INSTANCE=0 ./scripts/start-client.sh -u "SecondAgent" -scale 1 -no-nav
 ```
 
+For local multi-window checks, launch with explicit tiling or use `Command+Shift+N` from a packaged client window:
+
+```sh
+./scripts/start-client.sh -u "ExampleAgent" -scale 1 -no-nav -tile 1/2
+CLIENT_SINGLE_INSTANCE=0 ./scripts/start-client.sh -u "SecondAgent" -scale 1 -no-nav -tile 2/2
+```
+
+The hotkey opens a new connection-only client window. It carries server, scale, navbar, transport, and bridge URL settings, but it does not copy username, password, agent claim nonce, or auto-command state.
+
 ## Agent-Owned Relaunch
 
 Use this when Codex needs to operate the route harness from the repo with `agent-navigation/tools/observe_XXS.sh`, `agent-navigation/tools/observe_XS.sh`, `agent-navigation/tools/rs-tool_XXS.sh`, or `agent-navigation/tools/rs-tool_XS.sh`. This is the path that has been the most reliable.
@@ -48,7 +57,7 @@ python3 agent-navigation/tools/runtime_doctor.py init-profile --profile NEW_PROF
 For a second profile against an existing server, prefer claiming only that profile so the default active client is not replaced:
 
 ```sh
-python3 agent-navigation/tools/runtime_doctor.py claim --profile PROFILE --verify
+python3 agent-navigation/tools/runtime_doctor.py claim --profile PROFILE --tile-slot 2 --tile-total 2 --verify
 ```
 
 For route learning sessions that still need the fallback recorder because passive server telemetry is unavailable or a deliberate debug recording needs extra NPC snapshots, add:

@@ -1,6 +1,8 @@
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.Frame;
+import java.awt.GraphicsEnvironment;
 import java.awt.Graphics;
 import java.awt.Image;
 import java.awt.Rectangle;
@@ -30,6 +32,130 @@ final class ClientWindow {
 	static Dimension gameSizeForScale(int scale) {
 		int clampedScale = clampScale(scale);
 		return new Dimension(BASE_WIDTH * clampedScale, BASE_HEIGHT * clampedScale);
+	}
+
+	static boolean configureTile(int slot, int total) {
+		if (!isSupportedTile(slot, total)) {
+			ClientSettings.CLIENT_TILE_SLOT = 0;
+			ClientSettings.CLIENT_TILE_TOTAL = 0;
+			return false;
+		}
+		ClientSettings.CLIENT_TILE_SLOT = slot;
+		ClientSettings.CLIENT_TILE_TOTAL = total;
+		return true;
+	}
+
+	static boolean configureTile(String value) {
+		TileSpec spec = parseTileSpec(value);
+		if (spec == null) {
+			ClientSettings.CLIENT_TILE_SLOT = 0;
+			ClientSettings.CLIENT_TILE_TOTAL = 0;
+			return false;
+		}
+		ClientSettings.CLIENT_TILE_SLOT = spec.slot;
+		ClientSettings.CLIENT_TILE_TOTAL = spec.total;
+		return true;
+	}
+
+	static boolean hasConfiguredTile() {
+		return isSupportedTile(ClientSettings.CLIENT_TILE_SLOT, ClientSettings.CLIENT_TILE_TOTAL);
+	}
+
+	static void clearConfiguredTile() {
+		ClientSettings.CLIENT_TILE_SLOT = 0;
+		ClientSettings.CLIENT_TILE_TOTAL = 0;
+	}
+
+	static void retile(Frame frame) {
+		if (frame == null) {
+			return;
+		}
+		if (hasConfiguredTile()) {
+			frame.setBounds(tileBounds(ClientSettings.CLIENT_TILE_SLOT, ClientSettings.CLIENT_TILE_TOTAL));
+		} else {
+			frame.setLocationRelativeTo(null);
+		}
+	}
+
+	static Rectangle tileBounds(int slot, int total) {
+		return tileBounds(GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds(), slot, total);
+	}
+
+	static Rectangle tileBounds(Rectangle usableBounds, int slot, int total) {
+		if (usableBounds == null) {
+			usableBounds = new Rectangle(0, 0, BASE_WIDTH, BASE_HEIGHT);
+		}
+		if (!isSupportedTile(slot, total) || total == 1) {
+			return new Rectangle(usableBounds);
+		}
+		if (total == 2) {
+			int leftWidth = usableBounds.width / 2;
+			if (slot == 1) {
+				return new Rectangle(usableBounds.x, usableBounds.y, leftWidth, usableBounds.height);
+			}
+			return new Rectangle(usableBounds.x + leftWidth, usableBounds.y,
+					usableBounds.width - leftWidth, usableBounds.height);
+		}
+
+		int col = (slot - 1) % 2;
+		int row = (slot - 1) / 2;
+		int leftWidth = usableBounds.width / 2;
+		int topHeight = usableBounds.height / 2;
+		int x = col == 0 ? usableBounds.x : usableBounds.x + leftWidth;
+		int y = row == 0 ? usableBounds.y : usableBounds.y + topHeight;
+		int width = col == 0 ? leftWidth : usableBounds.width - leftWidth;
+		int height = row == 0 ? topHeight : usableBounds.height - topHeight;
+		return new Rectangle(x, y, width, height);
+	}
+
+	static TileSpec parseTileSpec(String value) {
+		if (value == null) {
+			return null;
+		}
+		String trimmed = value.trim();
+		if (trimmed.length() == 0) {
+			return null;
+		}
+		String[] parts = trimmed.split("/");
+		if (parts.length != 2) {
+			return null;
+		}
+		try {
+			int slot = Integer.parseInt(parts[0].trim());
+			int total = Integer.parseInt(parts[1].trim());
+			if (!isSupportedTile(slot, total)) {
+				return null;
+			}
+			return new TileSpec(slot, total);
+		} catch (NumberFormatException e) {
+			return null;
+		}
+	}
+
+	static TileSpec tileForNewClient(int existingClientCount, int currentSlot) {
+		int total = tileTotalForClientCount(existingClientCount + 1);
+		int childSlot = Math.max(1, Math.min(total, existingClientCount + 1));
+		return new TileSpec(childSlot, total);
+	}
+
+	static TileSpec tileForCurrentClient(int existingClientCount, int currentSlot) {
+		int total = tileTotalForClientCount(Math.max(1, existingClientCount + 1));
+		int slot = isSupportedTile(currentSlot, total) ? currentSlot : 1;
+		return new TileSpec(slot, total);
+	}
+
+	static int tileTotalForClientCount(int clientCount) {
+		if (clientCount <= 1) {
+			return 1;
+		}
+		if (clientCount == 2) {
+			return 2;
+		}
+		return 4;
+	}
+
+	private static boolean isSupportedTile(int slot, int total) {
+		return (total == 1 || total == 2 || total == 4) && slot >= 1 && slot <= total;
 	}
 
 	static Rectangle gameViewport(Component component) {
@@ -100,5 +226,19 @@ final class ClientWindow {
 
 	private static int scaled(int value, double scale) {
 		return (int) Math.round(value * scale);
+	}
+
+	static final class TileSpec {
+		final int slot;
+		final int total;
+
+		TileSpec(int slot, int total) {
+			this.slot = slot;
+			this.total = total;
+		}
+
+		String asArgument() {
+			return slot + "/" + total;
+		}
 	}
 }

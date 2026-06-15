@@ -26,7 +26,7 @@ final class RSFrame extends Frame {
 		this.add(applet, BorderLayout.CENTER);
 		this.pack();
 
-		this.setLocationRelativeTo(null);
+		ClientWindow.retile(this);
 		this.setVisible(true);
 		this.toFront();
 		this.transferFocus();
@@ -64,6 +64,12 @@ final class RSFrame extends Frame {
 		MenuBar menuBar = new MenuBar();
 
 		Menu fileMenu = new Menu("File");
+		fileMenu.add(createMenuItem("New Client Window", KeyEvent.VK_N, true, new ActionListener() {
+			public void actionPerformed(ActionEvent event) {
+				launchNewClientWindow();
+			}
+		}));
+		fileMenu.addSeparator();
 		fileMenu.add(createMenuItem("Close Window", KeyEvent.VK_W, new ActionListener() {
 			public void actionPerformed(ActionEvent event) {
 				requestClose();
@@ -134,6 +140,12 @@ final class RSFrame extends Frame {
 				setLocationRelativeTo(null);
 			}
 		}));
+		windowMenu.add(createMenuItem("Retile", 0, new ActionListener() {
+			public void actionPerformed(ActionEvent event) {
+				ClientWindow.retile(RSFrame.this);
+				rsApplet.requestFocus();
+			}
+		}));
 		menuBar.add(windowMenu);
 
 		Menu helpMenu = new Menu("Help");
@@ -158,7 +170,13 @@ final class RSFrame extends Frame {
 	}
 
 	private MenuItem createMenuItem(String label, int shortcutKey, ActionListener listener) {
-		MenuItem item = shortcutKey > 0 ? new MenuItem(label, new MenuShortcut(shortcutKey)) : new MenuItem(label);
+		return createMenuItem(label, shortcutKey, false, listener);
+	}
+
+	private MenuItem createMenuItem(String label, int shortcutKey, boolean shiftShortcut, ActionListener listener) {
+		MenuItem item = shortcutKey > 0
+				? new MenuItem(label, new MenuShortcut(shortcutKey, shiftShortcut))
+				: new MenuItem(label);
 		item.addActionListener(listener);
 		return item;
 	}
@@ -169,6 +187,15 @@ final class RSFrame extends Frame {
 		rsApplet.invalidate();
 		pack();
 		setLocationRelativeTo(null);
+		rsApplet.requestFocus();
+	}
+
+	private void launchNewClientWindow() {
+		try {
+			ClientRelauncher.launchNewClient(this);
+		} catch (Exception ex) {
+			showInfoDialog("New Client Window", ex.getMessage());
+		}
 		rsApplet.requestFocus();
 	}
 
@@ -188,6 +215,7 @@ final class RSFrame extends Frame {
 				+ "Esc - close the current interface\n"
 				+ "Page Up / Page Down - adjust camera zoom\n"
 				+ "Ctrl+V - paste into chat input\n"
+				+ "Command/Ctrl+Shift+N - open another client window\n"
 				+ "Command/Ctrl+1 - actual size\n"
 				+ "Command/Ctrl+2 - double size\n"
 				+ "Command/Ctrl+3 - triple size\n"
