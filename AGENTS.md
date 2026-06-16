@@ -75,6 +75,12 @@ mvn -q clean test
 mvn -q -DskipTests package
 ```
 
+## GitHub And Pull Requests
+
+- For this checkout, pull requests should be created on the `francisgreenleaf/2006Scape` fork only.
+- Do not create pull requests against the original/upstream `2006-Scape/2006Scape` repository unless the user explicitly asks for that in the same request.
+- When remotes include `origin` as `francisgreenleaf/2006Scape` and `upstream` as `2006-Scape/2006Scape`, push branches to `origin` and target PRs within the fork.
+
 ## Run Commands
 
 Build first, then run the server from the server module directory. The working directory matters because the server expects `data/` relative to the current directory.
