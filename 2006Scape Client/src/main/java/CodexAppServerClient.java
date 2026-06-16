@@ -155,7 +155,6 @@ public class CodexAppServerClient {
         event.addProperty("turnId", currentTurnId);
         event.addProperty("command", userCommand == null ? "" : userCommand);
         recordSessionEvent("turn_started", event);
-        terminalLog.task("Turn started: " + (userCommand == null ? "" : userCommand));
     }
 
     public synchronized void interruptCurrentTurn() {
@@ -268,7 +267,7 @@ public class CodexAppServerClient {
                 handleServerMessage(line);
             }
         } catch (IOException e) {
-            terminalLog.error("Codex app-server disconnected: " + cleanMessage(e));
+            terminalLog.error("app-server disconnected" + terminalSuffix(cleanMessage(e), 90));
             messageConsumer.accept("Codex app-server disconnected: " + e.getMessage());
         }
     }
@@ -376,7 +375,7 @@ public class CodexAppServerClient {
             if (item.has("type") && "agentMessage".equals(item.get("type").getAsString()) && item.has("text")) {
                 String text = item.get("text").getAsString().trim();
                 if (!text.isEmpty()) {
-                    terminalLog.assistant(text);
+                    terminalLog.assistant(firstSentence(text, 120));
                     messageConsumer.accept(text);
                     JsonObject event = new JsonObject();
                     event.addProperty("threadId", threadId == null ? "" : threadId);
@@ -393,7 +392,7 @@ public class CodexAppServerClient {
             event.addProperty("turnId", currentTurnId == null ? "" : currentTurnId);
             event.addProperty("durationMs", currentTurnDurationMs());
             recordSessionEvent("turn_completed", event);
-            terminalLog.success("Turn completed.");
+            terminalLog.success("turn done");
             currentTurnId = null;
             currentTurnStartedAtMs = 0L;
             turnCompleteConsumer.run();
@@ -405,9 +404,33 @@ public class CodexAppServerClient {
             return "No response.";
         }
         if (response.has("message") && response.get("message").isJsonPrimitive()) {
-            return compact(response.get("message").getAsString(), 260);
+            return compact(response.get("message").getAsString(), 90);
         }
-        return compact(GSON.toJson(response), 260);
+        if (response.has("status") && response.get("status").isJsonPrimitive()) {
+            return compact(response.get("status").getAsString(), 90);
+        }
+        return compact(GSON.toJson(response), 90);
+    }
+
+    private String firstSentence(String value, int maxLength) {
+        String text = compact(value, maxLength);
+        int end = -1;
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '.' || c == '!' || c == '?') {
+                end = i + 1;
+                break;
+            }
+        }
+        if (end > 0 && end < text.length()) {
+            return text.substring(0, end).trim();
+        }
+        return text;
+    }
+
+    private String terminalSuffix(String value, int maxLength) {
+        String text = compact(value, maxLength);
+        return text.length() == 0 ? "" : ": " + text;
     }
 
     private String compact(String value, int maxLength) {
