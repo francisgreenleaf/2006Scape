@@ -26,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -59,6 +60,7 @@ public class Game extends RSApplet {
 	private static final int AGENT_TERMINAL_INPUT_WIDTH = AGENT_TERMINAL_PANEL_WIDTH - 8;
 	private static final int AGENT_TERMINAL_INPUT_HEIGHT = 19;
 	private static final int AGENT_TERMINAL_LINE_HEIGHT = 12;
+	private static final int CHAT_WRAP_RIGHT_PADDING = 18;
 	
 	public static int random(final float range) {
 		return (int) (java.lang.Math.random() * (range + 1));
@@ -414,7 +416,6 @@ public class Game extends RSApplet {
 			for (int k = 0; k < 100; k++) {
 				if (chatMessages[k] != null) {
 					int l = chatTypes[k];
-					int i1 = 70 - j * 14 + anInt1089;
 					String s1 = chatNames[k];
 					byte byte0 = 0;
 					if (s1 != null && s1.startsWith("@cr1@")) {
@@ -426,75 +427,86 @@ public class Game extends RSApplet {
 						byte0 = 2;
 					}
 					if (l == 0) {
-						if (i1 > 0 && i1 < 110) {
-							try {
-							textDrawingArea.textLeftShadow(false, 4, 0, chatMessages[k], i1);
-							} catch (Exception e) {
-								
-							}
-						}
-						j++;
+						List<String> lines = wrapChatMessageForDisplay(textDrawingArea, chatMessages[k], 459, true);
+						drawWrappedChatMessage(textDrawingArea, lines, j, anInt1089, 4, 0, true);
+						j += lines.size();
 					}
 					if ((l == 1 || l == 2) && (l == 1 || publicChatMode == 0 || publicChatMode == 1 && isFriendOrSelf(s1))) {
+						int j1 = 4;
+						if (byte0 == 1) {
+							j1 += 14;
+						}
+						if (byte0 == 2) {
+							j1 += 14;
+						}
+						int textX = j1 + textDrawingArea.getTextWidth(s1) + 8;
+						List<String> lines = wrapChatMessageForDisplay(textDrawingArea, chatMessages[k], 463 - textX, false);
+						int i1 = chatLineY(firstWrappedChatRow(j, lines), anInt1089);
 						if (i1 > 0 && i1 < 110) {
-							int j1 = 4;
+							int iconX = 4;
 							if (byte0 == 1) {
-								modIcons[0].method361(j1, i1 - 12);
-								j1 += 14;
+								modIcons[0].method361(iconX, i1 - 12);
+								iconX += 14;
 							}
 							if (byte0 == 2) {
-								modIcons[1].method361(j1, i1 - 12);
-								j1 += 14;
+								modIcons[1].method361(iconX, i1 - 12);
 							}
 							textDrawingArea.textLeft(0, s1 + ":", i1, j1);
-							j1 += textDrawingArea.getTextWidth(s1) + 8;
-							textDrawingArea.textLeft(255, chatMessages[k], i1, j1);
 						}
-						j++;
+						drawWrappedChatMessage(textDrawingArea, lines, j, anInt1089, textX, 255, false);
+						j += lines.size();
 					}
 					if ((l == 3 || l == 7) && splitpublicChat == 0 && (l == 7 || privateChatMode == 0 || privateChatMode == 1 && isFriendOrSelf(s1))) {
+						int k1 = 4 + textDrawingArea.getTextWidth("From ");
+						if (byte0 == 1) {
+							k1 += 14;
+						}
+						if (byte0 == 2) {
+							k1 += 14;
+						}
+						int textX = k1 + textDrawingArea.getTextWidth(s1) + 8;
+						List<String> lines = wrapChatMessageForDisplay(textDrawingArea, chatMessages[k], 463 - textX, false);
+						int i1 = chatLineY(firstWrappedChatRow(j, lines), anInt1089);
 						if (i1 > 0 && i1 < 110) {
-							int k1 = 4;
-							textDrawingArea.textLeft(0, "From", i1, k1);
-							k1 += textDrawingArea.getTextWidth("From ");
+							int iconX = 4;
+							textDrawingArea.textLeft(0, "From", i1, iconX);
+							iconX += textDrawingArea.getTextWidth("From ");
 							if (byte0 == 1) {
-								modIcons[0].method361(k1, i1 - 12);
-								k1 += 14;
+								modIcons[0].method361(iconX, i1 - 12);
+								iconX += 14;
 							}
 							if (byte0 == 2) {
-								modIcons[1].method361(k1, i1 - 12);
-								k1 += 14;
+								modIcons[1].method361(iconX, i1 - 12);
 							}
 							textDrawingArea.textLeft(0, s1 + ":", i1, k1);
-							k1 += textDrawingArea.getTextWidth(s1) + 8;
-							textDrawingArea.textLeft(0x800000, chatMessages[k], i1, k1);
 						}
-						j++;
+						drawWrappedChatMessage(textDrawingArea, lines, j, anInt1089, textX, 0x800000, false);
+						j += lines.size();
 					}
 					if (l == 4 && (tradeMode == 0 || tradeMode == 1 && isFriendOrSelf(s1))) {
-						if (i1 > 0 && i1 < 110) {
-							textDrawingArea.textLeft(0x800080, s1 + " " + chatMessages[k], i1, 4);
-						}
-						j++;
+						List<String> lines = wrapChatMessageForDisplay(textDrawingArea, s1 + " " + chatMessages[k], 459, false);
+						drawWrappedChatMessage(textDrawingArea, lines, j, anInt1089, 4, 0x800080, false);
+						j += lines.size();
 					}
 					if (l == 5 && splitpublicChat == 0 && privateChatMode < 2) {
-						if (i1 > 0 && i1 < 110) {
-							textDrawingArea.textLeft(0x800000, chatMessages[k], i1, 4);
-						}
-						j++;
+						List<String> lines = wrapChatMessageForDisplay(textDrawingArea, chatMessages[k], 459, false);
+						drawWrappedChatMessage(textDrawingArea, lines, j, anInt1089, 4, 0x800000, false);
+						j += lines.size();
 					}
 					if (l == 6 && splitpublicChat == 0 && privateChatMode < 2) {
+						int textX = 12 + textDrawingArea.getTextWidth("To " + s1);
+						List<String> lines = wrapChatMessageForDisplay(textDrawingArea, chatMessages[k], 463 - textX, false);
+						int i1 = chatLineY(firstWrappedChatRow(j, lines), anInt1089);
 						if (i1 > 0 && i1 < 110) {
 							textDrawingArea.textLeft(0, "To " + s1 + ":", i1, 4);
-							textDrawingArea.textLeft(0x800000, chatMessages[k], i1, 12 + textDrawingArea.getTextWidth("To " + s1));
 						}
-						j++;
+						drawWrappedChatMessage(textDrawingArea, lines, j, anInt1089, textX, 0x800000, false);
+						j += lines.size();
 					}
 					if (l == 8 && (tradeMode == 0 || tradeMode == 1 && isFriendOrSelf(s1))) {
-						if (i1 > 0 && i1 < 110) {
-							textDrawingArea.textLeft(0x7e3200, s1 + " " + chatMessages[k], i1, 4);
-						}
-						j++;
+						List<String> lines = wrapChatMessageForDisplay(textDrawingArea, s1 + " " + chatMessages[k], 459, false);
+						drawWrappedChatMessage(textDrawingArea, lines, j, anInt1089, 4, 0x7e3200, false);
+						j += lines.size();
 					}
 				}
 			}
@@ -521,6 +533,67 @@ public class Game extends RSApplet {
 		aRSImageProducer_1166.drawGraphics(357, super.graphics, 17);
 		aRSImageProducer_1165.initDrawingArea();
 		Texture.lineOffsets = chatBoxAreaOffsets;
+	}
+
+	private int chatLineY(int visualRow, int scrollOffset) {
+		return 70 - visualRow * 14 + scrollOffset;
+	}
+
+	private int firstWrappedChatRow(int firstRow, List<String> lines) {
+		return firstRow + Math.max(0, lines.size() - 1);
+	}
+
+	private void drawWrappedChatMessage(TextDrawingArea font, List<String> lines, int firstRow, int scrollOffset, int x, int color, boolean formatted) {
+		for (int i = 0; i < lines.size(); i++) {
+			int y = chatLineY(firstRow + lines.size() - 1 - i, scrollOffset);
+			if (y > 0 && y < 110) {
+				if (formatted) {
+					font.textLeftShadow(false, x, color, lines.get(i), y);
+				} else {
+					font.textLeft(color, lines.get(i), y, x);
+				}
+			}
+		}
+	}
+
+	private List<String> wrapChatMessageForDisplay(TextDrawingArea font, String text, int maxWidth, boolean formatted) {
+		List<String> lines = new ArrayList<String>();
+		if (text == null || text.length() == 0) {
+			lines.add("");
+			return lines;
+		}
+		String remaining = text.trim();
+		int safeWidth = Math.max(20, maxWidth - CHAT_WRAP_RIGHT_PADDING);
+		while (remaining.length() > 0) {
+			int end = chatWrapEnd(font, remaining, safeWidth, formatted);
+			String line = remaining.substring(0, end).trim();
+			if (line.length() == 0) {
+				line = remaining.substring(0, end);
+			}
+			lines.add(line);
+			remaining = remaining.substring(end).trim();
+		}
+		return lines;
+	}
+
+	private int chatWrapEnd(TextDrawingArea font, String text, int maxWidth, boolean formatted) {
+		if (font == null || chatDisplayWidth(font, text, formatted) <= maxWidth) {
+			return text.length();
+		}
+		int lastSpace = -1;
+		for (int i = 1; i <= text.length(); i++) {
+			if (text.charAt(i - 1) == ' ') {
+				lastSpace = i - 1;
+			}
+			if (chatDisplayWidth(font, text.substring(0, i), formatted) > maxWidth) {
+				return lastSpace > 0 ? lastSpace : Math.max(1, i - 1);
+			}
+		}
+		return text.length();
+	}
+
+	private int chatDisplayWidth(TextDrawingArea font, String text, boolean formatted) {
+		return formatted ? font.getTextWidth(text) : font.method384(text);
 	}
 
 	public void init() {
@@ -1903,13 +1976,14 @@ public class Game extends RSApplet {
 		int contentHeight = AGENT_TERMINAL_CONTENT_HEIGHT;
 		int scrollX = panelX + panelWidth - 17;
 
-		DrawingArea.fillArea(panelHeight, panelY, 0x1c1812, panelWidth, panelX);
-		DrawingArea.fillPixels(panelY, panelHeight, 0x5d5447, panelX, panelWidth);
-		DrawingArea.fillArea(20, panelY + 1, 0, panelWidth - 2, panelX + 1);
-		aTextDrawingArea_1271.textLeft(0xc6bda8, "Agent Terminal", panelY + 15, panelX + 5);
-		String status = compactAgentTerminalText(agentSettingsStatus(), 17);
+		DrawingArea.fillArea(panelHeight, panelY, 0x14110d, panelWidth, panelX);
+		DrawingArea.fillPixels(panelY, panelHeight, 0x4a4136, panelX, panelWidth);
+		DrawingArea.fillArea(20, panelY + 1, 0x090806, panelWidth - 2, panelX + 1);
+		aTextDrawingArea_1271.textLeft(0xc6bda8, "Agent Console", panelY + 15, panelX + 5);
+		int statusMaxWidth = panelWidth - aTextDrawingArea_1271.getTextWidth("Agent Console") - 18;
+		String status = compactAgentTerminalText(aTextDrawingArea_1270, agentSettingsStatus(), statusMaxWidth);
 		aTextDrawingArea_1270.textLeft(0x9bd6ff, status, panelY + 14, panelX + panelWidth - aTextDrawingArea_1270.getTextWidth(status) - 5);
-		DrawingArea.fillArea(contentHeight, contentY, 0x100d0a, contentWidth + 1, contentX - 1);
+		DrawingArea.fillArea(contentHeight, contentY, 0x080705, contentWidth + 1, contentX - 1);
 
 		List<AgentTerminalLog.RenderLine> lines = agentTerminalLog.renderLines(font, contentWidth - 2);
 		int visibleRows = agentTerminalVisibleRows();
@@ -1925,8 +1999,8 @@ public class Game extends RSApplet {
 		for (int i = firstLine; i < lastLine; i++) {
 			AgentTerminalLog.RenderLine line = lines.get(i);
 			int lineY = contentY + 11 + (i - firstLine) * AGENT_TERMINAL_LINE_HEIGHT;
-			font.textLeft(0, line.text, lineY + 1, contentX + 2);
-			font.textLeft(line.color, line.text, lineY, contentX + 1);
+			font.textLeft(0, line.text, lineY + 1, contentX + 4);
+			font.textLeft(line.color, line.text, lineY, contentX + 3);
 		}
 		DrawingArea.defaultDrawingAreaSize();
 
@@ -1935,8 +2009,8 @@ public class Game extends RSApplet {
 			int topScroll = Math.max(0, totalHeight - contentHeight - scrollOffset * AGENT_TERMINAL_LINE_HEIGHT);
 			drawScrollThumb(contentHeight, topScroll, contentY, scrollX, totalHeight);
 		} else {
-			DrawingArea.fillArea(contentHeight, contentY, 0x1c1812, 16, scrollX);
-			DrawingArea.fillPixels(contentY, contentHeight, 0x5d5447, scrollX, 16);
+			DrawingArea.fillArea(contentHeight, contentY, 0x14110d, 16, scrollX);
+			DrawingArea.fillPixels(contentY, contentHeight, 0x4a4136, scrollX, 16);
 		}
 		drawAgentTerminalInput(font);
 	}
@@ -1946,12 +2020,12 @@ public class Game extends RSApplet {
 		int inputY = AGENT_TERMINAL_INPUT_Y;
 		int inputWidth = AGENT_TERMINAL_INPUT_WIDTH;
 		DrawingArea.fillArea(AGENT_TERMINAL_INPUT_HEIGHT, inputY, 0x070604, inputWidth, inputX);
-		DrawingArea.fillPixels(inputY, AGENT_TERMINAL_INPUT_HEIGHT, agentTerminalInputFocused ? 0x7dff7d : 0x5d5447, inputX, inputWidth);
+		DrawingArea.fillPixels(inputY, AGENT_TERMINAL_INPUT_HEIGHT, agentTerminalInputFocused ? 0x7dff7d : 0x4a4136, inputX, inputWidth);
 		font.textLeft(0x7dff7d, ">", inputY + 13, inputX + 4);
 		String text = visibleAgentTerminalInput(font, inputWidth - 20);
 		if (text.length() == 0 && !agentTerminalInputFocused) {
 			text = "type here";
-			font.textLeft(0x5d5447, text, inputY + 13, inputX + 16);
+			font.textLeft(0x6c6255, text, inputY + 13, inputX + 16);
 			return;
 		}
 		if (agentTerminalInputFocused && loopCycle % 40 < 20) {
@@ -1976,15 +2050,21 @@ public class Game extends RSApplet {
 		return Math.max(0, lines.size() - agentTerminalVisibleRows());
 	}
 
-	private String compactAgentTerminalText(String text, int maxLength) {
+	private String compactAgentTerminalText(TextDrawingArea font, String text, int maxWidth) {
 		if (text == null) {
 			return "";
 		}
 		String trimmed = text.trim();
-		if (trimmed.length() > maxLength) {
-			trimmed = trimmed.substring(0, maxLength - 3) + "...";
+		if (font == null || maxWidth <= 0) {
+			return "";
 		}
-		return trimmed;
+		if (font.getTextWidth(trimmed) <= maxWidth) {
+			return trimmed;
+		}
+		while (trimmed.length() > 0 && font.getTextWidth(trimmed + "...") > maxWidth) {
+			trimmed = trimmed.substring(0, trimmed.length() - 1);
+		}
+		return trimmed.length() == 0 ? "..." : trimmed.trim() + "...";
 	}
 
 	private String visibleAgentTerminalInput(TextDrawingArea font, int maxWidth) {
@@ -2091,11 +2171,11 @@ public class Game extends RSApplet {
 	private void drawAgentTerminalIcon(int x, int y, boolean selected) {
 		int frame = selected ? 0xffff00 : 0xc6bda8;
 		int accent = selected ? 0x7dff7d : 0x9bd6ff;
-		int boxX = x + 5;
-		int boxY = y + 5;
-		drawRoundedTerminalIconBox(boxX, boxY, 18, 16, frame, 0x111111);
-		aTextDrawingArea_1271.textLeft(accent, ">", y + 17, x + 8);
-		DrawingArea.drawHorizontalLine(y + 18, accent, 7, x + 15);
+		int boxX = x + 7;
+		int boxY = y + 7;
+		drawRoundedTerminalIconBox(boxX, boxY, 15, 13, frame, 0x090806);
+		aTextDrawingArea_1270.textLeft(accent, ">", y + 17, x + 10);
+		DrawingArea.drawHorizontalLine(y + 18, accent, 5, x + 16);
 	}
 
 	private void drawRoundedTerminalIconBox(int x, int y, int width, int height, int borderColor, int fillColor) {

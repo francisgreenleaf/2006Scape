@@ -15,7 +15,8 @@ public class AgentTerminalLog {
     public static final int ERROR = 0xff7777;
 
     private static final int MAX_ENTRIES = 180;
-    private static final int MAX_MESSAGE_LENGTH = 900;
+    private static final int MAX_MESSAGE_LENGTH = 360;
+    private static final String ELLIPSIS = "...";
 
     private final List<Entry> entries = new ArrayList<Entry>();
     private int scrollOffset;
@@ -42,13 +43,14 @@ public class AgentTerminalLog {
     }
 
     public void toolStart(String tool) {
-        add(TOOL, "tool", "Using " + cleanToolName(tool) + "...");
+        add(TOOL, "tool", cleanToolName(tool));
     }
 
     public void toolResult(String tool, boolean success, String message, long durationMs) {
-        String status = success ? "ok" : "fail";
+        String status = success ? "ok" : "err";
         int color = success ? SUCCESS : ERROR;
-        add(color, status, cleanToolName(tool) + ": " + message + " (" + durationMs + "ms)");
+        String detail = compactMessage(message, 90);
+        add(color, status, cleanToolName(tool) + " " + durationMs + "ms" + (detail.length() == 0 ? "" : " " + detail));
     }
 
     public void success(String message) {
@@ -136,11 +138,11 @@ public class AgentTerminalLog {
     }
 
     private void wrap(List<RenderLine> lines, TextDrawingArea font, int maxWidth, String text, String continuation, int color) {
-        String remaining = text;
+        String remaining = text == null ? "" : text;
         boolean first = true;
         while (remaining.length() > 0) {
             String prefix = first ? "" : continuation;
-            int maxTextWidth = Math.max(20, maxWidth - font.method384(prefix));
+            int maxTextWidth = Math.max(20, maxWidth - displayWidth(font, prefix));
             int end = fittingEnd(font, remaining, maxTextWidth);
             String part = remaining.substring(0, end).trim();
             if (part.length() == 0) {
@@ -153,22 +155,26 @@ public class AgentTerminalLog {
     }
 
     private int fittingEnd(TextDrawingArea font, String text, int maxWidth) {
-        int width = 0;
+        if (displayWidth(font, text) <= maxWidth) {
+            return text.length();
+        }
         int lastSpace = -1;
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            width += font.method384(String.valueOf(c));
-            if (c == ' ') {
-                lastSpace = i;
+        for (int i = 1; i <= text.length(); i++) {
+            if (text.charAt(i - 1) == ' ') {
+                lastSpace = i - 1;
             }
-            if (width > maxWidth) {
-                if (lastSpace > 0) {
-                    return lastSpace + 1;
-                }
-                return Math.max(1, i);
+            if (displayWidth(font, text.substring(0, i)) > maxWidth) {
+                return lastSpace > 0 ? lastSpace : Math.max(1, i - 1);
             }
         }
         return text.length();
+    }
+
+    private int displayWidth(TextDrawingArea font, String text) {
+        if (text == null) {
+            return 0;
+        }
+        return font == null ? text.length() : font.method384(text);
     }
 
     private String clean(String message) {
@@ -179,10 +185,21 @@ public class AgentTerminalLog {
         boolean lastWasSpace = false;
         for (int i = 0; i < message.length(); i++) {
             char c = message.charAt(i);
-            if (c == '\n' || c == '\r' || c == '\t') {
+            if (c == '\n' || c == '\r' || c == '\t' || c == '\u00a0') {
                 c = ' ';
             }
             if (c < 32) {
+                continue;
+            }
+            if (c == '\u2018' || c == '\u2019' || c == '\u201b') {
+                c = '\'';
+            } else if (c == '\u201c' || c == '\u201d' || c == '\u201f') {
+                c = '"';
+            } else if (c == '\u2013' || c == '\u2014') {
+                c = '-';
+            } else if (c == '\u2026') {
+                builder.append("...");
+                lastWasSpace = false;
                 continue;
             }
             if (c > 126) {
@@ -206,8 +223,30 @@ public class AgentTerminalLog {
         return cleaned.length() == 0 ? "rs.unknown" : cleaned;
     }
 
+    static String compactMessageForTests(String message, int maxLength) {
+        return compactMessageStatic(message, maxLength);
+    }
+
+    private String compactMessage(String message, int maxLength) {
+        return compactMessageStatic(message, maxLength);
+    }
+
+    private static String compactMessageStatic(String message, int maxLength) {
+        if (message == null) {
+            return "";
+        }
+        String cleaned = message.trim();
+        if (maxLength <= 0 || cleaned.length() <= maxLength) {
+            return cleaned;
+        }
+        if (maxLength <= ELLIPSIS.length()) {
+            return cleaned.substring(0, maxLength);
+        }
+        return cleaned.substring(0, maxLength - ELLIPSIS.length()).trim() + ELLIPSIS;
+    }
+
     private String timeStamp() {
-        return new SimpleDateFormat("HH:mm:ss", Locale.ENGLISH).format(new Date());
+        return new SimpleDateFormat("HH:mm", Locale.ENGLISH).format(new Date());
     }
 
     private String repeat(char c, int count) {

@@ -170,7 +170,6 @@ public class AgentClientController {
             return;
         }
         taskRunning = true;
-        terminalLog.task("Task requested: " + command);
         if (isLocalDurableCombatGoal(command)) {
             executor.submit(() -> startLocalDurableCombatGoal(command));
             return;
