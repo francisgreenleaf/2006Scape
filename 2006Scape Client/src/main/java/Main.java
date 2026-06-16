@@ -25,6 +25,7 @@ public final class Main {
 		try {
 			configureDesktopProperties();
 			loadClientConfigFromArgs(args);
+			loadClientTileFromEnvironment();
 			// Process client arguments to connect to
 			for (int i = 0; i < args.length; i++) {
 				switch(args[i]) {
@@ -113,6 +114,10 @@ public final class Main {
 							case "-agent-gateway-url":
 								setAgentBridgeUrl(args[++i]);
 								break;
+							case "-secure-transport":
+							case "-external-transport":
+								ClientSettings.EXPECTED_SECURE_TRANSPORT = args[++i];
+								break;
 							case "-agent-command":
 							case "-agent-auto-command":
 								ClientSettings.AGENT_AUTO_COMMAND = args[++i];
@@ -124,6 +129,15 @@ public final class Main {
 						case "-window-scale":
 							ClientSettings.CLIENT_SCALE = parseClientScale(args[++i]);
 							break;
+						case "-tile":
+							setClientTile(args[++i]);
+							break;
+						case "-tile-slot":
+							ClientSettings.CLIENT_TILE_SLOT = parseTileNumber(args[++i], "tile slot");
+							break;
+						case "-tile-total":
+							ClientSettings.CLIENT_TILE_TOTAL = parseTileNumber(args[++i], "tile total");
+							break;
 						case "-client-config":
 						case "-config":
 							i++;
@@ -131,6 +145,7 @@ public final class Main {
 					}
 				}
 			}
+			validateClientTile();
 
 			Game game = new Game();
 
@@ -168,8 +183,13 @@ public final class Main {
 							case "-agent-bridge-port":
 							case "-agent-bridge-url":
 							case "-agent-gateway-url":
+							case "-secure-transport":
+							case "-external-transport":
 							case "-client-config":
 							case "-config":
+							case "-tile":
+							case "-tile-slot":
+							case "-tile-total":
 								i++;
 							break;
 						case "-agent-claim":
@@ -196,6 +216,7 @@ public final class Main {
 							+ " bridge=" + ClientSettings.AGENT_BRIDGE_URL);
 				}
 			printExternalTransportNotice();
+			ClientInstanceRegistry.registerCurrentProcess();
 
 			Game.nodeID = 10;
 			Game.portOff = 0;
@@ -258,6 +279,47 @@ public final class Main {
 		} catch (NumberFormatException e) {
 			System.out.println("[Client] invalid scale value, using 1: " + value);
 			return 1;
+		}
+	}
+
+	private static void loadClientTileFromEnvironment() {
+		String tile = System.getenv("CLIENT_TILE");
+		if (tile != null && tile.trim().length() > 0) {
+			setClientTile(tile);
+			return;
+		}
+		String slot = System.getenv("CLIENT_TILE_SLOT");
+		String total = System.getenv("CLIENT_TILE_TOTAL");
+		if (slot != null && slot.trim().length() > 0) {
+			ClientSettings.CLIENT_TILE_SLOT = parseTileNumber(slot, "tile slot");
+		}
+		if (total != null && total.trim().length() > 0) {
+			ClientSettings.CLIENT_TILE_TOTAL = parseTileNumber(total, "tile total");
+		}
+	}
+
+	private static void setClientTile(String value) {
+		if (!ClientWindow.configureTile(value)) {
+			System.out.println("[Client] invalid tile value, using centered window: " + value);
+		}
+	}
+
+	private static void validateClientTile() {
+		if (ClientSettings.CLIENT_TILE_SLOT == 0 && ClientSettings.CLIENT_TILE_TOTAL == 0) {
+			return;
+		}
+		if (!ClientWindow.configureTile(ClientSettings.CLIENT_TILE_SLOT, ClientSettings.CLIENT_TILE_TOTAL)) {
+			System.out.println("[Client] invalid tile slot/total, using centered window: "
+					+ ClientSettings.CLIENT_TILE_SLOT + "/" + ClientSettings.CLIENT_TILE_TOTAL);
+		}
+	}
+
+	private static int parseTileNumber(String value, String label) {
+		try {
+			return Integer.parseInt(value);
+		} catch (NumberFormatException e) {
+			System.out.println("[Client] invalid " + label + " value, using centered window: " + value);
+			return 0;
 		}
 	}
 

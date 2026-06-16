@@ -56,7 +56,7 @@ public class ClientSettings {
     /**
      * The Servers Name
      */
-    public final static String SERVER_NAME = "2006Scape";
+    public final static String SERVER_NAME = "Agentscape";
     /**
      * The Servers Website
      */
@@ -88,6 +88,8 @@ public class ClientSettings {
 
     public static boolean SHOW_NAVBAR = true;
     public static int CLIENT_SCALE = 1;
+    public static int CLIENT_TILE_SLOT = 0;
+    public static int CLIENT_TILE_TOTAL = 0;
     public static final String NAV_MAINMENU_LINK = SERVER_WEBSITE;
     public static final String NAV_WORLDMAP_LINK = SERVER_WEBSITE + "img/worldmap.jpg";
     public static final String NAV_MANUAL_LINK = SERVER_WEBSITE;

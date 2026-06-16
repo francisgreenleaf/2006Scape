@@ -1908,7 +1908,13 @@ public class Game extends RSApplet {
 		DrawingArea.fillArea(20, panelY + 1, 0, panelWidth - 2, panelX + 1);
 		aTextDrawingArea_1271.textLeft(0xc6bda8, "Agent Terminal", panelY + 15, panelX + 5);
 		String status = compactAgentTerminalText(agentSettingsStatus(), 17);
-		aTextDrawingArea_1270.textLeft(0x9bd6ff, status, panelY + 14, panelX + panelWidth - aTextDrawingArea_1270.getTextWidth(status) - 5);
+		boolean ready = agentConnectionReady();
+		int statusColor = ready ? 0x7dff7d : 0x9bd6ff;
+		int statusX = panelX + panelWidth - aTextDrawingArea_1270.getTextWidth(status) - 5;
+		if (ready) {
+			drawAgentStatusDot(statusX - 9, panelY + 7);
+		}
+		aTextDrawingArea_1270.textLeft(statusColor, status, panelY + 14, statusX);
 		DrawingArea.fillArea(contentHeight, contentY, 0x100d0a, contentWidth + 1, contentX - 1);
 
 		List<AgentTerminalLog.RenderLine> lines = agentTerminalLog.renderLines(font, contentWidth - 2);
@@ -2029,6 +2035,12 @@ public class Game extends RSApplet {
 				handleAgentChatCommand(normalizeAgentTerminalCommand(command), false);
 			}
 		}
+	}
+
+	private void drawAgentStatusDot(int x, int y) {
+		DrawingArea.fillArea(1, y, 0x7dff7d, 3, x + 1);
+		DrawingArea.fillArea(3, y + 1, 0x7dff7d, 5, x);
+		DrawingArea.fillArea(1, y + 4, 0x7dff7d, 3, x + 1);
 	}
 
 	private String normalizeAgentTerminalCommand(String command) {
@@ -6049,6 +6061,10 @@ public class Game extends RSApplet {
 		}
 		String status = agentController.getSettingsStatusLine();
 		return status.length() > 18 ? status.substring(0, 18) : status;
+	}
+
+	private boolean agentConnectionReady() {
+		return agentController != null && agentController.isReady();
 	}
 
 	public boolean sendAgentBridgeClaimCommand(String nonce) {

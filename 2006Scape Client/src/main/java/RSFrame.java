@@ -9,6 +9,7 @@ import java.awt.event.KeyEvent;
 import java.net.URI;
 import java.net.URL;
 import javax.swing.ImageIcon;
+import javax.swing.JOptionPane;
 
 final class RSFrame extends Frame {
 
@@ -25,7 +26,7 @@ final class RSFrame extends Frame {
 		this.add(applet, BorderLayout.CENTER);
 		this.pack();
 
-		this.setLocationRelativeTo(null);
+		ClientWindow.retile(this);
 		this.setVisible(true);
 		this.toFront();
 		this.transferFocus();
@@ -63,6 +64,12 @@ final class RSFrame extends Frame {
 		MenuBar menuBar = new MenuBar();
 
 		Menu fileMenu = new Menu("File");
+		fileMenu.add(createMenuItem("New Client Window", KeyEvent.VK_N, true, new ActionListener() {
+			public void actionPerformed(ActionEvent event) {
+				launchNewClientWindow();
+			}
+		}));
+		fileMenu.addSeparator();
 		fileMenu.add(createMenuItem("Close Window", KeyEvent.VK_W, new ActionListener() {
 			public void actionPerformed(ActionEvent event) {
 				requestClose();
@@ -133,13 +140,43 @@ final class RSFrame extends Frame {
 				setLocationRelativeTo(null);
 			}
 		}));
+		windowMenu.add(createMenuItem("Retile", 0, new ActionListener() {
+			public void actionPerformed(ActionEvent event) {
+				ClientWindow.retile(RSFrame.this);
+				rsApplet.requestFocus();
+			}
+		}));
 		menuBar.add(windowMenu);
+
+		Menu helpMenu = new Menu("Help");
+		helpMenu.add(createMenuItem("Shortcuts", 0, new ActionListener() {
+			public void actionPerformed(ActionEvent event) {
+				showShortcutsHelp();
+			}
+		}));
+		helpMenu.add(createMenuItem("Agent Help", 0, new ActionListener() {
+			public void actionPerformed(ActionEvent event) {
+				showAgentHelp();
+			}
+		}));
+		helpMenu.add(createMenuItem("Connection Help", 0, new ActionListener() {
+			public void actionPerformed(ActionEvent event) {
+				showConnectionHelp();
+			}
+		}));
+		menuBar.add(helpMenu);
 
 		return menuBar;
 	}
 
 	private MenuItem createMenuItem(String label, int shortcutKey, ActionListener listener) {
-		MenuItem item = shortcutKey > 0 ? new MenuItem(label, new MenuShortcut(shortcutKey)) : new MenuItem(label);
+		return createMenuItem(label, shortcutKey, false, listener);
+	}
+
+	private MenuItem createMenuItem(String label, int shortcutKey, boolean shiftShortcut, ActionListener listener) {
+		MenuItem item = shortcutKey > 0
+				? new MenuItem(label, new MenuShortcut(shortcutKey, shiftShortcut))
+				: new MenuItem(label);
 		item.addActionListener(listener);
 		return item;
 	}
@@ -153,6 +190,15 @@ final class RSFrame extends Frame {
 		rsApplet.requestFocus();
 	}
 
+	private void launchNewClientWindow() {
+		try {
+			ClientRelauncher.launchNewClient(this);
+		} catch (Exception ex) {
+			showInfoDialog("New Client Window", ex.getMessage());
+		}
+		rsApplet.requestFocus();
+	}
+
 	private void openUrl(String url) {
 		try {
 			if (Desktop.isDesktopSupported()) {
@@ -161,6 +207,53 @@ final class RSFrame extends Frame {
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		}
+	}
+
+	private void showShortcutsHelp() {
+		String message = "Existing shortcuts:\n\n"
+				+ "F1-F12 - switch side tabs\n"
+				+ "Esc - close the current interface\n"
+				+ "Page Up / Page Down - adjust camera zoom\n"
+				+ "Ctrl+V - paste into chat input\n"
+				+ "Command/Ctrl+Shift+N - open another client window\n"
+				+ "Command/Ctrl+1 - actual size\n"
+				+ "Command/Ctrl+2 - double size\n"
+				+ "Command/Ctrl+3 - triple size\n"
+				+ "Command/Ctrl+4 - quad size\n"
+				+ "Command/Ctrl+W - close window\n"
+				+ "Command/Ctrl+Q - quit " + ClientSettings.SERVER_NAME;
+		if (ClientSettings.SCREENSHOTS_ENABLED) {
+			message += "\nCtrl+Print Screen - save a screenshot";
+		}
+		showInfoDialog("Shortcuts", message);
+	}
+
+	private void showAgentHelp() {
+		showInfoDialog("Agent Help",
+				"Use the in-game chat box for agent commands:\n\n"
+				+ "/agent status - check Codex and game bridge connection\n"
+				+ "/agent key - connect Codex with your OpenAI API key\n"
+				+ "/agent stop - stop the current agent task\n"
+				+ "/agent <task> - ask the agent to help with a bounded task\n\n"
+				+ "The agent only controls the character that is logged in and connected.");
+	}
+
+	private void showConnectionHelp() {
+		showInfoDialog("Connection Help",
+				"Current connection settings:\n\n"
+				+ "Server host: " + ClientSettings.SERVER_IP + "\n"
+				+ "World: " + ClientSettings.SERVER_WORLD + "\n"
+				+ "Game port: " + ClientSettings.gamePort() + "\n"
+				+ "HTTP cache port: " + ClientSettings.HTTP_PORT + "\n"
+				+ "JAGGRAB cache port: " + ClientSettings.JAGGRAB_PORT + "\n"
+				+ "Transport: " + ClientSettings.EXPECTED_SECURE_TRANSPORT + "\n"
+				+ "Agent bridge URL: " + ClientSettings.AGENT_BRIDGE_URL + "\n\n"
+				+ "If these do not match what your server operator sent you, contact the server operator.");
+	}
+
+	private void showInfoDialog(String title, String message) {
+		JOptionPane.showMessageDialog(this, message, title, JOptionPane.INFORMATION_MESSAGE);
+		rsApplet.requestFocus();
 	}
 
 	private void requestClose() {

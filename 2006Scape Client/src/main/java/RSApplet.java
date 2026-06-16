@@ -226,7 +226,7 @@ public class RSApplet extends Applet implements Runnable, MouseListener, MouseWh
 				layers.add(rulesText, 0);
 				gameFrame.add(layers, BorderLayout.NORTH);
 				gameFrame.pack();
-				gameFrame.setLocationRelativeTo(null); // re-center based on the new size
+				ClientWindow.retile(gameFrame);
 			} catch (Exception ex) {
 				ex.printStackTrace();
 			}

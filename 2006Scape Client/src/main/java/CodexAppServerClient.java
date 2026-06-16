@@ -184,6 +184,10 @@ public class CodexAppServerClient {
         return accountReady;
     }
 
+    public boolean isReady() {
+        return isRunning() && accountReady && bridgeHttpClient.hasSession();
+    }
+
     public String status() {
         if (!isRunning()) {
             return "app-server stopped";
@@ -194,7 +198,7 @@ public class CodexAppServerClient {
         if (!bridgeHttpClient.hasSession()) {
             return "needs game bridge session";
         }
-        return "ready" + (bridgeHttpClient.getPlayerName().isEmpty() ? "" : " for " + bridgeHttpClient.getPlayerName());
+        return "ready";
     }
 
     private File findCodexExecutable() {

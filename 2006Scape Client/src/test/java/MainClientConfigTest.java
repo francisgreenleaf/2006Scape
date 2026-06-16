@@ -32,6 +32,8 @@ public class MainClientConfigTest {
     private boolean previousSingleOnDemand;
     private boolean previousShowNavbar;
     private int previousClientScale;
+    private int previousTileSlot;
+    private int previousTileTotal;
     private String previousExpectedSecureTransport;
     private int previousAgentBridgePort;
     private String previousAgentBridgeUrl;
@@ -47,6 +49,8 @@ public class MainClientConfigTest {
         previousSingleOnDemand = ClientSettings.SINGLE_ONDEMAND;
         previousShowNavbar = ClientSettings.SHOW_NAVBAR;
         previousClientScale = ClientSettings.CLIENT_SCALE;
+        previousTileSlot = ClientSettings.CLIENT_TILE_SLOT;
+        previousTileTotal = ClientSettings.CLIENT_TILE_TOTAL;
         previousExpectedSecureTransport = ClientSettings.EXPECTED_SECURE_TRANSPORT;
         previousAgentBridgePort = ClientSettings.AGENT_BRIDGE_PORT;
         previousAgentBridgeUrl = ClientSettings.AGENT_BRIDGE_URL;
@@ -63,6 +67,8 @@ public class MainClientConfigTest {
         ClientSettings.SINGLE_ONDEMAND = previousSingleOnDemand;
         ClientSettings.SHOW_NAVBAR = previousShowNavbar;
         ClientSettings.CLIENT_SCALE = previousClientScale;
+        ClientSettings.CLIENT_TILE_SLOT = previousTileSlot;
+        ClientSettings.CLIENT_TILE_TOTAL = previousTileTotal;
         ClientSettings.EXPECTED_SECURE_TRANSPORT = previousExpectedSecureTransport;
         ClientSettings.AGENT_BRIDGE_PORT = previousAgentBridgePort;
         ClientSettings.AGENT_BRIDGE_URL = previousAgentBridgeUrl;
