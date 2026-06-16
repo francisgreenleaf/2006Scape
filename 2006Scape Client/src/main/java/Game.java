@@ -1982,7 +1982,13 @@ public class Game extends RSApplet {
 		aTextDrawingArea_1271.textLeft(0xc6bda8, "Agent Console", panelY + 15, panelX + 5);
 		int statusMaxWidth = panelWidth - aTextDrawingArea_1271.getTextWidth("Agent Console") - 18;
 		String status = compactAgentTerminalText(aTextDrawingArea_1270, agentSettingsStatus(), statusMaxWidth);
-		aTextDrawingArea_1270.textLeft(0x9bd6ff, status, panelY + 14, panelX + panelWidth - aTextDrawingArea_1270.getTextWidth(status) - 5);
+		boolean ready = agentConnectionReady();
+		int statusColor = ready ? 0x7dff7d : 0x9bd6ff;
+		int statusX = panelX + panelWidth - aTextDrawingArea_1270.getTextWidth(status) - 5;
+		if (ready) {
+			drawAgentStatusDot(statusX - 9, panelY + 7);
+		}
+		aTextDrawingArea_1270.textLeft(statusColor, status, panelY + 14, statusX);
 		DrawingArea.fillArea(contentHeight, contentY, 0x080705, contentWidth + 1, contentX - 1);
 
 		List<AgentTerminalLog.RenderLine> lines = agentTerminalLog.renderLines(font, contentWidth - 2);
@@ -2109,6 +2115,12 @@ public class Game extends RSApplet {
 				handleAgentChatCommand(normalizeAgentTerminalCommand(command), false);
 			}
 		}
+	}
+
+	private void drawAgentStatusDot(int x, int y) {
+		DrawingArea.fillArea(1, y, 0x7dff7d, 3, x + 1);
+		DrawingArea.fillArea(3, y + 1, 0x7dff7d, 5, x);
+		DrawingArea.fillArea(1, y + 4, 0x7dff7d, 3, x + 1);
 	}
 
 	private String normalizeAgentTerminalCommand(String command) {
@@ -2529,6 +2541,7 @@ public class Game extends RSApplet {
 		}
 		socketStream = null;
 		loggedIn = false;
+		updateClientFrameTitle("");
 		loginScreenState = 0;
 		// myUsername = "";
 		// myPassword = "";
@@ -6130,6 +6143,10 @@ public class Game extends RSApplet {
 		return status.length() > 18 ? status.substring(0, 18) : status;
 	}
 
+	private boolean agentConnectionReady() {
+		return agentController != null && agentController.isReady();
+	}
+
 	public boolean sendAgentBridgeClaimCommand(String nonce) {
 		if (stream == null || nonce == null || nonce.trim().isEmpty()) {
 			System.out.println("[AgentClient] agent claim skipped streamReady=" + (stream != null)
@@ -6641,6 +6658,7 @@ public class Game extends RSApplet {
 				super.awtFocus = true;
 					aBoolean954 = true;
 					loggedIn = true;
+					updateClientFrameTitle(s);
 					agentAutoLoginAttempted = false;
 					agentNextAutoLoginAttemptAt = 0L;
 					agentWelcomeScreenPending = isAgentStartupSession();

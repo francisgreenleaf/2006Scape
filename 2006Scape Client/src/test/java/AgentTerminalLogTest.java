@@ -18,7 +18,7 @@ public class AgentTerminalLogTest {
 
         log.system(message.toString());
 
-        List<AgentTerminalLog.RenderLine> lines = log.renderLines(null, 80);
+        List<AgentTerminalLog.RenderLine> lines = log.renderLines(null, 120);
         assertTrue("ready message plus wrapped long message", lines.size() > 2);
         assertTrue(lines.get(1).text.matches("\\d{2}:\\d{2} sys terminal message.*"));
         assertTrue("continuation row should be indented", lines.get(2).text.startsWith("          "));

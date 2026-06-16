@@ -105,16 +105,18 @@ This gives the agent richer navigation, runner, memory, map, and script context.
 1. Clone the repo and open it in Codex.
 2. Launch the packaged client and log in to your character.
 3. In Codex, ask it to use the 2006Scape skill and claim your remote character.
+   Tell it the profile name to use, but do not paste passwords or bridge tokens.
 4. Codex runs the remote claim helper:
 
    ```sh
    python3 agent-navigation/tools/remote_claim.py \
      --profile YOUR_CHARACTER \
-     --bridge-url "$AGENT_BRIDGE_URL"
+     --bridge-url "$AGENT_BRIDGE_URL" \
+     --verify
    ```
 
 5. The helper prints a short claim command. Type exactly that command in the
-   game client, for example:
+   target character's logged-in game client, for example:
 
    ```text
    ::agent claim ABCD-1234
@@ -127,13 +129,19 @@ This gives the agent richer navigation, runner, memory, map, and script context.
    ::agentbridge claim ABCD-1234
    ```
 
-6. The helper stores an ignored local session file under `agent-navigation/.local/`.
+   Claim commands are short-lived and single-use. If the helper reports a
+   player mismatch, the command was typed into the wrong client; start a fresh
+   `remote_claim.py` run and type the new command into the correct window.
+6. The helper stores an ignored local session file. Non-default profiles use
+   `agent-navigation/.local/rsbridge-session-YOUR_CHARACTER.json`; the legacy
+   default profile may still use `agent-navigation/.local/rsbridge-session.json`.
+   That file contains a scoped bridge token; do not print or paste it.
 7. Codex can now use compact bridge tools and scripts for your character, for
    example:
 
    ```sh
    RS_PROFILE=YOUR_CHARACTER agent-navigation/tools/observe_XS.sh
-   RS_PROFILE=YOUR_CHARACTER agent-navigation/tools/rs-tool_XS.sh bank_item_count '{"names":["coal","iron ore"]}'
+   RS_PROFILE=YOUR_CHARACTER agent-navigation/tools/rs-tool_XS.sh bank_item_count_XS '{"names":["coal","iron ore"]}'
    ```
 
 For normal gameplay tasks, tell Codex what you want in plain English:
@@ -146,6 +154,26 @@ bridge session and train fishing for a short safe run.
 Behavior: Codex in the repo uses the same scoped server bridge as the
 in-client flow, but it controls the player from the repo's scripts instead of
 from the Java client's embedded Codex app-server.
+
+For operator-run named profiles on a VPS, keep the account passwords in an
+ignored local env file and pass only profile names to Codex. A Codex thread that
+controls one of those profiles should:
+
+- read this README and the operator's VPS notes;
+- source the private credentials only into environment variables when launching
+  or testing a client login;
+- log in as exactly one profile, such as `MrFlame`;
+- claim the remote bridge with `remote_claim.py --profile MrFlame --verify`;
+- when several Java clients are open, target the client window whose title
+  includes that character name, such as `2006Scape - MrFlame World: 1`;
+- set `RS_PROFILE=MrFlame` for all repo-side tools;
+- use compact tools such as `observe_XS.sh`, `rs-tool_XS.sh`, and
+  `rs-tool_XXS.sh` by default.
+
+Direct game TCP access is not the same thing as repo-side agent control. Repo
+Codex control requires either the configured HTTPS agent gateway URL or a
+trusted private operator tunnel. If no gateway URL or valid profile session file
+is available, stop and ask the operator instead of trying to expose TCP `43610`.
 
 ## Operator Gateway Setup
 
@@ -192,6 +220,18 @@ gateway is reachable and the raw bridge is still private:
 scripts/probe-agent-bridge-gateway.py --gateway-url https://agents.example.com
 ```
 
+For a temporary self-signed gateway on an IP address, the probe can allow
+untrusted TLS for testing, but repo-side tools should trust the exported
+certificate through `SSL_CERT_FILE`:
+
+```sh
+scripts/probe-agent-bridge-gateway.py \
+  --gateway-url https://VPS_IP_OR_HOST \
+  --allow-untrusted-tls
+export AGENT_BRIDGE_URL=https://VPS_IP_OR_HOST
+export SSL_CERT_FILE=agent-navigation/.local/certs/agent-gateway-selfsigned.crt
+```
+
 To prove repo-side control end to end, claim a logged-in character and run a
 harmless compact observe:
 
@@ -207,6 +247,10 @@ RS_PROFILE=YOUR_CHARACTER agent-navigation/tools/observe_XXS.sh
 
 - A bridge session belongs to one logged-in player.
 - A claim must be proven through that player's active game connection.
+- In multi-client sessions, do not type a claim into "the last Java window" or
+  any other order-dependent target. Current client builds include the logged-in
+  character in the title bar after login; use that title, or close/relaunch only
+  the intended profile's client before claiming.
 - Tool calls must use the scoped bridge token returned by the claim.
 - The server executes gameplay actions through normal game mechanics and server
   ticks. Agents do not teleport, spawn items, edit stats, or bypass gameplay.
@@ -228,6 +272,17 @@ remote agent mode.
 
 If repo Codex tools fail with an invalid session, rerun the remote claim helper
 and type the new claim command while your character is logged in.
+
+If another character is claimed by mistake, stop using that session immediately.
+Rerun `remote_claim.py --profile YOUR_CHARACTER --verify` and target the window
+whose title contains `YOUR_CHARACTER`. The helper verifies the returned player
+name and refuses to write the session file when the claimed player does not
+match the requested profile.
+
+If repo Codex tools fail with a certificate verification error against a
+temporary self-signed gateway, set `SSL_CERT_FILE` to the ignored local copy of
+the gateway certificate or replace the temporary gateway with a trusted
+certificate.
 
 If the agent is doing the wrong thing, use `/agent stop` in the client or ask
 Codex to call `cancel_current_action` for the claimed profile.

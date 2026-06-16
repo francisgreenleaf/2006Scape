@@ -92,7 +92,7 @@ public class AgentClientController {
             executor.submit(() -> {
                 try {
                     codexClient.loginWithApiKey(apiKey);
-                    terminalLog.system("API key saved by Codex auth.");
+                    terminalLog.system("API key accepted. Agent tasks can now use Codex.");
                 } catch (Exception e) {
                     terminalLog.error("API-key login failed: " + cleanMessage(e));
                 }
@@ -102,6 +102,10 @@ public class AgentClientController {
 
     public String getSettingsStatusLine() {
         return codexClient.status();
+    }
+
+    public boolean isReady() {
+        return codexClient.isReady();
     }
 
     public void adoptLocalSessionAsync() {
@@ -260,8 +264,8 @@ public class AgentClientController {
             tryClaimGameSession();
         }
         if (!codexClient.hasAccount() && !codexClient.refreshAccount()) {
-            terminalLog.warn("Codex needs an API key. Use /agent key.");
-            throw new IOException("Codex needs an API key. Use /agent key.");
+            terminalLog.warn("Agent setup needs an OpenAI API key. Type /agent key to connect Codex.");
+            throw new IOException("Agent setup needs an OpenAI API key. Type /agent key to connect Codex.");
         }
     }
 

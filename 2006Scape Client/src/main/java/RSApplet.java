@@ -226,7 +226,7 @@ public class RSApplet extends Applet implements Runnable, MouseListener, MouseWh
 				layers.add(rulesText, 0);
 				gameFrame.add(layers, BorderLayout.NORTH);
 				gameFrame.pack();
-				gameFrame.setLocationRelativeTo(null); // re-center based on the new size
+				ClientWindow.retile(gameFrame);
 			} catch (Exception ex) {
 				ex.printStackTrace();
 			}
@@ -770,6 +770,12 @@ public class RSApplet extends Applet implements Runnable, MouseListener, MouseWh
 		awtFocus = true;
 		keyArray = new int[128];
 		charQueue = new int[128];
+	}
+
+	protected final void updateClientFrameTitle(String playerName) {
+		if (gameFrame != null) {
+			gameFrame.updateTitle(playerName);
+		}
 	}
 
 	private int anInt4;

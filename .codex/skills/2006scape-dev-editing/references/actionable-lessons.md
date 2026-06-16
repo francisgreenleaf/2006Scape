@@ -199,6 +199,13 @@ These notes are repo-specific operational memory from actual agent experience. A
 - **Use instead:** For profile-scoped `claim` or client replacement, stop only `agent-navigation/.local/client.pid` or `client-<profile>.pid` for the selected profile, and launch with `CLIENT_SINGLE_INSTANCE=0`; reserve broad process cleanup for explicit full `--replace-runtime` work.
 - **Validation:** `python3 agent-navigation/tools/runtime_doctor.py status --profile PROFILE` reports `client-<profile>.pid` and `/tmp/2006scape-client-<profile>.log`, while `mvn -q -DskipTests package` and focused bridge tests still pass.
 
+### Target remote claims by character-titled windows
+
+- **Observed:** During VPS multi-character testing, a fresh `remote_claim.py --profile MrFlame --verify` command was typed into the wrong Java client because both windows previously had the same generic title, and the AppleScript targeted the last Java process.
+- **Cause:** Window-order targeting is ambiguous when several 2006Scape clients are open; a valid claim nonce proves whichever logged-in client receives it, not the profile the operator intended.
+- **Use instead:** Use a client build that shows the logged-in character in the title bar, such as `2006Scape - MrFlame World: 1`, and target the window whose title contains the requested profile. If the helper reports a claimed-player mismatch, discard that nonce and rerun `remote_claim.py` for a fresh claim.
+- **Validation:** `osascript` listing of Java windows should show distinct character titles before typing the claim, and `remote_claim.py --verify` should report the expected claimed player.
+
 ### Guard `Game.method120()` when camera and player share the same tile
 
 - **Observed:** The client could crash with `ArithmeticException: / by zero` at `Game.method120()` line `9632`, reached from `method146()` during normal drawing.
