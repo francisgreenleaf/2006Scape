@@ -439,6 +439,26 @@ def bank_inventory(args, mining_args_obj, site, handle, force=False):
     return ensure_pickaxe_when_needed(player, args, mining_args_obj, site, handle, "after_bank")
 
 
+def bank_inventory_with_retry(args, mining_args_obj, site, handle, reason, force=False, max_attempts=8):
+    last_error = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return bank_inventory(args, mining_args_obj, site, handle, force=force)
+        except RuntimeError as exc:
+            text = str(exc)
+            if "unexpected_combat" not in text and "Unexpected combat" not in text:
+                raise
+            last_error = text
+            write(handle, "bank_inventory_retry", {
+                "reason": reason,
+                "attempt": attempt,
+                "maxAttempts": max_attempts,
+                "error": text[:1000],
+            })
+            time.sleep(max(2.0, float(args.loop_delay) * 10.0))
+    raise RuntimeError("bank inventory kept failing because combat interrupted movement: {}".format(last_error))
+
+
 def run(args):
     mining_runner.RUN_PROFILE = args.profile or ""
     mining_args_obj = mine_args(args)
@@ -464,7 +484,7 @@ def run(args):
             not is_underground(player)
             and any(item_id not in mining_runner.PICKAXE_ITEM_IDS for item_id in inventory_ids(player))
         ):
-            player = bank_inventory(args, mining_args_obj, site, handle, force=True)
+            player = bank_inventory_with_retry(args, mining_args_obj, site, handle, "startup", force=True)
         else:
             player = ensure_pickaxe_when_needed(player, args, mining_args_obj, site, handle, "startup")
         while True:
@@ -486,12 +506,12 @@ def run(args):
             player = mining_runner.player_from(result)
             batches_done += 1
             if args.target_mining_level and mining_runner.mining_level(player) >= args.target_mining_level:
-                player = bank_inventory(args, mining_args_obj, site, handle, force=True)
+                player = bank_inventory_with_retry(args, mining_args_obj, site, handle, "target_reached", force=True)
                 write(handle, "target_reached", {"player": compact(player)})
                 log("target mining level reached: {}".format(mining_runner.mining_level(player)), args)
                 break
             if int(player.get("freeInventorySlots", 0) or 0) < 1:
-                player = bank_inventory(args, mining_args_obj, site, handle, force=True)
+                player = bank_inventory_with_retry(args, mining_args_obj, site, handle, "inventory_full", force=True)
                 loads_done += 1
                 log("banked Dwarven Mine coal load {} level={} xp={} run={}".format(
                     loads_done,
