@@ -684,6 +684,8 @@ def route_to_target(target, args, handle, reason):
             })
             if progressed:
                 continue
+            if route_to_target_ml2(target, args, handle, reason):
+                return True
             return False
 
         player_after = bridge.observe_xs(profile=args.profile)
@@ -719,6 +721,72 @@ def route_to_target(target, args, handle, reason):
 
 def route_to_tile(target_tile, args, handle, reason):
     return route_to_target(tile_string(target_tile), args, handle, reason)
+
+
+def route_to_target_ml2(target, args, handle, reason):
+    player = bridge.observe_xs(profile=args.profile)
+    start = tile_from_player(player)
+    define_cmd = [
+        sys.executable,
+        str(ROOT / "ml2-routing" / "route_ml_XS.py"),
+        "define",
+        "--from",
+        tile_string(start),
+        "--to",
+        str(target),
+        "--combat-level",
+        str(player.get("combatLevel", 3) or 3),
+        "--food",
+        "0",
+        "--run-energy",
+        str(player.get("runEnergy", 0) or 0),
+    ]
+    if player.get("runEnabled"):
+        define_cmd.append("--run-enabled")
+    define = subprocess.run(define_cmd, cwd=str(REPO_ROOT), text=True, capture_output=True)
+    write_event(handle, "ml2_route_define_fallback", {
+        "reason": reason,
+        "target": target,
+        "returncode": define.returncode,
+        "stdoutTail": define.stdout.splitlines()[-8:],
+        "stderrTail": define.stderr.splitlines()[-8:],
+    })
+    if define.returncode != 0:
+        return False
+    try:
+        data = json.loads(define.stdout.strip().splitlines()[-1])
+    except Exception as exc:
+        write_event(handle, "ml2_route_define_parse_failed", {
+            "reason": reason,
+            "target": target,
+            "error": str(exc),
+        })
+        return False
+    route_path = data.get("path")
+    if not route_path:
+        return False
+    execute_cmd = [
+        sys.executable,
+        str(ROOT / "ml2-routing" / "tools" / "execute_route_definition.py"),
+        "--route-definition",
+        route_path,
+        "--run-mode",
+        "auto",
+        "--eat-at",
+        "10",
+        "--profile",
+        str(args.profile),
+    ]
+    execute = subprocess.run(execute_cmd, cwd=str(REPO_ROOT), text=True, capture_output=True)
+    write_event(handle, "ml2_route_execute_fallback", {
+        "reason": reason,
+        "target": target,
+        "routePath": route_path,
+        "returncode": execute.returncode,
+        "stdoutTail": execute.stdout.splitlines()[-8:],
+        "stderrTail": execute.stderr.splitlines()[-8:],
+    })
+    return execute.returncode == 0
 
 
 def route_to_bank(site, args, handle):
@@ -942,10 +1010,7 @@ def choose_live_ore(player, site, ores, args, handle):
     live = []
     for ore in candidates:
         probe_started = time.monotonic()
-        result = call_tool("find_nearest_rock_XS", {
-            "resource": ore,
-            "maxDistance": int(site["rockScanDistance"]),
-        })
+        result = find_nearest_rock_result(ore, site["rockScanDistance"])
         probe_elapsed = round(time.monotonic() - probe_started, 3)
         write_event(handle, "ore_choice_probe", {
             "ore": ore,
@@ -982,6 +1047,26 @@ def choose_live_ore(player, site, ores, args, handle):
     )[0]
     write_event(handle, "ore_choice", {"ore": fallback, "reason": "no ready matching rock found"})
     return fallback
+
+
+def find_nearest_rock_result(ore, max_distance, reachable=False):
+    payload = {
+        "resource": ore,
+        "maxDistance": int(max_distance),
+    }
+    if reachable:
+        payload["reachable"] = True
+    try:
+        return call_tool("find_nearest_rock_XS", payload)
+    except RuntimeError as exc:
+        message = str(exc)
+        if "No matching rock found nearby" in message:
+            return {
+                "success": False,
+                "message": "No matching rock found nearby.",
+                "error": message,
+            }
+        raise
 
 
 def legacy_mine_batch(ore, site, args, handle, start_player=None):
@@ -1117,11 +1202,7 @@ def primitive_mine_batch(ore, site, args, handle, start_player=None):
             find_elapsed = 0.0
             used_known_rock = True
         else:
-            find_result = call_tool("find_nearest_rock_XS", {
-                "resource": ore,
-                "maxDistance": int(site["rockScanDistance"]),
-                "reachable": True,
-            })
+            find_result = find_nearest_rock_result(ore, site["rockScanDistance"], reachable=True)
             find_elapsed = round(time.monotonic() - find_started, 3)
         write_event(handle, "primitive_mine_find_rock", {
             "ore": ore,
@@ -1189,11 +1270,12 @@ def primitive_mine_batch(ore, site, args, handle, start_player=None):
                 "action": "Mine",
             })
         except RuntimeError as exc:
-            if not used_known_rock:
+            text = str(exc)
+            if not used_known_rock and "temporarily unavailable" not in text:
                 raise
             interact_result = {
                 "success": False,
-                "message": str(exc),
+                "message": text,
             }
         interact_elapsed = round(time.monotonic() - interact_started, 3)
         write_event(handle, "primitive_mine_interact", {
@@ -1207,10 +1289,11 @@ def primitive_mine_batch(ore, site, args, handle, start_player=None):
             "source": "known_site_rock" if used_known_rock else "find_nearest_rock_XS",
             "player": compact_player(player_from(interact_result)) if interact_result.get("player") else compact_player(player),
         })
-        if used_known_rock and not interact_result.get("success", False):
+        if not interact_result.get("success", False):
             cooldown_known_rock(known_cooldowns, ore, obj, multiplier=0.25)
-            known_skip_count += 1
-            if known_skip_count >= 2:
+            if used_known_rock:
+                known_skip_count += 1
+            if used_known_rock and known_skip_count >= 2:
                 prefer_known_rocks = False
                 write_event(handle, "primitive_mine_known_rock_disable", {
                     "ore": ore,
@@ -1340,6 +1423,25 @@ def bank_ores(player, site, ores, args, handle):
         if not route_to_bank(site, args, handle):
             raise RuntimeError("could not route to bank to deposit ores")
         player = observe()
+        if not player.get("inBankArea") and site.get("bankTile"):
+            bank_tile = site["bankTile"]
+            walk = call_tool("walk_to_tile_until_arrived_XS", {
+                "x": int(bank_tile["x"]),
+                "y": int(bank_tile["y"]),
+                "height": int(bank_tile.get("height", 0) or 0),
+                "maxTicks": 40,
+                "maxWalkDistance": 24,
+                "stopOnCombat": True,
+                "stopOnStall": True,
+            })
+            player = player_from(walk)
+            write_event(handle, "bank_exact_walk", {
+                "success": bool(walk.get("success")),
+                "message": walk.get("message"),
+                "batchStatus": walk.get("batchStatus"),
+                "target": bank_tile,
+                "player": compact_player(player),
+            })
     item_ids = [ORE_DEFS[ore]["itemId"] for ore in (ORE_DEFS.keys() if args.bank_all_ores else ores)]
     item_ids.extend(MINING_BYPRODUCT_ITEM_IDS)
     result = call_tool("deposit_inventory_items", {"itemIds": item_ids})
@@ -1363,6 +1465,19 @@ def choose_site(ores, args, player):
     if args.site and args.site != "auto":
         site_tile = parse_tile(args.site)
         bank_tile = parse_tile(args.bank_tile) if args.bank_tile else site_tile
+        if not args.bank_tile and args.bank:
+            wanted_bank = args.bank.lower()
+            for bank in bank_places():
+                aliases = [str(alias).lower() for alias in bank.get("aliases", [])]
+                if (
+                    bank.get("id", "").lower() == wanted_bank
+                    or bank.get("name", "").lower() == wanted_bank
+                    or wanted_bank in aliases
+                ):
+                    candidate = bank.get("tile") or {}
+                    if "x" in candidate and "y" in candidate:
+                        bank_tile = tile(candidate.get("x"), candidate.get("y"), candidate.get("height", 0))
+                    break
         rocks = []
         if bool(getattr(args, "prefer_known_rocks", False)):
             max_level = max(mining_level(player), args.target_mining_level or mining_level(player))
