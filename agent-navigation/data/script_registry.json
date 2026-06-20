@@ -1509,6 +1509,32 @@
       ]
     },
     {
+      "id": "player_account_provision",
+      "name": "Player Account Provision",
+      "path": "scripts/provision-player-account.py",
+      "kind": "deployment_tool",
+      "description": "Creates an ignored PBKDF2 account record, audits the account store, writes the generated or environment-supplied password only to an owner-only ignored private credentials env file, and renders a public-safe player handoff note from a prepared external deployment bundle.",
+      "aliases": [
+        "player provisioning",
+        "provision player account",
+        "create player account",
+        "player credentials",
+        "account handoff"
+      ],
+      "tags": [
+        "deployment",
+        "auth",
+        "account",
+        "handoff",
+        "player",
+        "external"
+      ],
+      "examples": [
+        "python3 scripts/provision-player-account.py MrGem --character MrGem --prepared-dir dist/external-deployment",
+        "python3 agent-navigation/tools/script_registry.py run player provisioning -- MrGem --character MrGem --prepared-dir dist/external-deployment"
+      ]
+    },
+    {
       "id": "standalone_client_package",
       "name": "Standalone Client Package",
       "path": "scripts/package-client.sh",
