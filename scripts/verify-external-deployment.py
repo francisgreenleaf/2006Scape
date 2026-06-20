@@ -645,6 +645,22 @@ def verify_client_package_text(config, client_dist):
         client_dist / "check-setup-windows.bat",
         "Windows setup checker",
     )
+    if string_value(config, "external_transport_mode").lower() == "tailscale":
+        require_text(
+            client_dist / "check-setup-macos-linux.sh",
+            "macOS/Linux setup checker",
+            "tailscale status",
+        )
+        require_text(
+            client_dist / "check-setup-windows.bat",
+            "Windows setup checker",
+            "tailscale status",
+        )
+        require_text(
+            client_dist / "check-setup-windows.bat",
+            "Windows setup checker",
+            "Tailscale CLI was not found on PATH",
+        )
     require_text(
         client_dist / "run-macos-linux.sh",
         "macOS/Linux launcher",
