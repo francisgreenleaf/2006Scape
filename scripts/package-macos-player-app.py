@@ -18,6 +18,7 @@ from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_PREPARED_DIR = ROOT_DIR / "dist" / "external-deployment"
+DEFAULT_ICON_PNG = ROOT_DIR / "scripts" / "assets" / "agent-scape-icon.png"
 USERNAME_RE = re.compile(r"[a-z0-9 .]{1,12}", re.IGNORECASE)
 SAFE_STEM_RE = re.compile(r"[^A-Za-z0-9_.-]+")
 SECRET_ASSIGNMENT_RE = re.compile(
@@ -381,7 +382,30 @@ def write_icon_png(path, size):
     write_png_rgba(path, size, size, pixels)
 
 
-def write_app_icon(resources_dir):
+def resize_icon_png(source, dest, size):
+    completed = subprocess.run(
+        [
+            "sips",
+            "-s",
+            "format",
+            "png",
+            "-z",
+            str(size),
+            str(size),
+            str(source),
+            "--out",
+            str(dest),
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        fail("failed to resize app icon PNG:\n{}".format((completed.stdout or "").strip()))
+
+
+def write_app_icon(resources_dir, icon_png_source=None):
     icon_path = resources_dir / "agent-scape.icns"
     iconset = resources_dir / "AppIcon.iconset"
     if iconset.exists():
@@ -402,7 +426,10 @@ def write_app_icon(resources_dir):
     try:
         for icon_type, filename, size in specs:
             png_path = iconset / filename
-            write_icon_png(png_path, size)
+            if icon_png_source:
+                resize_icon_png(icon_png_source, png_path, size)
+            else:
+                write_icon_png(png_path, size)
             data = png_path.read_bytes()
             chunks.append(icon_type.encode("ascii") + struct.pack(">I", len(data) + 8) + data)
         body = b"".join(chunks)
@@ -433,6 +460,53 @@ def write_info_plist(path, app_name, bundle_id, icon_file):
         plistlib.dump(payload, handle, sort_keys=True)
 
 
+def write_dmg_guidance_files(dmg_root):
+    (dmg_root / "Quick Start.txt").write_text(
+        "\n".join(
+            [
+                "agent-scape quick start",
+                "",
+                "1. Read README-FIRST.md for your username, character, transport setup, and login notes.",
+                "2. Open agent-scape.app.",
+                "3. If macOS blocks the first launch, right-click agent-scape.app and choose Open.",
+                "4. Log in with the operator-provided password. The password is not included in this DMG.",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (dmg_root / "Troubleshooting.txt").write_text(
+        "\n".join(
+            [
+                "agent-scape troubleshooting",
+                "",
+                "- If the app does not open, install Java 8 or newer, then try again.",
+                "- If Java is installed but the app still fails, check:",
+                "  ~/Library/Logs/agent-scape/agent-scape-launch.log",
+                "- If the setup uses Tailscale, connect Tailscale before launching.",
+                "- If the setup uses a TLS tunnel, install stunnel if the launcher asks for it.",
+                "- If login fails, ask the operator to confirm the username, password, and character name.",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    (dmg_root / "Account Safety.txt").write_text(
+        "\n".join(
+            [
+                "account safety",
+                "",
+                "- Use only the password sent privately by the server operator.",
+                "- Do not reuse a RuneScape.com password or a password from another service.",
+                "- This DMG does not include passwords, account records, bridge tokens, API keys, or server secrets.",
+                "- Do not expose raw TCP 43610; remote agent control must use the approved HTTPS /agent gateway.",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
 def build_app(args):
     username = normalize_player_name(args.username, "username")
     character = normalize_player_name(args.character or args.username, "character")
@@ -455,6 +529,7 @@ def build_app(args):
     )
     app_name = args.app_name.strip() or "agent-scape"
     app_path = output_dir / "{}.app".format(app_name)
+    icon_png = resolve_under_root(Path(args.icon_png)) if args.icon_png else DEFAULT_ICON_PNG
     dmg_output = (
         resolve_under_root(Path(args.dmg_output))
         if args.dmg_output
@@ -463,6 +538,18 @@ def build_app(args):
 
     validate_public_tree(client_dist, "client distribution")
     handoff_text = validate_public_text(handoff_note, "player handoff note")
+    if icon_png.exists():
+        reject_symlink(icon_png, "macOS app icon PNG")
+        if not icon_png.is_file():
+            fail("macOS app icon PNG must be a file: {}".format(icon_png))
+        if shutil.which("sips") is None:
+            if args.icon_png:
+                fail("custom macOS app icon PNG requires sips on PATH to resize: {}".format(icon_png))
+            icon_png = None
+    elif args.icon_png:
+        fail("macOS app icon PNG is missing: {}".format(icon_png))
+    else:
+        icon_png = None
     reject_symlinked_output_path(output_dir, "macOS player package directory")
     reject_symlinked_output_path(app_path, "macOS app bundle")
     if args.dmg:
@@ -480,7 +567,7 @@ def build_app(args):
     resources_dir.mkdir(parents=True)
 
     copy_tree(client_dist, resources_dir / "agent-scape-client")
-    app_icon = write_app_icon(resources_dir)
+    app_icon = write_app_icon(resources_dir, icon_png)
     write_launcher(macos_dir / app_name)
     write_info_plist(contents_dir / "Info.plist", app_name, args.bundle_id, app_icon)
     validate_public_tree(app_path, "macOS app bundle")
@@ -511,6 +598,7 @@ def build_app(args):
             ]),
             encoding="utf-8",
         )
+        write_dmg_guidance_files(dmg_root)
         validate_public_tree(dmg_root, "DMG staging directory")
         if dmg_output.exists():
             if dmg_output.is_symlink():
@@ -546,6 +634,7 @@ def build_app(args):
         "character": character,
         "appBundle": str(app_path),
         "appIcon": app_icon,
+        "appIconSource": str(icon_png) if icon_png else "",
         "dmg": dmg_path,
         "dmgSha256": dmg_sha,
         "handoffNote": str(handoff_note),
@@ -572,6 +661,11 @@ def main():
     parser.add_argument("--output-dir", default="", help="Output directory for the .app bundle.")
     parser.add_argument("--app-name", default="agent-scape", help="macOS app display/executable name.")
     parser.add_argument("--bundle-id", default="com.agentscape.client", help="macOS bundle identifier.")
+    parser.add_argument(
+        "--icon-png",
+        default="",
+        help="Source PNG for the app icon. Defaults to scripts/assets/agent-scape-icon.png when present.",
+    )
     parser.add_argument("--dmg", action="store_true", help="Also build a compressed DMG with hdiutil.")
     parser.add_argument("--dmg-output", default="", help="DMG output path. Defaults to PREPARED_DIR/agent-scape-player-USERNAME-mac.dmg.")
     parser.add_argument("--json", action="store_true", help="Print compact JSON summary.")

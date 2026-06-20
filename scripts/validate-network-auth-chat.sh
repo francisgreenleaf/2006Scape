@@ -2782,6 +2782,8 @@ from pathlib import Path
 summary_path, credentials_path = [Path(value) for value in sys.argv[1:]]
 summary_text = summary_path.read_text(encoding="utf-8")
 summary = json.loads(summary_text)
+credentials_text = credentials_path.read_text(encoding="utf-8")
+password = re.search(r"^MRPROVISION_PASSWORD='([A-Za-z0-9]+)'$", credentials_text, re.MULTILINE).group(1)
 assert summary["success"] is True, summary
 assert summary["username"] == "MrProvision", summary
 assert summary["character"] == "MrProvision", summary
@@ -2792,8 +2794,6 @@ assert summary["clientArchiveMatchesExpected"] is True, summary
 assert summary["handoffNoteMatchesExpected"] is True, summary
 assert re.fullmatch(r"[0-9a-f]{64}", summary["playerKitSha256"]), summary
 assert re.fullmatch(r"[0-9a-f]{64}", summary["clientArchiveSha256"]), summary
-credentials_text = credentials_path.read_text(encoding="utf-8")
-password = re.search(r"^MRPROVISION_PASSWORD='([A-Za-z0-9]+)'$", credentials_text, re.MULTILINE).group(1)
 assert password not in summary_text
 PY
 
@@ -2822,12 +2822,16 @@ from pathlib import Path
 summary_path, credentials_path = [Path(value) for value in sys.argv[1:]]
 summary_text = summary_path.read_text(encoding="utf-8")
 summary = json.loads(summary_text)
+credentials_text = credentials_path.read_text(encoding="utf-8")
+password = re.search(r"^MRPROVISION_PASSWORD='([A-Za-z0-9]+)'$", credentials_text, re.MULTILINE).group(1)
 assert summary["success"] is True, summary
 assert summary["username"] == "MrProvision", summary
 assert summary["character"] == "MrProvision", summary
 assert summary["passwordIncluded"] is False, summary
 assert summary["privateFilesIncluded"] is False, summary
 assert summary["runtimeTouched"] is False, summary
+if Path("scripts/assets/agent-scape-icon.png").exists() and Path("/usr/bin/sips").exists():
+    assert summary.get("appIconSource", "").endswith("scripts/assets/agent-scape-icon.png"), summary
 app = Path(summary["appBundle"])
 info_plist = app / "Contents" / "Info.plist"
 assert info_plist.is_file(), summary
@@ -2855,8 +2859,18 @@ if summary["dmg"]:
     dmg = Path(summary["dmg"])
     assert dmg.is_file() and dmg.stat().st_size > 0, summary
     assert re.fullmatch(r"[0-9a-f]{64}", summary["dmgSha256"]), summary
-credentials_text = credentials_path.read_text(encoding="utf-8")
-password = re.search(r"^MRPROVISION_PASSWORD='([A-Za-z0-9]+)'$", credentials_text, re.MULTILINE).group(1)
+    dmg_root = app.parent / "dmg-root"
+    assert (dmg_root / "README-FIRST.md").is_file(), summary
+    assert (dmg_root / "open-agent-scape.txt").is_file(), summary
+    guidance = {
+        "Quick Start.txt": "agent-scape quick start",
+        "Troubleshooting.txt": "agent-scape troubleshooting",
+        "Account Safety.txt": "account safety",
+    }
+    for name, marker in guidance.items():
+        text = (dmg_root / name).read_text(encoding="utf-8")
+        assert marker in text, (name, text)
+        assert password not in text, (name, text)
 assert password not in summary_text
 PY
 
