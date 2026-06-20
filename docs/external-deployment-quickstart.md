@@ -1,6 +1,6 @@
 # External Deployment Quickstart
 
-This is the short path for a first regular-player external test. Use this when you want to get one remote 2006Scape server, one local client, and one external client online safely without reading the full design document first.
+This is the short path for a first external-player test. Use this when you want to get one remote 2006Scape server, one local client, and one external client online safely without reading the full design document first. The recommended encrypted path is Tailscale; use `direct_tcp` only as an explicit plaintext smoke path.
 
 For a turnkey encrypted private beta, use the tracked Tailscale sample. Tailscale handles the encrypted network and user/device access while the server still uses PBKDF2 account records for in-game login. For the simplest no-install public smoke test, `direct_tcp` still works, but it exposes the legacy game/cache sockets as plaintext TCP to the configured public host. Keep the Codex agent bridge loopback-only in every mode. If you need a public encrypted path without a VPN, start from `2006Scape Server/ServerConfig.ClientTlsTunnel.Sample.json` for the paired stunnel path.
 

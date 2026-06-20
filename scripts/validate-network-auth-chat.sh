@@ -944,8 +944,8 @@ grep -q "ServerConfig.Tailscale.Sample.json" .codex/skills/2006scape-external-de
 grep -q "recommended turnkey encrypted private" README.md
 grep -q "recommended Tailscale path" docs/external-deployment-quickstart.md
 grep -q "Recommended Turnkey Encrypted Path: Tailscale" docs/deployment-networking.md
-grep -q "Recommended turnkey encrypted private-beta path" docs/network-auth-agent-chat-design.md
-grep -q 'Recommended MVP: use `direct_tcp`' docs/network-auth-agent-chat-design.md
+grep -q "Recommended encrypted MVP: use Tailscale" docs/network-auth-agent-chat-design.md
+grep -q 'Plaintext smoke path: `direct_tcp` remains useful' docs/network-auth-agent-chat-design.md
 grep -q '`direct_tcp` account-auth external defaults' docs/network-auth-agent-chat-design.md
 grep -q "direct_tcp_external_transport_confirmed" README.md
 grep -q "direct_tcp_external_transport_confirmed" AGENTS.md
@@ -1367,8 +1367,8 @@ grep -q "WebSocket/WebTransport protocol adapter" docs/network-auth-agent-chat-d
 grep -q "do not pursue browser play for the external-player MVP" docs/network-auth-agent-chat-design.md
 grep -q "## Future Decisions" docs/network-auth-agent-chat-design.md
 grep -q "not blockers for the external-player MVP" docs/network-auth-agent-chat-design.md
-grep -q "current regular-player MVP uses \`direct_tcp\`" docs/network-auth-agent-chat-design.md
-grep -q "Tailscale, WireGuard, VPN, and the packaged \`client_tls_tunnel\` path remain supported alternatives" docs/network-auth-agent-chat-design.md
+grep -q "current encrypted player-distributable MVP uses Tailscale" docs/network-auth-agent-chat-design.md
+grep -q "\`direct_tcp\` remains available only as an explicit plaintext smoke/no-install path" docs/network-auth-agent-chat-design.md
 grep -q "## Completion And Proof Status" docs/network-auth-agent-chat-design.md
 grep -q "### Requirement Evidence Matrix" docs/network-auth-agent-chat-design.md
 grep -q "Multiple local and external players" docs/network-auth-agent-chat-design.md

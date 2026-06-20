@@ -99,9 +99,9 @@ Safety:
 
 ### Phase 2: External Transport Strategy
 
-Recommended MVP: use `direct_tcp` for the first regular-player public test, with PBKDF2 account auth, host firewall rules, explicit non-loopback bind hosts, and the agent bridge kept loopback-only. This is the simplest no-install path for non-developer players because the packaged Java client connects directly to `public_game_host`, but it is plaintext.
+Recommended encrypted MVP: use Tailscale for the first private player test, with PBKDF2 account auth, explicit tailnet bind hosts, Tailscale ACLs, and the agent bridge kept loopback-only. This is the lowest-risk encrypted path because the packaged Java client still uses the normal game/cache sockets, but those sockets are reachable only through the tailnet.
 
-Recommended turnkey encrypted private-beta path: use Tailscale, with PBKDF2 account auth still enabled for in-game login. Tailscale supplies encrypted network reachability plus user/device access, while the server config and account records keep the game-side boundaries explicit.
+Plaintext smoke path: `direct_tcp` remains useful for the simplest no-install public-host test when the operator intentionally accepts plaintext game/cache sockets. It is not the final player-distributable encrypted path, and final encrypted packages should use the explicit guard below.
 
 For any deployment where the operator's intent is encrypted external play, package through `scripts/prepare-external-deployment.py --require-encrypted-external` or set `CLIENT_REQUIRE_ENCRYPTED_EXTERNAL=1` when calling `scripts/package-client.sh` directly. That guard allows Tailscale, WireGuard/VPN, and `client_tls_tunnel`, and refuses `direct_tcp` before producing a downloadable client zip.
 
@@ -114,7 +114,7 @@ Why not protocol-level TLS first:
 
 - The client and server currently expect the first bytes to be the legacy game/update handshake.
 - Netty `SslHandler` and Java `SSLSocket` are feasible, but they require client changes for game, on-demand, and JAGGRAB sockets, plus certificate trust/distribution handling.
-- `direct_tcp` keeps the first external-player path easy to distribute. VPN/overlay and `client_tls_tunnel` give encryption and firewall control without destabilizing the 2006-era protocol. A server-only TLS proxy is not enough with the current client because `Game.openSocket(...)` does not initiate TLS.
+- Tailscale keeps the first encrypted external-player path easy to distribute for a private beta. `direct_tcp` remains the lowest-friction plaintext smoke path, while VPN/overlay and `client_tls_tunnel` give encryption and firewall control without destabilizing the 2006-era protocol. A server-only TLS proxy is not enough with the current client because `Game.openSocket(...)` does not initiate TLS.
 
 Later integrated TLS option:
 
@@ -699,7 +699,7 @@ Still requires operator/runtime proof before external use:
 
 ## Future Decisions
 
-These are not blockers for the external-player MVP described above. The current regular-player MVP uses `direct_tcp` for simple client onboarding, operator-created PBKDF2 account records, host firewall rules, a loopback-only agent bridge, and the structured `AgentChatService` bus. Tailscale, WireGuard, VPN, and the packaged `client_tls_tunnel` path remain supported alternatives when encrypted/private external access is required.
+These are not blockers for the external-player MVP described above. The current encrypted player-distributable MVP uses Tailscale for private-beta onboarding, operator-created PBKDF2 account records, tailnet access policy, a loopback-only agent bridge, and the structured `AgentChatService` bus. `direct_tcp` remains available only as an explicit plaintext smoke/no-install path when the operator accepts that tradeoff; WireGuard, VPN, and the packaged `client_tls_tunnel` path remain supported alternatives when Tailscale is not the right fit.
 
 - Registration can stay operator-managed through `scripts/create-account.py` for the MVP. A separate HTTPS account page/API would be a future onboarding project and would need its own CSRF, rate-limit, password-reset, audit, and Discord-linking design.
 - Agents should keep using structured agent chat for coordination. If agent messages are mirrored into normal public chat later, decide whether they appear as the player name or with a visible source prefix such as `[Agent:ExampleAgent]`; that is a UX/moderation choice, not required for bridge or Discord transport correctness.

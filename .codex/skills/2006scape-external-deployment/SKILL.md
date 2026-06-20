@@ -21,7 +21,7 @@ Pair with `2006scape-dev-editing` for code changes. Pair with `2006scape-agent-b
 
 Load only the file needed for the task:
 
-- `docs/external-deployment-quickstart.md`: short first-live-test path for the default `direct_tcp` deployment.
+- `docs/external-deployment-quickstart.md`: short first-live-test path for the recommended Tailscale encrypted deployment, with `direct_tcp` documented only as an explicit plaintext smoke path.
 - `docs/player-agent-mode/README.md`: packaged-client `/agent` and repo-side remote-claim usage.
 - `docs/vps-direct-tcp-deployment-notes.md`: local operator notes for the active VPS test path, private credential env-file handling, profile login probes, and repo-side Codex control of named profiles.
 - `docs/agent-bridge-gateway.md` and `docs/config/templates/agent-bridge-gateway.nginx.conf`: public-safe HTTPS gateway render/probe workflow and static Nginx template.

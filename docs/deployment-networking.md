@@ -47,9 +47,9 @@ An example Tailscale grants shape is:
 
 Adapt the `src` and `dst` selectors to your tailnet. Keep Tailscale ACL/grant policy and PBKDF2 account records aligned: Tailscale controls who can reach the server network path, while account records control who can log in as a game character.
 
-## Recommended MVP: Direct TCP
+## Plaintext Direct TCP Smoke Path
 
-Use this for the simplest public-host test with regular players who should only need the packaged Java client and account credentials. It is not encrypted; if that is unacceptable, use one of the private/encrypted variants below.
+Use this only for the simplest public-host smoke test with regular players who should only need the packaged Java client and account credentials. It is not encrypted; do not treat it as the final player-distributable encrypted path. For the recommended encrypted path, use Tailscale above. For public non-VPN encryption, use the `client_tls_tunnel` path below.
 
 1. Copy `2006Scape Server/ServerConfig.External.Sample.json` to ignored `ServerConfig.json`.
 2. Replace `server.example.com` with the public DNS name or IP that players should connect to.
