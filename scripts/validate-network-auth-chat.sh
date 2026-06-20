@@ -83,7 +83,7 @@ echo "Running focused client config tests..."
 "$MAVEN_BIN" -q -pl "2006Scape Client" -Dtest=MainClientConfigTest test
 
 echo "Checking Python helper syntax..."
-python3 -m py_compile scripts/account-admin.py scripts/backup-runtime-data.py scripts/check-deployment-proof-manifest.py scripts/create-account.py scripts/deployment-readiness-report.py scripts/deployment-readiness-status.py scripts/package-deployment-proof.py scripts/package-player-kit.py scripts/prepare-external-deployment.py scripts/preflight-external-config.py scripts/probe-agent-bridge-gateway.py scripts/probe-concurrent-logins.py scripts/probe-deployment-network.py scripts/probe-game-login.py scripts/probe-discord-agent-bots.py scripts/provision-player-account.py scripts/render-agent-bridge-gateway-config.py scripts/render-client-tls-tunnel-config.py scripts/render-player-handoff.py scripts/render-server-deployment-files.py scripts/verify-agent-chat-log.py scripts/verify-discord-channel-message.py scripts/verify-external-deployment.py scripts/verify-player-kit.py scripts/write-desktop-client-proof.py scripts/smoke-network-auth-chat-runtime.py scripts/lib/deployment_proof_manifest.py scripts/lib/game_login_probe.py scripts/lib/discord_bot_probe.py agent-navigation/tools/agent_chat_XS.py agent-navigation/tools/remote_claim.py agent-navigation/tools/rs-tool_XS.py
+python3 -m py_compile scripts/account-admin.py scripts/backup-runtime-data.py scripts/check-deployment-proof-manifest.py scripts/create-account.py scripts/deployment-readiness-report.py scripts/deployment-readiness-status.py scripts/install-player-account-record.py scripts/package-deployment-proof.py scripts/package-macos-player-app.py scripts/package-player-kit.py scripts/prepare-external-deployment.py scripts/prepare-player-package.py scripts/preflight-external-config.py scripts/probe-agent-bridge-gateway.py scripts/probe-concurrent-logins.py scripts/probe-deployment-network.py scripts/probe-game-login.py scripts/probe-discord-agent-bots.py scripts/provision-player-account.py scripts/render-agent-bridge-gateway-config.py scripts/render-client-tls-tunnel-config.py scripts/render-player-handoff.py scripts/render-server-deployment-files.py scripts/verify-agent-chat-log.py scripts/verify-discord-channel-message.py scripts/verify-external-deployment.py scripts/verify-player-kit.py scripts/write-desktop-client-proof.py scripts/smoke-network-auth-chat-runtime.py scripts/lib/deployment_proof_manifest.py scripts/lib/game_login_probe.py scripts/lib/discord_bot_probe.py agent-navigation/tools/agent_chat_XS.py agent-navigation/tools/remote_claim.py agent-navigation/tools/rs-tool_XS.py
 
 echo "Checking remote agent bridge claim and gateway helpers..."
 python3 - <<'PY'
@@ -882,7 +882,10 @@ python3 agent-navigation/tools/script_registry.py search "readiness status" --js
 python3 agent-navigation/tools/script_registry.py search "client package" --json | grep -q '"id": "standalone_client_package"'
 python3 agent-navigation/tools/script_registry.py search "player handoff" --json | grep -q '"id": "player_handoff_render"'
 python3 agent-navigation/tools/script_registry.py search "player provisioning" --json | grep -q '"id": "player_account_provision"'
+python3 agent-navigation/tools/script_registry.py search "friend package" --json | grep -q '"id": "player_package_prepare"'
 python3 agent-navigation/tools/script_registry.py search "player kit" --json | grep -q '"id": "player_kit_package"'
+python3 agent-navigation/tools/script_registry.py search "mac dmg" --json | grep -q '"id": "macos_player_app_package"'
+python3 agent-navigation/tools/script_registry.py search "vps account install" --json | grep -q '"id": "player_account_install_plan"'
 python3 agent-navigation/tools/script_registry.py search "tailscale" --json | grep -q '"id": "standalone_client_package"'
 python3 agent-navigation/tools/script_registry.py search "tailscale" --json | grep -q '"id": "external_config_preflight"'
 python3 agent-navigation/tools/script_registry.py search "tls tunnel" --json | grep -q '"id": "client_tls_tunnel_config"'
@@ -902,9 +905,16 @@ python3 agent-navigation/tools/script_registry.py show player_handoff_render --j
 python3 agent-navigation/tools/script_registry.py show player_account_provision --json | grep -q '"path": "scripts/provision-player-account.py"'
 python3 agent-navigation/tools/script_registry.py show player_account_provision --json | grep -q -- "--prepared-dir dist/external-deployment"
 python3 agent-navigation/tools/script_registry.py show player_account_provision --json | grep -q "ignored private credentials env file"
+python3 agent-navigation/tools/script_registry.py show player_package_prepare --json | grep -q '"path": "scripts/prepare-player-package.py"'
+python3 agent-navigation/tools/script_registry.py show player_package_prepare --json | grep -q -- "--mac-dmg"
+python3 agent-navigation/tools/script_registry.py show player_package_prepare --json | grep -q "One-command external player helper"
 python3 agent-navigation/tools/script_registry.py show player_kit_package --json | grep -q '"path": "scripts/package-player-kit.py"'
 python3 agent-navigation/tools/script_registry.py show player_kit_package --json | grep -q -- "--prepared-dir dist/external-deployment"
 python3 agent-navigation/tools/script_registry.py show player_kit_package --json | grep -q "public-safe per-player zip"
+python3 agent-navigation/tools/script_registry.py show macos_player_app_package --json | grep -q '"path": "scripts/package-macos-player-app.py"'
+python3 agent-navigation/tools/script_registry.py show macos_player_app_package --json | grep -q -- "--dmg"
+python3 agent-navigation/tools/script_registry.py show player_account_install_plan --json | grep -q '"path": "scripts/install-player-account-record.py"'
+python3 agent-navigation/tools/script_registry.py show player_account_install_plan --json | grep -q "Dry-run by default"
 python3 agent-navigation/tools/script_registry.py show player_kit_verify --json | grep -q '"path": "scripts/verify-player-kit.py"'
 python3 agent-navigation/tools/script_registry.py show player_kit_verify --json | grep -q -- "--kit dist/external-deployment/player-kit-MrGem.zip"
 python3 agent-navigation/tools/script_registry.py show player_kit_verify --json | grep -q "absence of passwords"
@@ -1129,42 +1139,68 @@ grep -q -- "--prepared-dir dist/external-deployment" .codex/skills/2006scape-scr
 grep -q -- "--prepared-dir dist/external-deployment" .codex/skills/2006scape-external-deployment/SKILL.md
 python3 agent-navigation/tools/script_registry.py show deployment_proof_bundle --json | grep -q -- "--prepared-dir dist/external-deployment"
 grep -q "scripts/render-player-handoff.py" README.md
+grep -q "scripts/prepare-player-package.py" README.md
 grep -q "scripts/provision-player-account.py" README.md
+grep -q "scripts/package-macos-player-app.py" README.md
 grep -q "scripts/package-player-kit.py" README.md
+grep -q "scripts/install-player-account-record.py" README.md
 grep -q "scripts/verify-player-kit.py" README.md
 grep -q "scripts/render-player-handoff.py" AGENTS.md
+grep -q "scripts/prepare-player-package.py" AGENTS.md
 grep -q "scripts/provision-player-account.py" AGENTS.md
+grep -q "scripts/package-macos-player-app.py" AGENTS.md
 grep -q "scripts/package-player-kit.py" AGENTS.md
+grep -q "scripts/install-player-account-record.py" AGENTS.md
 grep -q "scripts/verify-player-kit.py" AGENTS.md
 grep -q "scripts/render-player-handoff.py" docs/deployment-networking.md
+grep -q "scripts/prepare-player-package.py" docs/deployment-networking.md
 grep -q "scripts/provision-player-account.py" docs/deployment-networking.md
+grep -q "scripts/package-macos-player-app.py" docs/deployment-networking.md
 grep -q "scripts/package-player-kit.py" docs/deployment-networking.md
+grep -q "scripts/install-player-account-record.py" docs/deployment-networking.md
 grep -q "scripts/verify-player-kit.py" docs/deployment-networking.md
 grep -q "scripts/render-player-handoff.py" docs/external-deployment-quickstart.md
+grep -q "scripts/prepare-player-package.py" docs/external-deployment-quickstart.md
 grep -q "scripts/provision-player-account.py" docs/external-deployment-quickstart.md
+grep -q "scripts/package-macos-player-app.py" docs/external-deployment-quickstart.md
 grep -q "scripts/package-player-kit.py" docs/external-deployment-quickstart.md
+grep -q "scripts/install-player-account-record.py" docs/external-deployment-quickstart.md
 grep -q "scripts/verify-player-kit.py" docs/external-deployment-quickstart.md
 grep -q "scripts/render-player-handoff.py" docs/network-auth-agent-chat-design.md
+grep -q "scripts/prepare-player-package.py" docs/network-auth-agent-chat-design.md
 grep -q "scripts/provision-player-account.py" docs/network-auth-agent-chat-design.md
+grep -q "scripts/package-macos-player-app.py" docs/network-auth-agent-chat-design.md
 grep -q "scripts/package-player-kit.py" docs/network-auth-agent-chat-design.md
+grep -q "scripts/install-player-account-record.py" docs/network-auth-agent-chat-design.md
 grep -q "scripts/verify-player-kit.py" docs/network-auth-agent-chat-design.md
 grep -q "scripts/render-player-handoff.py" .codex/skills/2006scape/SKILL.md
+grep -q "scripts/prepare-player-package.py" .codex/skills/2006scape/SKILL.md
 grep -q "scripts/provision-player-account.py" .codex/skills/2006scape/SKILL.md
+grep -q "scripts/package-macos-player-app.py" .codex/skills/2006scape/SKILL.md
 grep -q "scripts/package-player-kit.py" .codex/skills/2006scape/SKILL.md
+grep -q "scripts/install-player-account-record.py" .codex/skills/2006scape/SKILL.md
 grep -q "scripts/verify-player-kit.py" .codex/skills/2006scape/SKILL.md
 grep -q "scripts/render-player-handoff.py" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q "scripts/prepare-player-package.py" .codex/skills/2006scape-external-deployment/SKILL.md
 grep -q "scripts/provision-player-account.py" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q "scripts/package-macos-player-app.py" .codex/skills/2006scape-external-deployment/SKILL.md
 grep -q "scripts/package-player-kit.py" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q "scripts/install-player-account-record.py" .codex/skills/2006scape-external-deployment/SKILL.md
 grep -q "scripts/verify-player-kit.py" .codex/skills/2006scape-external-deployment/SKILL.md
 grep -q "scripts/render-player-handoff.py" agent-navigation/data/script_registry.json
+grep -q "scripts/prepare-player-package.py" agent-navigation/data/script_registry.json
 grep -q "scripts/provision-player-account.py" agent-navigation/data/script_registry.json
+grep -q "scripts/package-macos-player-app.py" agent-navigation/data/script_registry.json
 grep -q "scripts/package-player-kit.py" agent-navigation/data/script_registry.json
+grep -q "scripts/install-player-account-record.py" agent-navigation/data/script_registry.json
 grep -q "scripts/verify-player-kit.py" agent-navigation/data/script_registry.json
 grep -q "without accepting or printing the password" README.md
 grep -q "without accepting or printing the password" docs/network-auth-agent-chat-design.md
 grep -q "never accepts or prints the password" docs/external-deployment-quickstart.md
 grep -q "password only to an owner-only ignored credentials env file" docs/external-deployment-quickstart.md
 grep -q "public-safe files" docs/external-deployment-quickstart.md
+grep -q "Future Self-Service Signup" docs/external-deployment-quickstart.md
+grep -q "Future Public Self-Signup" docs/deployment-networking.md
 grep -q "Final-gate manifests must keep \`require_full_proof:true\`" README.md
 grep -q "Final-gate manifests must keep \`require_full_proof:true\`" AGENTS.md
 grep -q "Final-gate manifests must keep \`require_full_proof:true\`" docs/deployment-networking.md
@@ -2760,6 +2796,133 @@ credentials_text = credentials_path.read_text(encoding="utf-8")
 password = re.search(r"^MRPROVISION_PASSWORD='([A-Za-z0-9]+)'$", credentials_text, re.MULTILINE).group(1)
 assert password not in summary_text
 PY
+
+MAC_PACKAGE_ARGS=(
+    scripts/package-macos-player-app.py
+    MrProvision
+    --character MrProvision
+    --prepared-dir "$TMP_DIR/prepared-tailscale"
+    --handoff-note "$TMP_DIR/prepared-tailscale/player-handoff-MrProvision.md"
+    --output-dir "$TMP_DIR/prepared-tailscale/macos-player-packages/mrprovision"
+    --json
+)
+if [[ "$(uname -s)" == "Darwin" ]] && command -v hdiutil >/dev/null 2>&1; then
+    MAC_PACKAGE_ARGS+=(--dmg --dmg-output "$TMP_DIR/prepared-tailscale/2006scape-player-mrprovision-mac.dmg")
+fi
+python3 "${MAC_PACKAGE_ARGS[@]}" > "$TMP_DIR/package-macos-player-app.json"
+python3 - "$TMP_DIR/package-macos-player-app.json" "$TMP_DIR/prepared-tailscale/private/player-credentials-MrProvision.env" <<'PY'
+import json
+import os
+import re
+import stat
+import sys
+from pathlib import Path
+
+summary_path, credentials_path = [Path(value) for value in sys.argv[1:]]
+summary_text = summary_path.read_text(encoding="utf-8")
+summary = json.loads(summary_text)
+assert summary["success"] is True, summary
+assert summary["username"] == "MrProvision", summary
+assert summary["character"] == "MrProvision", summary
+assert summary["passwordIncluded"] is False, summary
+assert summary["privateFilesIncluded"] is False, summary
+assert summary["runtimeTouched"] is False, summary
+app = Path(summary["appBundle"])
+assert (app / "Contents" / "Info.plist").is_file(), summary
+launcher = app / "Contents" / "MacOS" / "2006Scape"
+assert launcher.is_file(), summary
+if os.name == "posix":
+    assert stat.S_IMODE(launcher.stat().st_mode) & 0o111, oct(stat.S_IMODE(launcher.stat().st_mode))
+assert (app / "Contents" / "Resources" / "2006scape-client" / "client.properties").is_file(), summary
+for path in app.rglob("*"):
+    lowered = str(path.relative_to(app)).lower()
+    assert "/private/" not in lowered and "/accounts/" not in lowered and "/characters/" not in lowered, lowered
+    assert "credential" not in path.name.lower() and "password" not in path.name.lower(), lowered
+if summary["dmg"]:
+    dmg = Path(summary["dmg"])
+    assert dmg.is_file() and dmg.stat().st_size > 0, summary
+    assert re.fullmatch(r"[0-9a-f]{64}", summary["dmgSha256"]), summary
+credentials_text = credentials_path.read_text(encoding="utf-8")
+password = re.search(r"^MRPROVISION_PASSWORD='([A-Za-z0-9]+)'$", credentials_text, re.MULTILINE).group(1)
+assert password not in summary_text
+PY
+
+PACKAGE_ACCOUNTS="$TMP_DIR/package-accounts"
+mkdir -p "$PACKAGE_ACCOUNTS"
+chmod 700 "$PACKAGE_ACCOUNTS"
+PREPARE_PLAYER_ARGS=(
+    scripts/prepare-player-package.py
+    MrOneCmd
+    --character MrOneCmd
+    --prepared-dir "$TMP_DIR/prepared-tailscale"
+    --accounts-dir "$PACKAGE_ACCOUNTS"
+    --prepare-policy never
+    --json
+)
+if [[ "$(uname -s)" == "Darwin" ]] && command -v hdiutil >/dev/null 2>&1; then
+    PREPARE_PLAYER_ARGS+=(--mac-dmg)
+else
+    PREPARE_PLAYER_ARGS+=(--mac-app)
+fi
+python3 "${PREPARE_PLAYER_ARGS[@]}" > "$TMP_DIR/prepare-player-package.json"
+python3 - "$TMP_DIR/prepare-player-package.json" "$PACKAGE_ACCOUNTS/mronecmd.json" <<'PY'
+import json
+import re
+import sys
+from pathlib import Path
+
+summary_path, account_path = [Path(value) for value in sys.argv[1:]]
+summary_text = summary_path.read_text(encoding="utf-8")
+summary = json.loads(summary_text)
+assert summary["success"] is True, summary
+assert summary["username"] == "MrOneCmd", summary
+assert summary["character"] == "MrOneCmd", summary
+assert summary["preparedBundleCreated"] is False, summary
+assert Path(summary["playerKit"]).is_file(), summary
+assert Path(summary["privateCredentials"]).is_file(), summary
+assert Path(summary["handoffNote"]).is_file(), summary
+assert Path(summary["accountRecord"]) == account_path, summary
+assert account_path.is_file(), summary
+assert Path(summary["macApp"]).is_dir(), summary
+if summary["macDmg"]:
+    assert Path(summary["macDmg"]).is_file(), summary
+    assert re.fullmatch(r"[0-9a-f]{64}", summary["macDmgSha256"]), summary
+credentials_text = Path(summary["privateCredentials"]).read_text(encoding="utf-8")
+password = re.search(r"^MRONECMD_PASSWORD='([A-Za-z0-9]+)'$", credentials_text, re.MULTILINE).group(1)
+assert password not in summary_text
+assert summary["passwordPrinted"] is False, summary
+assert summary["runtimeTouched"] is False, summary
+PY
+
+scripts/install-player-account-record.py MrOneCmd \
+    --accounts-dir "$PACKAGE_ACCOUNTS" \
+    --ssh-target deploy@example.invalid \
+    --remote-accounts-dir '/opt/2006scape/2006Scape Server/data/accounts' \
+    --json > "$TMP_DIR/install-player-account-record.json"
+python3 - "$TMP_DIR/install-player-account-record.json" "$PACKAGE_ACCOUNTS/mronecmd.json" <<'PY'
+import json
+import re
+import sys
+from pathlib import Path
+
+summary_path, account_path = [Path(value) for value in sys.argv[1:]]
+summary_text = summary_path.read_text(encoding="utf-8")
+summary = json.loads(summary_text)
+assert summary["success"] is True, summary
+assert summary["dryRun"] is True, summary
+assert summary["applied"] is False, summary
+assert summary["username"] == "mronecmd", summary
+assert Path(summary["localAccountRecord"]) == account_path, summary
+assert summary["remoteAccountRecord"].endswith("/mronecmd.json"), summary
+assert "scp" in summary["scpCommand"], summary
+assert "install -d" in summary["sshInstallCommand"], summary
+assert summary["runtimeTouched"] is False, summary
+assert summary["passwordPrinted"] is False, summary
+account_text = account_path.read_text(encoding="utf-8")
+assert account_text not in summary_text
+assert not re.search(r"PASSWORD='", summary_text), summary_text
+PY
+
 scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.Tailscale.Sample.json" \
     --client-dist "$TMP_DIR/prepared-tailscale/2006scape-client" \

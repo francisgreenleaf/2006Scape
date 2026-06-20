@@ -77,8 +77,11 @@ python3 agent-navigation/tools/script_registry.py run desktop_client_proof -- --
 python3 agent-navigation/tools/script_registry.py run deployment_proof_bundle -- --prepared-dir dist/external-deployment --require-full-proof
 python3 agent-navigation/tools/script_registry.py run prepare external deployment -- --config "2006Scape Server/ServerConfig.json"
 CLIENT_SERVER_CONFIG="2006Scape Server/ServerConfig.json" python3 agent-navigation/tools/script_registry.py run package client
+python3 agent-navigation/tools/script_registry.py run player package -- PLAYER --character CHARACTER --config "2006Scape Server/ServerConfig.json" --mac-dmg
 python3 agent-navigation/tools/script_registry.py run player kit -- PLAYER --character CHARACTER --prepared-dir dist/external-deployment
+python3 agent-navigation/tools/script_registry.py run mac dmg -- PLAYER --character CHARACTER --prepared-dir dist/external-deployment --dmg
 python3 agent-navigation/tools/script_registry.py run verify player kit -- --kit dist/external-deployment/player-kit-PLAYER.zip --prepared-dir dist/external-deployment --username PLAYER --character CHARACTER
+python3 agent-navigation/tools/script_registry.py run install account record -- PLAYER --ssh-target user@example.com --remote-accounts-dir '/opt/2006scape/2006Scape Server/data/accounts'
 python3 agent-navigation/tools/script_registry.py run client tls tunnel -- --config "2006Scape Server/ServerConfig.json" --output-dir dist/client-tls-tunnel-operator
 python3 agent-navigation/tools/script_registry.py run server deployment files -- --config "2006Scape Server/ServerConfig.json" --output-dir dist/server-deployment
 python3 agent-navigation/tools/script_registry.py run network proof -- --config "2006Scape Server/ServerConfig.json"

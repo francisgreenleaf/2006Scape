@@ -122,6 +122,11 @@ scripts/create-account.py RejectTest --password-env REJECT_PASSWORD
 scripts/account-admin.py disable RejectTest
 ```
 
+For friend-test packages, the easier account path is the one-command helper in
+step 3. It creates a PBKDF2 account record, writes the generated password only
+to an ignored private env file, and reports the public artifacts to send without
+printing the password.
+
 ## 3. Build The Deployment Bundle
 
 This packages the client, renders server deployment files, and writes a static readiness report. It does not start, stop, or restart the server.
@@ -171,7 +176,27 @@ scripts/render-player-handoff.py \
   --output dist/external-deployment/player-handoff-PLAYER_USERNAME.md
 ```
 
-For a one-command player provisioning path after the bundle exists, use:
+For a one-command friend package, including account provisioning, public-safe
+kit creation, and optional macOS `.app`/DMG creation, use:
+
+```sh
+scripts/prepare-player-package.py PLAYER_USERNAME \
+  --character CHARACTER_NAME \
+  --config "2006Scape Server/ServerConfig.json" \
+  --mac-dmg
+```
+
+That helper prepares `dist/external-deployment/` when needed, provisions the
+ignored PBKDF2 account, writes the generated password only under
+`dist/external-deployment/private/`, creates the public-safe
+`player-kit-PLAYER_USERNAME.zip`, and on macOS can create a Finder-friendly DMG
+containing `2006Scape.app` plus the README-first handoff note. It reports the
+artifact paths to send and the private credential path, but does not print the
+password and does not start, stop, or restart runtime. To reuse an already
+prepared bundle without rebuilding it, add `--prepare-policy never`.
+
+The lower-level provisioning command remains available when you want each step
+separate:
 
 ```sh
 scripts/provision-player-account.py PLAYER_USERNAME \
@@ -201,7 +226,44 @@ scripts/verify-player-kit.py \
 
 Send the verified `player-kit-PLAYER_USERNAME.zip` and send the password separately. The kit contains the client archive, README-first handoff note, and checksums; packaging self-verifies the generated zip, and the standalone verifier re-checks copied/downloaded kits. Both reject private credentials, account records, secrets, runtime data, bridge tokens, and other secret-bearing paths.
 
+On macOS, a DMG can also be generated after provisioning:
+
+```sh
+scripts/package-macos-player-app.py PLAYER_USERNAME \
+  --character CHARACTER_NAME \
+  --prepared-dir dist/external-deployment \
+  --dmg
+```
+
+Send the DMG to Mac players when you want them to open a normal app bundle
+instead of seeing the repo-style client folder. Keep the zip/player-kit flow for
+Windows, Linux, and checksum-oriented handoffs.
+
+To install the newly created account record onto a VPS or deployment host, start
+with the dry-run install plan:
+
+```sh
+scripts/install-player-account-record.py PLAYER_USERNAME \
+  --ssh-target user@example.com \
+  --remote-accounts-dir '/opt/2006scape/2006Scape Server/data/accounts'
+```
+
+Review the printed `scp` and `ssh install` commands. Add `--apply` only during
+an intentional deployment step. The helper copies just the account JSON record,
+does not print account contents or passwords, and does not restart the server.
+
 The default package uses `client.scale=2` and `show_navbar=false`. Keep those defaults for normal external tester packages so the larger desktop window uses the client scale code path instead of JVM UI scaling, which avoids macOS mouse-click offset issues.
+
+## Future Self-Service Signup
+
+Do not enable `account_auth_auto_create` for external mode. Real public
+self-signup should be a separate HTTPS registration service or operator panel
+that validates invite codes, enforces the same password policy as
+`scripts/create-account.py`, rate-limits by source and invite/account name,
+writes audit logs, creates owner-only PBKDF2 account files with allowed-character
+metadata, and never exposes game server internals or raw agent bridge access.
+That registration surface is future work; for now, operators provision accounts
+explicitly with the helpers above.
 
 ## 4. Back Up Runtime Data
 

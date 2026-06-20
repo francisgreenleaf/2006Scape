@@ -142,6 +142,12 @@ scripts/provision-player-account.py PLAYER --character CHARACTER --prepared-dir 
 # Provision one player after a prepared bundle exists: create the ignored PBKDF2 account, audit it, write the generated password only to an owner-only ignored credentials env file, and render the safe player handoff note without printing the password.
 scripts/package-player-kit.py PLAYER --character CHARACTER --prepared-dir dist/external-deployment
 # Create and self-verify the public-safe per-player zip to send with the client archive, README-first handoff note, and checksums. It excludes passwords, private credentials, account records, secrets, runtime data, and bridge tokens.
+scripts/prepare-player-package.py PLAYER --character CHARACTER --config "2006Scape Server/ServerConfig.json" --mac-dmg
+# One-command friend-test path: prepare the bundle when needed, provision the PBKDF2 account, write the password only to ignored private credentials, create the public-safe player kit, and optionally build a Finder-friendly macOS .app/DMG without touching runtime.
+scripts/package-macos-player-app.py PLAYER --character CHARACTER --prepared-dir dist/external-deployment --dmg
+# Build only the macOS .app/DMG wrapper from an already prepared bundle and handoff note. Keep zip/player-kit flow for Windows/Linux and checksum-first handoffs.
+scripts/install-player-account-record.py PLAYER --ssh-target user@example.com --remote-accounts-dir '/opt/2006scape/2006Scape Server/data/accounts'
+# Dry-run by default VPS/deployment account-record install plan. It copies one PBKDF2 account JSON only when --apply is explicitly added, and never restarts runtime.
 scripts/verify-player-kit.py --kit dist/external-deployment/player-kit-PLAYER.zip --prepared-dir dist/external-deployment --username PLAYER --character CHARACTER
 # Re-check copied/downloaded player kits before distribution: required entries, embedded checksums, nested client archive safety, optional prepared-artifact matches, and no passwords/private runtime data.
 scripts/render-player-handoff.py --prepared-dir dist/external-deployment --username PLAYER --character CHARACTER --output dist/external-deployment/player-handoff-PLAYER.md
