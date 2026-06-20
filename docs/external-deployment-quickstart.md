@@ -161,7 +161,17 @@ Open the readiness report and check:
 
 That means the artifacts are statically valid but not live-proven yet.
 
-Before a player launches the client, use `server-deployment/player-handoff-template.md` as the operator checklist for what to send: the client zip, transport requirement, private username/password, and optional `/agent` gateway note. Do not send account JSON files, `data/secrets.json`, runtime backup archives, bridge session files, bridge tokens, claim nonces, API keys, or Discord bot tokens. Have the player open the package README and follow its first-run checklist: install Java, connect the selected transport, run the setup checker, launch the client, and log in with the operator-provided account. On macOS, they can double-click `Check-Setup.command`, then double-click `Run-2006Scape.command` to play; Terminal and Linux users can still run the shared shell scripts, and Windows users run the `.bat` files. The checker verifies Java, prints the packaged `client.properties`, and attempts game/cache TCP checks without logging in or changing server state. In Tailscale mode, the checkers also print non-fatal Tailscale CLI/status hints before the TCP checks. In `client_tls_tunnel` mode the macOS/Linux setup checker can start the bundled stunnel config temporarily when `stunnel` is installed; the Windows setup checker expects the local tunnel endpoint to be reachable first, while the launcher still manages stunnel when possible.
+Before a player launches the client, use `server-deployment/player-handoff-template.md` as the operator checklist for what to send: the client zip, transport requirement, private username/password, and optional `/agent` gateway note. For a filled player-facing note, run:
+
+```sh
+scripts/render-player-handoff.py \
+  --prepared-dir dist/external-deployment \
+  --username PLAYER_USERNAME \
+  --character CHARACTER_NAME \
+  --output dist/external-deployment/player-handoff-PLAYER_USERNAME.md
+```
+
+The rendered note includes the client archive checksum, transport setup, username/character, and agent-gateway guidance, but it never accepts or prints the password. Send the password separately through a private channel. Do not send account JSON files, `data/secrets.json`, runtime backup archives, bridge session files, bridge tokens, claim nonces, API keys, or Discord bot tokens. Have the player open the package README and follow its first-run checklist: install Java, connect the selected transport, run the setup checker, launch the client, and log in with the operator-provided account. On macOS, they can double-click `Check-Setup.command`, then double-click `Run-2006Scape.command` to play; Terminal and Linux users can still run the shared shell scripts, and Windows users run the `.bat` files. The checker verifies Java, prints the packaged `client.properties`, and attempts game/cache TCP checks without logging in or changing server state. In Tailscale mode, the checkers also print non-fatal Tailscale CLI/status hints before the TCP checks. In `client_tls_tunnel` mode the macOS/Linux setup checker can start the bundled stunnel config temporarily when `stunnel` is installed; the Windows setup checker expects the local tunnel endpoint to be reachable first, while the launcher still manages stunnel when possible.
 
 The default package uses `client.scale=2` and `show_navbar=false`. Keep those defaults for normal external tester packages so the larger desktop window uses the client scale code path instead of JVM UI scaling, which avoids macOS mouse-click offset issues.
 

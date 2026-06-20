@@ -83,7 +83,7 @@ echo "Running focused client config tests..."
 "$MAVEN_BIN" -q -pl "2006Scape Client" -Dtest=MainClientConfigTest test
 
 echo "Checking Python helper syntax..."
-python3 -m py_compile scripts/account-admin.py scripts/backup-runtime-data.py scripts/check-deployment-proof-manifest.py scripts/create-account.py scripts/deployment-readiness-report.py scripts/deployment-readiness-status.py scripts/package-deployment-proof.py scripts/prepare-external-deployment.py scripts/preflight-external-config.py scripts/probe-agent-bridge-gateway.py scripts/probe-concurrent-logins.py scripts/probe-deployment-network.py scripts/probe-game-login.py scripts/probe-discord-agent-bots.py scripts/render-agent-bridge-gateway-config.py scripts/render-client-tls-tunnel-config.py scripts/render-server-deployment-files.py scripts/verify-agent-chat-log.py scripts/verify-discord-channel-message.py scripts/verify-external-deployment.py scripts/write-desktop-client-proof.py scripts/smoke-network-auth-chat-runtime.py scripts/lib/deployment_proof_manifest.py scripts/lib/game_login_probe.py scripts/lib/discord_bot_probe.py agent-navigation/tools/agent_chat_XS.py agent-navigation/tools/remote_claim.py agent-navigation/tools/rs-tool_XS.py
+python3 -m py_compile scripts/account-admin.py scripts/backup-runtime-data.py scripts/check-deployment-proof-manifest.py scripts/create-account.py scripts/deployment-readiness-report.py scripts/deployment-readiness-status.py scripts/package-deployment-proof.py scripts/prepare-external-deployment.py scripts/preflight-external-config.py scripts/probe-agent-bridge-gateway.py scripts/probe-concurrent-logins.py scripts/probe-deployment-network.py scripts/probe-game-login.py scripts/probe-discord-agent-bots.py scripts/render-agent-bridge-gateway-config.py scripts/render-client-tls-tunnel-config.py scripts/render-player-handoff.py scripts/render-server-deployment-files.py scripts/verify-agent-chat-log.py scripts/verify-discord-channel-message.py scripts/verify-external-deployment.py scripts/write-desktop-client-proof.py scripts/smoke-network-auth-chat-runtime.py scripts/lib/deployment_proof_manifest.py scripts/lib/game_login_probe.py scripts/lib/discord_bot_probe.py agent-navigation/tools/agent_chat_XS.py agent-navigation/tools/remote_claim.py agent-navigation/tools/rs-tool_XS.py
 
 echo "Checking remote agent bridge claim and gateway helpers..."
 python3 - <<'PY'
@@ -880,6 +880,7 @@ python3 agent-navigation/tools/script_registry.py search "proof manifest" --json
 python3 agent-navigation/tools/script_registry.py search "proof bundle" --json | grep -q '"id": "deployment_proof_bundle"'
 python3 agent-navigation/tools/script_registry.py search "readiness status" --json | grep -q '"id": "deployment_readiness_status"'
 python3 agent-navigation/tools/script_registry.py search "client package" --json | grep -q '"id": "standalone_client_package"'
+python3 agent-navigation/tools/script_registry.py search "player handoff" --json | grep -q '"id": "player_handoff_render"'
 python3 agent-navigation/tools/script_registry.py search "tailscale" --json | grep -q '"id": "standalone_client_package"'
 python3 agent-navigation/tools/script_registry.py search "tailscale" --json | grep -q '"id": "external_config_preflight"'
 python3 agent-navigation/tools/script_registry.py search "tls tunnel" --json | grep -q '"id": "client_tls_tunnel_config"'
@@ -893,6 +894,9 @@ python3 agent-navigation/tools/script_registry.py search "server to discord proo
 python3 agent-navigation/tools/script_registry.py search "discord proof" --json | grep -q '"id": "discord_agent_probe"'
 python3 agent-navigation/tools/script_registry.py show external_config_preflight --json | grep -q '"path": "scripts/preflight-external-config.py"'
 python3 agent-navigation/tools/script_registry.py show external_deployment_prepare --json | grep -q '"path": "scripts/prepare-external-deployment.py"'
+python3 agent-navigation/tools/script_registry.py show player_handoff_render --json | grep -q '"path": "scripts/render-player-handoff.py"'
+python3 agent-navigation/tools/script_registry.py show player_handoff_render --json | grep -q -- "--username MrGem"
+python3 agent-navigation/tools/script_registry.py show player_handoff_render --json | grep -q "without accepting or printing passwords"
 python3 agent-navigation/tools/script_registry.py show standalone_client_package --json | grep -q '"path": "scripts/package-client.sh"'
 python3 agent-navigation/tools/script_registry.py show client_tls_tunnel_config --json | grep -q '"path": "scripts/render-client-tls-tunnel-config.py"'
 python3 agent-navigation/tools/script_registry.py show server_deployment_files --json | grep -q '"path": "scripts/render-server-deployment-files.py"'
@@ -1113,6 +1117,17 @@ grep -q -- "--prepared-dir dist/external-deployment" .codex/skills/2006scape/SKI
 grep -q -- "--prepared-dir dist/external-deployment" .codex/skills/2006scape-script-registry/SKILL.md
 grep -q -- "--prepared-dir dist/external-deployment" .codex/skills/2006scape-external-deployment/SKILL.md
 python3 agent-navigation/tools/script_registry.py show deployment_proof_bundle --json | grep -q -- "--prepared-dir dist/external-deployment"
+grep -q "scripts/render-player-handoff.py" README.md
+grep -q "scripts/render-player-handoff.py" AGENTS.md
+grep -q "scripts/render-player-handoff.py" docs/deployment-networking.md
+grep -q "scripts/render-player-handoff.py" docs/external-deployment-quickstart.md
+grep -q "scripts/render-player-handoff.py" docs/network-auth-agent-chat-design.md
+grep -q "scripts/render-player-handoff.py" .codex/skills/2006scape/SKILL.md
+grep -q "scripts/render-player-handoff.py" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q "scripts/render-player-handoff.py" agent-navigation/data/script_registry.json
+grep -q "without accepting or printing the password" README.md
+grep -q "without accepting or printing the password" docs/network-auth-agent-chat-design.md
+grep -q "never accepts or prints the password" docs/external-deployment-quickstart.md
 grep -q "Final-gate manifests must keep \`require_full_proof:true\`" README.md
 grep -q "Final-gate manifests must keep \`require_full_proof:true\`" AGENTS.md
 grep -q "Final-gate manifests must keep \`require_full_proof:true\`" docs/deployment-networking.md
@@ -1302,6 +1317,7 @@ grep -q '"id": "desktop_client_proof"' agent-navigation/data/script_registry.jso
 grep -q '"id": "deployment_proof_manifest_check"' agent-navigation/data/script_registry.json
 grep -q '"id": "deployment_proof_bundle"' agent-navigation/data/script_registry.json
 grep -q '"id": "external_deployment_prepare"' agent-navigation/data/script_registry.json
+grep -q '"id": "player_handoff_render"' agent-navigation/data/script_registry.json
 grep -q '"id": "standalone_client_package"' agent-navigation/data/script_registry.json
 grep -q '"id": "client_tls_tunnel_config"' agent-navigation/data/script_registry.json
 grep -q '"id": "server_deployment_files"' agent-navigation/data/script_registry.json
@@ -2528,6 +2544,23 @@ assert coverage["Encrypted/private external transport gate"]["status"] == "REQUE
 assert coverage["Public reachability and bridge non-exposure"]["status"] == "MISSING", coverage
 assert any(check["label"] == "deployment verification" and check["status"] == "PASS" for check in data["checks"]), data["checks"]
 PY
+scripts/render-player-handoff.py \
+    --prepared-dir "$TMP_DIR/prepared-tailscale" \
+    --username MrGem \
+    --character MrGem \
+    --output "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md" > "$TMP_DIR/player-handoff-render.out"
+grep -q "ok: wrote player handoff note" "$TMP_DIR/player-handoff-render.out"
+grep -q "# 2006Scape Player Handoff" "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
+grep -q 'client archive: `2006scape-client.zip`' "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
+grep -Eq 'client archive SHA-256: `[0-9a-f]{64}`' "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
+grep -q 'username: `MrGem`' "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
+grep -q 'character: `MrGem`' "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
+grep -q "password: sent separately through a private channel" "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
+grep -q 'external transport: `tailscale`' "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
+grep -q "Install Tailscale" "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
+grep -q 'agent bridge URL in package: `http://127.0.0.1:43610`' "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
+grep -q 'Never expose raw TCP `43610`' "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
+grep -q "Do not paste passwords, account JSON files, bridge tokens" "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
 scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.Tailscale.Sample.json" \
     --client-dist "$TMP_DIR/prepared-tailscale/2006scape-client" \

@@ -1484,6 +1484,31 @@
       ]
     },
     {
+      "id": "player_handoff_render",
+      "name": "Player Handoff Render",
+      "path": "scripts/render-player-handoff.py",
+      "kind": "deployment_tool",
+      "description": "Renders a public-safe per-player handoff note from a prepared external deployment bundle, filling username, character, transport details, client archive checksum, setup steps, and agent-gateway guidance without accepting or printing passwords.",
+      "aliases": [
+        "player handoff",
+        "render player handoff",
+        "client handoff",
+        "player setup note",
+        "player download instructions"
+      ],
+      "tags": [
+        "deployment",
+        "client",
+        "handoff",
+        "player",
+        "external"
+      ],
+      "examples": [
+        "python3 scripts/render-player-handoff.py --prepared-dir dist/external-deployment --username MrGem --character MrGem --output dist/external-deployment/player-handoff-MrGem.md",
+        "python3 agent-navigation/tools/script_registry.py run player handoff -- --prepared-dir dist/external-deployment --username NewPlayer --character NewPlayer"
+      ]
+    },
+    {
       "id": "standalone_client_package",
       "name": "Standalone Client Package",
       "path": "scripts/package-client.sh",

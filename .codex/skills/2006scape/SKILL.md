@@ -138,6 +138,8 @@ scripts/prepare-external-deployment.py --config "2006Scape Server/ServerConfig.E
 # Manual CLIENT_SERVER_HOST overrides for non-local packages require CLIENT_SECURE_TRANSPORT (`direct_tcp`, `tailscale`, `wireguard`, `vpn`, or `client_tls_tunnel`); wildcard client hosts and symlinked package output paths are rejected.
 scripts/render-server-deployment-files.py --config "2006Scape Server/ServerConfig.External.Sample.json" --output-dir dist/server-deployment
 # Generated server-deployment files must keep hardened systemd sandboxing, argument-quoted firewall/README commands, input validation plus verifier parsing for service names/paths/interfaces, owner-only account/secrets install guidance, runtime-data backup notes, a public-safe `player-handoff-template.md`, fill-in proof templates under the deployed `2006Scape Server/data/` tree, and Tailscale grants examples that omit the agent bridge port when applicable.
+scripts/render-player-handoff.py --prepared-dir dist/external-deployment --username PLAYER --character CHARACTER --output dist/external-deployment/player-handoff-PLAYER.md
+# The rendered player handoff note is safe to send with the client zip; it includes checksum, transport, username/character, and `/agent` gateway guidance, but never accepts or prints the password. Send the password separately.
 scripts/prepare-external-deployment.py --config "2006Scape Server/ServerConfig.json" --require-encrypted-external
 # Use --require-encrypted-external, or CLIENT_REQUIRE_ENCRYPTED_EXTERNAL=1 with package-client.sh, when producing a player package that must use Tailscale, WireGuard/VPN, or client_tls_tunnel and must not fall back to plaintext direct_tcp.
 scripts/backup-runtime-data.py --data-dir "2006Scape Server/data"
