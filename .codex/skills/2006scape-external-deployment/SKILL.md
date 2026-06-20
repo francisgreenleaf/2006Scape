@@ -61,8 +61,11 @@ For a real config, use the prepare wrapper first:
 ```sh
 scripts/preflight-external-config.py "2006Scape Server/ServerConfig.json"
 scripts/prepare-external-deployment.py --config "2006Scape Server/ServerConfig.json"
+scripts/prepare-external-deployment.py --config "2006Scape Server/ServerConfig.json" --require-encrypted-external
 scripts/deployment-readiness-status.py --prepared-dir dist/external-deployment --show-next-commands
 ```
+
+Use `--require-encrypted-external`, or `CLIENT_REQUIRE_ENCRYPTED_EXTERNAL=1` for direct `package-client.sh` calls, when producing a downloadable player package that must satisfy the encrypted-transport goal. It allows Tailscale, WireGuard/VPN, and `client_tls_tunnel`; it refuses plaintext `direct_tcp` before package artifacts are written.
 
 Lower-level commands:
 

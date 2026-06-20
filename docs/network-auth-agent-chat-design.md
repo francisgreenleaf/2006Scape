@@ -103,6 +103,8 @@ Recommended MVP: use `direct_tcp` for the first regular-player public test, with
 
 Recommended turnkey encrypted private-beta path: use Tailscale, with PBKDF2 account auth still enabled for in-game login. Tailscale supplies encrypted network reachability plus user/device access, while the server config and account records keep the game-side boundaries explicit.
 
+For any deployment where the operator's intent is encrypted external play, package through `scripts/prepare-external-deployment.py --require-encrypted-external` or set `CLIENT_REQUIRE_ENCRYPTED_EXTERNAL=1` when calling `scripts/package-client.sh` directly. That guard allows Tailscale, WireGuard/VPN, and `client_tls_tunnel`, and refuses `direct_tcp` before producing a downloadable client zip.
+
 Encrypted/private alternatives remain supported when the operator wants that extra boundary:
 
 - Private beta: WireGuard, Tailscale, or another VPN. Game/cache ports stay private; clients connect over the overlay network.

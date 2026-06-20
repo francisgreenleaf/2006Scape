@@ -1478,6 +1478,7 @@
         "cp \"2006Scape Server/ServerConfig.Tailscale.Sample.json\" \"2006Scape Server/ServerConfig.json\" && python3 scripts/prepare-external-deployment.py --config \"2006Scape Server/ServerConfig.json\"",
         "python3 agent-navigation/tools/script_registry.py run prepare external deployment -- --config \"2006Scape Server/ServerConfig.json\"",
         "python3 scripts/prepare-external-deployment.py --config \"2006Scape Server/ServerConfig.json\"",
+        "python3 scripts/prepare-external-deployment.py --config \"2006Scape Server/ServerConfig.json\" --require-encrypted-external",
         "python3 scripts/prepare-external-deployment.py --config \"2006Scape Server/ServerConfig.json\" --proof-manifest dist/external-deployment/deployment-proof-manifest.json",
         "python3 scripts/prepare-external-deployment.py --config \"2006Scape Server/ServerConfig.json\" --json-output dist/external-deployment/deployment-readiness-report.json"
       ]
@@ -1507,6 +1508,7 @@
       ],
       "examples": [
         "CLIENT_SERVER_CONFIG=\"2006Scape Server/ServerConfig.Tailscale.Sample.json\" scripts/package-client.sh",
+        "CLIENT_SERVER_CONFIG=\"2006Scape Server/ServerConfig.json\" CLIENT_REQUIRE_ENCRYPTED_EXTERNAL=1 scripts/package-client.sh",
         "CLIENT_SERVER_CONFIG=\"2006Scape Server/ServerConfig.json\" python3 agent-navigation/tools/script_registry.py run package client",
         "CLIENT_SERVER_CONFIG=\"2006Scape Server/ServerConfig.json\" scripts/package-client.sh"
       ]

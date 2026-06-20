@@ -129,6 +129,14 @@ This packages the client, renders server deployment files, and writes a static r
 scripts/prepare-external-deployment.py --config "2006Scape Server/ServerConfig.json"
 ```
 
+For an encrypted external-player package, add the explicit guard:
+
+```sh
+scripts/prepare-external-deployment.py --config "2006Scape Server/ServerConfig.json" --require-encrypted-external
+```
+
+That guard refuses `direct_tcp` and any config that has not confirmed a secure external transport. Use it for Tailscale, WireGuard/VPN, or `client_tls_tunnel` packages that you intend to give to players. Leave it off only for a deliberate plaintext `direct_tcp` smoke test.
+
 Add `--json-output dist/external-deployment/deployment-readiness-report.json` when you also want machine-readable readiness status for scripts or handoff records.
 
 Important outputs:

@@ -78,6 +78,7 @@ CLIENT_SCALE="${CLIENT_SCALE:-2}"
 SHOW_NAVBAR="${CLIENT_SHOW_NAVBAR:-false}"
 SECURE_TRANSPORT="${CLIENT_SECURE_TRANSPORT:-${CONFIG_SECURE_TRANSPORT:-external transport not specified}}"
 AGENT_BRIDGE_URL="${CLIENT_AGENT_BRIDGE_URL:-${CONFIG_AGENT_BRIDGE_URL:-http://127.0.0.1:43610}}"
+REQUIRE_ENCRYPTED_EXTERNAL="${CLIENT_REQUIRE_ENCRYPTED_EXTERNAL:-0}"
 if [[ -z "${CLIENT_SERVER_HOST:-}" && "$(printf '%s' "$SECURE_TRANSPORT" | tr '[:upper:]' '[:lower:]')" == "client_tls_tunnel" ]]; then
     SERVER_HOST="${CONFIG_CLIENT_CONNECT_HOST:-127.0.0.1}"
 else
@@ -139,6 +140,17 @@ is_allowed_external_transport() {
     return 1
 }
 
+is_encrypted_external_transport() {
+    local transport
+    transport="$(lowercase "$1")"
+    case "$transport" in
+        tailscale|wireguard|vpn|client_tls_tunnel)
+            return 0
+            ;;
+    esac
+    return 1
+}
+
 require_single_line_value() {
     local label="$1"
     local value="$2"
@@ -192,6 +204,13 @@ require_single_line_value "client check_crc" "$CHECK_CRC"
 require_single_line_value "client single_ondemand" "$SINGLE_ONDEMAND"
 require_single_line_value "client scale" "$CLIENT_SCALE"
 require_single_line_value "client show_navbar" "$SHOW_NAVBAR"
+require_single_line_value "client encrypted external requirement" "$REQUIRE_ENCRYPTED_EXTERNAL"
+
+if [[ "$REQUIRE_ENCRYPTED_EXTERNAL" == "1" ]] && ! is_encrypted_external_transport "$SECURE_TRANSPORT"; then
+    echo "Refusing to package client because CLIENT_REQUIRE_ENCRYPTED_EXTERNAL=1 requires encrypted external transport." >&2
+    echo "Use tailscale, wireguard, vpn, or client_tls_tunnel. direct_tcp is plaintext and is only for explicit no-install public smoke tests." >&2
+    exit 1
+fi
 
 if is_wildcard_client_host "$SERVER_HOST"; then
     echo "Refusing to package a client with wildcard server.host=$SERVER_HOST." >&2
@@ -850,6 +869,7 @@ client_scale=$CLIENT_SCALE
 show_navbar=$SHOW_NAVBAR
 expected_external_transport=$SECURE_TRANSPORT
 agent_bridge_url=$AGENT_BRIDGE_URL
+encrypted_external_required=$REQUIRE_ENCRYPTED_EXTERNAL
 jar_sha256=$JAR_SHA256
 
 Security note:

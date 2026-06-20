@@ -138,6 +138,8 @@ scripts/prepare-external-deployment.py --config "2006Scape Server/ServerConfig.E
 # Manual CLIENT_SERVER_HOST overrides for non-local packages require CLIENT_SECURE_TRANSPORT (`direct_tcp`, `tailscale`, `wireguard`, `vpn`, or `client_tls_tunnel`); wildcard client hosts and symlinked package output paths are rejected.
 scripts/render-server-deployment-files.py --config "2006Scape Server/ServerConfig.External.Sample.json" --output-dir dist/server-deployment
 # Generated server-deployment files must keep hardened systemd sandboxing, argument-quoted firewall/README commands, input validation plus verifier parsing for service names/paths/interfaces, owner-only account/secrets install guidance, runtime-data backup notes, and fill-in proof templates under the deployed `2006Scape Server/data/` tree.
+scripts/prepare-external-deployment.py --config "2006Scape Server/ServerConfig.json" --require-encrypted-external
+# Use --require-encrypted-external, or CLIENT_REQUIRE_ENCRYPTED_EXTERNAL=1 with package-client.sh, when producing a player package that must use Tailscale, WireGuard/VPN, or client_tls_tunnel and must not fall back to plaintext direct_tcp.
 scripts/backup-runtime-data.py --data-dir "2006Scape Server/data"
 scripts/backup-runtime-data.py --data-dir "2006Scape Server/data" --proof-manifest dist/external-deployment/deployment-proof-manifest.json
 scripts/write-desktop-client-proof.py --same-host-client LOCAL --external-client EXTERNAL --transport TRANSPORT --public-host HOST --evidence PATH

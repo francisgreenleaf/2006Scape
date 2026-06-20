@@ -1136,6 +1136,17 @@ grep -q -- "--json-output" .codex/skills/2006scape/SKILL.md
 grep -q -- "--json-output" .codex/skills/2006scape-agent-bridge-dev/SKILL.md
 grep -q -- "--json-output" .codex/skills/2006scape-external-deployment/SKILL.md
 grep -q -- "--json-output" agent-navigation/data/script_registry.json
+grep -q -- "--require-encrypted-external" AGENTS.md
+grep -q -- "--require-encrypted-external" README.md
+grep -q -- "--require-encrypted-external" docs/deployment-networking.md
+grep -q -- "--require-encrypted-external" docs/external-deployment-quickstart.md
+grep -q -- "--require-encrypted-external" docs/network-auth-agent-chat-design.md
+grep -q -- "--require-encrypted-external" .codex/skills/2006scape/SKILL.md
+grep -q -- "--require-encrypted-external" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q -- "--require-encrypted-external" agent-navigation/data/script_registry.json
+grep -q "CLIENT_REQUIRE_ENCRYPTED_EXTERNAL" docs/deployment-networking.md
+grep -q "CLIENT_REQUIRE_ENCRYPTED_EXTERNAL" README.md
+grep -q "CLIENT_REQUIRE_ENCRYPTED_EXTERNAL" agent-navigation/data/script_registry.json
 grep -q "deployment-proof-manifest.json" AGENTS.md
 grep -q "deployment-proof-manifest.json" README.md
 grep -q "deployment-proof-manifest.json" docs/deployment-networking.md
@@ -2384,7 +2395,42 @@ grep -Eq '^source_server_config_sha256=[0-9a-f]{64}$' "$TMP_DIR/2006scape-client
 grep -q "public_game_host=example-tailnet-host" "$TMP_DIR/2006scape-client-tailscale-from-config/MANIFEST.txt"
 grep -q "expected_external_transport=tailscale" "$TMP_DIR/2006scape-client-tailscale-from-config/MANIFEST.txt"
 grep -q "agent_bridge_url=http://127.0.0.1:43610" "$TMP_DIR/2006scape-client-tailscale-from-config/MANIFEST.txt"
+grep -q "encrypted_external_required=0" "$TMP_DIR/2006scape-client-tailscale-from-config/MANIFEST.txt"
 (cd "$TMP_DIR/2006scape-client-tailscale-from-config" && shasum -a 256 -c SHA256SUMS >/dev/null)
+
+echo "Smoke-testing encrypted external package guard..."
+CLIENT_DIST_DIR="$TMP_DIR/2006scape-client-tailscale-encrypted-required" \
+CLIENT_ARCHIVE_PATH="$TMP_DIR/2006scape-client-tailscale-encrypted-required.zip" \
+SKIP_BUILD=1 \
+CLIENT_SERVER_CONFIG="2006Scape Server/ServerConfig.Tailscale.Sample.json" \
+CLIENT_REQUIRE_ENCRYPTED_EXTERNAL=1 \
+    scripts/package-client.sh > "$TMP_DIR/package-tailscale-encrypted-required.out"
+test -f "$TMP_DIR/2006scape-client-tailscale-encrypted-required/client.properties"
+grep -q "secure.transport=tailscale" "$TMP_DIR/2006scape-client-tailscale-encrypted-required/client.properties"
+grep -q "encrypted_external_required=1" "$TMP_DIR/2006scape-client-tailscale-encrypted-required/MANIFEST.txt"
+if CLIENT_DIST_DIR="$TMP_DIR/2006scape-client-direct-encrypted-required" \
+    CLIENT_ARCHIVE_PATH="$TMP_DIR/2006scape-client-direct-encrypted-required.zip" \
+    SKIP_BUILD=1 \
+    CLIENT_SERVER_CONFIG="2006Scape Server/ServerConfig.External.Sample.json" \
+    CLIENT_REQUIRE_ENCRYPTED_EXTERNAL=1 \
+        scripts/package-client.sh > "$TMP_DIR/package-direct-encrypted-required.out" 2>&1; then
+    echo "Expected direct_tcp package to fail with CLIENT_REQUIRE_ENCRYPTED_EXTERNAL=1" >&2
+    exit 1
+fi
+grep -q "requires encrypted external transport" "$TMP_DIR/package-direct-encrypted-required.out"
+grep -q "direct_tcp is plaintext" "$TMP_DIR/package-direct-encrypted-required.out"
+if scripts/prepare-external-deployment.py \
+    --config "2006Scape Server/ServerConfig.External.Sample.json" \
+    --output-dir "$TMP_DIR/prepared-direct-encrypted-required" \
+    --allow-empty-accounts \
+    --allow-placeholder-network-config \
+    --require-encrypted-external \
+    --skip-build > "$TMP_DIR/prepare-direct-encrypted-required.out" 2>&1; then
+    echo "Expected direct_tcp prepare to fail with --require-encrypted-external" >&2
+    exit 1
+fi
+grep -q -- "--require-encrypted-external requires external_transport_mode" "$TMP_DIR/prepare-direct-encrypted-required.out"
+grep -q "direct_tcp is plaintext" "$TMP_DIR/prepare-direct-encrypted-required.out"
 
 echo "Smoke-testing prepared Tailscale deployment bundle from server config..."
 TAILSCALE_EMPTY_ACCOUNTS="$TMP_DIR/tailscale-empty-accounts"
@@ -2397,9 +2443,11 @@ scripts/prepare-external-deployment.py \
     --accounts-dir "$TAILSCALE_EMPTY_ACCOUNTS" \
     --allow-empty-accounts \
     --allow-placeholder-network-config \
+    --require-encrypted-external \
     --skip-build > "$TMP_DIR/prepare-tailscale.out"
 grep -q "prepared external deployment artifacts" "$TMP_DIR/prepare-tailscale.out"
 grep -q "client_tls_tunnel_operator: skipped; external_transport_mode=tailscale" "$TMP_DIR/prepare-tailscale.out"
+grep -q "encrypted_external_required: yes" "$TMP_DIR/prepare-tailscale.out"
 grep -q "runtime: not started, stopped, or restarted" "$TMP_DIR/prepare-tailscale.out"
 test -f "$TMP_DIR/prepared-tailscale/2006scape-client/client.properties"
 test -f "$TMP_DIR/prepared-tailscale/2006scape-client.zip"
@@ -2408,6 +2456,7 @@ test -f "$TMP_DIR/prepared-tailscale/server-deployment/proof-templates/deploymen
 test -f "$TMP_DIR/prepared-tailscale/deployment-readiness-report.md"
 test -f "$TMP_DIR/prepared-tailscale/deployment-readiness-report.json"
 grep -q "secure.transport=tailscale" "$TMP_DIR/prepared-tailscale/2006scape-client/client.properties"
+grep -q "encrypted_external_required=1" "$TMP_DIR/prepared-tailscale/2006scape-client/MANIFEST.txt"
 grep -q "Tailscale mode: expose game/cache only on the Tailscale interface" "$TMP_DIR/prepared-tailscale/server-deployment/firewall-ufw-example.sh"
 grep -q "ufw allow in on tailscale0" "$TMP_DIR/prepared-tailscale/server-deployment/firewall-ufw-example.sh"
 grep -q "Do not expose 2006Scape AgentBridgeServer" "$TMP_DIR/prepared-tailscale/server-deployment/firewall-ufw-example.sh"
