@@ -2813,6 +2813,7 @@ python3 "${MAC_PACKAGE_ARGS[@]}" > "$TMP_DIR/package-macos-player-app.json"
 python3 - "$TMP_DIR/package-macos-player-app.json" "$TMP_DIR/prepared-tailscale/private/player-credentials-MrProvision.env" <<'PY'
 import json
 import os
+import plistlib
 import re
 import stat
 import sys
@@ -2828,12 +2829,24 @@ assert summary["passwordIncluded"] is False, summary
 assert summary["privateFilesIncluded"] is False, summary
 assert summary["runtimeTouched"] is False, summary
 app = Path(summary["appBundle"])
-assert (app / "Contents" / "Info.plist").is_file(), summary
+info_plist = app / "Contents" / "Info.plist"
+assert info_plist.is_file(), summary
+plist = plistlib.loads(info_plist.read_bytes())
+assert plist["CFBundleName"] == "2006Scape", plist
 launcher = app / "Contents" / "MacOS" / "2006Scape"
 assert launcher.is_file(), summary
+launcher_text = launcher.read_text(encoding="utf-8")
+assert "Library/Logs/2006Scape" in launcher_text, launcher_text
+assert "display dialog" in launcher_text, launcher_text
+assert "CLIENT_DOCK_ICON" in launcher_text, launcher_text
 if os.name == "posix":
     assert stat.S_IMODE(launcher.stat().st_mode) & 0o111, oct(stat.S_IMODE(launcher.stat().st_mode))
 assert (app / "Contents" / "Resources" / "2006scape-client" / "client.properties").is_file(), summary
+if summary.get("appIcon"):
+    icon = app / "Contents" / "Resources" / "2006Scape.icns"
+    assert icon.is_file() and icon.stat().st_size > 0, summary
+    assert Path(summary["appIcon"]) == icon, summary
+    assert plist.get("CFBundleIconFile") == "2006Scape", plist
 for path in app.rglob("*"):
     lowered = str(path.relative_to(app)).lower()
     assert "/private/" not in lowered and "/accounts/" not in lowered and "/characters/" not in lowered, lowered
@@ -2958,6 +2971,9 @@ test -x "$TMP_DIR/2006scape-client-from-config/Run-2006Scape.command"
 test -x "$TMP_DIR/2006scape-client-from-config/check-setup-macos-linux.sh"
 test -f "$TMP_DIR/2006scape-client-from-config/check-setup-windows.bat"
 test -x "$TMP_DIR/2006scape-client-from-config/run-macos-linux.sh"
+grep -q "find_java" "$TMP_DIR/2006scape-client-from-config/run-macos-linux.sh"
+grep -q "CLIENT_DOCK_ICON" "$TMP_DIR/2006scape-client-from-config/run-macos-linux.sh"
+grep -q "/opt/homebrew/opt/openjdk/bin" "$TMP_DIR/2006scape-client-from-config/run-macos-linux.sh"
 test -f "$TMP_DIR/2006scape-client-from-config/run-windows.bat"
 test -f "$TMP_DIR/2006scape-client-from-config.zip"
 assert_archive_launcher_executable "$TMP_DIR/2006scape-client-from-config.zip" "2006scape-client-from-config/Check-Setup.command"

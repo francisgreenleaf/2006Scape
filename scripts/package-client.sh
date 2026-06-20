@@ -358,6 +358,11 @@ set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROPERTIES="$DIR/client.properties"
 
+# Finder-launched macOS apps do not inherit an interactive shell PATH. Keep
+# common Java and package-manager locations visible for both .command and .app
+# launchers.
+export PATH="/opt/homebrew/opt/openjdk/bin:/opt/homebrew/bin:/usr/local/opt/openjdk/bin:/usr/local/bin:/Library/Java/JavaVirtualMachines/temurin-8.jdk/Contents/Home/bin:${PATH:-}"
+
 read_prop() {
     local key="$1"
     awk -F= -v key="$key" '$1 == key {print substr($0, length($1) + 2); exit}' "$PROPERTIES"
@@ -427,9 +432,44 @@ start_client_tls_tunnel_if_needed() {
     fi
 }
 
-if ! command -v java >/dev/null 2>&1; then
+find_java() {
+    if [[ -n "${JAVA_HOME:-}" && -x "$JAVA_HOME/bin/java" ]]; then
+        printf '%s\n' "$JAVA_HOME/bin/java"
+        return 0
+    fi
+    if command -v java >/dev/null 2>&1; then
+        command -v java
+        return 0
+    fi
+    if [[ "$(uname -s)" == "Darwin" && -x /usr/libexec/java_home ]]; then
+        local java_home
+        java_home="$(/usr/libexec/java_home -v 1.8+ 2>/dev/null || true)"
+        if [[ -n "$java_home" && -x "$java_home/bin/java" ]]; then
+            printf '%s\n' "$java_home/bin/java"
+            return 0
+        fi
+    fi
+    local candidate
+    for candidate in \
+        /opt/homebrew/opt/openjdk/bin/java \
+        /opt/homebrew/bin/java \
+        /usr/local/opt/openjdk/bin/java \
+        /usr/local/bin/java \
+        /Library/Java/JavaVirtualMachines/*/Contents/Home/bin/java
+    do
+        if [[ -x "$candidate" ]]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
+JAVA_BIN="$(find_java || true)"
+if [[ -z "$JAVA_BIN" ]]; then
     echo "Java is required to run 2006Scape." >&2
     echo "Install Java 8 or newer, then run this launcher again." >&2
+    echo "On macOS, install a current JDK from Adoptium or Homebrew, then reopen the app." >&2
     exit 1
 fi
 if [[ ! -f "$PROPERTIES" ]]; then
@@ -448,11 +488,14 @@ fi
 
 JAVA_DOCK_OPTS=()
 if [[ "$(uname -s)" == "Darwin" ]]; then
-    JAVA_DOCK_OPTS=(-Xdock:name=Agentscape)
+    JAVA_DOCK_OPTS=("-Xdock:name=${CLIENT_DOCK_NAME:-2006Scape}")
+    if [[ -n "${CLIENT_DOCK_ICON:-}" && -f "${CLIENT_DOCK_ICON:-}" ]]; then
+        JAVA_DOCK_OPTS+=("-Xdock:icon=$CLIENT_DOCK_ICON")
+    fi
 fi
 
 set +e
-java "${JAVA_DOCK_OPTS[@]}" -jar "$DIR/2006scape-client.jar" -no-java-warnings -client-config "$PROPERTIES" "$@"
+"$JAVA_BIN" "${JAVA_DOCK_OPTS[@]}" -jar "$DIR/2006scape-client.jar" -no-java-warnings -client-config "$PROPERTIES" "$@"
 status=$?
 set -e
 exit "$status"
@@ -818,8 +861,9 @@ Run:
   Windows setup checker: expects the local tunnel endpoint to be reachable first.
 
 Java:
-  Install Java 8 or newer first. The launchers print a short error if Java
-  is not available on PATH.
+  Install Java 8 or newer first. The launchers search common macOS Java
+  locations, Homebrew OpenJDK paths, JAVA_HOME, and PATH. The Mac .app shows
+  a normal alert and writes a log if Java or the client cannot start.
   Packaged launchers suppress the legacy Parabot-focused Java-version warning
   dialogs; use a current 64-bit Java runtime for normal play.
   The packaged client defaults to the repo-native 2x game scale with the old

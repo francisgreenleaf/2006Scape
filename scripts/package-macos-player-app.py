@@ -9,8 +9,10 @@ import os
 import plistlib
 import re
 import shutil
+import struct
 import subprocess
 import sys
+import zlib
 from pathlib import Path
 
 
@@ -145,19 +147,254 @@ def copy_tree(source, dest):
 def write_launcher(path):
     path.write_text(
         """#!/usr/bin/env bash
-set -euo pipefail
+set -u
 
 APP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CLIENT_DIR="$APP_ROOT/Resources/2006scape-client"
-cd "$CLIENT_DIR"
-exec "$CLIENT_DIR/run-macos-linux.sh" "$@"
+LOG_DIR="${HOME:-/tmp}/Library/Logs/2006Scape"
+if ! mkdir -p "$LOG_DIR" 2>/dev/null; then
+    LOG_DIR="/tmp"
+fi
+LOG_FILE="$LOG_DIR/2006Scape-launch.log"
+
+show_error() {
+    local message="$1"
+    if command -v osascript >/dev/null 2>&1; then
+        osascript \\
+            -e 'on run argv' \\
+            -e 'display dialog (item 1 of argv) with title "2006Scape" buttons {"OK"} default button "OK" with icon caution' \\
+            -e 'end run' \\
+            "$message" >/dev/null 2>&1 || true
+    fi
+}
+
+{
+    echo ""
+    echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] Starting 2006Scape from $APP_ROOT"
+} >>"$LOG_FILE" 2>&1
+exec >>"$LOG_FILE" 2>&1
+
+export PATH="/opt/homebrew/opt/openjdk/bin:/opt/homebrew/bin:/usr/local/opt/openjdk/bin:/usr/local/bin:/Library/Java/JavaVirtualMachines/temurin-8.jdk/Contents/Home/bin:${PATH:-}"
+export CLIENT_DOCK_NAME="2006Scape"
+if [[ -f "$APP_ROOT/Resources/2006Scape.icns" ]]; then
+    export CLIENT_DOCK_ICON="$APP_ROOT/Resources/2006Scape.icns"
+fi
+
+if [[ ! -d "$CLIENT_DIR" ]]; then
+    show_error "2006Scape could not find its bundled client files. Reopen the DMG or download a fresh package. Log: $LOG_FILE"
+    exit 1
+fi
+if [[ ! -x "$CLIENT_DIR/run-macos-linux.sh" ]]; then
+    show_error "2006Scape could not find its launcher. Reopen the DMG or download a fresh package. Log: $LOG_FILE"
+    exit 1
+fi
+
+cd "$CLIENT_DIR" || exit 1
+set +e
+"$CLIENT_DIR/run-macos-linux.sh" "$@"
+status=$?
+set -e
+if [[ "$status" -ne 0 ]]; then
+    show_error "2006Scape could not start. Install Java 8 or newer, then try again. Details were written to: $LOG_FILE"
+fi
+exit "$status"
 """,
         encoding="utf-8",
     )
     chmod_executable(path)
 
 
-def write_info_plist(path, app_name, bundle_id):
+def png_chunk(kind, data):
+    return (
+        struct.pack(">I", len(data))
+        + kind
+        + data
+        + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
+    )
+
+
+def write_png_rgba(path, width, height, pixels):
+    rows = []
+    stride = width * 4
+    for y in range(height):
+        rows.append(b"\x00" + bytes(pixels[y * stride : (y + 1) * stride]))
+    raw = b"".join(rows)
+    payload = b"".join(
+        [
+            b"\x89PNG\r\n\x1a\n",
+            png_chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0)),
+            png_chunk(b"IDAT", zlib.compress(raw, 9)),
+            png_chunk(b"IEND", b""),
+        ]
+    )
+    path.write_bytes(payload)
+
+
+def blend_pixel(pixels, width, x, y, color):
+    if x < 0 or y < 0 or x >= width:
+        return
+    offset = (y * width + x) * 4
+    if offset < 0 or offset + 4 > len(pixels):
+        return
+    sr, sg, sb, sa = color
+    if sa >= 255:
+        pixels[offset : offset + 4] = bytes((sr, sg, sb, 255))
+        return
+    if sa <= 0:
+        return
+    alpha = sa / 255.0
+    inv = 1.0 - alpha
+    dr, dg, db, da = pixels[offset : offset + 4]
+    out_a = min(255, int(sa + da * inv))
+    pixels[offset] = int(sr * alpha + dr * inv)
+    pixels[offset + 1] = int(sg * alpha + dg * inv)
+    pixels[offset + 2] = int(sb * alpha + db * inv)
+    pixels[offset + 3] = out_a
+
+
+def draw_rect(pixels, width, height, x0, y0, x1, y1, color):
+    for y in range(max(0, y0), min(height, y1)):
+        row = y * width
+        for x in range(max(0, x0), min(width, x1)):
+            offset = (row + x) * 4
+            pixels[offset : offset + 4] = bytes(color)
+
+
+def draw_circle(pixels, width, height, cx, cy, radius, color):
+    r2 = radius * radius
+    for y in range(max(0, cy - radius), min(height, cy + radius + 1)):
+        for x in range(max(0, cx - radius), min(width, cx + radius + 1)):
+            if (x - cx) * (x - cx) + (y - cy) * (y - cy) <= r2:
+                blend_pixel(pixels, width, x, y, color)
+
+
+def rounded_rect_contains(x, y, x0, y0, x1, y1, radius):
+    if x < x0 or x >= x1 or y < y0 or y >= y1:
+        return False
+    if x0 + radius <= x < x1 - radius or y0 + radius <= y < y1 - radius:
+        return True
+    cx = x0 + radius if x < x0 + radius else x1 - radius - 1
+    cy = y0 + radius if y < y0 + radius else y1 - radius - 1
+    return (x - cx) * (x - cx) + (y - cy) * (y - cy) <= radius * radius
+
+
+def draw_rounded_rect(pixels, width, height, x0, y0, x1, y1, radius, color):
+    for y in range(max(0, y0), min(height, y1)):
+        for x in range(max(0, x0), min(width, x1)):
+            if rounded_rect_contains(x, y, x0, y0, x1, y1, radius):
+                blend_pixel(pixels, width, x, y, color)
+
+
+def draw_segment_digit(pixels, width, height, digit, x, y, w, h, color):
+    thickness = max(1, h // 7)
+    pad = max(1, thickness // 2)
+    segments = {
+        "a": (x + pad, y, x + w - pad, y + thickness),
+        "b": (x + w - thickness, y + pad, x + w, y + h // 2 - pad),
+        "c": (x + w - thickness, y + h // 2 + pad, x + w, y + h - pad),
+        "d": (x + pad, y + h - thickness, x + w - pad, y + h),
+        "e": (x, y + h // 2 + pad, x + thickness, y + h - pad),
+        "f": (x, y + pad, x + thickness, y + h // 2 - pad),
+        "g": (x + pad, y + h // 2 - thickness // 2, x + w - pad, y + h // 2 + thickness // 2),
+    }
+    active = {
+        "0": "abcdef",
+        "1": "bc",
+        "2": "abged",
+        "3": "abgcd",
+        "4": "fgbc",
+        "5": "afgcd",
+        "6": "afgecd",
+        "7": "abc",
+        "8": "abcdefg",
+        "9": "abfgcd",
+    }[digit]
+    shadow = (35, 34, 28, 155)
+    for key in active:
+        sx0, sy0, sx1, sy1 = segments[key]
+        draw_rect(pixels, width, height, sx0 + max(1, thickness // 4), sy0 + max(1, thickness // 4), sx1 + max(1, thickness // 4), sy1 + max(1, thickness // 4), shadow)
+    for key in active:
+        draw_rect(pixels, width, height, *segments[key], color)
+
+
+def write_icon_png(path, size):
+    pixels = bytearray(size * size * 4)
+    s = lambda value: max(1, int(round(value * size)))
+
+    draw_rounded_rect(pixels, size, size, s(0.04), s(0.04), s(0.96), s(0.96), s(0.18), (17, 74, 50, 255))
+    draw_rounded_rect(pixels, size, size, s(0.08), s(0.08), s(0.92), s(0.92), s(0.14), (35, 112, 68, 255))
+
+    for i in range(s(0.08)):
+        draw_rounded_rect(
+            pixels,
+            size,
+            size,
+            s(0.09) + i,
+            s(0.09) + i,
+            s(0.91) - i,
+            s(0.91) - i,
+            max(1, s(0.13) - i),
+            (214, 170, 79, 55),
+        )
+
+    # River slash and path give the icon a tiny map feel without needing asset files.
+    for offset in range(-s(0.045), s(0.045) + 1):
+        for t in range(s(0.10), s(0.90)):
+            x = t
+            y = int(s(0.22) + (t - s(0.10)) * 0.48) + offset
+            blend_pixel(pixels, size, x, y, (65, 145, 176, 210))
+
+    draw_circle(pixels, size, size, s(0.50), s(0.50), s(0.31), (235, 201, 116, 245))
+    draw_circle(pixels, size, size, s(0.50), s(0.50), s(0.26), (54, 88, 59, 255))
+    draw_circle(pixels, size, size, s(0.50), s(0.50), s(0.22), (42, 128, 78, 255))
+
+    digit_color = (251, 230, 157, 255)
+    draw_segment_digit(pixels, size, size, "0", s(0.23), s(0.35), s(0.23), s(0.31), digit_color)
+    draw_segment_digit(pixels, size, size, "6", s(0.54), s(0.35), s(0.23), s(0.31), digit_color)
+    draw_circle(pixels, size, size, s(0.73), s(0.28), max(1, s(0.055)), (181, 59, 49, 255))
+    draw_circle(pixels, size, size, s(0.73), s(0.28), max(1, s(0.026)), (255, 236, 185, 255))
+
+    write_png_rgba(path, size, size, pixels)
+
+
+def write_app_icon(resources_dir):
+    if sys.platform != "darwin" or shutil.which("iconutil") is None:
+        return ""
+    iconset = resources_dir / "AppIcon.iconset"
+    if iconset.exists():
+        if iconset.is_symlink():
+            fail("refusing to replace symlinked iconset: {}".format(iconset))
+        shutil.rmtree(str(iconset))
+    iconset.mkdir(parents=True)
+    specs = [
+        ("icon_16x16.png", 16),
+        ("icon_16x16@2x.png", 32),
+        ("icon_32x32.png", 32),
+        ("icon_32x32@2x.png", 64),
+        ("icon_128x128.png", 128),
+        ("icon_128x128@2x.png", 256),
+        ("icon_256x256.png", 256),
+        ("icon_256x256@2x.png", 512),
+        ("icon_512x512.png", 512),
+        ("icon_512x512@2x.png", 1024),
+    ]
+    for filename, size in specs:
+        write_icon_png(iconset / filename, size)
+    icon_path = resources_dir / "2006Scape.icns"
+    completed = subprocess.run(
+        ["iconutil", "-c", "icns", str(iconset), "-o", str(icon_path)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        check=False,
+    )
+    shutil.rmtree(str(iconset))
+    if completed.returncode != 0:
+        fail("iconutil icon creation failed:\n{}".format((completed.stdout or "").strip()))
+    return str(icon_path)
+
+
+def write_info_plist(path, app_name, bundle_id, icon_file):
     payload = {
         "CFBundleDevelopmentRegion": "en",
         "CFBundleDisplayName": app_name,
@@ -168,9 +405,12 @@ def write_info_plist(path, app_name, bundle_id):
         "CFBundlePackageType": "APPL",
         "CFBundleShortVersionString": "1.0",
         "CFBundleVersion": "1",
+        "LSApplicationCategoryType": "public.app-category.games",
         "LSMinimumSystemVersion": "10.13",
         "NSHighResolutionCapable": True,
     }
+    if icon_file:
+        payload["CFBundleIconFile"] = "2006Scape"
     with path.open("wb") as handle:
         plistlib.dump(payload, handle, sort_keys=True)
 
@@ -222,8 +462,9 @@ def build_app(args):
     resources_dir.mkdir(parents=True)
 
     copy_tree(client_dist, resources_dir / "2006scape-client")
+    app_icon = write_app_icon(resources_dir)
     write_launcher(macos_dir / app_name)
-    write_info_plist(contents_dir / "Info.plist", app_name, args.bundle_id)
+    write_info_plist(contents_dir / "Info.plist", app_name, args.bundle_id, app_icon)
     validate_public_tree(app_path, "macOS app bundle")
 
     generated_at = utc_now()
@@ -244,6 +485,8 @@ def build_app(args):
         (dmg_root / "OPEN-2006SCAPE.txt").write_text(
             "\n".join([
                 "Open 2006Scape.app to launch the game client.",
+                "If macOS blocks a first launch, right-click 2006Scape.app and choose Open.",
+                "If Java is missing or the client cannot start, the app shows an alert and writes a log to ~/Library/Logs/2006Scape/2006Scape-launch.log.",
                 "Read README-FIRST.md for the account name, transport setup, and login steps.",
                 "The password is not included in this DMG; the operator sends it separately.",
                 "",
@@ -284,6 +527,7 @@ def build_app(args):
         "username": username,
         "character": character,
         "appBundle": str(app_path),
+        "appIcon": app_icon,
         "dmg": dmg_path,
         "dmgSha256": dmg_sha,
         "handoffNote": str(handoff_note),

@@ -235,9 +235,12 @@ scripts/package-macos-player-app.py PLAYER_USERNAME \
   --dmg
 ```
 
-Send the DMG to Mac players when you want them to open a normal app bundle
-instead of seeing the repo-style client folder. Keep the zip/player-kit flow for
-Windows, Linux, and checksum-oriented handoffs.
+Send the DMG to Mac players when you want them to open a normal iconed app
+bundle instead of seeing the repo-style client folder. Players double-click
+`2006Scape.app`; if Java is missing or launch fails, the app shows a normal
+macOS alert and writes details to
+`~/Library/Logs/2006Scape/2006Scape-launch.log`. Keep the zip/player-kit flow
+for Windows, Linux, and checksum-oriented handoffs.
 
 To install the newly created account record onto a VPS or deployment host, start
 with the dry-run install plan:

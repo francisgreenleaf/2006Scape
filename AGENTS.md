@@ -298,6 +298,8 @@ External-player deployments must read `docs/deployment-networking.md`. The curre
 
 - For encrypted-only player packages, add `--require-encrypted-external` to `scripts/prepare-external-deployment.py` or set `CLIENT_REQUIRE_ENCRYPTED_EXTERNAL=1` for direct `scripts/package-client.sh` calls. This allows Tailscale, WireGuard/VPN, and `client_tls_tunnel`, and refuses plaintext `direct_tcp` before a downloadable client zip is written.
 
+- Mac player DMGs should feel like normal end-user apps: `scripts/package-macos-player-app.py` creates an iconed `2006Scape.app`, sets the bundle icon, launches through the packaged client with Finder-safe Java path discovery, shows a macOS alert on launch failure, and writes details to `~/Library/Logs/2006Scape/2006Scape-launch.log`. Keep the zip/player-kit flow for Windows/Linux and checksum-first handoffs.
+
 - For `client_tls_tunnel` player packages, keep `client-tls-tunnel/INSTALL-STUNNEL.txt` alongside the player-side stunnel config. The client package does not bundle stunnel binaries, so launcher/checker guidance and verification should point players to that install helper when `stunnel` is missing.
 
 - For chat proof collection, prefer adding `--proof-manifest PATH` to `scripts/verify-agent-chat-log.py` and `scripts/verify-discord-channel-message.py`; successful direct-delivery, Discord-ingress, blocked-routing, and Discord-mirror checks update only their matching proof-manifest fields and do not touch runtime.
