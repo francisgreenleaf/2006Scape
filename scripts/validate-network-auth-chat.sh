@@ -2386,6 +2386,49 @@ grep -q "expected_external_transport=tailscale" "$TMP_DIR/2006scape-client-tails
 grep -q "agent_bridge_url=http://127.0.0.1:43610" "$TMP_DIR/2006scape-client-tailscale-from-config/MANIFEST.txt"
 (cd "$TMP_DIR/2006scape-client-tailscale-from-config" && shasum -a 256 -c SHA256SUMS >/dev/null)
 
+echo "Smoke-testing prepared Tailscale deployment bundle from server config..."
+TAILSCALE_EMPTY_ACCOUNTS="$TMP_DIR/tailscale-empty-accounts"
+mkdir -p "$TAILSCALE_EMPTY_ACCOUNTS"
+chmod 700 "$TAILSCALE_EMPTY_ACCOUNTS"
+scripts/prepare-external-deployment.py \
+    --config "2006Scape Server/ServerConfig.Tailscale.Sample.json" \
+    --output-dir "$TMP_DIR/prepared-tailscale" \
+    --json-output "$TMP_DIR/prepared-tailscale/deployment-readiness-report.json" \
+    --accounts-dir "$TAILSCALE_EMPTY_ACCOUNTS" \
+    --allow-empty-accounts \
+    --allow-placeholder-network-config \
+    --skip-build > "$TMP_DIR/prepare-tailscale.out"
+grep -q "prepared external deployment artifacts" "$TMP_DIR/prepare-tailscale.out"
+grep -q "client_tls_tunnel_operator: skipped; external_transport_mode=tailscale" "$TMP_DIR/prepare-tailscale.out"
+grep -q "runtime: not started, stopped, or restarted" "$TMP_DIR/prepare-tailscale.out"
+test -f "$TMP_DIR/prepared-tailscale/2006scape-client/client.properties"
+test -f "$TMP_DIR/prepared-tailscale/2006scape-client.zip"
+test -f "$TMP_DIR/prepared-tailscale/server-deployment/firewall-ufw-example.sh"
+test -f "$TMP_DIR/prepared-tailscale/server-deployment/proof-templates/deployment-proof-manifest.json"
+test -f "$TMP_DIR/prepared-tailscale/deployment-readiness-report.md"
+test -f "$TMP_DIR/prepared-tailscale/deployment-readiness-report.json"
+grep -q "secure.transport=tailscale" "$TMP_DIR/prepared-tailscale/2006scape-client/client.properties"
+grep -q "Tailscale mode: expose game/cache only on the Tailscale interface" "$TMP_DIR/prepared-tailscale/server-deployment/firewall-ufw-example.sh"
+grep -q "ufw allow in on tailscale0" "$TMP_DIR/prepared-tailscale/server-deployment/firewall-ufw-example.sh"
+grep -q "Do not expose 2006Scape AgentBridgeServer" "$TMP_DIR/prepared-tailscale/server-deployment/firewall-ufw-example.sh"
+grep -q 'deploymentProofStatus: `STATIC_CHECKS_PASS_NEEDS_LIVE_PROOF`' "$TMP_DIR/prepared-tailscale/deployment-readiness-report.md"
+python3 - "$TMP_DIR/prepared-tailscale/deployment-readiness-report.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+assert data["schemaVersion"] == 1, data
+assert data["status"] == "PASS", data
+assert data["deploymentProofStatus"] == "STATIC_CHECKS_PASS_NEEDS_LIVE_PROOF", data
+assert data["liveChecksRequested"] is False, data
+assert data["inputs"]["serverDeploymentDir"], data
+assert not data["inputs"].get("clientTlsTunnelDir"), data
+coverage = {item["requirement"]: item for item in data["proofCoverage"]}
+assert coverage["Public reachability and bridge non-exposure"]["status"] == "MISSING", coverage
+assert any(check["label"] == "deployment verification" and check["status"] == "PASS" for check in data["checks"]), data["checks"]
+PY
+
 echo "Smoke-testing standalone client packaging from server config..."
 CLIENT_DIST_DIR="$TMP_DIR/2006scape-client-from-config" \
 CLIENT_ARCHIVE_PATH="$TMP_DIR/2006scape-client-from-config.zip" \
