@@ -6,21 +6,6 @@
 This fork turns 2006Scape into a local, instrumented RuneScape agent laboratory. The original private server and desktop client are still here, but they now carry a Codex bridge that lets a logged-in player type `/agent ...` in the normal chatbox and hand a bounded gameplay task to an AI agent. The interesting part is the constraint: the agent plays through the server's own mechanics. It walks, clicks objects, opens gates, fights NPCs, eats food, banks, shops, mines, cooks, smiths, and waits for real ticks. It does not teleport, spawn items, edit stats, or drive the screen with brittle mouse automation.
 
 The result is a fork that is part RSPS, part embodied-agent testbed. It has local route memory, compact game-state tools, profile-scoped sessions, primitive-backed Python runners, passive telemetry, screenshot evidence, and readable session reports. A run is not just "the bot did a thing"; it leaves behind enough structured evidence to explain how the agent chose a route, what the world did back, where it got stuck, and what the harness should learn next.
-
-## Current Agent Demo
-
-These screenshots were captured from this checkout on June 6, 2026 with the local client, server, and bridge running. The demonstration used a starter demo profile, dismissed the post-login welcome interface through the bridge, then ran one bounded `cowhide_combat_runner.py` cycle. The runner walked from Lumbridge toward the cow pen, enabled run, opened the cow-pen gate, attacked a cow, gained combat XP, picked up one cowhide, and stopped at its `max_cycles` boundary.
-
-| Starting In Lumbridge | Fighting Through The Bridge | Result In The Cow Pen |
-| --- | --- | --- |
-| ![Demo profile logged in near Lumbridge with starter inventory and the local agent terminal open.](docs/images/agent-lumbridge-start.png) | ![Demo profile fighting a cow while the local Codex app-server terminal is visible in the client side panel.](docs/images/agent-cow-combat.png) | ![Demo profile standing in the Lumbridge cow pen after the bounded run picked up a cowhide.](docs/images/agent-cow-result.png) |
-
-The final compact checks showed the demo profile alive at `3254,3266,0`, HP `9/10`, run still enabled, one cowhide in inventory, and recent Attack and Hitpoints XP from the fight. That small run is representative of the fork's design: a high-level goal becomes server-authoritative primitives, and the proof is visible in both the game client and the generated route/combat evidence.
-
-The in-client Agent Terminal is also live. In the same session, typing `/agent status` through the Java client opened the side-panel terminal, started and initialized the Codex app-server path, connected the game bridge, and reported readiness for the selected profile.
-
-![The 2006Scape Agent Terminal after a client-side /agent status command connected the local app-server and game bridge.](docs/images/agent-terminal-status.png)
-
 ## What Makes It Different
 
 - **The client can summon Codex from inside the game.** `/agent key`, `/agent status`, `/agent stop`, and `/agent <task>` live in the normal chat flow. The Java client launches `codex app-server --listen stdio://`, exposes dynamic `rs` tools, and keeps the player-facing experience inside the 2006Scape window.
