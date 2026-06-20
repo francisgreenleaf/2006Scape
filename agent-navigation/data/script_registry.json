@@ -348,6 +348,7 @@
         "adaptive"
       ],
       "examples": [
+        "python3 agent-navigation/tools/launch_detached_runner.py --supervise --profile MrFlame --name mining-iron --log agent-navigation/.local/runners/mrflame/mining-iron.log -- python3 agent-navigation/tools/mining_runner.py --profile MrFlame --ores iron --target-mining-level 30 --quiet",
         "python3 agent-navigation/tools/script_registry.py run mining -- --target-mining-level 20 --auto-buy-bronze-pickaxe",
         "python3 agent-navigation/tools/mining_runner.py --ores iron --max-loads 1",
         "python3 agent-navigation/tools/mining_runner.py --list-sites --ores copper,tin,iron"
@@ -401,6 +402,7 @@
         "routing"
       ],
       "examples": [
+        "python3 agent-navigation/tools/launch_detached_runner.py --supervise --profile MrWood --name fletching-yews --log agent-navigation/.local/runners/mrwood/fletching-yews.log -- python3 agent-navigation/tools/fletching_runner.py --profile MrWood --target-woodcutting-level 60 --target-fletching-level 60 --quiet",
         "python3 agent-navigation/tools/script_registry.py run fletching -- --target-woodcutting-level 50 --target-fletching-level 50 --quiet",
         "python3 agent-navigation/tools/fletching_runner.py --max-cycles 10 --tree auto --quiet",
         "python3 agent-navigation/tools/fletching_runner.py --legacy-fletch-tool --legacy-chop-tool --max-cycles 3"
@@ -560,6 +562,7 @@
         "primitive"
       ],
       "examples": [
+        "python3 agent-navigation/tools/launch_detached_runner.py --supervise --profile MrWood --name woodcutting-oak --log agent-navigation/.local/runners/mrwood/woodcutting-oak.log -- python3 agent-navigation/tools/woodcutting_runner.py --profile MrWood --target-woodcutting-level 30 --tree oak --quiet",
         "python3 agent-navigation/tools/script_registry.py run woodcutting -- --tree oak --stop-when-inventory-full --quiet",
         "python3 agent-navigation/tools/woodcutting_runner.py --target-woodcutting-level 30 --tree auto"
       ]

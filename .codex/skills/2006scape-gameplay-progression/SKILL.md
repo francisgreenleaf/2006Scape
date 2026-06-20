@@ -53,6 +53,8 @@ python3 agent-navigation/tools/launch_detached_runner.py --supervise --profile P
 
 It never restarts the server, writes separate child/supervisor pid files and compact status JSON, and restarts the child only for classified transient bridge/session failures. Gameplay blockers, safety stops, explicit stop requests, and unknown exceptions are terminal by default.
 
+Common long-run targets for supervised launch are `mining_runner.py`, `fletching_runner.py`, and `woodcutting_runner.py`; use `script_registry.py show mining --json`, `show fletching --json`, or `show woodcutting --json` for copyable examples.
+
 When local item names, NPCs, object spots, requirements, or mechanics are unclear, use `2006scape-osrs-wiki` for modern OSRS hints before guessing. Treat the wiki as advisory only and verify anything that affects the live 2006Scape server.
 
 ## First Observation
