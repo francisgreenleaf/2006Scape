@@ -787,6 +787,14 @@ chmod +x "$DIST_DIR/Check-Setup.command"
 cat > "$DIST_DIR/README.txt" <<EOF
 2006Scape Client
 
+First run checklist:
+  1. Install Java 8 or newer.
+  2. Connect the transport named below before launching. Tailscale, WireGuard,
+     VPN, and client_tls_tunnel need that extra step; direct_tcp does not.
+  3. Run the setup checker for your OS before logging in.
+  4. Start the client with the launcher for your OS.
+  5. Log in with the operator-provided username and password for this server.
+
 Check setup:
   macOS: double-click Check-Setup.command, or run ./check-setup-macos-linux.sh from Terminal.
   Linux: ./check-setup-macos-linux.sh

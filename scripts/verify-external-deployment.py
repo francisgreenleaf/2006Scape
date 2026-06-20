@@ -698,6 +698,21 @@ def verify_client_package_text(config, client_dist):
     require_text(
         client_dist / "README.txt",
         "client README",
+        "First run checklist:",
+    )
+    require_text(
+        client_dist / "README.txt",
+        "client README",
+        "Run the setup checker for your OS before logging in",
+    )
+    require_text(
+        client_dist / "README.txt",
+        "client README",
+        "Log in with the operator-provided username and password",
+    )
+    require_text(
+        client_dist / "README.txt",
+        "client README",
         "Check setup:",
     )
     require_text(
