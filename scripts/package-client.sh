@@ -298,6 +298,8 @@ Transport setup:
   The packaged launchers try to start the bundled client-side stunnel config
   automatically when stunnel is installed:
     client-tls-tunnel/stunnel-client.conf
+  If stunnel is not installed yet, read:
+    client-tls-tunnel/INSTALL-STUNNEL.txt
   The Java client connects locally to $SERVER_HOST, and stunnel carries that
   traffic over TLS to $PUBLIC_GAME_HOST. If the automatic start fails, start
   the tunnel manually with: stunnel client-tls-tunnel/stunnel-client.conf
@@ -410,6 +412,7 @@ start_client_tls_tunnel_if_needed() {
     fi
     if ! command -v stunnel >/dev/null 2>&1; then
         echo "This package uses client_tls_tunnel, but stunnel was not found on PATH." >&2
+        echo "See client-tls-tunnel/INSTALL-STUNNEL.txt for install hints." >&2
         echo "Install stunnel, or start the tunnel manually before launching:" >&2
         echo "  stunnel \"$config\"" >&2
         exit 1
@@ -503,6 +506,7 @@ chmod +x "$DIST_DIR/Run-2006Scape.command"
     printf '%s\r\n' 'where stunnel >nul 2>nul'
     printf '%s\r\n' 'if errorlevel 1 ('
     printf '%s\r\n' '    echo This package uses client_tls_tunnel, but stunnel was not found on PATH.'
+    printf '%s\r\n' '    echo See client-tls-tunnel\INSTALL-STUNNEL.txt for install hints.'
     printf '%s\r\n' '    echo Install stunnel, or start the tunnel manually before launching:'
     printf '%s\r\n' '    echo   stunnel "%TUNNEL_CONFIG%"'
     printf '%s\r\n' '    exit /b 1'
@@ -608,6 +612,7 @@ start_client_tls_tunnel_for_setup() {
     fi
     if ! command -v stunnel >/dev/null 2>&1; then
         echo "This package uses client_tls_tunnel, but stunnel was not found on PATH." >&2
+        echo "See client-tls-tunnel/INSTALL-STUNNEL.txt for install hints." >&2
         echo "Install stunnel, or start the tunnel manually before running this setup check:" >&2
         echo "  stunnel \"$config\"" >&2
         return 1
@@ -731,7 +736,7 @@ chmod +x "$DIST_DIR/Check-Setup.command"
     printf '%s\r\n' 'echo   secure.transport=%TRANSPORT%'
     printf '%s\r\n' 'echo   agent.bridge.url=%AGENT_BRIDGE_URL%'
     printf '%s\r\n' 'echo.'
-    printf '%s\r\n' 'if /I "%TRANSPORT%"=="client_tls_tunnel" echo Transport note: the launcher can start stunnel automatically, but this Windows checker expects the local tunnel endpoint to be reachable first.'
+    printf '%s\r\n' 'if /I "%TRANSPORT%"=="client_tls_tunnel" echo Transport note: the launcher can start stunnel automatically; if stunnel is missing, read client-tls-tunnel\INSTALL-STUNNEL.txt. This Windows checker expects the local tunnel endpoint to be reachable first.'
     printf '%s\r\n' 'if /I "%TRANSPORT%"=="direct_tcp" echo Transport note: direct_tcp connects directly to the public host over plaintext TCP.'
     printf '%s\r\n' 'if /I "%TRANSPORT%"=="tailscale" ('
     printf '%s\r\n' '    echo Transport note: connect Tailscale before running the client, and confirm the operator granted this account access to the server game/cache ports.'
@@ -808,6 +813,7 @@ Run:
   Windows: double-click run-windows.bat or run it from Command Prompt.
   For client_tls_tunnel packages, the launchers try to start the bundled
   stunnel config automatically when stunnel is installed.
+  If stunnel is not installed yet, read client-tls-tunnel/INSTALL-STUNNEL.txt.
   macOS/Linux setup checker: can start stunnel temporarily for TCP checks.
   Windows setup checker: expects the local tunnel endpoint to be reachable first.
 
@@ -912,6 +918,9 @@ EOF
     )
     if [[ -f client-tls-tunnel/README.txt ]]; then
         CHECKSUM_FILES+=(client-tls-tunnel/README.txt)
+    fi
+    if [[ -f client-tls-tunnel/INSTALL-STUNNEL.txt ]]; then
+        CHECKSUM_FILES+=(client-tls-tunnel/INSTALL-STUNNEL.txt)
     fi
     if [[ -f client-tls-tunnel/stunnel-client.conf ]]; then
         CHECKSUM_FILES+=(client-tls-tunnel/stunnel-client.conf)

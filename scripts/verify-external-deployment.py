@@ -50,6 +50,7 @@ BASE_EXPECTED_CLIENT_FILES = {
     "README.txt",
 }
 CLIENT_TLS_TUNNEL_CLIENT_FILES = {
+    "client-tls-tunnel/INSTALL-STUNNEL.txt",
     "client-tls-tunnel/README.txt",
     "client-tls-tunnel/stunnel-client.conf",
 }
@@ -839,6 +840,11 @@ def verify_client_package_text(config, client_dist):
             "the launchers try to start the bundled",
         )
         require_text(
+            client_dist / "README.txt",
+            "client README",
+            "client-tls-tunnel/INSTALL-STUNNEL.txt",
+        )
+        require_text(
             client_dist / "client-tls-tunnel" / "README.txt",
             "client TLS tunnel README",
             "it starts this stunnel config",
@@ -852,6 +858,26 @@ def verify_client_package_text(config, client_dist):
             client_dist / "client-tls-tunnel" / "README.txt",
             "client TLS tunnel README",
             "requires TLS handshakes on the public game/cache ports",
+        )
+        require_text(
+            client_dist / "client-tls-tunnel" / "INSTALL-STUNNEL.txt",
+            "client TLS tunnel stunnel install guide",
+            "does not bundle stunnel binaries",
+        )
+        require_text(
+            client_dist / "client-tls-tunnel" / "INSTALL-STUNNEL.txt",
+            "client TLS tunnel stunnel install guide",
+            "brew install stunnel",
+        )
+        require_text(
+            client_dist / "client-tls-tunnel" / "INSTALL-STUNNEL.txt",
+            "client TLS tunnel stunnel install guide",
+            "sudo apt-get install stunnel4",
+        )
+        require_text(
+            client_dist / "client-tls-tunnel" / "INSTALL-STUNNEL.txt",
+            "client TLS tunnel stunnel install guide",
+            "run-windows.bat",
         )
         require_text(
             client_dist / "client-tls-tunnel" / "stunnel-client.conf",
@@ -1177,6 +1203,7 @@ def verify_client_tls_tunnel_operator(config, tunnel_dir, tls_sni_host, warnings
     require_directory(tunnel_dir, "client TLS tunnel operator directory")
     require_not_symlink(tunnel_dir, "client TLS tunnel operator directory")
     expected_files = {
+        "INSTALL-STUNNEL.txt",
         "README.txt",
         "stunnel-client.conf",
         "stunnel-server.conf",
@@ -1213,6 +1240,7 @@ def verify_client_tls_tunnel_operator(config, tunnel_dir, tls_sni_host, warnings
     require_text(tunnel_dir / "README.txt", "client TLS tunnel operator README", "server-side tunnel accept host: {}".format(server_accept_host))
     require_text(tunnel_dir / "README.txt", "client TLS tunnel operator README", "certificate host checked by stunnel: {}".format(cert_host))
     require_text(tunnel_dir / "README.txt", "client TLS tunnel operator README", "requires TLS handshakes on the public game/cache ports")
+    require_text(tunnel_dir / "INSTALL-STUNNEL.txt", "client TLS tunnel stunnel install guide", "does not bundle stunnel binaries")
 
     require_text(tunnel_dir / "stunnel-client.conf", "client TLS tunnel client config", "client = yes")
     require_text(tunnel_dir / "stunnel-client.conf", "client TLS tunnel client config", "verifyChain = yes")

@@ -1592,7 +1592,7 @@
       "name": "Standalone Client Package",
       "path": "scripts/package-client.sh",
       "kind": "deployment_tool",
-      "description": "Packages the downloadable Java desktop client folder and zip from an external-player ServerConfig, including launcher scripts, macOS double-click .command wrappers, setup-check scripts, client.properties, source config hash manifest, checksums, transport guidance, and symlinked output path rejection.",
+      "description": "Packages the downloadable Java desktop client folder and zip from an external-player ServerConfig, including launcher scripts, macOS double-click .command wrappers, setup-check scripts, client.properties, source config hash manifest, checksums, transport guidance, optional client_tls_tunnel stunnel install guidance, and symlinked output path rejection.",
       "aliases": [
         "package client",
         "client package",
@@ -1622,7 +1622,7 @@
       "name": "Client TLS Tunnel Config",
       "path": "scripts/render-client-tls-tunnel-config.py",
       "kind": "deployment_tool",
-      "description": "Renders player-side and operator-side stunnel templates for client_tls_tunnel deployments so the legacy plaintext client can use an encrypted external path.",
+      "description": "Renders player-side and operator-side stunnel templates plus stunnel install guidance for client_tls_tunnel deployments so the legacy plaintext client can use an encrypted external path.",
       "aliases": [
         "client tls tunnel",
         "tls tunnel config",

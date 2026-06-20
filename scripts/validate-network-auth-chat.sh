@@ -1404,6 +1404,7 @@ grep -q "placeholder.*--tls-sni-host" docs/network-auth-agent-chat-design.md
 grep -q "real certificate hostname" .codex/skills/2006scape-external-deployment/SKILL.md
 grep -q "client_tls_tunnel operator" agent-navigation/data/script_registry.json
 grep -q "client-tls-tunnel/stunnel-client.conf" README.md
+grep -q "client-tls-tunnel/INSTALL-STUNNEL.txt" README.md
 grep -q "TLS 1.2 or newer" docs/deployment-networking.md
 grep -q "scripts/account-admin.py --require-password-policy audit" README.md
 grep -q "rejects passwords shorter than 12 characters" README.md
@@ -1883,6 +1884,7 @@ grep -Eq '^source_server_config_sha256=[0-9a-f]{64}$' "$TMP_DIR/client-tls-tunne
 grep -q "secure.transport=client_tls_tunnel" "$TMP_DIR/client-tls-tunnel-client/client.properties"
 grep -q "Transport setup:" "$TMP_DIR/client-tls-tunnel-client/README.txt"
 grep -q "launchers try to start the bundled" "$TMP_DIR/client-tls-tunnel-client/README.txt"
+grep -q "client-tls-tunnel/INSTALL-STUNNEL.txt" "$TMP_DIR/client-tls-tunnel-client/README.txt"
 grep -q "stunnel client-tls-tunnel/stunnel-client.conf" "$TMP_DIR/client-tls-tunnel-client/README.txt"
 grep -q "stunnel carries that" "$TMP_DIR/client-tls-tunnel-client/README.txt"
 grep -q "macOS/Linux setup checker: can start stunnel temporarily for TCP checks" "$TMP_DIR/client-tls-tunnel-client/README.txt"
@@ -1890,16 +1892,25 @@ grep -q "Windows setup checker: expects the local tunnel endpoint" "$TMP_DIR/cli
 grep -q "traffic over TLS to tls.example.net" "$TMP_DIR/client-tls-tunnel-client/README.txt"
 grep -q "Use the username and password provided by the server operator" "$TMP_DIR/client-tls-tunnel-client/README.txt"
 grep -q "Do not use a RuneScape.com password or reuse passwords from other services" "$TMP_DIR/client-tls-tunnel-client/README.txt"
+grep -q "See client-tls-tunnel/INSTALL-STUNNEL.txt" "$TMP_DIR/client-tls-tunnel-client/run-macos-linux.sh"
 grep -q "Starting stunnel for encrypted 2006Scape transport" "$TMP_DIR/client-tls-tunnel-client/run-macos-linux.sh"
+grep -q "See client-tls-tunnel\\\\INSTALL-STUNNEL.txt" "$TMP_DIR/client-tls-tunnel-client/run-windows.bat"
 grep -q "Starting stunnel for encrypted 2006Scape transport" "$TMP_DIR/client-tls-tunnel-client/run-windows.bat"
+grep -q "See client-tls-tunnel/INSTALL-STUNNEL.txt" "$TMP_DIR/client-tls-tunnel-client/check-setup-macos-linux.sh"
 grep -q "Starting stunnel temporarily for setup checks" "$TMP_DIR/client-tls-tunnel-client/check-setup-macos-linux.sh"
 grep -q "start_client_tls_tunnel_for_setup" "$TMP_DIR/client-tls-tunnel-client/check-setup-macos-linux.sh"
+grep -q "INSTALL-STUNNEL.txt" "$TMP_DIR/client-tls-tunnel-client/check-setup-windows.bat"
 grep -q "expects the local tunnel endpoint to be reachable first" "$TMP_DIR/client-tls-tunnel-client/check-setup-windows.bat"
 test -f "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/README.txt"
+test -f "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/INSTALL-STUNNEL.txt"
 test -f "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/stunnel-client.conf"
 grep -q "it starts this stunnel config" "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/README.txt"
 grep -q "The Java client still speaks plaintext to 127.0.0.1" "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/README.txt"
 grep -q "TLS 1.2 or newer" "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/README.txt"
+grep -q "does not bundle stunnel binaries" "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/INSTALL-STUNNEL.txt"
+grep -q "brew install stunnel" "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/INSTALL-STUNNEL.txt"
+grep -q "sudo apt-get install stunnel4" "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/INSTALL-STUNNEL.txt"
+grep -q "run-windows.bat" "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/INSTALL-STUNNEL.txt"
 grep -q "sslVersionMin = TLSv1.2" "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/stunnel-client.conf"
 grep -q "connect = tls.example.net:43594" "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/stunnel-client.conf"
 (cd "$TMP_DIR/client-tls-tunnel-client" && shasum -a 256 -c SHA256SUMS >/dev/null)
