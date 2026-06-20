@@ -181,6 +181,16 @@ scripts/provision-player-account.py PLAYER_USERNAME \
 
 That helper creates the ignored PBKDF2 account record, audits the account store, writes the generated password only to an owner-only ignored credentials env file under `dist/external-deployment/private/`, and renders the filled handoff note. It does not print the password and does not start, stop, or restart runtime. The rendered note includes the client archive checksum, transport setup, username/character, and agent-gateway guidance, but it never accepts or prints the password. Send the password separately through a private channel. Do not send account JSON files, `data/secrets.json`, runtime backup archives, bridge session files, bridge tokens, claim nonces, API keys, or Discord bot tokens. Have the player open the package README and follow its first-run checklist: install Java, connect the selected transport, run the setup checker, launch the client, and log in with the operator-provided account. On macOS, they can double-click `Check-Setup.command`, then double-click `Run-2006Scape.command` to play; Terminal and Linux users can still run the shared shell scripts, and Windows users run the `.bat` files. The checker verifies Java, prints the packaged `client.properties`, and attempts game/cache TCP checks without logging in or changing server state. In Tailscale mode, the checkers also print non-fatal Tailscale CLI/status hints before the TCP checks. In `client_tls_tunnel` mode the macOS/Linux setup checker can start the bundled stunnel config temporarily when `stunnel` is installed; the Windows setup checker expects the local tunnel endpoint to be reachable first, while the launcher still manages stunnel when possible.
 
+Package only the public-safe files for the player:
+
+```sh
+scripts/package-player-kit.py PLAYER_USERNAME \
+  --character CHARACTER_NAME \
+  --prepared-dir dist/external-deployment
+```
+
+Send the generated `player-kit-PLAYER_USERNAME.zip` and send the password separately. The kit contains the client archive, README-first handoff note, and checksums; it rejects private credentials, account records, secrets, runtime data, bridge tokens, and other secret-bearing paths.
+
 The default package uses `client.scale=2` and `show_navbar=false`. Keep those defaults for normal external tester packages so the larger desktop window uses the client scale code path instead of JVM UI scaling, which avoids macOS mouse-click offset issues.
 
 ## 4. Back Up Runtime Data

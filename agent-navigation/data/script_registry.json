@@ -1535,6 +1535,32 @@
       ]
     },
     {
+      "id": "player_kit_package",
+      "name": "Player Kit Package",
+      "path": "scripts/package-player-kit.py",
+      "kind": "deployment_tool",
+      "description": "Packages a public-safe per-player zip from a prepared external deployment bundle, including the downloadable client archive, README-first handoff note, client checksums, and a kit manifest while excluding passwords, private credentials, account records, secrets, runtime data, and bridge tokens.",
+      "aliases": [
+        "player kit",
+        "package player kit",
+        "client handoff zip",
+        "player download zip",
+        "public player package"
+      ],
+      "tags": [
+        "deployment",
+        "client",
+        "packaging",
+        "handoff",
+        "player",
+        "external"
+      ],
+      "examples": [
+        "python3 scripts/package-player-kit.py MrGem --character MrGem --prepared-dir dist/external-deployment",
+        "python3 agent-navigation/tools/script_registry.py run player kit -- MrGem --character MrGem --prepared-dir dist/external-deployment"
+      ]
+    },
+    {
       "id": "standalone_client_package",
       "name": "Standalone Client Package",
       "path": "scripts/package-client.sh",

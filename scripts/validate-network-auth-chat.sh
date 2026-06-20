@@ -83,7 +83,7 @@ echo "Running focused client config tests..."
 "$MAVEN_BIN" -q -pl "2006Scape Client" -Dtest=MainClientConfigTest test
 
 echo "Checking Python helper syntax..."
-python3 -m py_compile scripts/account-admin.py scripts/backup-runtime-data.py scripts/check-deployment-proof-manifest.py scripts/create-account.py scripts/deployment-readiness-report.py scripts/deployment-readiness-status.py scripts/package-deployment-proof.py scripts/prepare-external-deployment.py scripts/preflight-external-config.py scripts/probe-agent-bridge-gateway.py scripts/probe-concurrent-logins.py scripts/probe-deployment-network.py scripts/probe-game-login.py scripts/probe-discord-agent-bots.py scripts/provision-player-account.py scripts/render-agent-bridge-gateway-config.py scripts/render-client-tls-tunnel-config.py scripts/render-player-handoff.py scripts/render-server-deployment-files.py scripts/verify-agent-chat-log.py scripts/verify-discord-channel-message.py scripts/verify-external-deployment.py scripts/write-desktop-client-proof.py scripts/smoke-network-auth-chat-runtime.py scripts/lib/deployment_proof_manifest.py scripts/lib/game_login_probe.py scripts/lib/discord_bot_probe.py agent-navigation/tools/agent_chat_XS.py agent-navigation/tools/remote_claim.py agent-navigation/tools/rs-tool_XS.py
+python3 -m py_compile scripts/account-admin.py scripts/backup-runtime-data.py scripts/check-deployment-proof-manifest.py scripts/create-account.py scripts/deployment-readiness-report.py scripts/deployment-readiness-status.py scripts/package-deployment-proof.py scripts/package-player-kit.py scripts/prepare-external-deployment.py scripts/preflight-external-config.py scripts/probe-agent-bridge-gateway.py scripts/probe-concurrent-logins.py scripts/probe-deployment-network.py scripts/probe-game-login.py scripts/probe-discord-agent-bots.py scripts/provision-player-account.py scripts/render-agent-bridge-gateway-config.py scripts/render-client-tls-tunnel-config.py scripts/render-player-handoff.py scripts/render-server-deployment-files.py scripts/verify-agent-chat-log.py scripts/verify-discord-channel-message.py scripts/verify-external-deployment.py scripts/write-desktop-client-proof.py scripts/smoke-network-auth-chat-runtime.py scripts/lib/deployment_proof_manifest.py scripts/lib/game_login_probe.py scripts/lib/discord_bot_probe.py agent-navigation/tools/agent_chat_XS.py agent-navigation/tools/remote_claim.py agent-navigation/tools/rs-tool_XS.py
 
 echo "Checking remote agent bridge claim and gateway helpers..."
 python3 - <<'PY'
@@ -882,6 +882,7 @@ python3 agent-navigation/tools/script_registry.py search "readiness status" --js
 python3 agent-navigation/tools/script_registry.py search "client package" --json | grep -q '"id": "standalone_client_package"'
 python3 agent-navigation/tools/script_registry.py search "player handoff" --json | grep -q '"id": "player_handoff_render"'
 python3 agent-navigation/tools/script_registry.py search "player provisioning" --json | grep -q '"id": "player_account_provision"'
+python3 agent-navigation/tools/script_registry.py search "player kit" --json | grep -q '"id": "player_kit_package"'
 python3 agent-navigation/tools/script_registry.py search "tailscale" --json | grep -q '"id": "standalone_client_package"'
 python3 agent-navigation/tools/script_registry.py search "tailscale" --json | grep -q '"id": "external_config_preflight"'
 python3 agent-navigation/tools/script_registry.py search "tls tunnel" --json | grep -q '"id": "client_tls_tunnel_config"'
@@ -901,6 +902,9 @@ python3 agent-navigation/tools/script_registry.py show player_handoff_render --j
 python3 agent-navigation/tools/script_registry.py show player_account_provision --json | grep -q '"path": "scripts/provision-player-account.py"'
 python3 agent-navigation/tools/script_registry.py show player_account_provision --json | grep -q -- "--prepared-dir dist/external-deployment"
 python3 agent-navigation/tools/script_registry.py show player_account_provision --json | grep -q "ignored private credentials env file"
+python3 agent-navigation/tools/script_registry.py show player_kit_package --json | grep -q '"path": "scripts/package-player-kit.py"'
+python3 agent-navigation/tools/script_registry.py show player_kit_package --json | grep -q -- "--prepared-dir dist/external-deployment"
+python3 agent-navigation/tools/script_registry.py show player_kit_package --json | grep -q "public-safe per-player zip"
 python3 agent-navigation/tools/script_registry.py show standalone_client_package --json | grep -q '"path": "scripts/package-client.sh"'
 python3 agent-navigation/tools/script_registry.py show client_tls_tunnel_config --json | grep -q '"path": "scripts/render-client-tls-tunnel-config.py"'
 python3 agent-navigation/tools/script_registry.py show server_deployment_files --json | grep -q '"path": "scripts/render-server-deployment-files.py"'
@@ -1123,24 +1127,33 @@ grep -q -- "--prepared-dir dist/external-deployment" .codex/skills/2006scape-ext
 python3 agent-navigation/tools/script_registry.py show deployment_proof_bundle --json | grep -q -- "--prepared-dir dist/external-deployment"
 grep -q "scripts/render-player-handoff.py" README.md
 grep -q "scripts/provision-player-account.py" README.md
+grep -q "scripts/package-player-kit.py" README.md
 grep -q "scripts/render-player-handoff.py" AGENTS.md
 grep -q "scripts/provision-player-account.py" AGENTS.md
+grep -q "scripts/package-player-kit.py" AGENTS.md
 grep -q "scripts/render-player-handoff.py" docs/deployment-networking.md
 grep -q "scripts/provision-player-account.py" docs/deployment-networking.md
+grep -q "scripts/package-player-kit.py" docs/deployment-networking.md
 grep -q "scripts/render-player-handoff.py" docs/external-deployment-quickstart.md
 grep -q "scripts/provision-player-account.py" docs/external-deployment-quickstart.md
+grep -q "scripts/package-player-kit.py" docs/external-deployment-quickstart.md
 grep -q "scripts/render-player-handoff.py" docs/network-auth-agent-chat-design.md
 grep -q "scripts/provision-player-account.py" docs/network-auth-agent-chat-design.md
+grep -q "scripts/package-player-kit.py" docs/network-auth-agent-chat-design.md
 grep -q "scripts/render-player-handoff.py" .codex/skills/2006scape/SKILL.md
 grep -q "scripts/provision-player-account.py" .codex/skills/2006scape/SKILL.md
+grep -q "scripts/package-player-kit.py" .codex/skills/2006scape/SKILL.md
 grep -q "scripts/render-player-handoff.py" .codex/skills/2006scape-external-deployment/SKILL.md
 grep -q "scripts/provision-player-account.py" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q "scripts/package-player-kit.py" .codex/skills/2006scape-external-deployment/SKILL.md
 grep -q "scripts/render-player-handoff.py" agent-navigation/data/script_registry.json
 grep -q "scripts/provision-player-account.py" agent-navigation/data/script_registry.json
+grep -q "scripts/package-player-kit.py" agent-navigation/data/script_registry.json
 grep -q "without accepting or printing the password" README.md
 grep -q "without accepting or printing the password" docs/network-auth-agent-chat-design.md
 grep -q "never accepts or prints the password" docs/external-deployment-quickstart.md
 grep -q "password only to an owner-only ignored credentials env file" docs/external-deployment-quickstart.md
+grep -q "public-safe files" docs/external-deployment-quickstart.md
 grep -q "Final-gate manifests must keep \`require_full_proof:true\`" README.md
 grep -q "Final-gate manifests must keep \`require_full_proof:true\`" AGENTS.md
 grep -q "Final-gate manifests must keep \`require_full_proof:true\`" docs/deployment-networking.md
@@ -1332,6 +1345,7 @@ grep -q '"id": "deployment_proof_bundle"' agent-navigation/data/script_registry.
 grep -q '"id": "external_deployment_prepare"' agent-navigation/data/script_registry.json
 grep -q '"id": "player_handoff_render"' agent-navigation/data/script_registry.json
 grep -q '"id": "player_account_provision"' agent-navigation/data/script_registry.json
+grep -q '"id": "player_kit_package"' agent-navigation/data/script_registry.json
 grep -q '"id": "standalone_client_package"' agent-navigation/data/script_registry.json
 grep -q '"id": "client_tls_tunnel_config"' agent-navigation/data/script_registry.json
 grep -q '"id": "server_deployment_files"' agent-navigation/data/script_registry.json
@@ -2640,6 +2654,57 @@ if os.name == "posix":
     for path in (credentials_path.parent, account_path.parent):
         mode = stat.S_IMODE(path.stat().st_mode)
         assert mode & (stat.S_IRWXG | stat.S_IRWXO) == 0, (path, oct(mode))
+PY
+scripts/package-player-kit.py MrProvision \
+    --character MrProvision \
+    --prepared-dir "$TMP_DIR/prepared-tailscale" \
+    --handoff-note "$TMP_DIR/prepared-tailscale/player-handoff-MrProvision.md" \
+    --output "$TMP_DIR/prepared-tailscale/player-kit-MrProvision.zip" \
+    --json > "$TMP_DIR/package-player-kit.json"
+python3 - "$TMP_DIR/package-player-kit.json" "$TMP_DIR/prepared-tailscale/player-kit-MrProvision.zip" "$TMP_DIR/prepared-tailscale/private/player-credentials-MrProvision.env" <<'PY'
+import json
+import re
+import sys
+import zipfile
+from pathlib import Path
+
+summary_path, kit_path, credentials_path = [Path(value) for value in sys.argv[1:]]
+summary_text = summary_path.read_text(encoding="utf-8")
+summary = json.loads(summary_text)
+assert summary["username"] == "MrProvision", summary
+assert summary["character"] == "MrProvision", summary
+assert summary["passwordIncluded"] is False, summary
+assert summary["privateFilesIncluded"] is False, summary
+assert summary["runtimeTouched"] is False, summary
+assert Path(summary["playerKit"]) == kit_path, summary
+assert re.fullmatch(r"[0-9a-f]{64}", summary["playerKitSha256"]), summary
+
+credentials_text = credentials_path.read_text(encoding="utf-8")
+password = re.search(r"^MRPROVISION_PASSWORD='([A-Za-z0-9]+)'$", credentials_text, re.MULTILINE).group(1)
+assert password not in summary_text
+
+with zipfile.ZipFile(kit_path, "r") as archive:
+    names = set(archive.namelist())
+    assert "2006scape-player-kit-mrprovision/2006scape-client.zip" in names, names
+    assert "2006scape-player-kit-mrprovision/README-FIRST.md" in names, names
+    assert "2006scape-player-kit-mrprovision/client-SHA256SUMS.txt" in names, names
+    assert "2006scape-player-kit-mrprovision/client-MANIFEST.txt" in names, names
+    assert "2006scape-player-kit-mrprovision/KIT-MANIFEST.txt" in names, names
+    assert "2006scape-player-kit-mrprovision/KIT-METADATA.json" in names, names
+    assert not any("/private/" in name or "/accounts/" in name or "/characters/" in name or "credential" in name.lower() for name in names), names
+    readme = archive.read("2006scape-player-kit-mrprovision/README-FIRST.md").decode("utf-8")
+    kit_manifest = archive.read("2006scape-player-kit-mrprovision/KIT-MANIFEST.txt").decode("utf-8")
+    kit_metadata = json.loads(archive.read("2006scape-player-kit-mrprovision/KIT-METADATA.json").decode("utf-8"))
+    assert "username: `MrProvision`" in readme, readme
+    assert "password: sent separately through a private channel" in readme, readme
+    assert password not in readme
+    assert "password_included: 0" in kit_manifest, kit_manifest
+    assert "private_files_included: 0" in kit_manifest, kit_manifest
+    assert password not in kit_manifest
+    assert kit_metadata["passwordIncluded"] is False, kit_metadata
+    assert kit_metadata["privateFilesIncluded"] is False, kit_metadata
+    assert kit_metadata["expectedExternalTransport"] == "tailscale", kit_metadata
+    assert password not in json.dumps(kit_metadata, sort_keys=True)
 PY
 scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.Tailscale.Sample.json" \

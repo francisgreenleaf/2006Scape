@@ -140,6 +140,8 @@ scripts/render-server-deployment-files.py --config "2006Scape Server/ServerConfi
 # Generated server-deployment files must keep hardened systemd sandboxing, argument-quoted firewall/README commands, input validation plus verifier parsing for service names/paths/interfaces, owner-only account/secrets install guidance, runtime-data backup notes, a public-safe `player-handoff-template.md`, fill-in proof templates under the deployed `2006Scape Server/data/` tree, and Tailscale grants examples that omit the agent bridge port when applicable.
 scripts/provision-player-account.py PLAYER --character CHARACTER --prepared-dir dist/external-deployment
 # Provision one player after a prepared bundle exists: create the ignored PBKDF2 account, audit it, write the generated password only to an owner-only ignored credentials env file, and render the safe player handoff note without printing the password.
+scripts/package-player-kit.py PLAYER --character CHARACTER --prepared-dir dist/external-deployment
+# Create the public-safe per-player zip to send with the client archive, README-first handoff note, and checksums. It excludes passwords, private credentials, account records, secrets, runtime data, and bridge tokens.
 scripts/render-player-handoff.py --prepared-dir dist/external-deployment --username PLAYER --character CHARACTER --output dist/external-deployment/player-handoff-PLAYER.md
 # Use this when the account/password already exists and only the handoff note is needed; it includes checksum, transport, username/character, and `/agent` gateway guidance, but never accepts or prints the password. Send the password separately.
 scripts/prepare-external-deployment.py --config "2006Scape Server/ServerConfig.json" --require-encrypted-external
