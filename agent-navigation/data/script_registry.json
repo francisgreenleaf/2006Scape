@@ -1433,6 +1433,8 @@
       "aliases": [
         "external config preflight",
         "preflight external config",
+        "tailscale preflight",
+        "tailscale config preflight",
         "deployment preflight",
         "network preflight"
       ],
@@ -1441,9 +1443,11 @@
         "network",
         "auth",
         "external",
+        "tailscale",
         "preflight"
       ],
       "examples": [
+        "python3 scripts/preflight-external-config.py \"2006Scape Server/ServerConfig.Tailscale.Sample.json\"",
         "python3 agent-navigation/tools/script_registry.py run external config preflight -- \"2006Scape Server/ServerConfig.External.Sample.json\"",
         "python3 scripts/preflight-external-config.py \"2006Scape Server/ServerConfig.json\""
       ]
@@ -1457,6 +1461,8 @@
       "aliases": [
         "prepare external deployment",
         "external deployment prepare",
+        "tailscale deployment prepare",
+        "tailscale deployment bundle",
         "deployment bundle",
         "package external deployment"
       ],
@@ -1465,9 +1471,11 @@
         "client",
         "packaging",
         "readiness",
+        "tailscale",
         "external"
       ],
       "examples": [
+        "cp \"2006Scape Server/ServerConfig.Tailscale.Sample.json\" \"2006Scape Server/ServerConfig.json\" && python3 scripts/prepare-external-deployment.py --config \"2006Scape Server/ServerConfig.json\"",
         "python3 agent-navigation/tools/script_registry.py run prepare external deployment -- --config \"2006Scape Server/ServerConfig.json\"",
         "python3 scripts/prepare-external-deployment.py --config \"2006Scape Server/ServerConfig.json\"",
         "python3 scripts/prepare-external-deployment.py --config \"2006Scape Server/ServerConfig.json\" --proof-manifest dist/external-deployment/deployment-proof-manifest.json",
@@ -1484,6 +1492,8 @@
         "package client",
         "client package",
         "standalone client",
+        "tailscale client package",
+        "tailscale package",
         "downloadable client",
         "client zip"
       ],
@@ -1492,9 +1502,11 @@
         "client",
         "packaging",
         "download",
+        "tailscale",
         "external"
       ],
       "examples": [
+        "CLIENT_SERVER_CONFIG=\"2006Scape Server/ServerConfig.Tailscale.Sample.json\" scripts/package-client.sh",
         "CLIENT_SERVER_CONFIG=\"2006Scape Server/ServerConfig.json\" python3 agent-navigation/tools/script_registry.py run package client",
         "CLIENT_SERVER_CONFIG=\"2006Scape Server/ServerConfig.json\" scripts/package-client.sh"
       ]

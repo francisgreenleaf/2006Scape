@@ -252,8 +252,11 @@ transport_guidance() {
         tailscale)
             cat <<EOF
 Transport setup:
-  Connect Tailscale before launching the client. The configured server host is
-  $PUBLIC_GAME_HOST, which should be reachable through the tailnet.
+  Install Tailscale and sign in with the account or invite provided by the
+  server operator. Connect Tailscale before launching the client. The configured
+  server host is $PUBLIC_GAME_HOST, which should be reachable through the
+  tailnet. If setup checks fail, confirm Tailscale is connected and that the
+  operator has granted your account access to this server's game/cache ports.
 EOF
             ;;
         wireguard)
@@ -616,6 +619,7 @@ SERVER_PORT="$(read_prop server.port)"
 HTTP_PORT="$(read_prop http.port)"
 JAGGRAB_PORT="$(read_prop jaggrab.port)"
 TRANSPORT="$(read_prop secure.transport)"
+AGENT_BRIDGE_URL="$(read_prop agent.bridge.url)"
 
 echo "Java:"
 java -version 2>&1 | sed 's/^/  /'
@@ -639,7 +643,16 @@ case "$(printf '%s' "$TRANSPORT" | tr '[:upper:]' '[:lower:]')" in
         echo "Transport note: direct_tcp connects directly to the public host over plaintext TCP."
         ;;
     tailscale|wireguard|vpn)
-        echo "Transport note: connect the configured private network before running the client."
+        if [[ "$(printf '%s' "$TRANSPORT" | tr '[:upper:]' '[:lower:]')" == "tailscale" ]]; then
+            echo "Transport note: connect Tailscale before running the client."
+            if command -v tailscale >/dev/null 2>&1; then
+                tailscale status >/dev/null 2>&1 || echo "Tailscale CLI is installed but status is not ready; open Tailscale and sign in/connect first."
+            else
+                echo "Tailscale CLI was not found on PATH; if using the desktop app, confirm it is connected before launching."
+            fi
+        else
+            echo "Transport note: connect the configured private network before running the client."
+        fi
         ;;
 esac
 
@@ -701,7 +714,7 @@ chmod +x "$DIST_DIR/Check-Setup.command"
     printf '%s\r\n' 'echo.'
     printf '%s\r\n' 'if /I "%TRANSPORT%"=="client_tls_tunnel" echo Transport note: the launcher can start stunnel automatically, but this Windows checker expects the local tunnel endpoint to be reachable first.'
     printf '%s\r\n' 'if /I "%TRANSPORT%"=="direct_tcp" echo Transport note: direct_tcp connects directly to the public host over plaintext TCP.'
-    printf '%s\r\n' 'if /I "%TRANSPORT%"=="tailscale" echo Transport note: connect the configured private network before running the client.'
+    printf '%s\r\n' 'if /I "%TRANSPORT%"=="tailscale" echo Transport note: connect Tailscale before running the client, and confirm the operator granted this account access to the server game/cache ports.'
     printf '%s\r\n' 'if /I "%TRANSPORT%"=="wireguard" echo Transport note: connect the configured private network before running the client.'
     printf '%s\r\n' 'if /I "%TRANSPORT%"=="vpn" echo Transport note: connect the configured private network before running the client.'
     printf '%s\r\n' 'set STATUS=0'
@@ -798,6 +811,7 @@ AI agent mode:
 
 Edit client.properties only if the server host, ports, or agent bridge URL change.
 If this package uses Tailscale, WireGuard, or VPN, connect that transport first.
+For Tailscale, install the Tailscale app, sign in with the invited/shared account, and confirm the server host is reachable before launching the game.
 If this package uses client_tls_tunnel, the launcher starts stunnel when it can; otherwise start it manually first.
 If this package uses direct_tcp, no VPN/tunnel is expected; the game/cache protocol is plaintext to the public host.
 EOF

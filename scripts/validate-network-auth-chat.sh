@@ -59,8 +59,10 @@ git diff --check
 
 echo "Preflighting tracked external-player configs..."
 assert_repo_visible_sample_config "2006Scape Server/ServerConfig.External.Sample.json"
+assert_repo_visible_sample_config "2006Scape Server/ServerConfig.Tailscale.Sample.json"
 assert_repo_visible_sample_config "2006Scape Server/ServerConfig.ClientTlsTunnel.Sample.json"
 scripts/preflight-external-config.py "2006Scape Server/ServerConfig.External.Sample.json"
+scripts/preflight-external-config.py "2006Scape Server/ServerConfig.Tailscale.Sample.json" | grep -q "ok: external-player config passed preflight"
 scripts/preflight-external-config.py "2006Scape Server/ServerConfig.ClientTlsTunnel.Sample.json" | grep -q "ok: external-player config passed preflight"
 
 echo "Checking local Docker Compose server ports stay loopback-only..."
@@ -878,6 +880,8 @@ python3 agent-navigation/tools/script_registry.py search "proof manifest" --json
 python3 agent-navigation/tools/script_registry.py search "proof bundle" --json | grep -q '"id": "deployment_proof_bundle"'
 python3 agent-navigation/tools/script_registry.py search "readiness status" --json | grep -q '"id": "deployment_readiness_status"'
 python3 agent-navigation/tools/script_registry.py search "client package" --json | grep -q '"id": "standalone_client_package"'
+python3 agent-navigation/tools/script_registry.py search "tailscale" --json | grep -q '"id": "standalone_client_package"'
+python3 agent-navigation/tools/script_registry.py search "tailscale" --json | grep -q '"id": "external_config_preflight"'
 python3 agent-navigation/tools/script_registry.py search "tls tunnel" --json | grep -q '"id": "client_tls_tunnel_config"'
 python3 agent-navigation/tools/script_registry.py search "server deployment templates" --json | grep -q '"id": "server_deployment_files"'
 python3 agent-navigation/tools/script_registry.py search "account audit" --json | grep -q '"id": "external_account_admin"'
@@ -930,6 +934,17 @@ grep -q "ServerConfig.ClientTlsTunnel.Sample.json" docs/deployment-networking.md
 grep -q "ServerConfig.ClientTlsTunnel.Sample.json" docs/network-auth-agent-chat-design.md
 grep -q "ServerConfig.ClientTlsTunnel.Sample.json" .codex/skills/2006scape/SKILL.md
 grep -q "ServerConfig.ClientTlsTunnel.Sample.json" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q "ServerConfig.Tailscale.Sample.json" README.md
+grep -q "ServerConfig.Tailscale.Sample.json" AGENTS.md
+grep -q "ServerConfig.Tailscale.Sample.json" docs/external-deployment-quickstart.md
+grep -q "ServerConfig.Tailscale.Sample.json" docs/deployment-networking.md
+grep -q "ServerConfig.Tailscale.Sample.json" docs/network-auth-agent-chat-design.md
+grep -q "ServerConfig.Tailscale.Sample.json" .codex/skills/2006scape/SKILL.md
+grep -q "ServerConfig.Tailscale.Sample.json" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q "recommended turnkey encrypted private" README.md
+grep -q "recommended Tailscale path" docs/external-deployment-quickstart.md
+grep -q "Recommended Turnkey Encrypted Path: Tailscale" docs/deployment-networking.md
+grep -q "Recommended turnkey encrypted private-beta path" docs/network-auth-agent-chat-design.md
 grep -q 'Recommended MVP: use `direct_tcp`' docs/network-auth-agent-chat-design.md
 grep -q '`direct_tcp` account-auth external defaults' docs/network-auth-agent-chat-design.md
 grep -q "direct_tcp_external_transport_confirmed" README.md
@@ -2295,6 +2310,7 @@ grep -q "agent.bridge.url" "$TMP_DIR/2006scape-client/check-setup-macos-linux.sh
 grep -q "agent.bridge.url" "$TMP_DIR/2006scape-client/check-setup-windows.bat"
 grep -q "Java is required to run 2006Scape" "$TMP_DIR/2006scape-client/run-macos-linux.sh"
 grep -q "Java is required to run 2006Scape" "$TMP_DIR/2006scape-client/run-windows.bat"
+grep -Fq 'AGENT_BRIDGE_URL="$(read_prop agent.bridge.url)"' "$TMP_DIR/2006scape-client/check-setup-macos-linux.sh"
 grep -q -- "-no-java-warnings" "$TMP_DIR/2006scape-client/run-macos-linux.sh"
 grep -q -- "-no-java-warnings" "$TMP_DIR/2006scape-client/run-windows.bat"
 grep -q "Check setup:" "$TMP_DIR/2006scape-client/README.txt"
@@ -2304,6 +2320,7 @@ grep -q "double-click Check-Setup.command" "$TMP_DIR/2006scape-client/README.txt
 grep -q "double-click Run-2006Scape.command" "$TMP_DIR/2006scape-client/README.txt"
 grep -q "suppress the legacy Parabot-focused Java-version warning" "$TMP_DIR/2006scape-client/README.txt"
 grep -q "Transport setup:" "$TMP_DIR/2006scape-client/README.txt"
+grep -q "Install Tailscale" "$TMP_DIR/2006scape-client/README.txt"
 grep -q "Connect Tailscale before launching the client" "$TMP_DIR/2006scape-client/README.txt"
 grep -q "public game host: example-tailnet-host" "$TMP_DIR/2006scape-client/README.txt"
 grep -q "agent bridge URL: http://127.0.0.1:43610" "$TMP_DIR/2006scape-client/README.txt"
@@ -2319,6 +2336,55 @@ grep -q "public_game_host=example-tailnet-host" "$TMP_DIR/2006scape-client/MANIF
 grep -q "expected_external_transport=tailscale" "$TMP_DIR/2006scape-client/MANIFEST.txt"
 grep -q "agent_bridge_url=http://127.0.0.1:43610" "$TMP_DIR/2006scape-client/MANIFEST.txt"
 (cd "$TMP_DIR/2006scape-client" && shasum -a 256 -c SHA256SUMS >/dev/null)
+
+echo "Smoke-testing standalone Tailscale client packaging from server config..."
+CLIENT_DIST_DIR="$TMP_DIR/2006scape-client-tailscale-from-config" \
+CLIENT_ARCHIVE_PATH="$TMP_DIR/2006scape-client-tailscale-from-config.zip" \
+SKIP_BUILD=1 \
+CLIENT_SERVER_CONFIG="2006Scape Server/ServerConfig.Tailscale.Sample.json" \
+CLIENT_CHECK_CRC=false \
+CLIENT_SINGLE_ONDEMAND=true \
+CLIENT_SCALE=1 \
+CLIENT_SHOW_NAVBAR=true \
+    scripts/package-client.sh
+
+test -f "$TMP_DIR/2006scape-client-tailscale-from-config/client.properties"
+test -f "$TMP_DIR/2006scape-client-tailscale-from-config/2006scape-client.jar"
+test -f "$TMP_DIR/2006scape-client-tailscale-from-config/MANIFEST.txt"
+test -f "$TMP_DIR/2006scape-client-tailscale-from-config/SHA256SUMS"
+test -x "$TMP_DIR/2006scape-client-tailscale-from-config/Check-Setup.command"
+test -x "$TMP_DIR/2006scape-client-tailscale-from-config/Run-2006Scape.command"
+test -x "$TMP_DIR/2006scape-client-tailscale-from-config/check-setup-macos-linux.sh"
+test -f "$TMP_DIR/2006scape-client-tailscale-from-config/check-setup-windows.bat"
+test -x "$TMP_DIR/2006scape-client-tailscale-from-config/run-macos-linux.sh"
+test -f "$TMP_DIR/2006scape-client-tailscale-from-config/run-windows.bat"
+test -f "$TMP_DIR/2006scape-client-tailscale-from-config.zip"
+assert_archive_launcher_executable "$TMP_DIR/2006scape-client-tailscale-from-config.zip" "2006scape-client-tailscale-from-config/Check-Setup.command"
+assert_archive_launcher_executable "$TMP_DIR/2006scape-client-tailscale-from-config.zip" "2006scape-client-tailscale-from-config/Run-2006Scape.command"
+assert_archive_launcher_executable "$TMP_DIR/2006scape-client-tailscale-from-config.zip" "2006scape-client-tailscale-from-config/check-setup-macos-linux.sh"
+assert_archive_launcher_executable "$TMP_DIR/2006scape-client-tailscale-from-config.zip" "2006scape-client-tailscale-from-config/run-macos-linux.sh"
+assert_windows_launcher_crlf "$TMP_DIR/2006scape-client-tailscale-from-config/check-setup-windows.bat"
+assert_windows_launcher_crlf "$TMP_DIR/2006scape-client-tailscale-from-config/run-windows.bat"
+grep -q "Transport setup:" "$TMP_DIR/2006scape-client-tailscale-from-config/README.txt"
+grep -q "Install Tailscale" "$TMP_DIR/2006scape-client-tailscale-from-config/README.txt"
+grep -q "Connect Tailscale before launching the client" "$TMP_DIR/2006scape-client-tailscale-from-config/README.txt"
+grep -Fq 'AGENT_BRIDGE_URL="$(read_prop agent.bridge.url)"' "$TMP_DIR/2006scape-client-tailscale-from-config/check-setup-macos-linux.sh"
+grep -q "public game host: example-tailnet-host" "$TMP_DIR/2006scape-client-tailscale-from-config/README.txt"
+grep -q "agent bridge URL: http://127.0.0.1:43610" "$TMP_DIR/2006scape-client-tailscale-from-config/README.txt"
+grep -q "raw server-side bridge port 43610 must stay private" "$TMP_DIR/2006scape-client-tailscale-from-config/README.txt"
+grep -q "Use the username and password provided by the server operator" "$TMP_DIR/2006scape-client-tailscale-from-config/README.txt"
+grep -q "server.host=example-tailnet-host" "$TMP_DIR/2006scape-client-tailscale-from-config/client.properties"
+grep -q "server.port=43594" "$TMP_DIR/2006scape-client-tailscale-from-config/client.properties"
+grep -q "http.port=8080" "$TMP_DIR/2006scape-client-tailscale-from-config/client.properties"
+grep -q "jaggrab.port=43595" "$TMP_DIR/2006scape-client-tailscale-from-config/client.properties"
+grep -q "secure.transport=tailscale" "$TMP_DIR/2006scape-client-tailscale-from-config/client.properties"
+grep -q "agent.bridge.url=http://127.0.0.1:43610" "$TMP_DIR/2006scape-client-tailscale-from-config/client.properties"
+grep -q "source_server_config=2006Scape Server/ServerConfig.Tailscale.Sample.json" "$TMP_DIR/2006scape-client-tailscale-from-config/MANIFEST.txt"
+grep -Eq '^source_server_config_sha256=[0-9a-f]{64}$' "$TMP_DIR/2006scape-client-tailscale-from-config/MANIFEST.txt"
+grep -q "public_game_host=example-tailnet-host" "$TMP_DIR/2006scape-client-tailscale-from-config/MANIFEST.txt"
+grep -q "expected_external_transport=tailscale" "$TMP_DIR/2006scape-client-tailscale-from-config/MANIFEST.txt"
+grep -q "agent_bridge_url=http://127.0.0.1:43610" "$TMP_DIR/2006scape-client-tailscale-from-config/MANIFEST.txt"
+(cd "$TMP_DIR/2006scape-client-tailscale-from-config" && shasum -a 256 -c SHA256SUMS >/dev/null)
 
 echo "Smoke-testing standalone client packaging from server config..."
 CLIENT_DIST_DIR="$TMP_DIR/2006scape-client-from-config" \

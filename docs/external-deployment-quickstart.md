@@ -2,7 +2,7 @@
 
 This is the short path for a first regular-player external test. Use this when you want to get one remote 2006Scape server, one local client, and one external client online safely without reading the full design document first.
 
-For the simplest live test, use the tracked `direct_tcp` sample. It exposes the legacy game/cache sockets as plaintext TCP to the configured public host, so keep PBKDF2 account auth enabled, open only the required game/cache ports in the host firewall, and keep the Codex agent bridge loopback-only. If you need encrypted/private external traffic instead, use Tailscale, WireGuard, a VPN, or start from `2006Scape Server/ServerConfig.ClientTlsTunnel.Sample.json` for the paired stunnel path.
+For a turnkey encrypted private beta, use the tracked Tailscale sample. Tailscale handles the encrypted network and user/device access while the server still uses PBKDF2 account records for in-game login. For the simplest no-install public smoke test, `direct_tcp` still works, but it exposes the legacy game/cache sockets as plaintext TCP to the configured public host. Keep the Codex agent bridge loopback-only in every mode. If you need a public encrypted path without a VPN, start from `2006Scape Server/ServerConfig.ClientTlsTunnel.Sample.json` for the paired stunnel path.
 
 ## What This Sets Up
 
@@ -17,7 +17,7 @@ For the simplest live test, use the tracked `direct_tcp` sample. It exposes the 
 You need:
 
 - A test VM, VPS, or other host where the server can run.
-- A public host/IP or DNS name for `direct_tcp`, or an already chosen private/VPN/tunnel transport if not using direct TCP.
+- A Tailscale tailnet and a server Tailscale hostname/IP for the recommended encrypted private path, or a public host/IP for `direct_tcp`.
 - Java and Maven available on the server.
 - This repo copied or checked out on the server.
 - A throwaway external test account name and password.
@@ -31,7 +31,31 @@ agent gateway and package its URL as `agent.bridge.url`. Start with
 
 ## 1. Create The External Config
 
-From the repo root on the server, copy the direct public sample:
+For the recommended Tailscale path, install and connect Tailscale on the server first, then copy the Tailscale sample:
+
+```sh
+cp "2006Scape Server/ServerConfig.Tailscale.Sample.json" "2006Scape Server/ServerConfig.json"
+$EDITOR "2006Scape Server/ServerConfig.json"
+```
+
+Set these values:
+
+- `public_game_host`: the server's Tailscale MagicDNS name or Tailscale IP, replacing `example-tailnet-host`.
+- `game_bind_hosts`: include `127.0.0.1` and the server's Tailscale interface IP, replacing `REPLACE_WITH_TAILSCALE_IP`.
+- `http_bind_hosts` and `jaggrab_bind_hosts`: include the same Tailscale interface IP if `file_server` is enabled.
+- `external_transport_mode`: `tailscale`.
+- `external_players_enabled`: `true`.
+- `require_secure_external_transport`: `true`.
+- `secure_external_transport_confirmed`: `true`, after Tailscale access is configured.
+- `direct_tcp_external_transport_confirmed`: `false`.
+- `account_auth_enabled`: `true`.
+- `account_auth_legacy_fallback`: `false` for external mode.
+- `account_auth_auto_create`: `false`.
+- `agent_bridge_bind_host`: `127.0.0.1`.
+
+Grant players access only to the game/cache ports they need, normally TCP `43594`, `43595`, and `8080` when `file_server=true`. Do not grant or expose TCP `43610`.
+
+For the direct public no-install path instead, copy the direct public sample:
 
 ```sh
 cp "2006Scape Server/ServerConfig.External.Sample.json" "2006Scape Server/ServerConfig.json"
@@ -53,7 +77,7 @@ Set these values for the default `direct_tcp` path:
 - `account_auth_auto_create`: `false`.
 - `agent_bridge_bind_host`: `127.0.0.1`.
 
-For Tailscale/WireGuard/VPN/client TLS tunnel instead, use the relevant private host/bind values, set that `external_transport_mode`, set `require_secure_external_transport=true`, and set `secure_external_transport_confirmed=true`.
+For WireGuard/VPN instead, use the relevant private host/bind values, set that `external_transport_mode`, set `require_secure_external_transport=true`, and set `secure_external_transport_confirmed=true`.
 
 For the tracked client TLS tunnel sample instead:
 
@@ -201,7 +225,7 @@ If you are following the generated `scripts/deployment-readiness-status.py --sho
 Give the external tester:
 
 - `dist/external-deployment/2006scape-client.zip`
-- the selected external transport requirement, if any
+- the selected external transport requirement, such as "connect Tailscale first"
 - the test username and password through a private channel
 
 Use a password unique to this 2006Scape server. The packaged README tells testers to use the operator-provided account and not to reuse RuneScape.com or other service passwords, which matters especially for `direct_tcp` because the legacy game/cache protocol is plaintext to the public host.

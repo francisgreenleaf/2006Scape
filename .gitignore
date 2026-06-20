@@ -36,4 +36,5 @@ dist/
 2006Scape Server/*.json
 !2006Scape Server/ServerConfig.Sample.json
 !2006Scape Server/ServerConfig.External.Sample.json
+!2006Scape Server/ServerConfig.Tailscale.Sample.json
 !2006Scape Server/ServerConfig.ClientTlsTunnel.Sample.json

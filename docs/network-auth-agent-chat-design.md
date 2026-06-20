@@ -86,6 +86,7 @@ Implementation scope:
 - Add sample configs:
   - `ServerConfig.Local.json` or document current local default.
   - `ServerConfig.External.Sample.json` with explicit public/server settings.
+  - `ServerConfig.Tailscale.Sample.json` with explicit tailnet bind/client settings.
   - `ServerConfig.ClientTlsTunnel.Sample.json` with loopback Java listeners and a public stunnel endpoint placeholder.
 - Update Docker Compose or add a deployment compose file that only publishes intended ports.
 - Keep login-path host decisions on numeric remote addresses from the login decoder. Do not use reverse DNS during login for blacklist or rate-limit keys.
@@ -98,7 +99,9 @@ Safety:
 
 ### Phase 2: External Transport Strategy
 
-Recommended MVP: use `direct_tcp` for the first regular-player public test, with PBKDF2 account auth, host firewall rules, explicit non-loopback bind hosts, and the agent bridge kept loopback-only. This is the simplest path for non-developer players because the packaged Java client connects directly to `public_game_host`.
+Recommended MVP: use `direct_tcp` for the first regular-player public test, with PBKDF2 account auth, host firewall rules, explicit non-loopback bind hosts, and the agent bridge kept loopback-only. This is the simplest no-install path for non-developer players because the packaged Java client connects directly to `public_game_host`, but it is plaintext.
+
+Recommended turnkey encrypted private-beta path: use Tailscale, with PBKDF2 account auth still enabled for in-game login. Tailscale supplies encrypted network reachability plus user/device access, while the server config and account records keep the game-side boundaries explicit.
 
 Encrypted/private alternatives remain supported when the operator wants that extra boundary:
 
@@ -370,6 +373,8 @@ The first implementation batch in this worktree follows this staged plan before 
 `ServerConfig.Sample.json` stays local-first. It binds game, HTTP cache, and JAGGRAB to `127.0.0.1`.
 
 `ServerConfig.External.Sample.json` is the direct public deployment starting point. It binds the game, HTTP cache, and JAGGRAB services to `127.0.0.1` plus `REPLACE_WITH_PUBLIC_INTERFACE_IP`, sets `public_game_host` to `server.example.com`, enables external-player intent, and uses `external_transport_mode=direct_tcp` with explicit plaintext acknowledgement fields. Replace those placeholders with the real public interface address and DNS name or public IP before a real deployment.
+
+`ServerConfig.Tailscale.Sample.json` is the recommended turnkey encrypted private-beta starting point. It binds the game, HTTP cache, and JAGGRAB services to `127.0.0.1` plus `REPLACE_WITH_TAILSCALE_IP`, sets `public_game_host` to `example-tailnet-host`, enables external-player intent, and uses `external_transport_mode=tailscale` with secure-transport acknowledgement fields. Replace those placeholders with the server's Tailscale interface IP and MagicDNS name or Tailscale IP before packaging a real client. Tailscale ACLs or grants should allow only game/cache TCP ports, not the raw agent bridge.
 
 `ServerConfig.ClientTlsTunnel.Sample.json` is the tracked encrypted-path starting point. It keeps game/cache listeners on `127.0.0.1`, sets `external_transport_mode=client_tls_tunnel`, sets secure-transport acknowledgements, and uses `REPLACE_WITH_PUBLIC_TLS_HOST` for both `public_game_host` and the server-side stunnel accept host. Replace that placeholder with the real certificate hostname before packaging for players. Source validation may use `--allow-placeholder-network-config` or `CLIENT_ALLOW_PLACEHOLDER_NETWORK_CONFIG=1`; real deployments must not.
 

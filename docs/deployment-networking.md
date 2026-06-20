@@ -1,8 +1,48 @@
 # 2006Scape Deployment Networking
 
-This repo's external-player MVP keeps the legacy RuneScape protocol unchanged. The simplest regular-player path is `direct_tcp`: the Java client connects directly to the configured public host over plaintext TCP game/cache sockets, with PBKDF2 account auth, host firewall rules, and a loopback-only agent bridge as the safety boundary. Use Tailscale, WireGuard, a generic VPN, or `client_tls_tunnel` when external traffic must be encrypted or private.
+This repo's external-player MVP keeps the legacy RuneScape protocol unchanged. The recommended turnkey encrypted private path is Tailscale: the Java client still uses the normal game/cache sockets, but those sockets are reachable only through the tailnet. Tailscale handles network encryption and user/device access; PBKDF2 account records still handle in-game authentication. The simplest no-install public path is `direct_tcp`, where the Java client connects directly to the configured public host over plaintext TCP game/cache sockets with PBKDF2 account auth, host firewall rules, and a loopback-only agent bridge as the safety boundary. Use WireGuard, a generic VPN, or `client_tls_tunnel` when Tailscale is not the right operator fit.
 
 If you are doing the first live test, start with the short operator path in `docs/external-deployment-quickstart.md`. Use this document when you need the full rationale, verifier details, hosting tradeoffs, or non-direct variants.
+
+## Recommended Turnkey Encrypted Path: Tailscale
+
+Use this for a private beta where players can install Tailscale or accept a tailnet invite/share. It gives the easiest encrypted network boundary without changing the 2006Scape game protocol.
+
+1. Install Tailscale on the server and confirm the server has a stable Tailscale IP or MagicDNS name.
+2. Copy `2006Scape Server/ServerConfig.Tailscale.Sample.json` to ignored `ServerConfig.json`.
+3. Replace `example-tailnet-host` with the MagicDNS name or Tailscale IP that players should connect to.
+4. Replace `REPLACE_WITH_TAILSCALE_IP` with the server's Tailscale interface IP in `game_bind_hosts`, `http_bind_hosts`, and `jaggrab_bind_hosts`.
+5. Keep `external_transport_mode: "tailscale"`, `require_secure_external_transport: true`, `secure_external_transport_confirmed: true`, and `direct_tcp_external_transport_confirmed: false`.
+6. Keep PBKDF2 account auth enabled, auto-create disabled, legacy fallback disabled, and the agent bridge bound to loopback.
+7. In Tailscale policy, grant players only the game/cache ports they need, normally TCP `43594`, `43595`, and `8080` when `file_server=true`. Do not grant or expose TCP `43610`.
+8. Preflight the config before starting the server:
+
+```sh
+scripts/preflight-external-config.py "2006Scape Server/ServerConfig.json"
+```
+
+9. Package from the same config:
+
+```sh
+CLIENT_SERVER_CONFIG="2006Scape Server/ServerConfig.json" scripts/package-client.sh
+scripts/prepare-external-deployment.py --config "2006Scape Server/ServerConfig.json"
+```
+
+An example Tailscale grants shape is:
+
+```json
+{
+  "grants": [
+    {
+      "src": ["group:players"],
+      "dst": ["tag:2006scape-server"],
+      "ip": ["tcp:43594", "tcp:43595", "tcp:8080"]
+    }
+  ]
+}
+```
+
+Adapt the `src` and `dst` selectors to your tailnet. Keep Tailscale ACL/grant policy and PBKDF2 account records aligned: Tailscale controls who can reach the server network path, while account records control who can log in as a game character.
 
 ## Recommended MVP: Direct TCP
 
@@ -111,6 +151,10 @@ At any point after a JSON readiness report exists, run `scripts/deployment-readi
 The external sample uses `game_bind_hosts`, `http_bind_hosts`, and `jaggrab_bind_hosts` with both `127.0.0.1` and `REPLACE_WITH_PUBLIC_INTERFACE_IP`. Replace the placeholder before real verification. That supports local same-host clients and external clients in one server process. If `file_server=true`, HTTP and JAGGRAB must also include at least one non-loopback bind host so packaged clients can reach the cache services over the selected external transport. If you instead bind `0.0.0.0`, bind wildcard alone for that listener, set `wildcard_bind_confirmed=true` in the config only after firewall or private-network rules are in place, then run the preflight with `--allow-wildcard-bind`. Use the same acknowledgement for dependent tooling: set `CLIENT_ALLOW_WILDCARD_BIND=1` when packaging from that config and pass `--allow-wildcard-bind` to `scripts/verify-external-deployment.py`.
 
 Account records under `2006Scape Server/data/accounts/` are authoritative when account auth is enabled. Create them with `scripts/create-account.py`; it writes `PBKDF2WithHmacSHA256` records by default, rejects passwords shorter than 12 characters unless `--allow-weak-password` is explicitly passed for local throwaway/source-validation accounts, stamps `passwordPolicy` metadata on new or rotated records, and supports `--algorithm sha1` only as an older-Java-8 compatibility fallback. Use `scripts/account-admin.py list`, `show`, or `audit` to inspect records without full deployment verification; use `scripts/account-admin.py --require-password-policy audit` before external deployment, and use `scripts/account-admin.py disable USERNAME` or `enable USERNAME` to toggle access without rotating the password. Optional account metadata can be written with `--role`, `--allowed-character`, and `--discord-user-id`; a non-empty `allowedCharacters` list is enforced as a character-name allow-list during Java auth. Password verification uses the algorithm and iteration count stored in each account record; external-mode minimum iterations are enforced before verification as a fail-closed strength policy. Account audits cannot cryptographically recover the original password length from an existing PBKDF2 hash, so create or rotate real external accounts with the helper instead of hand-writing records; deployment verification rejects records missing helper-stamped `passwordPolicy` metadata or records created with the weak-password override. A wrong password, disabled account, disallowed character, weak external account record, symlinked account path, missing or weak-override password policy metadata, or invalid/tampered account JSON fails closed instead of falling back to legacy character-password auth. The in-game `::password` command is blocked after account-auth login because it cannot update PBKDF2 account records; use `scripts/create-account.py --overwrite --preserve-metadata` or an equivalent operator workflow to rotate external account passwords without dropping roles, allowed characters, Discord user id, or disabled state. Repeated failed account-auth attempts are temporarily rate-limited per account and per connecting source address; missing-account attempts are source-throttled when legacy fallback is disabled. The in-memory throttle table is bounded and prunes expired entries. The helper, account admin tool, Java auth service, and deployment verifier all reject symlinked account records; deployment verification and strict `account-admin.py` audit also reject account files that the Java auth service cannot load, including invalid usernames, filename/username mismatches, malformed base64 hash or salt fields, wrong hash/salt sizes, weak iteration counts, unsupported algorithms, non-boolean `disabled` flags, malformed `roles` or `allowedCharacters` arrays, malformed or missing external password policy metadata, non-numeric Discord user ids, and group/world-readable account directories or records on POSIX systems.
+
+## Tailscale
+
+Tailscale is the preferred turnkey encrypted private-beta transport. Use `external_transport_mode: "tailscale"` and bind game/cache services to the server's Tailscale interface IP. For same-host local clients plus Tailscale clients, set the plural bind arrays to `["127.0.0.1", "<tailscale-interface-ip>"]`.
 
 Pros:
 
@@ -240,6 +284,7 @@ If an explicit `-c` / `-config` file cannot be read or fails this validation, se
 
 ```sh
 scripts/preflight-external-config.py "2006Scape Server/ServerConfig.External.Sample.json"
+scripts/preflight-external-config.py "2006Scape Server/ServerConfig.Tailscale.Sample.json"
 scripts/verify-external-deployment.py --config "2006Scape Server/ServerConfig.json" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment
 scripts/deployment-readiness-report.py --config "2006Scape Server/ServerConfig.json" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment
 scripts/prepare-external-deployment.py --config "2006Scape Server/ServerConfig.json"
