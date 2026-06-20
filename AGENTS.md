@@ -158,6 +158,7 @@ Runtime bridge:
 - `POST /agent/tool` requires the returned session token in `X-Agent-Token`.
 - The local bridge uses bounded HTTP workers, request-queue backpressure, bounded JSON request bodies, and a bounded game-tick action queue; it is still localhost-only and must never be exposed publicly.
 - HTTP handlers must never mutate game state directly. Queue gameplay work through `AgentActionService`, which drains at the start of the server tick.
+- When adding or advertising a new `rs.*` tool in `CodexAppServerClient`, also add a short player-facing display phrase in `AgentToolDisplayText` and test coverage that proves the tool is mapped. Raw tool names should stay available for routing, JSON, logs, and debugging, but normal Agent Console rows should use concise English action text.
 
 Agent session logging:
 

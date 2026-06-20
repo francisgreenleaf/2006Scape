@@ -54,7 +54,8 @@ When adding or changing an `rs.*` primitive:
 3. Use existing mechanics such as `PlayerAssistant.playerWalk`, `CombatAssistant.attackNpc`, `ClickObject`, `NpcActions`, `UseItem`, shops, banking, or dialogue/interface/item handlers.
 4. Preserve session scoping: reject offline, disconnected, dead, expired-token, and wrong-player sessions. Multi-profile behavior must be correct by construction, not only for the legacy default profile.
 5. Return a useful JSON result with `success`, a concise message, and compact state when it helps the next decision. XS/XXS aliases should preserve the fields agents need to avoid follow-up full observes.
-6. Add or update focused tests when behavior is shared, risky, has already regressed, or could mix up two claimed players.
+6. Add or update the player-facing terminal display phrase in `AgentToolDisplayText` so the Agent Console shows concise English action text instead of raw `rs.*` names.
+7. Add or update focused tests when behavior is shared, risky, has already regressed, could mix up two claimed players, or changes advertised tool coverage.
 
 Prefer external scripts for skill loops. Legacy Java strategy tools such as `mine_ore_until_inventory_full`, `chop_tree_until_inventory_full`, `fletch_logs_until_inventory_empty`, `fish_food`, `cook_food`, `light_fire`, `smelt_bar`, `smith_item`, `plan_smithing`, `train_combat`, `train_smithing_profit`, `equip_best_items`, `combat_cleanup`, `combat_restock_trip`, and `start_combat_goal` are not advertised and are quarantined behind `legacyCompatibility=true` for deliberate stale-runtime compatibility only. Do not add new callers; see `agent-navigation/scripting-primitives.md` for the current boundary.
 

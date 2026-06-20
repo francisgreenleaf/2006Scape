@@ -13,6 +13,7 @@ public class AgentTerminalLog {
     public static final int SUCCESS = 0x7dff7d;
     public static final int WARNING = 0xffd36e;
     public static final int ERROR = 0xff7777;
+    public static final String TOOL_DOT = "tool_dot";
 
     private static final int MAX_ENTRIES = 180;
     private static final int MAX_MESSAGE_LENGTH = 360;
@@ -43,14 +44,15 @@ public class AgentTerminalLog {
     }
 
     public void toolStart(String tool) {
-        add(TOOL, "tool", cleanToolName(tool));
+        add(TOOL, "tool", AgentToolDisplayText.actionFor(tool), TOOL_DOT);
     }
 
     public void toolResult(String tool, boolean success, String message, long durationMs) {
         String status = success ? "ok" : "err";
         int color = success ? SUCCESS : ERROR;
         String detail = compactMessage(message, 90);
-        add(color, status, cleanToolName(tool) + " " + durationMs + "ms" + (detail.length() == 0 ? "" : " " + detail));
+        String action = AgentToolDisplayText.actionFor(tool);
+        add(color, status, action + " " + durationMs + "ms" + (detail.length() == 0 ? "" : " " + detail));
     }
 
     public void success(String message) {
@@ -105,12 +107,16 @@ public class AgentTerminalLog {
     }
 
     private void add(int color, String label, String message) {
+        add(color, label, message, null);
+    }
+
+    private void add(int color, String label, String message, String marker) {
         String cleaned = clean(message);
         if (cleaned.length() > MAX_MESSAGE_LENGTH) {
             cleaned = cleaned.substring(0, MAX_MESSAGE_LENGTH - 3) + "...";
         }
         synchronized (this) {
-            entries.add(new Entry(timeStamp(), label, cleaned, color));
+            entries.add(new Entry(timeStamp(), label, cleaned, color, marker));
             while (entries.size() > MAX_ENTRIES) {
                 entries.remove(0);
             }
@@ -132,12 +138,16 @@ public class AgentTerminalLog {
     }
 
     private void addWrappedLine(List<RenderLine> lines, TextDrawingArea font, int maxWidth, Entry entry) {
-        String prefix = entry.time + " " + entry.label + " ";
+        boolean markerOnlyLabel = entry.marker != null && entry.label.length() > 0;
+        String labelText = markerOnlyLabel ? repeat(' ', entry.label.length()) : entry.label;
+        String prefix = entry.time + " " + labelText + " ";
         String continuation = repeat(' ', prefix.length());
-        wrap(lines, font, maxWidth, prefix + entry.message, continuation, entry.color);
+        int markerXOffset = markerOnlyLabel ? displayWidth(font, entry.time + " ") : -1;
+        wrap(lines, font, maxWidth, prefix + entry.message, continuation, entry.color, entry.marker, markerXOffset);
     }
 
-    private void wrap(List<RenderLine> lines, TextDrawingArea font, int maxWidth, String text, String continuation, int color) {
+    private void wrap(List<RenderLine> lines, TextDrawingArea font, int maxWidth, String text, String continuation, int color,
+            String firstMarker, int firstMarkerXOffset) {
         String remaining = text == null ? "" : text;
         boolean first = true;
         while (remaining.length() > 0) {
@@ -148,7 +158,7 @@ public class AgentTerminalLog {
             if (part.length() == 0) {
                 part = remaining.substring(0, end);
             }
-            lines.add(new RenderLine(prefix + part, color));
+            lines.add(new RenderLine(prefix + part, color, first ? firstMarker : null, first ? firstMarkerXOffset : -1));
             remaining = remaining.substring(end).trim();
             first = false;
         }
@@ -218,11 +228,6 @@ public class AgentTerminalLog {
         return builder.toString().trim();
     }
 
-    private String cleanToolName(String tool) {
-        String cleaned = clean(tool);
-        return cleaned.length() == 0 ? "rs.unknown" : cleaned;
-    }
-
     static String compactMessageForTests(String message, int maxLength) {
         return compactMessageStatic(message, maxLength);
     }
@@ -262,22 +267,32 @@ public class AgentTerminalLog {
         private final String label;
         private final String message;
         private final int color;
+        private final String marker;
 
-        private Entry(String time, String label, String message, int color) {
+        private Entry(String time, String label, String message, int color, String marker) {
             this.time = time;
             this.label = label;
             this.message = message;
             this.color = color;
+            this.marker = marker;
         }
     }
 
     public static class RenderLine {
         public final String text;
         public final int color;
+        public final String marker;
+        public final int markerXOffset;
 
         public RenderLine(String text, int color) {
+            this(text, color, null, -1);
+        }
+
+        public RenderLine(String text, int color, String marker, int markerXOffset) {
             this.text = text;
             this.color = color;
+            this.marker = marker;
+            this.markerXOffset = markerXOffset;
         }
     }
 }

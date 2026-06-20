@@ -2006,6 +2006,7 @@ public class Game extends RSApplet {
 			AgentTerminalLog.RenderLine line = lines.get(i);
 			int lineY = contentY + 11 + (i - firstLine) * AGENT_TERMINAL_LINE_HEIGHT;
 			font.textLeft(0, line.text, lineY + 1, contentX + 4);
+			drawAgentTerminalLineDot(line, contentX + 3, lineY);
 			font.textLeft(line.color, line.text, lineY, contentX + 3);
 		}
 		DrawingArea.defaultDrawingAreaSize();
@@ -2121,6 +2122,20 @@ public class Game extends RSApplet {
 		DrawingArea.fillArea(1, y, 0x7dff7d, 3, x + 1);
 		DrawingArea.fillArea(3, y + 1, 0x7dff7d, 5, x);
 		DrawingArea.fillArea(1, y + 4, 0x7dff7d, 3, x + 1);
+	}
+
+	private void drawAgentTerminalLineDot(AgentTerminalLog.RenderLine line, int textX, int baselineY) {
+		if (line == null || line.marker == null || line.markerXOffset < 0) {
+			return;
+		}
+		int dotX = textX + line.markerXOffset + 2;
+		int dotY = baselineY - 5;
+		DrawingArea.fillArea(1, dotY, 0x000000, 3, dotX + 1);
+		DrawingArea.fillArea(3, dotY + 1, 0x000000, 5, dotX);
+		DrawingArea.fillArea(1, dotY + 4, 0x000000, 3, dotX + 1);
+		DrawingArea.fillArea(1, dotY - 1, line.color, 3, dotX + 1);
+		DrawingArea.fillArea(3, dotY, line.color, 5, dotX);
+		DrawingArea.fillArea(1, dotY + 3, line.color, 3, dotX + 1);
 	}
 
 	private String normalizeAgentTerminalCommand(String command) {
