@@ -98,6 +98,8 @@ def is_sensitive_path(path):
         if part == "private" and index > 1:
             return True
     name = path.name.lower()
+    if name.startswith("player-handoff-") or name.startswith("player-kit-"):
+        return False
     if name in SENSITIVE_NAMES:
         return True
     if "credential" in name or "password" in name or "secret" in name or "token" in name:

@@ -189,7 +189,17 @@ scripts/package-player-kit.py PLAYER_USERNAME \
   --prepared-dir dist/external-deployment
 ```
 
-Send the generated `player-kit-PLAYER_USERNAME.zip` and send the password separately. The kit contains the client archive, README-first handoff note, and checksums; it rejects private credentials, account records, secrets, runtime data, bridge tokens, and other secret-bearing paths.
+Verify the copied kit before sending it:
+
+```sh
+scripts/verify-player-kit.py \
+  --kit dist/external-deployment/player-kit-PLAYER_USERNAME.zip \
+  --prepared-dir dist/external-deployment \
+  --username PLAYER_USERNAME \
+  --character CHARACTER_NAME
+```
+
+Send the verified `player-kit-PLAYER_USERNAME.zip` and send the password separately. The kit contains the client archive, README-first handoff note, and checksums; packaging and verification reject private credentials, account records, secrets, runtime data, bridge tokens, and other secret-bearing paths.
 
 The default package uses `client.scale=2` and `show_navbar=false`. Keep those defaults for normal external tester packages so the larger desktop window uses the client scale code path instead of JVM UI scaling, which avoids macOS mouse-click offset issues.
 

@@ -142,6 +142,8 @@ scripts/provision-player-account.py PLAYER --character CHARACTER --prepared-dir 
 # Provision one player after a prepared bundle exists: create the ignored PBKDF2 account, audit it, write the generated password only to an owner-only ignored credentials env file, and render the safe player handoff note without printing the password.
 scripts/package-player-kit.py PLAYER --character CHARACTER --prepared-dir dist/external-deployment
 # Create the public-safe per-player zip to send with the client archive, README-first handoff note, and checksums. It excludes passwords, private credentials, account records, secrets, runtime data, and bridge tokens.
+scripts/verify-player-kit.py --kit dist/external-deployment/player-kit-PLAYER.zip --prepared-dir dist/external-deployment --username PLAYER --character CHARACTER
+# Verify the player kit before distribution: required entries, embedded checksums, nested client archive safety, optional prepared-artifact matches, and no passwords/private runtime data.
 scripts/render-player-handoff.py --prepared-dir dist/external-deployment --username PLAYER --character CHARACTER --output dist/external-deployment/player-handoff-PLAYER.md
 # Use this when the account/password already exists and only the handoff note is needed; it includes checksum, transport, username/character, and `/agent` gateway guidance, but never accepts or prints the password. Send the password separately.
 scripts/prepare-external-deployment.py --config "2006Scape Server/ServerConfig.json" --require-encrypted-external

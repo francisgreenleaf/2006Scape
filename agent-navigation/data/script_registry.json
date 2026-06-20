@@ -1561,6 +1561,33 @@
       ]
     },
     {
+      "id": "player_kit_verify",
+      "name": "Player Kit Verify",
+      "path": "scripts/verify-player-kit.py",
+      "kind": "deployment_tool",
+      "description": "Verifies a public-safe per-player kit zip before distribution, checking required entries, embedded checksums, nested client archive safety, optional prepared-artifact matches, and absence of passwords, private runtime data, account records, secrets, and bridge tokens.",
+      "aliases": [
+        "verify player kit",
+        "player kit verify",
+        "check player zip",
+        "verify client handoff zip",
+        "safe player package check"
+      ],
+      "tags": [
+        "deployment",
+        "client",
+        "packaging",
+        "handoff",
+        "player",
+        "security",
+        "external"
+      ],
+      "examples": [
+        "python3 scripts/verify-player-kit.py --kit dist/external-deployment/player-kit-MrGem.zip --prepared-dir dist/external-deployment --username MrGem --character MrGem",
+        "python3 agent-navigation/tools/script_registry.py run verify player kit -- --kit dist/external-deployment/player-kit-MrGem.zip --prepared-dir dist/external-deployment --username MrGem --character MrGem"
+      ]
+    },
+    {
       "id": "standalone_client_package",
       "name": "Standalone Client Package",
       "path": "scripts/package-client.sh",
