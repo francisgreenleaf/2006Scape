@@ -105,7 +105,7 @@ def catherby_status(profile, include_efficiency=True):
 def list_status_files():
     files = []
     if RUNNER_DIR.exists():
-        for path in sorted(RUNNER_DIR.glob("*.status.json")):
+        for path in sorted(RUNNER_DIR.rglob("*.status.json")):
             try:
                 data = json.loads(path.read_text(encoding="utf-8"))
             except (OSError, json.JSONDecodeError):
@@ -116,6 +116,10 @@ def list_status_files():
                 "profile": data.get("profile"),
                 "status": data.get("status"),
                 "reason": data.get("reason"),
+                "childPid": data.get("childPid"),
+                "supervisorPid": data.get("supervisorPid"),
+                "restarts": data.get("restarts"),
+                "lastClassification": data.get("lastClassification"),
                 "updatedAt": data.get("updatedAt"),
                 "age": age_seconds(data.get("updatedAt")),
             })

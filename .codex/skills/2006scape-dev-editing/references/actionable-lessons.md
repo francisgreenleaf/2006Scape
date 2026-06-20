@@ -318,6 +318,13 @@ These notes are repo-specific operational memory from actual agent experience. A
 - **Use instead:** Launch detached gameplay runners through a small Python wrapper that uses `subprocess.Popen(..., start_new_session=True)` and writes pid/log files, following the same pattern as `runtime_doctor.py`.
 - **Validation:** `agent-navigation/tools/launch_detached_runner.py` successfully kept the relaunched metals runner alive, and the selected profile resumed moving out of Al Kharid instead of staying idle at the bank.
 
+### Supervise long runners through the shared lifecycle wrapper
+
+- **Observed:** Local ad hoc runner supervisors restarted children whenever compact observe failed, without distinguishing bridge outages from route stalls or gameplay blockers.
+- **Cause:** A broad "observe failed" policy treats terminal runner failures and transient bridge/session failures the same way, which can cause repeated relaunch loops.
+- **Use instead:** Use `agent-navigation/tools/launch_detached_runner.py --supervise` or `agent-navigation/tools/supervised_runner.py`. It classifies recent log tails, restarts only known transient bridge/session failures, applies bounded backoff, and leaves route stalls, death/combat safety stops, missing supplies, explicit stop requests, and unknown exceptions terminal by default.
+- **Validation:** `python3 -m unittest agent-navigation/tools/tests/test_supervised_runner.py` proves one transient bridge-style failure restarts once, while a route-stall failure does not restart.
+
 ### XS wrapper names must hit server aliases, not client-side full observes
 
 - **Observed:** `observe_XS.sh` and `rs-tool_XS.sh observe_state ...` looked compact, but still called full `observe_state` and compacted the large result locally.
