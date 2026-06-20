@@ -1945,6 +1945,7 @@ test -f "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/2006scape-server.
 test -f "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/2006scape-server.env"
 test -f "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/firewall-ufw-example.sh"
 test -f "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/ServerConfig.json"
+test -f "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
 test -f "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/proof-templates/desktop-client-proof.md"
 test -f "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/proof-templates/runtime-data-backup-proof.md"
 grep -q 'status: `PASS`' "$TMP_DIR/prepared-client-tls-tunnel/deployment-readiness-report.md"
@@ -1982,6 +1983,7 @@ grep -q "RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX" "$TMP_DIR/prepared-cl
 grep -q "SystemCallArchitectures=native" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/2006scape-server.service"
 grep -q "SERVER_CONFIG=/etc/2006scape/ServerConfig.json" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/2006scape-server.env"
 grep -q "Do not expose 2006Scape AgentBridgeServer" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/firewall-ufw-example.sh"
+grep -q "player-handoff-template.md" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
 grep -q 'This bundle does not include real `data/secrets.json`' "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
 grep -q "## Account And Secret Files" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
 grep -q "2006Scape Server/data/accounts" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
@@ -2015,6 +2017,19 @@ grep -q "scripts/package-deployment-proof.py" "$TMP_DIR/prepared-client-tls-tunn
 grep -q "## Live Chat Proof" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
 grep -q "agent_chat_player_delivery" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
 grep -q -- "--agent-chat-delivery-log-text" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
+grep -q "# Player Handoff Template" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
+grep -q "Share \`2006scape-client.zip\`" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
+grep -q "PBKDF2 account record" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
+grep -q "12+ character password" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
+grep -q -- "--allowed-character" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
+grep -q "scripts/account-admin.py --require-password-policy audit" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
+grep -q "through a private channel" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
+grep -q 'Never expose raw TCP `43610`' "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
+grep -q 'approved HTTPS `/agent` gateway' "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
+grep -q "Do not reuse a RuneScape.com password" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
+grep -q "Do Not Send To Players" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
+grep -Fq "2006Scape Server/data/accounts/*.json" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
+grep -q "Bridge session files" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
 grep -q "live_login_password_env" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/proof-templates/deployment-proof-manifest.json"
 grep -q "live_reject_login_expected_statuses" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/proof-templates/deployment-proof-manifest.json"
 grep -q "runtime_data_backup_proof_file" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/proof-templates/deployment-proof-manifest.json"
@@ -2662,6 +2677,7 @@ grep -q "ok: rendered server deployment files" "$TMP_DIR/sample-server-deploymen
 test -f "$TMP_DIR/sample-server-deployment/proof-templates/desktop-client-proof.md"
 test -f "$TMP_DIR/sample-server-deployment/proof-templates/runtime-data-backup-proof.md"
 test -f "$TMP_DIR/sample-server-deployment/proof-templates/deployment-proof-manifest.json"
+test -f "$TMP_DIR/sample-server-deployment/player-handoff-template.md"
 grep -q "direct_tcp mode: exposes plaintext game/cache listeners directly" "$TMP_DIR/sample-server-deployment/firewall-ufw-example.sh"
 grep -q "run sudo ufw allow 43594/tcp comment '2006Scape direct TCP game'" "$TMP_DIR/sample-server-deployment/firewall-ufw-example.sh"
 grep -q "sudo install -d -o 2006scape -g 2006scape -m 0700 '/opt/2006scape/2006Scape Server/data/accounts'" "$TMP_DIR/sample-server-deployment/README.md"
@@ -2683,6 +2699,12 @@ grep -q "live_reject_login_expected_statuses" "$TMP_DIR/sample-server-deployment
 grep -q "accepted rejection status codes" "$TMP_DIR/sample-server-deployment/README.md"
 grep -q "agent_chat_player_delivery" "$TMP_DIR/sample-server-deployment/README.md"
 grep -q -- "--agent-chat-delivery-log-text" "$TMP_DIR/sample-server-deployment/README.md"
+grep -q "player-handoff-template.md" "$TMP_DIR/sample-server-deployment/README.md"
+grep -q "No VPN or client-side tunnel is required" "$TMP_DIR/sample-server-deployment/player-handoff-template.md"
+grep -q "This package connects directly over plaintext TCP; use only server-unique passwords" "$TMP_DIR/sample-server-deployment/player-handoff-template.md"
+grep -q "PBKDF2 account record" "$TMP_DIR/sample-server-deployment/player-handoff-template.md"
+grep -q "Use a password unique to this 2006Scape server" "$TMP_DIR/sample-server-deployment/player-handoff-template.md"
+grep -q 'Never expose raw TCP `43610`' "$TMP_DIR/sample-server-deployment/player-handoff-template.md"
 grep -q "live_login_password_env" "$TMP_DIR/sample-server-deployment/proof-templates/deployment-proof-manifest.json"
 grep -q "live_reject_login_expected_statuses" "$TMP_DIR/sample-server-deployment/proof-templates/deployment-proof-manifest.json"
 grep -q "usually 3,4" "$TMP_DIR/sample-server-deployment/proof-templates/deployment-proof-manifest.json"
@@ -4300,6 +4322,7 @@ grep -q '^client/SHA256SUMS$' "$TMP_DIR/deployment-proof-bundle.entries"
 grep -q '^client/README.txt$' "$TMP_DIR/deployment-proof-bundle.entries"
 grep -q '^client/client.properties$' "$TMP_DIR/deployment-proof-bundle.entries"
 grep -q '^server-deployment/README.md$' "$TMP_DIR/deployment-proof-bundle.entries"
+grep -q '^server-deployment/player-handoff-template.md$' "$TMP_DIR/deployment-proof-bundle.entries"
 grep -q '^server-deployment/ServerConfig.json$' "$TMP_DIR/deployment-proof-bundle.entries"
 if grep -q '2006scape-runtime-data-test.tgz' "$TMP_DIR/deployment-proof-bundle.entries"; then
     echo "package-deployment-proof.py bundled a runtime-data backup archive." >&2
@@ -4323,7 +4346,8 @@ for required in (
         "proof/01-desktop-client-proof.md",
         "proof/02-runtime-data-backup-proof.md",
         "client/MANIFEST.txt",
-        "server-deployment/README.md"):
+        "server-deployment/README.md",
+        "server-deployment/player-handoff-template.md"):
     assert required in included, included
 assert any(
         "runtime backup archive contains" in item.get("reason", "")
@@ -4353,6 +4377,7 @@ grep -q '^proof/01-desktop-client-proof.md$' "$TMP_DIR/deployment-proof-bundle-p
 grep -q '^proof/02-runtime-data-backup-proof.md$' "$TMP_DIR/deployment-proof-bundle-prepared-dir.entries"
 grep -q '^client/MANIFEST.txt$' "$TMP_DIR/deployment-proof-bundle-prepared-dir.entries"
 grep -q '^server-deployment/README.md$' "$TMP_DIR/deployment-proof-bundle-prepared-dir.entries"
+grep -q '^server-deployment/player-handoff-template.md$' "$TMP_DIR/deployment-proof-bundle-prepared-dir.entries"
 if grep -q '2006scape-runtime-data-test.tgz' "$TMP_DIR/deployment-proof-bundle-prepared-dir.entries"; then
     echo "package-deployment-proof.py --prepared-dir bundled a runtime-data backup archive." >&2
     exit 1

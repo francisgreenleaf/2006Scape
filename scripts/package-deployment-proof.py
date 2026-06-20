@@ -49,6 +49,7 @@ CLIENT_METADATA_FILES = (
 )
 SERVER_METADATA_FILES = (
     "README.md",
+    "player-handoff-template.md",
     "ServerConfig.json",
 )
 RUNTIME_ARCHIVE_RE = re.compile(r"(?m)^-\s*archive:\s*(.+?)\s*$")
@@ -280,7 +281,7 @@ Generated at: {generated_at}
 
 This archive is a non-secret handoff bundle for external deployment proof review.
 It includes readiness reports, a filled proof manifest when supplied, proof notes,
-and selected client/server metadata.
+and selected client/server metadata such as the player handoff template.
 
 It deliberately does not include runtime-data backup archives, character saves,
 PBKDF2 account records, `data/secrets.json`, passwords, bridge tokens, or Discord

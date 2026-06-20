@@ -347,6 +347,7 @@ def readme_text(config, args):
         "- `2006scape-server.service`: systemd unit that runs `scripts/start-server.sh` from the deployed repo.",
         "- `firewall-ufw-example.sh`: dry-run UFW commands for the selected transport.",
         "- `tailscale-policy-grants.example.json`: Tailscale grants example for this deployment's game/cache ports; present only for Tailscale transport.",
+        "- `player-handoff-template.md`: public-safe template for telling one player how to download, verify, connect, and log in without exposing secrets.",
         "- `proof-templates/deployment-proof-manifest.json`: fill-in manifest for live/manual readiness proof flags.",
         "- `proof-templates/desktop-client-proof.md`: fill-in note for same-host plus external Java client coexistence evidence.",
         "- `proof-templates/runtime-data-backup-proof.md`: fill-in note for runtime data backup evidence.",
@@ -490,6 +491,114 @@ def readme_text(config, args):
     return "\n".join(lines) + "\n"
 
 
+def player_handoff_template_text(config, args):
+    transport = mode(config) or "REPLACE_TRANSPORT"
+    public_host = str(config.get("public_game_host", "") or "").strip() or "REPLACE_PUBLIC_HOST"
+    game_port = port(config, "game_port", 43594)
+    http_port = port(config, "http_port", 8080)
+    jaggrab_port = port(config, "jaggrab_port", 43595)
+    agent_gateway = str(config.get("agent_bridge_public_url", "") or "").strip() or "REPLACE_AGENT_GATEWAY_OR_NA"
+    if transport == "tailscale":
+        transport_steps = [
+            "1. Install Tailscale from https://tailscale.com/download.",
+            "2. Sign in with the account or invite supplied by the operator.",
+            "3. Confirm Tailscale is connected before running the setup checker.",
+        ]
+        security_note = "This package expects the game/cache sockets to be reachable only through Tailscale."
+    elif transport in {"wireguard", "vpn"}:
+        transport_steps = [
+            "1. Install/connect the private network profile supplied by the operator.",
+            "2. Confirm the VPN is connected before running the setup checker.",
+        ]
+        security_note = "This package expects the game/cache sockets to be reachable only through the private network."
+    elif transport == "client_tls_tunnel":
+        transport_steps = [
+            "1. Install stunnel if the launcher cannot start the bundled tunnel automatically.",
+            "2. Run the packaged setup checker; on macOS/Linux it can start the bundled stunnel config temporarily for TCP checks.",
+            "3. If the checker says the local tunnel endpoint is unreachable, start `client-tls-tunnel/stunnel-client.conf` manually first.",
+        ]
+        security_note = "This package keeps the Java client on loopback and sends game/cache traffic through a TLS tunnel."
+    elif transport == "direct_tcp":
+        transport_steps = [
+            "1. No VPN or client-side tunnel is required.",
+            "2. Run the setup checker before logging in so plain TCP reachability is confirmed without changing server state.",
+        ]
+        security_note = "This package connects directly over plaintext TCP; use only server-unique passwords."
+    else:
+        transport_steps = [
+            "1. Confirm the transport requirement with the operator before launching the client.",
+            "2. Run the setup checker before logging in.",
+        ]
+        security_note = "Confirm the intended encrypted/private transport before distributing this package."
+
+    lines = [
+        "# Player Handoff Template",
+        "",
+        "Use this as the operator checklist for one player. Replace placeholders, then send only the player-facing section plus that player's credentials through a private channel.",
+        "",
+        "## Operator Checklist",
+        "",
+        "- Build the client from the final config: `scripts/prepare-external-deployment.py --config \"2006Scape Server/ServerConfig.json\" --require-encrypted-external` for encrypted/private player packages.",
+        "- Share `2006scape-client.zip`, plus `MANIFEST.txt` and `SHA256SUMS` if the player wants to verify the download.",
+        "- Create a PBKDF2 account record with `scripts/create-account.py PLAYER_USERNAME --password-env PLAYER_PASSWORD`.",
+        "- Use a 12+ character password by default; short or reused passwords are only acceptable for local throwaway smoke tests.",
+        "- If this account should only load one character, preserve that boundary with account metadata such as `--allowed-character CHARACTER_NAME`.",
+        "- Run `scripts/account-admin.py --require-password-policy audit` before sending credentials.",
+        "- Send username and password privately. Do not put passwords, account JSON files, bridge tokens, Discord tokens, or claim nonces in Git, Discord channels, screenshots, or proof bundles.",
+        "- Never expose raw TCP `43610`; remote `/agent` use needs the approved HTTPS `/agent` gateway only.",
+        "",
+        "## Package Details To Confirm",
+        "",
+        "- public game host: `{}`".format(public_host),
+        "- external transport: `{}`".format(transport),
+        "- game port: `{}`".format(game_port),
+        "- HTTP cache port: `{}`".format(http_port),
+        "- JAGGRAB/cache port: `{}`".format(jaggrab_port),
+        "- agent gateway for `/agent`: `{}`".format(agent_gateway),
+        "- security note: {}".format(security_note),
+        "",
+        "## Player-Facing Message",
+        "",
+        "Download and unzip `2006scape-client.zip`.",
+        "",
+        "Before logging in:",
+    ]
+    lines.extend(transport_steps)
+    lines.extend([
+        "",
+        "Then run the setup checker:",
+        "",
+        "- macOS: double-click `Check-Setup.command`.",
+        "- Linux: run `./check-setup-macos-linux.sh`.",
+        "- Windows: double-click `check-setup-windows.bat`.",
+        "",
+        "If the setup checker passes, start the game:",
+        "",
+        "- macOS: double-click `Run-2006Scape.command`.",
+        "- Linux: run `./run-macos-linux.sh`.",
+        "- Windows: double-click `run-windows.bat`.",
+        "",
+        "Login details:",
+        "",
+        "- username: `PLAYER_USERNAME`",
+        "- password: sent privately",
+        "- character: `CHARACTER_NAME_OR_ANY_ALLOWED_CHARACTER`",
+        "",
+        "Use a password unique to this 2006Scape server. Do not reuse a RuneScape.com password or any password from another service.",
+        "",
+        "If `/agent ...` is enabled for this package, it uses the `agent.bridge.url` value in `client.properties`. If that value is not an HTTPS `/agent` gateway supplied by the operator, `/agent` is not available for remote play.",
+        "",
+        "## Do Not Send To Players",
+        "",
+        "- `2006Scape Server/data/accounts/*.json` account records.",
+        "- `2006Scape Server/data/secrets.json`.",
+        "- Runtime backup archives containing character saves, account records, or secrets.",
+        "- Bridge session files, bridge tokens, `/agent` claim nonces, API keys, or Discord bot tokens.",
+        "",
+    ])
+    return "\n".join(lines)
+
+
 def desktop_client_proof_template_text(config, args):
     public_host = str(config.get("public_game_host", "") or "").strip() or "REPLACE_PUBLIC_HOST"
     transport = mode(config) or "REPLACE_TRANSPORT"
@@ -616,6 +725,7 @@ def main():
     elif tailscale_policy_path.exists():
         tailscale_policy_path.unlink()
     write_text(output_dir / "README.md", readme_text(config, args))
+    write_text(output_dir / "player-handoff-template.md", player_handoff_template_text(config, args))
     write_text(output_dir / "proof-templates" / "deployment-proof-manifest.json", deployment_proof_manifest_template_text(config))
     write_text(output_dir / "proof-templates" / "desktop-client-proof.md", desktop_client_proof_template_text(config, args))
     write_text(output_dir / "proof-templates" / "runtime-data-backup-proof.md", runtime_data_backup_proof_template_text(args))

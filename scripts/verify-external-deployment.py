@@ -924,6 +924,7 @@ def verify_server_deployment(config, server_deployment_dir):
     env_file = server_deployment_dir / "2006scape-server.env"
     firewall = server_deployment_dir / "firewall-ufw-example.sh"
     readme = server_deployment_dir / "README.md"
+    player_handoff = server_deployment_dir / "player-handoff-template.md"
     tailscale_policy = server_deployment_dir / "tailscale-policy-grants.example.json"
     proof_manifest_template = server_deployment_dir / "proof-templates" / "deployment-proof-manifest.json"
     desktop_proof_template = server_deployment_dir / "proof-templates" / "desktop-client-proof.md"
@@ -936,6 +937,7 @@ def verify_server_deployment(config, server_deployment_dir):
         (env_file, "server deployment environment file"),
         (firewall, "server deployment firewall helper"),
         (readme, "server deployment README"),
+        (player_handoff, "player handoff template"),
         (proof_manifest_template, "deployment proof manifest template"),
         (desktop_proof_template, "desktop client proof template"),
         (backup_proof_template, "runtime data backup proof template"),
@@ -950,6 +952,7 @@ def verify_server_deployment(config, server_deployment_dir):
     require_file(env_file, "server deployment environment file")
     require_executable(firewall, "server deployment firewall helper")
     require_file(readme, "server deployment README")
+    require_file(player_handoff, "player handoff template")
     if mode == "tailscale":
         require_file(tailscale_policy, "Tailscale grants policy example")
     require_file(proof_manifest_template, "deployment proof manifest template")
@@ -958,6 +961,7 @@ def verify_server_deployment(config, server_deployment_dir):
     require_not_executable(service, "server deployment systemd unit")
     require_not_executable(env_file, "server deployment environment file")
     require_not_executable(readme, "server deployment README")
+    require_not_executable(player_handoff, "player handoff template")
     if mode == "tailscale":
         require_not_executable(tailscale_policy, "Tailscale grants policy example")
     require_not_executable(proof_manifest_template, "deployment proof manifest template")
@@ -1091,6 +1095,7 @@ def verify_server_deployment(config, server_deployment_dir):
     require_text(readme, "server deployment README", "proof-templates/deployment-proof-manifest.json")
     require_text(readme, "server deployment README", "proof-templates/desktop-client-proof.md")
     require_text(readme, "server deployment README", "proof-templates/runtime-data-backup-proof.md")
+    require_text(readme, "server deployment README", "player-handoff-template.md")
     require_text(readme, "server deployment README", "--proof-manifest")
     require_text(readme, "server deployment README", "scripts/check-deployment-proof-manifest.py deployment-proof-manifest.json")
     require_text(readme, "server deployment README", "--secrets")
@@ -1100,6 +1105,19 @@ def verify_server_deployment(config, server_deployment_dir):
     require_text(readme, "server deployment README", "agent_chat_player_delivery")
     require_text(readme, "server deployment README", "--agent-chat-delivery-log-text")
     require_text(readme, "server deployment README", "After the service is intentionally running")
+    require_text(player_handoff, "player handoff template", "# Player Handoff Template")
+    require_text(player_handoff, "player handoff template", "Share `2006scape-client.zip`")
+    require_text(player_handoff, "player handoff template", "PBKDF2 account record")
+    require_text(player_handoff, "player handoff template", "12+ character password")
+    require_text(player_handoff, "player handoff template", "--allowed-character")
+    require_text(player_handoff, "player handoff template", "scripts/account-admin.py --require-password-policy audit")
+    require_text(player_handoff, "player handoff template", "through a private channel")
+    require_text(player_handoff, "player handoff template", "Never expose raw TCP `43610`")
+    require_text(player_handoff, "player handoff template", "approved HTTPS `/agent` gateway")
+    require_text(player_handoff, "player handoff template", "Do not reuse a RuneScape.com password")
+    require_text(player_handoff, "player handoff template", "Do Not Send To Players")
+    require_text(player_handoff, "player handoff template", "2006Scape Server/data/accounts/*.json")
+    require_text(player_handoff, "player handoff template", "Bridge session files")
     require_text(proof_manifest_template, "deployment proof manifest template", "live_login_password_env")
     require_text(proof_manifest_template, "deployment proof manifest template", "live_local_login_password_env")
     require_text(proof_manifest_template, "deployment proof manifest template", "runtime_data_backup_proof_file")
