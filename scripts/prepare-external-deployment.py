@@ -79,6 +79,8 @@ def build_report_args(args, client_dist, archive, report_path, server_deployment
         argv.append("--allow-placeholder-discord-secrets")
     if args.require_full_proof:
         argv.append("--require-full-proof")
+    if args.require_encrypted_external:
+        argv.append("--require-encrypted-external")
     if args.live:
         argv.append("--live")
     if args.timeout:

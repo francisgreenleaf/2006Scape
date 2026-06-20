@@ -1144,6 +1144,14 @@ grep -q -- "--require-encrypted-external" docs/network-auth-agent-chat-design.md
 grep -q -- "--require-encrypted-external" .codex/skills/2006scape/SKILL.md
 grep -q -- "--require-encrypted-external" .codex/skills/2006scape-external-deployment/SKILL.md
 grep -q -- "--require-encrypted-external" agent-navigation/data/script_registry.json
+grep -q "require_encrypted_external:true" README.md
+grep -q "require_encrypted_external:true" AGENTS.md
+grep -q "require_encrypted_external:true" docs/deployment-networking.md
+grep -q "require_encrypted_external:true" docs/external-deployment-quickstart.md
+grep -q "require_encrypted_external:true" docs/network-auth-agent-chat-design.md
+grep -q "require_encrypted_external:true" .codex/skills/2006scape/SKILL.md
+grep -q "require_encrypted_external:true" .codex/skills/2006scape-agent-bridge-dev/SKILL.md
+grep -q "require_encrypted_external:true" .codex/skills/2006scape-external-deployment/SKILL.md
 grep -q "CLIENT_REQUIRE_ENCRYPTED_EXTERNAL" docs/deployment-networking.md
 grep -q "CLIENT_REQUIRE_ENCRYPTED_EXTERNAL" README.md
 grep -q "CLIENT_REQUIRE_ENCRYPTED_EXTERNAL" agent-navigation/data/script_registry.json
@@ -1922,9 +1930,11 @@ scripts/prepare-external-deployment.py \
     --output-dir "$TMP_DIR/prepared-client-tls-tunnel" \
     --json-output "$TMP_DIR/prepared-client-tls-tunnel/deployment-readiness-report.json" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
+    --require-encrypted-external \
     --skip-build > "$TMP_DIR/prepare-client-tls-tunnel.out"
 grep -q "prepared external deployment artifacts" "$TMP_DIR/prepare-client-tls-tunnel.out"
 grep -q "readiness_json: $TMP_DIR/prepared-client-tls-tunnel/deployment-readiness-report.json" "$TMP_DIR/prepare-client-tls-tunnel.out"
+grep -q "encrypted_external_required: yes" "$TMP_DIR/prepare-client-tls-tunnel.out"
 grep -q "runtime: not started, stopped, or restarted" "$TMP_DIR/prepare-client-tls-tunnel.out"
 test -f "$TMP_DIR/prepared-client-tls-tunnel/2006scape-client/client.properties"
 test -f "$TMP_DIR/prepared-client-tls-tunnel/2006scape-client.zip"
@@ -1953,9 +1963,11 @@ assert data["schemaVersion"] == 1, data
 assert data["status"] == "PASS", data
 assert data["deploymentProofStatus"] == "STATIC_CHECKS_PASS_NEEDS_LIVE_PROOF", data
 assert data["liveChecksRequested"] is False, data
+assert data["inputs"]["requireEncryptedExternal"] is True, data
 assert data["inputs"]["clientTlsTunnelDir"], data
 assert data["inputs"]["serverDeploymentDir"], data
 coverage = {item["requirement"]: item for item in data["proofCoverage"]}
+assert coverage["Encrypted/private external transport gate"]["status"] == "REQUESTED", coverage
 assert coverage["Public reachability and bridge non-exposure"]["status"] == "MISSING", coverage
 assert any(check["label"] == "deployment verification" and check["status"] == "PASS" for check in data["checks"]), data["checks"]
 assert data["markdownReport"].endswith("deployment-readiness-report.md"), data
@@ -1996,8 +2008,8 @@ grep -q "proof-templates/desktop-client-proof.md" "$TMP_DIR/prepared-client-tls-
 grep -q "proof-templates/runtime-data-backup-proof.md" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
 grep -q -- "--proof-manifest" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
 grep -q "scripts/check-deployment-proof-manifest.py deployment-proof-manifest.json --config ServerConfig.json --secrets '/opt/2006scape/2006Scape Server/data/secrets.json' --require-full-proof --check-files --check-env" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
-grep -q "validates desktop proof evidence and runtime-backup archive/checksum details" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
-grep -q "Final-gate manifests must keep \`require_full_proof:true\`" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
+grep -q "validates encrypted/private transport, desktop proof evidence, and runtime-backup archive/checksum details" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
+grep -q "Final-gate manifests must keep \`require_full_proof:true\` and \`require_encrypted_external:true\`" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
 grep -q "Relative proof-note paths in the manifest are resolved from the manifest file's directory" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
 grep -q "scripts/package-deployment-proof.py" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
 grep -q "## Live Chat Proof" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
@@ -2009,6 +2021,7 @@ grep -q "runtime_data_backup_proof_file" "$TMP_DIR/prepared-client-tls-tunnel/se
 grep -q "agent_chat_delivery_log_text" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/proof-templates/deployment-proof-manifest.json"
 grep -q "discord_channel_message_text" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/proof-templates/deployment-proof-manifest.json"
 grep -q '"require_full_proof": true' "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/proof-templates/deployment-proof-manifest.json"
+grep -q '"require_encrypted_external": true' "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/proof-templates/deployment-proof-manifest.json"
 grep -q "LOCAL_USERNAME" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/proof-templates/desktop-client-proof.md"
 grep -q "EXTERNAL_USERNAME" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/proof-templates/desktop-client-proof.md"
 grep -q "SCREENSHOT_PATH_OR_LOG_PATH" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/proof-templates/desktop-client-proof.md"
@@ -2471,12 +2484,28 @@ assert data["schemaVersion"] == 1, data
 assert data["status"] == "PASS", data
 assert data["deploymentProofStatus"] == "STATIC_CHECKS_PASS_NEEDS_LIVE_PROOF", data
 assert data["liveChecksRequested"] is False, data
+assert data["inputs"]["requireEncryptedExternal"] is True, data
 assert data["inputs"]["serverDeploymentDir"], data
 assert not data["inputs"].get("clientTlsTunnelDir"), data
 coverage = {item["requirement"]: item for item in data["proofCoverage"]}
+assert coverage["Encrypted/private external transport gate"]["status"] == "REQUESTED", coverage
 assert coverage["Public reachability and bridge non-exposure"]["status"] == "MISSING", coverage
 assert any(check["label"] == "deployment verification" and check["status"] == "PASS" for check in data["checks"]), data["checks"]
 PY
+scripts/verify-external-deployment.py \
+    --config "2006Scape Server/ServerConfig.Tailscale.Sample.json" \
+    --client-dist "$TMP_DIR/prepared-tailscale/2006scape-client" \
+    --archive "$TMP_DIR/prepared-tailscale/2006scape-client.zip" \
+    --server-deployment-dir "$TMP_DIR/prepared-tailscale/server-deployment" \
+    --accounts-dir "$TAILSCALE_EMPTY_ACCOUNTS" \
+    --allow-empty-accounts \
+    --allow-placeholder-network-config \
+    --require-encrypted-external > "$TMP_DIR/verify-tailscale-encrypted-required.out"
+grep -q "encrypted_external_required: yes" "$TMP_DIR/verify-tailscale-encrypted-required.out"
+scripts/deployment-readiness-status.py \
+    --readiness-json "$TMP_DIR/prepared-tailscale/deployment-readiness-report.json" \
+    --show-next-commands > "$TMP_DIR/prepared-tailscale-status.out"
+grep -q -- "--require-encrypted-external" "$TMP_DIR/prepared-tailscale-status.out"
 
 echo "Smoke-testing standalone client packaging from server config..."
 CLIENT_DIST_DIR="$TMP_DIR/2006scape-client-from-config" \
@@ -2622,8 +2651,8 @@ grep -q "## Live Chat Proof" "$TMP_DIR/sample-server-deployment/README.md"
 grep -q "proof-templates/deployment-proof-manifest.json" "$TMP_DIR/sample-server-deployment/README.md"
 grep -q -- "--proof-manifest" "$TMP_DIR/sample-server-deployment/README.md"
 grep -q "scripts/check-deployment-proof-manifest.py deployment-proof-manifest.json --config ServerConfig.json --secrets '/opt/2006scape/2006Scape Server/data/secrets.json' --require-full-proof --check-files --check-env" "$TMP_DIR/sample-server-deployment/README.md"
-grep -q "validates desktop proof evidence and runtime-backup archive/checksum details" "$TMP_DIR/sample-server-deployment/README.md"
-grep -q "Final-gate manifests must keep \`require_full_proof:true\`" "$TMP_DIR/sample-server-deployment/README.md"
+grep -q "validates encrypted/private transport, desktop proof evidence, and runtime-backup archive/checksum details" "$TMP_DIR/sample-server-deployment/README.md"
+grep -q "Final-gate manifests must keep \`require_full_proof:true\` and \`require_encrypted_external:true\`" "$TMP_DIR/sample-server-deployment/README.md"
 grep -q "Relative proof-note paths in the manifest are resolved from the manifest file's directory" "$TMP_DIR/sample-server-deployment/README.md"
 grep -q "scripts/package-deployment-proof.py" "$TMP_DIR/sample-server-deployment/README.md"
 grep -q "live_reject_login_expected_statuses" "$TMP_DIR/sample-server-deployment/README.md"
@@ -2635,6 +2664,7 @@ grep -q "live_reject_login_expected_statuses" "$TMP_DIR/sample-server-deployment
 grep -q "usually 3,4" "$TMP_DIR/sample-server-deployment/proof-templates/deployment-proof-manifest.json"
 grep -q "agent_chat_delivery_log_text" "$TMP_DIR/sample-server-deployment/proof-templates/deployment-proof-manifest.json"
 grep -q '"require_full_proof": true' "$TMP_DIR/sample-server-deployment/proof-templates/deployment-proof-manifest.json"
+grep -q '"require_encrypted_external": true' "$TMP_DIR/sample-server-deployment/proof-templates/deployment-proof-manifest.json"
 grep -q "SCREENSHOT_PATH_OR_LOG_PATH" "$TMP_DIR/sample-server-deployment/proof-templates/desktop-client-proof.md"
 grep -q "scripts/write-desktop-client-proof.py" "$TMP_DIR/sample-server-deployment/proof-templates/desktop-client-proof.md"
 grep -q "scripts/backup-runtime-data.py" "$TMP_DIR/sample-server-deployment/proof-templates/runtime-data-backup-proof.md"
@@ -2711,6 +2741,19 @@ scripts/verify-external-deployment.py \
     --server-deployment-dir "$TMP_DIR/sample-server-deployment" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config
+if scripts/verify-external-deployment.py \
+    --config "2006Scape Server/ServerConfig.External.Sample.json" \
+    --client-dist "$TMP_DIR/2006scape-client-from-config" \
+    --server-deployment-dir "$TMP_DIR/sample-server-deployment" \
+    --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
+    --allow-placeholder-network-config \
+    --require-encrypted-external > "$TMP_DIR/direct-verify-encrypted-required.out" 2>&1; then
+    echo "verify-external-deployment.py unexpectedly accepted direct_tcp with --require-encrypted-external." >&2
+    cat "$TMP_DIR/direct-verify-encrypted-required.out" >&2
+    exit 1
+fi
+grep -q -- "--require-encrypted-external requires external_transport_mode" "$TMP_DIR/direct-verify-encrypted-required.out"
+grep -q "direct_tcp is plaintext" "$TMP_DIR/direct-verify-encrypted-required.out"
 
 echo "Smoke-testing deployment verifier rejects mismatched source config hashes..."
 cp "2006Scape Server/ServerConfig.External.Sample.json" "$TMP_DIR/source-config-hash-mismatch.json"
@@ -3216,6 +3259,7 @@ args = SimpleNamespace(
     live_reject_login_username="RejectTest",
     live_reject_login_password_env="REJECT_PASSWORD",
     live_reject_login_expected_statuses="3,4",
+    require_encrypted_external=False,
     desktop_client_proof_file="",
     runtime_data_backup_proof_file="",
     live_discord=False,
@@ -3238,6 +3282,7 @@ assert updates["live_local_login_password_env"] == "LOCAL_PASSWORD", updates
 assert updates["live_local_host"] == "127.0.0.1", updates
 assert updates["live_local_port"] == 43594, updates
 assert updates["live_reject_login_expected_statuses"] == "3,4", updates
+assert "require_encrypted_external" not in updates, updates
 assert "agent_chat_log_root" not in updates, updates
 assert "discord_channel_message_limit" not in updates, updates
 assert "discord_channel_message_allow_human_author" not in updates, updates
@@ -3872,6 +3917,7 @@ def args(**overrides):
         "runtime_data_backup_proof_file": "",
         "agent_chat_delivery_log_text": "",
         "agent_chat_delivery_log_to_name": "",
+        "require_encrypted_external": True,
         "live_discord": False,
         "agent_chat_log_text": "",
         "agent_chat_blocked_log_text": "",
@@ -4164,11 +4210,13 @@ cat > "$TMP_DIR/proof-manifest-check-ok.json" <<EOF
   "agent_chat_delivery_log_text": "agent-to-player-marker",
   "agent_chat_delivery_log_to_name": "MrGem",
   "require_full_proof": true,
+  "require_encrypted_external": true,
   "_notes": "validation fixture"
 }
 EOF
 scripts/check-deployment-proof-manifest.py \
     "$TMP_DIR/proof-manifest-check-ok.json" \
+    --config "$TMP_DIR/client-tls-tunnel-config.json" \
     --require-full-proof \
     --check-files \
     --json > "$TMP_DIR/proof-manifest-check-ok.out"
@@ -4187,6 +4235,7 @@ with open(target, "w", encoding="utf-8") as handle:
 PY
 if scripts/check-deployment-proof-manifest.py \
     "$TMP_DIR/proof-manifest-check-missing-final-gate.json" \
+    --config "$TMP_DIR/client-tls-tunnel-config.json" \
     --require-full-proof > "$TMP_DIR/proof-manifest-check-missing-final-gate.out" 2>&1; then
     echo "check-deployment-proof-manifest.py unexpectedly accepted a final manifest without require_full_proof=true." >&2
     exit 1
@@ -4294,6 +4343,7 @@ data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 assert data["runtimeTouched"] is False, data
 assert data["preparedDir"] == sys.argv[2], data
 assert data["proofManifest"]["requireFullProof"] is True, data
+assert data["proofManifest"]["requireEncryptedExternal"] is True, data
 assert data["readiness"]["deploymentProofStatus"] == "STATIC_CHECKS_PASS_NEEDS_LIVE_PROOF", data
 PY
 if scripts/package-deployment-proof.py \
@@ -4306,7 +4356,7 @@ fi
 grep -q "requires final deploymentProofStatus" "$TMP_DIR/deployment-proof-bundle-require-full-partial.out"
 PREPARED_FULL_PROOF_DIR="$TMP_DIR/prepared-full-proof-dir"
 cp -R "$PREPARED_PROOF_DIR" "$PREPARED_FULL_PROOF_DIR"
-python3 - "$PREPARED_PROOF_DIR/deployment-readiness-report.json" "$PREPARED_FULL_PROOF_DIR/deployment-readiness-report.json" <<'PY'
+python3 - "$PREPARED_PROOF_DIR/deployment-readiness-report.json" "$PREPARED_FULL_PROOF_DIR/deployment-readiness-report.json" "$TMP_DIR/client-tls-tunnel-config.json" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -4316,7 +4366,10 @@ data = json.loads(source.read_text(encoding="utf-8"))
 data["deploymentProofStatus"] = "LIVE_NETWORK_AUTH_CLIENT_CHAT_BACKUP_PROOF_RECORDED_DISCORD_NOT_REQUESTED"
 data["liveChecksRequested"] = True
 data["remainingLiveProof"] = []
+data["inputs"]["config"] = sys.argv[3]
+data["inputs"]["requireEncryptedExternal"] = True
 status_by_requirement = {
+    "Encrypted/private external transport gate": "REQUESTED",
     "Public reachability and bridge non-exposure": "REQUESTED",
     "External PBKDF2 game-protocol login": "REQUESTED",
     "Concurrent external plus same-host local protocol login": "REQUESTED",
@@ -4349,7 +4402,9 @@ data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 assert data["runtimeTouched"] is False, data
 assert data["readiness"]["deploymentProofStatus"] == "LIVE_NETWORK_AUTH_CLIENT_CHAT_BACKUP_PROOF_RECORDED_DISCORD_NOT_REQUESTED", data
 assert data["proofManifest"]["requireFullProof"] is True, data
+assert data["proofManifest"]["requireEncryptedExternal"] is True, data
 assert data["finalProofCheck"]["status"] == "PASS", data
+assert data["finalProofCheck"]["requireEncryptedExternal"] is True, data
 checks = {check["field"]: check for check in data["finalProofCheck"]["proofFileChecks"]}
 assert checks["desktop_client_proof_file"]["status"] == "PASS", checks
 assert checks["runtime_data_backup_proof_file"]["status"] == "PASS", checks
@@ -4405,11 +4460,13 @@ cat > "$TMP_DIR/proof-manifest-check-missing-reject-statuses.json" <<EOF
   "runtime_data_backup_proof_file": "$TMP_DIR/runtime-data-backup-proof.md",
   "agent_chat_delivery_log_text": "agent-to-player-marker",
   "agent_chat_delivery_log_to_name": "MrGem",
-  "require_full_proof": true
+  "require_full_proof": true,
+  "require_encrypted_external": true
 }
 EOF
 if scripts/check-deployment-proof-manifest.py \
     "$TMP_DIR/proof-manifest-check-missing-reject-statuses.json" \
+    --config "$TMP_DIR/client-tls-tunnel-config.json" \
     --require-full-proof > "$TMP_DIR/proof-manifest-check-missing-reject-statuses.out" 2>&1; then
     echo "check-deployment-proof-manifest.py unexpectedly accepted missing reject-login expected statuses." >&2
     exit 1
@@ -4429,6 +4486,7 @@ fi
 grep -q "backup archive sha256 mismatch" "$TMP_DIR/proof-manifest-check-bad-runtime-proof.out"
 if scripts/check-deployment-proof-manifest.py \
     "$TMP_DIR/proof-manifest-check-ok.json" \
+    --config "$TMP_DIR/client-tls-tunnel-config.json" \
     --require-full-proof \
     --check-env > "$TMP_DIR/proof-manifest-check-missing-env.out" 2>&1; then
     echo "check-deployment-proof-manifest.py unexpectedly accepted missing password env vars." >&2
@@ -4438,6 +4496,7 @@ grep -q "environment variable named by live_login_password_env is not set" "$TMP
 EXTERNAL_PASSWORD=external LOCAL_PASSWORD=local REJECT_PASSWORD=reject \
     scripts/check-deployment-proof-manifest.py \
     "$TMP_DIR/proof-manifest-check-ok.json" \
+    --config "$TMP_DIR/client-tls-tunnel-config.json" \
     --require-full-proof \
     --check-env > "$TMP_DIR/proof-manifest-check-env-ok.out"
 grep -q "status: PASS" "$TMP_DIR/proof-manifest-check-env-ok.out"
@@ -4454,7 +4513,10 @@ fi
 grep -q "placeholder value" "$TMP_DIR/proof-manifest-check-placeholder.out"
 cat > "$TMP_DIR/proof-manifest-check-discord-config.json" <<'EOF'
 {
-  "agent_chat_discord_enabled": true
+  "agent_chat_discord_enabled": true,
+  "external_transport_mode": "client_tls_tunnel",
+  "require_secure_external_transport": true,
+  "secure_external_transport_confirmed": true
 }
 EOF
 if scripts/check-deployment-proof-manifest.py \
@@ -4479,6 +4541,7 @@ cat > "$TMP_DIR/proof-manifest-check-discord.json" <<EOF
   "runtime_data_backup_proof_file": "$TMP_DIR/runtime-data-backup-proof.md",
   "agent_chat_delivery_log_text": "agent-to-player-marker",
   "agent_chat_delivery_log_to_name": "MrGem",
+  "require_encrypted_external": true,
   "live_discord": true,
   "agent_chat_log_text": "discord-to-server-marker",
   "agent_chat_log_from_type": "discord",
@@ -4489,6 +4552,7 @@ cat > "$TMP_DIR/proof-manifest-check-discord.json" <<EOF
 EOF
 if scripts/check-deployment-proof-manifest.py \
     "$TMP_DIR/proof-manifest-check-discord.json" \
+    --config "$TMP_DIR/client-tls-tunnel-config.json" \
     --require-full-proof \
     --blocked-routing-required > "$TMP_DIR/proof-manifest-check-blocked-missing.out" 2>&1; then
     echo "check-deployment-proof-manifest.py unexpectedly accepted missing blocked-routing proof field." >&2
@@ -4515,6 +4579,7 @@ args = SimpleNamespace(
         allow_placeholder_network_config=False,
         allow_placeholder_discord_secrets=False,
         require_full_proof=False,
+        require_encrypted_external=False,
         live=False,
         timeout=2.0,
         tls_sni_host="",
@@ -4599,6 +4664,7 @@ assert "--runtime-data-backup-proof-file" in argv, argv
 index = argv.index("--runtime-data-backup-proof-file")
 assert argv[index + 1] == "runtime-data-backup-proof.md", argv
 args.require_full_proof = True
+args.require_encrypted_external = True
 argv = module.build_report_args(
         args,
         Path("client-dist"),
@@ -4607,8 +4673,10 @@ argv = module.build_report_args(
         Path("server-deployment"),
 )
 assert "--require-full-proof" in argv, argv
+assert "--require-encrypted-external" in argv, argv
 values = module.merged_proof_manifest_values(args)
 assert values["require_full_proof"] is True, values
+assert values["require_encrypted_external"] is True, values
 assert values["agent_chat_log_text"] == "discord-marker", values
 assert values["agent_chat_delivery_log_text"] == "delivery-marker", values
 assert values["runtime_data_backup_proof_file"] == "runtime-data-backup-proof.md", values

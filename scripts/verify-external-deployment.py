@@ -30,6 +30,7 @@ MIN_EXTERNAL_PBKDF2_ITERATIONS = 120000
 MIN_PASSWORD_LENGTH = 12
 MIN_PASSWORD_POLICY_VERSION = 1
 AGENT_BRIDGE_PORT = 43610
+ENCRYPTED_EXTERNAL_TRANSPORTS = ("tailscale", "wireguard", "vpn", "client_tls_tunnel")
 ACCOUNT_USERNAME_RE = re.compile(r"[a-z0-9 .]{1,12}")
 ACCOUNT_ROLE_RE = re.compile(r"[A-Za-z0-9_.:-]{1,32}")
 DISCORD_USER_ID_RE = re.compile(r"\d{15,25}")
@@ -475,6 +476,26 @@ def expected_client_dirs(expected_files):
     return dirs
 
 
+def verify_encrypted_external_config(config):
+    mode = string_value(config, "external_transport_mode").lower()
+    if mode not in ENCRYPTED_EXTERNAL_TRANSPORTS:
+        fail(
+            "--require-encrypted-external requires external_transport_mode to be one of {}; "
+            "direct_tcp is plaintext and should only be used for explicit no-install smoke tests".format(
+                ", ".join(ENCRYPTED_EXTERNAL_TRANSPORTS)
+            )
+        )
+    if config.get("require_secure_external_transport") is not True:
+        fail("--require-encrypted-external requires require_secure_external_transport=true")
+    if config.get("secure_external_transport_confirmed") is not True:
+        fail("--require-encrypted-external requires secure_external_transport_confirmed=true")
+
+
+def verify_encrypted_external_manifest(manifest):
+    if manifest.get("encrypted_external_required", "") != "1":
+        fail("client manifest must record encrypted_external_required=1 when --require-encrypted-external is used")
+
+
 def require_no_symlink_under(path, label, root):
     current = Path(path)
     root = Path(root)
@@ -496,7 +517,7 @@ def run_preflight(config_path, allow_wildcard_bind):
         fail("preflight failed for {}{}{}".format(config_path, ": " if output else "", output))
 
 
-def verify_client_package(config, config_path, client_dist, warnings):
+def verify_client_package(config, config_path, client_dist, warnings, require_encrypted_external=False):
     require_directory(client_dist, "client distribution directory")
     require_not_symlink(client_dist, "client distribution directory")
     for relative in sorted(expected_client_files(config)):
@@ -516,6 +537,8 @@ def verify_client_package(config, config_path, client_dist, warnings):
 
     properties = read_key_values(client_dist / "client.properties")
     manifest = read_key_values(client_dist / "MANIFEST.txt")
+    if require_encrypted_external:
+        verify_encrypted_external_manifest(manifest)
     expected_client_host = effective_client_host(config)
     expect_equal(properties.get("server.host", ""), expected_client_host, "client server.host")
     expect_equal(properties.get("server.port", ""), int_value(config, "game_port", 43594), "client server.port")
@@ -1037,10 +1060,13 @@ def verify_server_deployment(config, server_deployment_dir):
                 "agent_chat_delivery_log_text",
                 "agent_chat_delivery_log_to_name",
                 "require_full_proof",
+                "require_encrypted_external",
             },
         )
         if proof_manifest_values.get("require_full_proof") is not True:
             fail("deployment proof manifest template must set require_full_proof=true")
+        if proof_manifest_values.get("require_encrypted_external") is not True:
+            fail("deployment proof manifest template must set require_encrypted_external=true")
     except ValueError as exc:
         fail("deployment proof manifest template is invalid: {}".format(exc))
     require_text(desktop_proof_template, "desktop client proof template", "LOCAL_USERNAME")
@@ -1579,6 +1605,9 @@ def main():
             help="Allow tracked sample Discord token/channel placeholders. Source validation only; do not use for real deployments.")
     parser.add_argument("--allow-placeholder-network-config", action="store_true",
             help="Allow tracked sample public_game_host/bind host placeholders. Source validation only; do not use for real deployments.")
+    parser.add_argument("--require-encrypted-external", action="store_true",
+            help=("Require an encrypted/private external transport and a package manifest produced with "
+                  "CLIENT_REQUIRE_ENCRYPTED_EXTERNAL=1. Allows tailscale, wireguard, vpn, and client_tls_tunnel; refuses plaintext direct_tcp."))
     args = parser.parse_args()
 
     config_path = Path(args.config)
@@ -1593,10 +1622,12 @@ def main():
     config = load_json(config_path)
     if not bool(config.get("external_players_enabled", False)):
         fail("external_players_enabled is false in {}".format(config_path))
+    if args.require_encrypted_external:
+        verify_encrypted_external_config(config)
     args.tls_sni_host = validate_tls_sni_host(args.tls_sni_host, args.allow_placeholder_network_config)
     run_preflight(config_path, args.allow_wildcard_bind)
     verify_network_placeholders(config, args.allow_placeholder_network_config)
-    verify_client_package(config, config_path, client_dist, warnings)
+    verify_client_package(config, config_path, client_dist, warnings, args.require_encrypted_external)
     verify_client_archive(config, client_dist, archive_path)
     verify_server_deployment(config, server_deployment_dir)
     verify_client_tls_tunnel_operator(
@@ -1692,6 +1723,8 @@ def main():
         print("server_deployment: {}".format(server_deployment_dir))
     if client_tls_tunnel_dir is not None:
         print("client_tls_tunnel: {}".format(client_tls_tunnel_dir))
+    if args.require_encrypted_external:
+        print("encrypted_external_required: yes")
     if args.live:
         if string_value(config, "external_transport_mode").lower() == "client_tls_tunnel":
             print("live: checked public game/cache TLS handshakes and bridge non-exposure")

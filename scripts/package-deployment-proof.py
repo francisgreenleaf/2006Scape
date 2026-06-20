@@ -238,6 +238,7 @@ def validate_final_proof_bundle(readiness_data, manifest_values, proof_manifest_
     checker = load_manifest_checker()
     checker_args = argparse.Namespace(
         require_full_proof=True,
+        require_encrypted_external=True,
         discord_required=proof_status == FULL_DISCORD_PROOF_STATUS,
         blocked_routing_required=(
             proof_status == FULL_DISCORD_PROOF_STATUS
@@ -399,6 +400,7 @@ def main():
             "path": str(proof_manifest),
             "fieldCount": len(manifest_values),
             "requireFullProof": manifest_values.get("require_full_proof") is True,
+            "requireEncryptedExternal": manifest_values.get("require_encrypted_external") is True,
             "live": manifest_values.get("live") is True,
             "liveDiscord": manifest_values.get("live_discord") is True,
         }
@@ -409,6 +411,7 @@ def main():
         result = validate_final_proof_bundle(readiness_data, manifest_values, args.proof_manifest)
         metadata["finalProofCheck"] = {
             "status": result["status"],
+            "requireEncryptedExternal": result["requireEncryptedExternal"],
             "discordRequired": result["discordRequired"],
             "blockedRoutingRequired": result["blockedRoutingRequired"],
             "proofFileChecks": result.get("proofFileChecks", []),

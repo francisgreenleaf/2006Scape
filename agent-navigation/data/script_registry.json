@@ -1404,7 +1404,7 @@
       "name": "Deployment Proof Bundle",
       "path": "scripts/package-deployment-proof.py",
       "kind": "deployment_tool",
-      "description": "Packages non-secret deployment proof handoff artifacts from a prepared deployment directory or explicit readiness/proof paths, including reports, a filled proof manifest, proof notes, and selected client/server metadata while deliberately excluding runtime backup archives, character saves, account records, and secrets. Use --require-full-proof for the final external-ready bundle.",
+      "description": "Packages non-secret deployment proof handoff artifacts from a prepared deployment directory or explicit readiness/proof paths, including reports, a filled proof manifest, proof notes, and selected client/server metadata while deliberately excluding runtime backup archives, character saves, account records, and secrets. Use --require-full-proof for the final external-ready bundle; it also validates the manifest's encrypted/private transport gate.",
       "aliases": [
         "deployment proof bundle",
         "proof bundle",
@@ -1566,7 +1566,7 @@
       "name": "External Deployment Verify",
       "path": "scripts/verify-external-deployment.py",
       "kind": "deployment_tool",
-      "description": "Verifies packaged client artifacts, checksums, archive contents, account records, Discord secrets, server deployment templates, optional client_tls_tunnel operator stunnel templates, and optional live reachability/login proof.",
+      "description": "Verifies packaged client artifacts, checksums, archive contents, account records, Discord secrets, server deployment templates, optional client_tls_tunnel operator stunnel templates, optional encrypted/private transport gating, and optional live reachability/login proof.",
       "aliases": [
         "verify external deployment",
         "external deployment verify",
@@ -1582,7 +1582,7 @@
       ],
       "examples": [
         "python3 agent-navigation/tools/script_registry.py run verify external deployment -- --config \"2006Scape Server/ServerConfig.json\" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --client-tls-tunnel-dir dist/client-tls-tunnel-operator",
-        "python3 scripts/verify-external-deployment.py --config \"2006Scape Server/ServerConfig.json\" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --live"
+        "python3 scripts/verify-external-deployment.py --config \"2006Scape Server/ServerConfig.json\" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --require-encrypted-external --live"
       ]
     },
     {
@@ -1665,7 +1665,7 @@
       "name": "Deployment Readiness Report",
       "path": "scripts/deployment-readiness-report.py",
       "kind": "deployment_tool",
-      "description": "Writes redacted Markdown and optional JSON readiness reports that separate command success from live/manual deployment proof coverage for external-player releases, including optional client_tls_tunnel operator template verification, JSON proof-manifest input, and success-only --update-proof-manifest output.",
+      "description": "Writes redacted Markdown and optional JSON readiness reports that separate command success from live/manual deployment proof coverage for external-player releases, including optional encrypted/private transport gating, optional client_tls_tunnel operator template verification, JSON proof-manifest input, and success-only --update-proof-manifest output.",
       "aliases": [
         "deployment readiness",
         "readiness report",
@@ -1680,7 +1680,7 @@
       ],
       "examples": [
         "python3 agent-navigation/tools/script_registry.py run deployment readiness -- --config \"2006Scape Server/ServerConfig.json\" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --client-tls-tunnel-dir dist/client-tls-tunnel-operator",
-        "python3 scripts/deployment-readiness-report.py --config \"2006Scape Server/ServerConfig.json\" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --require-full-proof",
+        "python3 scripts/deployment-readiness-report.py --config \"2006Scape Server/ServerConfig.json\" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --require-full-proof --require-encrypted-external",
         "python3 scripts/deployment-readiness-report.py --config \"2006Scape Server/ServerConfig.json\" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --proof-manifest dist/deployment-proof-manifest.json",
         "python3 scripts/deployment-readiness-report.py --config \"2006Scape Server/ServerConfig.json\" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --live --update-proof-manifest dist/external-deployment/deployment-proof-manifest.json",
         "python3 scripts/deployment-readiness-report.py --config \"2006Scape Server/ServerConfig.json\" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --json-output dist/deployment-readiness-report.json"
@@ -1718,7 +1718,7 @@
       "name": "Deployment Proof Manifest Check",
       "path": "scripts/check-deployment-proof-manifest.py",
       "kind": "deployment_tool",
-      "description": "Checks a copied deployment-proof-manifest JSON for known fields, placeholder values, raw secret mistakes, full-proof completeness, optional Discord/blocked-routing proof fields, and optional env/file presence without running deployment verification.",
+      "description": "Checks a copied deployment-proof-manifest JSON for known fields, placeholder values, raw secret mistakes, full-proof completeness, encrypted/private transport intent, optional Discord/blocked-routing proof fields, and optional env/file presence without running deployment verification.",
       "aliases": [
         "deployment proof manifest check",
         "proof manifest check",

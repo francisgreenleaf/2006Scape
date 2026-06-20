@@ -427,6 +427,8 @@ def blocked_routing_proof_required(args):
 
 def missing_proof_codes(args):
     missing = []
+    if not args.require_encrypted_external:
+        missing.append("ENCRYPTED_EXTERNAL_TRANSPORT_GATE")
     if not args.live:
         missing.append("PUBLIC_REACHABILITY_AND_BRIDGE_NON_EXPOSURE")
     if not (args.live and args.live_login_username):
@@ -474,6 +476,8 @@ FULL_PROOF_STATUSES = (
 
 def remaining_live_proof_items(args):
     items = []
+    if not args.require_encrypted_external:
+        items.append("Rerun packaging/readiness with `--require-encrypted-external` before distributing a player client that must avoid plaintext direct_tcp.")
     if not args.live:
         items.append("The rebuilt server is intentionally restarted on the target host and public reachability plus bridge non-exposure are checked with `--live`.")
     if not args.runtime_data_backup_proof_file:
@@ -577,6 +581,12 @@ def proof_coverage_items(args):
             "preflight, account audit, and deployment verifier commands",
         ),
         proof_item(
+            "Encrypted/private external transport gate",
+            "REQUESTED" if args.require_encrypted_external else "MISSING",
+            "`--require-encrypted-external`" if args.require_encrypted_external
+            else "rerun prepare/readiness/verify with `--require-encrypted-external` for player-distributable encrypted packages",
+        ),
+        proof_item(
             "Public reachability and bridge non-exposure",
             "REQUESTED" if args.live else "MISSING",
             "`--live`" if args.live else "rerun with `--live` after the target runtime is intentionally running",
@@ -675,6 +685,8 @@ def add_manifest_value(updates, field, value):
 
 def proof_manifest_updates_from_args(args):
     updates = {}
+    if args.require_encrypted_external:
+        updates["require_encrypted_external"] = True
     if args.live:
         updates["live"] = True
     add_manifest_value(updates, "tls_sni_host", args.tls_sni_host)
@@ -770,6 +782,7 @@ def report_inputs(args, archive):
         "config": display_path(args.config),
         "clientDist": display_path(args.client_dist),
         "archive": display_path(archive),
+        "requireEncryptedExternal": bool(args.require_encrypted_external),
         "serverDeploymentDir": display_path(args.server_deployment_dir) if args.server_deployment_dir else "",
         "clientTlsTunnelDir": display_path(args.client_tls_tunnel_dir) if args.client_tls_tunnel_dir else "",
         "accountsDir": display_path(args.accounts_dir),
@@ -841,6 +854,7 @@ def write_report(args, checks, skipped_account_audit):
         "- gitRevision: `{}`".format(revision),
         "- status: `{}`".format("PASS" if all_passed else "FAIL"),
         "- deploymentProofStatus: `{}`".format(proof_status),
+        "- requireEncryptedExternal: `{}`".format("yes" if args.require_encrypted_external else "no"),
         "- liveChecksRequested: `{}`".format("yes" if args.live else "no"),
         "- liveDiscordRequested: `{}`".format("yes" if args.live_discord else "no"),
         "",
@@ -849,6 +863,7 @@ def write_report(args, checks, skipped_account_audit):
         "- config: `{}`".format(display_path(args.config)),
         "- clientDist: `{}`".format(display_path(args.client_dist)),
         "- archive: `{}`".format(display_path(archive)),
+        "- requireEncryptedExternal: `{}`".format("yes" if args.require_encrypted_external else "no"),
         "- serverDeploymentDir: `{}`".format(display_path(args.server_deployment_dir) if args.server_deployment_dir else "(not supplied)"),
         "- clientTlsTunnelDir: `{}`".format(display_path(args.client_tls_tunnel_dir) if args.client_tls_tunnel_dir else "(not supplied)"),
         "- accountsDir: `{}`".format(display_path(args.accounts_dir)),
@@ -943,6 +958,8 @@ def build_verify_args(args):
         argv.extend(["--server-deployment-dir", args.server_deployment_dir])
     if args.client_tls_tunnel_dir:
         argv.extend(["--client-tls-tunnel-dir", args.client_tls_tunnel_dir])
+    if args.require_encrypted_external:
+        argv.append("--require-encrypted-external")
     if args.allow_empty_accounts:
         argv.append("--allow-empty-accounts")
     if args.allow_wildcard_bind:
@@ -1123,6 +1140,9 @@ def main():
     parser.add_argument("--require-full-proof", action="store_true",
             help=("Exit non-zero unless deploymentProofStatus is a full live proof status. "
                   "Use for final deployment gates, not partial evidence reports."))
+    parser.add_argument("--require-encrypted-external", action="store_true",
+            help=("Require verifier/package proof that the player-distributable external client uses an encrypted/private transport. "
+                  "Allows tailscale, wireguard, vpn, and client_tls_tunnel; refuses plaintext direct_tcp."))
     parser.add_argument("--live", action="store_true")
     parser.add_argument("--timeout", type=float, default=2.0)
     parser.add_argument("--tls-sni-host", default="")

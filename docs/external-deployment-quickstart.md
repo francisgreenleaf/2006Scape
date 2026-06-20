@@ -309,6 +309,7 @@ After live network/auth proof, runtime backup proof, desktop-client proof, and d
 ```sh
 cp dist/external-deployment/server-deployment/proof-templates/deployment-proof-manifest.json dist/external-deployment/deployment-proof-manifest.json
 # Edit the copied manifest: replace proof paths, usernames, markers, and password env var names.
+# Keep require_full_proof:true and require_encrypted_external:true for a player-distributable final gate.
 scripts/check-deployment-proof-manifest.py \
   dist/external-deployment/deployment-proof-manifest.json \
   --config "2006Scape Server/ServerConfig.json" \
@@ -323,7 +324,7 @@ scripts/deployment-readiness-report.py \
   --proof-manifest dist/external-deployment/deployment-proof-manifest.json
 ```
 
-The manifest stores proof file paths, live-test usernames, unique markers, and password environment-variable names. Relative proof-note paths in the manifest resolve from the manifest's directory, so `desktop-client-proof.md` and `runtime-data-backup-proof.md` can be short filenames when they sit beside `dist/external-deployment/deployment-proof-manifest.json`. Do not put passwords, Discord tokens, or other secrets in it. CLI flags still override manifest fields when one proof value needs to be adjusted for a rerun.
+The manifest stores proof file paths, live-test usernames, unique markers, password environment-variable names, and final-gate booleans. Relative proof-note paths in the manifest resolve from the manifest's directory, so `desktop-client-proof.md` and `runtime-data-backup-proof.md` can be short filenames when they sit beside `dist/external-deployment/deployment-proof-manifest.json`. Do not put passwords, Discord tokens, or other secrets in it. CLI flags still override manifest fields when one proof value needs to be adjusted for a rerun.
 
 For review or handoff, package the non-secret proof artifacts after the report is written:
 
@@ -332,7 +333,7 @@ scripts/package-deployment-proof.py \
   --prepared-dir dist/external-deployment
 ```
 
-This bundle intentionally excludes runtime backup archives, character saves, account records, `data/secrets.json`, passwords, bridge tokens, and Discord bot tokens. Keep the real runtime backup archive in the operator's secure backup location. For the final external-ready handoff, add `--require-full-proof`; it fails unless the readiness JSON records a full live proof status and the proof manifest passes full-proof plus proof-file validation.
+This bundle intentionally excludes runtime backup archives, character saves, account records, `data/secrets.json`, passwords, bridge tokens, and Discord bot tokens. Keep the real runtime backup archive in the operator's secure backup location. For the final external-ready handoff, add `--require-full-proof`; it fails unless the readiness JSON records a full live proof status and the proof manifest passes full-proof, encrypted-transport, and proof-file validation.
 
 To re-check status later without rerunning probes or touching runtime:
 
