@@ -2465,6 +2465,7 @@ grep -q "runtime: not started, stopped, or restarted" "$TMP_DIR/prepare-tailscal
 test -f "$TMP_DIR/prepared-tailscale/2006scape-client/client.properties"
 test -f "$TMP_DIR/prepared-tailscale/2006scape-client.zip"
 test -f "$TMP_DIR/prepared-tailscale/server-deployment/firewall-ufw-example.sh"
+test -f "$TMP_DIR/prepared-tailscale/server-deployment/tailscale-policy-grants.example.json"
 test -f "$TMP_DIR/prepared-tailscale/server-deployment/proof-templates/deployment-proof-manifest.json"
 test -f "$TMP_DIR/prepared-tailscale/deployment-readiness-report.md"
 test -f "$TMP_DIR/prepared-tailscale/deployment-readiness-report.json"
@@ -2473,6 +2474,17 @@ grep -q "encrypted_external_required=1" "$TMP_DIR/prepared-tailscale/2006scape-c
 grep -q "Tailscale mode: expose game/cache only on the Tailscale interface" "$TMP_DIR/prepared-tailscale/server-deployment/firewall-ufw-example.sh"
 grep -q "ufw allow in on tailscale0" "$TMP_DIR/prepared-tailscale/server-deployment/firewall-ufw-example.sh"
 grep -q "Do not expose 2006Scape AgentBridgeServer" "$TMP_DIR/prepared-tailscale/server-deployment/firewall-ufw-example.sh"
+grep -q "## Tailscale Access Policy" "$TMP_DIR/prepared-tailscale/server-deployment/README.md"
+grep -q "tailscale-policy-grants.example.json" "$TMP_DIR/prepared-tailscale/server-deployment/README.md"
+grep -q '"group:2006scape-players"' "$TMP_DIR/prepared-tailscale/server-deployment/tailscale-policy-grants.example.json"
+grep -q '"tag:2006scape-server"' "$TMP_DIR/prepared-tailscale/server-deployment/tailscale-policy-grants.example.json"
+grep -q '"tcp:43594"' "$TMP_DIR/prepared-tailscale/server-deployment/tailscale-policy-grants.example.json"
+grep -q '"tcp:43595"' "$TMP_DIR/prepared-tailscale/server-deployment/tailscale-policy-grants.example.json"
+grep -q '"tcp:8080"' "$TMP_DIR/prepared-tailscale/server-deployment/tailscale-policy-grants.example.json"
+if grep -q '"tcp:43610"' "$TMP_DIR/prepared-tailscale/server-deployment/tailscale-policy-grants.example.json"; then
+    echo "Tailscale policy example must not grant the agent bridge port." >&2
+    exit 1
+fi
 grep -q 'deploymentProofStatus: `STATIC_CHECKS_PASS_NEEDS_LIVE_PROOF`' "$TMP_DIR/prepared-tailscale/deployment-readiness-report.md"
 python3 - "$TMP_DIR/prepared-tailscale/deployment-readiness-report.json" <<'PY'
 import json

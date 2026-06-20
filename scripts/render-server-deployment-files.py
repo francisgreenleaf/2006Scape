@@ -294,6 +294,37 @@ def firewall_text(config, args):
     return "\n".join(lines)
 
 
+def tailscale_policy_grants_text(config):
+    ports = ["tcp:{}".format(port_value) for _, port_value in firewall_ports(config)]
+    return json.dumps(
+        {
+            "groups": {
+                "group:2006scape-players": [
+                    "player@example.com",
+                ],
+            },
+            "tagOwners": {
+                "tag:2006scape-server": [
+                    "autogroup:admin",
+                ],
+            },
+            "grants": [
+                {
+                    "src": [
+                        "group:2006scape-players",
+                    ],
+                    "dst": [
+                        "tag:2006scape-server",
+                    ],
+                    "ip": ports,
+                },
+            ],
+        },
+        indent=2,
+        sort_keys=True,
+    ) + "\n"
+
+
 def readme_text(config, args):
     transport = mode(config) or "unspecified"
     public_host = str(config.get("public_game_host", "") or "").strip() or "(not configured)"
@@ -315,6 +346,7 @@ def readme_text(config, args):
         "- `2006scape-server.env`: systemd environment file.",
         "- `2006scape-server.service`: systemd unit that runs `scripts/start-server.sh` from the deployed repo.",
         "- `firewall-ufw-example.sh`: dry-run UFW commands for the selected transport.",
+        "- `tailscale-policy-grants.example.json`: Tailscale grants example for this deployment's game/cache ports; present only for Tailscale transport.",
         "- `proof-templates/deployment-proof-manifest.json`: fill-in manifest for live/manual readiness proof flags.",
         "- `proof-templates/desktop-client-proof.md`: fill-in note for same-host plus external Java client coexistence evidence.",
         "- `proof-templates/runtime-data-backup-proof.md`: fill-in note for runtime data backup evidence.",
@@ -444,6 +476,17 @@ def readme_text(config, args):
         "",
         "After the service is intentionally running, run the deployment verifier with `--live` from a machine that has the selected transport path.",
     ]
+    if transport == "tailscale":
+        ports_text = ", ".join("tcp:{}".format(port_value) for _, port_value in firewall_ports(config))
+        lines.extend([
+            "",
+            "## Tailscale Access Policy",
+            "",
+            "`tailscale-policy-grants.example.json` is a copy/paste starting point for the tailnet policy file.",
+            "It grants `group:2006scape-players` access to `tag:2006scape-server` only on this deployment's game/cache ports: {}.".format(ports_text),
+            "Replace the placeholder player email, group name, or server tag to match your tailnet before applying it.",
+            "Do not add TCP `{}` to that grant; the agent bridge must stay loopback-only and reachable only through the approved HTTPS gateway when remote agent mode is used.".format(port(config, "agent_bridge_port", 43610)),
+        ])
     return "\n".join(lines) + "\n"
 
 
@@ -567,6 +610,11 @@ def main():
     write_text(output_dir / "2006scape-server.service", service_text(args))
     write_text(output_dir / "2006scape-server.env", env_text(args))
     write_text(output_dir / "firewall-ufw-example.sh", firewall_text(config, args), 0o755)
+    tailscale_policy_path = output_dir / "tailscale-policy-grants.example.json"
+    if mode(config) == "tailscale":
+        write_text(tailscale_policy_path, tailscale_policy_grants_text(config))
+    elif tailscale_policy_path.exists():
+        tailscale_policy_path.unlink()
     write_text(output_dir / "README.md", readme_text(config, args))
     write_text(output_dir / "proof-templates" / "deployment-proof-manifest.json", deployment_proof_manifest_template_text(config))
     write_text(output_dir / "proof-templates" / "desktop-client-proof.md", desktop_client_proof_template_text(config, args))

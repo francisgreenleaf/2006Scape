@@ -893,9 +893,11 @@ def verify_server_deployment(config, server_deployment_dir):
     env_file = server_deployment_dir / "2006scape-server.env"
     firewall = server_deployment_dir / "firewall-ufw-example.sh"
     readme = server_deployment_dir / "README.md"
+    tailscale_policy = server_deployment_dir / "tailscale-policy-grants.example.json"
     proof_manifest_template = server_deployment_dir / "proof-templates" / "deployment-proof-manifest.json"
     desktop_proof_template = server_deployment_dir / "proof-templates" / "desktop-client-proof.md"
     backup_proof_template = server_deployment_dir / "proof-templates" / "runtime-data-backup-proof.md"
+    mode = string_value(config, "external_transport_mode").lower()
 
     for path, label in (
         (config_copy, "server deployment config copy"),
@@ -908,17 +910,25 @@ def verify_server_deployment(config, server_deployment_dir):
         (backup_proof_template, "runtime data backup proof template"),
     ):
         require_not_symlink(path, label)
+    if mode == "tailscale":
+        require_not_symlink(tailscale_policy, "Tailscale grants policy example")
+    elif tailscale_policy.exists():
+        fail("server deployment should not include Tailscale grants policy example for {} transport".format(mode))
     require_file(config_copy, "server deployment config copy")
     require_file(service, "server deployment systemd unit")
     require_file(env_file, "server deployment environment file")
     require_executable(firewall, "server deployment firewall helper")
     require_file(readme, "server deployment README")
+    if mode == "tailscale":
+        require_file(tailscale_policy, "Tailscale grants policy example")
     require_file(proof_manifest_template, "deployment proof manifest template")
     require_file(desktop_proof_template, "desktop client proof template")
     require_file(backup_proof_template, "runtime data backup proof template")
     require_not_executable(service, "server deployment systemd unit")
     require_not_executable(env_file, "server deployment environment file")
     require_not_executable(readme, "server deployment README")
+    if mode == "tailscale":
+        require_not_executable(tailscale_policy, "Tailscale grants policy example")
     require_not_executable(proof_manifest_template, "deployment proof manifest template")
     require_not_executable(desktop_proof_template, "desktop client proof template")
     require_not_executable(backup_proof_template, "runtime data backup proof template")
@@ -997,13 +1007,34 @@ def verify_server_deployment(config, server_deployment_dir):
     require_text(firewall, "server deployment firewall helper", "Default is dry-run")
     require_text(firewall, "server deployment firewall helper", "Do not expose 2006Scape AgentBridgeServer")
     require_text(firewall, "server deployment firewall helper", str(int_value(config, "agent_bridge_port", AGENT_BRIDGE_PORT)))
-    mode = string_value(config, "external_transport_mode").lower()
     if mode == "client_tls_tunnel":
         require_text(firewall, "server deployment firewall helper", "client_tls_tunnel mode")
     elif mode == "direct_tcp":
         require_text(firewall, "server deployment firewall helper", "direct_tcp mode")
     elif mode == "tailscale":
         require_text(firewall, "server deployment firewall helper", "Tailscale mode")
+        require_text(readme, "server deployment README", "## Tailscale Access Policy")
+        require_text(readme, "server deployment README", "tailscale-policy-grants.example.json")
+        tailscale_policy_json = load_json(tailscale_policy)
+        grant_ports = ["tcp:{}".format(int_value(config, key, fallback)) for key, fallback in (
+            ("game_port", 43594),
+            ("http_port", 8080),
+            ("jaggrab_port", 43595),
+        )]
+        if config.get("file_server", True) is False:
+            grant_ports = grant_ports[:1]
+        grants = tailscale_policy_json.get("grants")
+        if not isinstance(grants, list) or not grants:
+            fail("Tailscale grants policy example must contain at least one grant")
+        grant = grants[0]
+        if not isinstance(grant, dict):
+            fail("Tailscale grants policy example first grant must be an object")
+        if grant.get("ip") != grant_ports:
+            fail("Tailscale grants policy example must grant only game/cache ports: {}".format(", ".join(grant_ports)))
+        if "tcp:{}".format(int_value(config, "agent_bridge_port", AGENT_BRIDGE_PORT)) in grant.get("ip", []):
+            fail("Tailscale grants policy example must not grant the agent bridge port")
+        require_text(tailscale_policy, "Tailscale grants policy example", "group:2006scape-players")
+        require_text(tailscale_policy, "Tailscale grants policy example", "tag:2006scape-server")
     elif mode in ("wireguard", "vpn"):
         require_text(firewall, "server deployment firewall helper", "VPN mode")
 

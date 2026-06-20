@@ -54,6 +54,7 @@ Set these values:
 - `agent_bridge_bind_host`: `127.0.0.1`.
 
 Grant players access only to the game/cache ports they need, normally TCP `43594`, `43595`, and `8080` when `file_server=true`. Do not grant or expose TCP `43610`.
+The prepared server deployment bundle includes `server-deployment/tailscale-policy-grants.example.json` as a least-privilege starting point for this policy.
 
 For the direct public no-install path instead, copy the direct public sample:
 
@@ -149,6 +150,7 @@ Important outputs:
 - `dist/external-deployment/2006scape-client/MANIFEST.txt`
 - `dist/external-deployment/2006scape-client/SHA256SUMS`
 - `dist/external-deployment/server-deployment/`
+- `dist/external-deployment/server-deployment/tailscale-policy-grants.example.json` for Tailscale deployments
 - `dist/external-deployment/deployment-readiness-report.md`
 
 Open the readiness report and check:

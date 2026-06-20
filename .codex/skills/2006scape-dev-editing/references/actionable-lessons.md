@@ -4,6 +4,13 @@ These notes are repo-specific operational memory from actual agent experience. A
 
 ## Java And Maven
 
+### Run package/deployment smokes under repo-local temp dirs
+
+- **Observed:** A focused `prepare-external-deployment.py --output-dir "$(mktemp -d)/..."` smoke failed on macOS with `refusing to write client distribution directory through symlinked parent directory: /var`.
+- **Cause:** macOS `mktemp` can return paths under `/var`, which is a symlinked parent, and the package scripts intentionally refuse symlinked output parents before deleting or writing distributable artifacts.
+- **Use instead:** For package-client, prepare-deployment, or verifier smoke tests, create temp output under an ignored repo-local directory such as `agent-navigation/.local/tmp/`.
+- **Validation:** The same prepare/verify smoke should pass when the output dir is under the repo-local ignored temp path.
+
 ### Keep new Java methods at class scope
 
 - **Observed:** Adding a helper to `2006Scape Server/src/main/java/com/rs2/world/clip/PathFinder.java` caused `illegal start of expression` compiler errors.
