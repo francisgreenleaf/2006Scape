@@ -193,6 +193,47 @@ def render_handoff(prepared_dir, username, character, output, agent_gateway_url)
         fail("player handoff render failed:\n{}".format((completed.stdout or "").strip()))
 
 
+def verify_generated_kit(output, prepared_dir, username, character, client_archive, handoff_note):
+    argv = [
+        sys.executable,
+        str(ROOT_DIR / "scripts" / "verify-player-kit.py"),
+        "--kit",
+        str(output),
+        "--prepared-dir",
+        str(prepared_dir),
+        "--client-archive",
+        str(client_archive),
+        "--handoff-note",
+        str(handoff_note),
+        "--username",
+        username,
+        "--character",
+        character,
+        "--json",
+    ]
+    completed = subprocess.run(
+        argv,
+        cwd=str(ROOT_DIR),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        fail("player kit self-verification failed:\n{}".format((completed.stdout or "").strip()))
+    try:
+        summary = json.loads(completed.stdout)
+    except json.JSONDecodeError as exc:
+        fail("player kit self-verification returned invalid JSON: {}".format(exc))
+    if summary.get("success") is not True:
+        fail("player kit self-verification did not report success")
+    if summary.get("clientArchiveMatchesExpected") is not True:
+        fail("player kit self-verification did not match expected client archive")
+    if summary.get("handoffNoteMatchesExpected") is not True:
+        fail("player kit self-verification did not match expected handoff note")
+    return summary
+
+
 def zip_info(name, mode=0o644):
     info = zipfile.ZipInfo(name)
     info.date_time = (1980, 1, 1, 0, 0, 0)
@@ -299,6 +340,10 @@ def build_kit(args):
 
     metadata["playerKit"] = str(output)
     metadata["playerKitSha256"] = sha256_file(output)
+    verification = verify_generated_kit(output, prepared_dir, username, character, client_archive, handoff_note)
+    metadata["selfVerified"] = True
+    metadata["clientArchiveMatchesExpected"] = verification.get("clientArchiveMatchesExpected")
+    metadata["handoffNoteMatchesExpected"] = verification.get("handoffNoteMatchesExpected")
     return metadata
 
 
@@ -306,7 +351,8 @@ def main():
     parser = argparse.ArgumentParser(
         description=(
             "Create a public-safe per-player zip containing the downloadable client archive, "
-            "README-first handoff note, and checksums. Passwords and private runtime files are never included."
+            "README-first handoff note, and checksums, then self-verify it. "
+            "Passwords and private runtime files are never included."
         )
     )
     parser.add_argument("username", help="Player account username.")
@@ -329,6 +375,7 @@ def main():
     else:
         print("ok: wrote player kit {}".format(metadata["playerKit"]))
         print("player kit SHA-256: {}".format(metadata["playerKitSha256"]))
+        print("self verified: yes")
         print("password included: no")
         print("private files included: no")
         print("runtime: not started, stopped, or restarted")

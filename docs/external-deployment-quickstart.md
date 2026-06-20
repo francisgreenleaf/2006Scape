@@ -199,7 +199,7 @@ scripts/verify-player-kit.py \
   --character CHARACTER_NAME
 ```
 
-Send the verified `player-kit-PLAYER_USERNAME.zip` and send the password separately. The kit contains the client archive, README-first handoff note, and checksums; packaging and verification reject private credentials, account records, secrets, runtime data, bridge tokens, and other secret-bearing paths.
+Send the verified `player-kit-PLAYER_USERNAME.zip` and send the password separately. The kit contains the client archive, README-first handoff note, and checksums; packaging self-verifies the generated zip, and the standalone verifier re-checks copied/downloaded kits. Both reject private credentials, account records, secrets, runtime data, bridge tokens, and other secret-bearing paths.
 
 The default package uses `client.scale=2` and `show_navbar=false`. Keep those defaults for normal external tester packages so the larger desktop window uses the client scale code path instead of JVM UI scaling, which avoids macOS mouse-click offset issues.
 

@@ -1539,7 +1539,7 @@
       "name": "Player Kit Package",
       "path": "scripts/package-player-kit.py",
       "kind": "deployment_tool",
-      "description": "Packages a public-safe per-player zip from a prepared external deployment bundle, including the downloadable client archive, README-first handoff note, client checksums, and a kit manifest while excluding passwords, private credentials, account records, secrets, runtime data, and bridge tokens.",
+      "description": "Packages and self-verifies a public-safe per-player zip from a prepared external deployment bundle, including the downloadable client archive, README-first handoff note, client checksums, and a kit manifest while excluding passwords, private credentials, account records, secrets, runtime data, and bridge tokens.",
       "aliases": [
         "player kit",
         "package player kit",

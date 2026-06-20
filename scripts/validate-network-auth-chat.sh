@@ -2689,6 +2689,9 @@ assert summary["privateFilesIncluded"] is False, summary
 assert summary["runtimeTouched"] is False, summary
 assert Path(summary["playerKit"]) == kit_path, summary
 assert re.fullmatch(r"[0-9a-f]{64}", summary["playerKitSha256"]), summary
+assert summary["selfVerified"] is True, summary
+assert summary["clientArchiveMatchesExpected"] is True, summary
+assert summary["handoffNoteMatchesExpected"] is True, summary
 
 credentials_text = credentials_path.read_text(encoding="utf-8")
 password = re.search(r"^MRPROVISION_PASSWORD='([A-Za-z0-9]+)'$", credentials_text, re.MULTILINE).group(1)
