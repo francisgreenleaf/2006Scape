@@ -1,6 +1,5 @@
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -366,7 +365,7 @@ public class CodexAppServerClient {
             if (item.has("type") && "dynamicToolCall".equals(item.get("type").getAsString()) && item.has("tool")) {
                 String tool = "rs." + item.get("tool").getAsString();
                 terminalLog.toolStart(tool);
-                messageConsumer.accept("Using " + tool + "...");
+                messageConsumer.accept(AgentToolDisplayText.progressFor(tool));
             }
             return;
         }
@@ -465,6 +464,7 @@ public class CodexAppServerClient {
 
     private JsonArray dynamicTools() {
         JsonArray tools = new JsonArray();
+        // New advertised rs tools must also be added to AgentToolDisplayText and its coverage test.
         tools.add(tool("observe_state_XXS", "Minimal critical-state observation: tile, HP, combat, poison, death, free slots, and food. Use only for confirmation or health checks.", schema()));
         tools.add(tool("observe_state_XS", "Default compact observation surface. Returns compact player, inventory/food, bank summary, equipment, nearby NPC/object/ground-item context, and nonzero skill levels. Use full observe_state only when XS omits a field needed for debugging or evidence.", schema()));
         tools.add(tool("observe_state_if_changed_XXS", "Minimal conditional observation. If state has not changed since this key's last call, returns changed=false plus critical player state only; if changed, returns compacted critical state and recent XP.", schema("key", "string", "force", "boolean")));
@@ -637,7 +637,7 @@ public class CodexAppServerClient {
                 + "For woodcutting, use find_nearest_tree, interact_object, and wait_until_idle loops, then bank logs if the user asked to keep them or drop logs only when explicitly asked to power-train. "
                 + "For fletching, use_item_on_item with a knife and logs, click_interface_button for the make-all product button, then wait_until_idle. Sell fletching products at a general store when the user wants money. "
                 + "Do not attempt shell commands, file edits, web access, or non-game tools. "
-                + "Keep player-facing updates terse and factual. Do not narrate routine loot, basic pathing, or personality/self-talk unless it changes the next action or exposes a blocker. "
+                + "Keep player-facing updates terse and factual. Write short phase-level progress notes only when starting a meaningful phase, reaching a result, or exposing a blocker; do not narrate every routine poll, basic pathing step, loot detail, or personality/self-talk. "
                 + "If the task is blocked, report the concrete blocker in one short final answer.";
     }
 

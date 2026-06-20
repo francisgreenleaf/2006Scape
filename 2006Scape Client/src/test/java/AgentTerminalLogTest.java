@@ -87,6 +87,26 @@ public class AgentTerminalLogTest {
     }
 
     @Test
+    public void toolRowsUsePlayerFacingActions() {
+        AgentTerminalLog log = new AgentTerminalLog();
+
+        log.toolStart("rs.walk_to_tile_until_arrived_XS");
+        log.toolResult("rs.find_nearest_object_XS", false, "No matching object found nearby.", 2628);
+
+        List<AgentTerminalLog.RenderLine> lines = log.renderLines(null, 500);
+        String started = lines.get(1).text;
+        String finished = lines.get(2).text;
+        assertTrue(started.contains("walking..."));
+        assertEquals(AgentTerminalLog.TOOL_DOT, lines.get(1).marker);
+        assertFalse(started.contains("tool"));
+        assertTrue(finished.contains("err finding object... 2628ms No matching object found nearby."));
+        assertFalse(started.contains("rs."));
+        assertFalse(finished.contains("rs."));
+        assertFalse(started.contains("walk_to_tile_until_arrived"));
+        assertFalse(finished.contains("find_nearest_object"));
+    }
+
+    @Test
     public void compactMessageKeepsShortTextUnchanged() {
         assertEquals("ready", AgentTerminalLog.compactMessageForTests("ready", 12));
         assertEquals("abcdefg...", AgentTerminalLog.compactMessageForTests("abcdefghijklmnopqrstuvwxyz", 10));
