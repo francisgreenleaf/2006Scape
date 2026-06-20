@@ -81,6 +81,31 @@
       ]
     },
     {
+      "id": "supervised_runner",
+      "name": "Supervised Runner",
+      "path": "agent-navigation/tools/supervised_runner.py",
+      "kind": "runtime_helper",
+      "description": "Wraps any gameplay runner with conservative process supervision, profile-scoped child/supervisor pid files, status JSON, bounded backoff, and restarts only for known transient bridge/session failures.",
+      "aliases": [
+        "supervised runner",
+        "runner supervisor",
+        "supervise runner",
+        "detached supervisor",
+        "runner recovery"
+      ],
+      "tags": [
+        "runner",
+        "runtime",
+        "profile",
+        "supervisor",
+        "recovery"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/supervised_runner.py --profile MrFlame --name mining-coal --log agent-navigation/.local/runners/mrflame/mining-coal.log -- python3 agent-navigation/tools/mining_runner.py --profile MrFlame --ores coal --quiet",
+        "python3 agent-navigation/tools/launch_detached_runner.py --supervise --profile MrFlame --name mining-coal --log agent-navigation/.local/runners/mrflame/mining-coal.log --pid-file agent-navigation/.local/runners/mrflame/mining-coal.pid --supervisor-pid-file agent-navigation/.local/runners/mrflame/mining-coal.supervisor.pid -- python3 agent-navigation/tools/mining_runner.py --profile MrFlame --ores coal --quiet"
+      ]
+    },
+    {
       "id": "agility_runner",
       "name": "Adaptive Agility Runner",
       "path": "agent-navigation/tools/agility_runner.py",

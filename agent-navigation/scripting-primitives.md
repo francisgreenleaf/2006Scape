@@ -364,3 +364,13 @@ Current gameplay runners include:
 
 Map, memory, and support scripts are also registered in
 `agent-navigation/data/script_registry.json`.
+
+For unattended or long-running gameplay, wrap the selected runner with
+`launch_detached_runner.py --supervise` or call `supervised_runner.py`
+directly. The supervisor is a process lifecycle layer only: it never restarts
+the game server, never changes gameplay strategy, and does not hide remote GUI
+claim work inside bridge calls. It writes profile-scoped status plus separate
+child/supervisor pid files under `.local/runners/`, applies bounded backoff, and
+restarts only for classified transient bridge/session failures. Route stalls,
+death/combat safety stops, missing supplies, unreachable targets, explicit stop
+requests, and unknown exceptions remain terminal by default.

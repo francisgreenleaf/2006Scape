@@ -45,6 +45,14 @@ Do not use admin teleports, item spawning, direct player-state edits, raw bridge
 
 New and changed progression tools must be profile-safe. Runners, status commands, stop requests, evidence readers, and helper scripts should accept `--profile PROFILE` or honor `RS_PROFILE`/`RSBRIDGE_PROFILE`, pass the resolved profile to every bridge call and child process, and write profile-scoped status/evidence/log artifacts or explicit `profile`, `playerName`, and `sessionId` metadata. Long runners with cooperative stop files should also expose a tiny shutdown poll such as `--shutdown-status` that reports only fields like `phase`, `stopRequested`, `shutdownComplete`, `pid`, and `updatedAt`; keep verbose `--status` for occasional diagnosis, not repeated stop monitoring. Do not assume any one profile's current stats, bank, gear, routes, or active session when designing a reusable progression loop.
 
+For unattended long runners, prefer the shared lifecycle wrapper instead of runner-specific restart loops:
+
+```sh
+python3 agent-navigation/tools/launch_detached_runner.py --supervise --profile PROFILE --name runner-name --log agent-navigation/.local/runners/PROFILE/runner-name.log -- python3 agent-navigation/tools/SCRIPT.py --profile PROFILE
+```
+
+It never restarts the server, writes separate child/supervisor pid files and compact status JSON, and restarts the child only for classified transient bridge/session failures. Gameplay blockers, safety stops, explicit stop requests, and unknown exceptions are terminal by default.
+
 When local item names, NPCs, object spots, requirements, or mechanics are unclear, use `2006scape-osrs-wiki` for modern OSRS hints before guessing. Treat the wiki as advisory only and verify anything that affects the live 2006Scape server.
 
 ## First Observation
