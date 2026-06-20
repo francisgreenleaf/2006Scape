@@ -13,9 +13,9 @@ These notes are repo-specific operational memory from actual agent experience. A
 
 ### Finder-launched Mac apps need visible launcher errors
 
-- **Observed:** A generated `2006Scape.app` inside the player DMG appeared to do nothing when double-clicked from Finder.
+- **Observed:** A generated `agent-scape.app` inside the player DMG appeared to do nothing when double-clicked from Finder.
 - **Cause:** Finder-launched shell apps do not inherit an interactive shell `PATH`, so Homebrew/OpenJDK Java can be missed, and stdout/stderr disappear unless the app writes logs or shows a dialog.
-- **Use instead:** Keep `scripts/package-client.sh` Java discovery Finder-safe, and keep `scripts/package-macos-player-app.py` writing `~/Library/Logs/2006Scape/2006Scape-launch.log`, showing an `osascript` alert on failure, and setting a real `.icns` bundle icon.
+- **Use instead:** Keep `scripts/package-client.sh` Java discovery Finder-safe, and keep `scripts/package-macos-player-app.py` writing `~/Library/Logs/agent-scape/agent-scape-launch.log`, showing an `osascript` alert on failure, and setting a real `.icns` bundle icon.
 - **Validation:** `scripts/validate-network-auth-chat.sh` should assert the Mac app launcher contains the log/dialog behavior, the generated app has `CFBundleIconFile`, and a DMG smoke on macOS produces a non-empty image.
 
 ### Keep new Java methods at class scope

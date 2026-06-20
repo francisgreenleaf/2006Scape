@@ -37,9 +37,9 @@ DISCORD_USER_ID_RE = re.compile(r"\d{15,25}")
 SERVICE_NAME_RE = re.compile(r"^[A-Za-z0-9_.@-]{1,64}$")
 DEPLOYMENT_PATH_RE = re.compile(r"^/[A-Za-z0-9._@:+,=/-]+$")
 BASE_EXPECTED_CLIENT_FILES = {
-    "2006scape-client.jar",
+    "agent-scape-client.jar",
     "Check-Setup.command",
-    "Run-2006Scape.command",
+    "run-agent-scape.command",
     "client.properties",
     "check-setup-macos-linux.sh",
     "check-setup-windows.bat",
@@ -523,12 +523,12 @@ def verify_client_package(config, config_path, client_dist, warnings, require_en
     require_not_symlink(client_dist, "client distribution directory")
     for relative in sorted(expected_client_files(config)):
         require_no_symlink_under(client_dist / relative, "client package file", client_dist)
-    require_file(client_dist / "2006scape-client.jar", "client jar")
+    require_file(client_dist / "agent-scape-client.jar", "client jar")
     require_file(client_dist / "client.properties", "client properties")
     require_file(client_dist / "MANIFEST.txt", "client manifest")
     require_file(client_dist / "SHA256SUMS", "client checksums")
     require_executable(client_dist / "Check-Setup.command", "macOS setup checker wrapper")
-    require_executable(client_dist / "Run-2006Scape.command", "macOS launcher wrapper")
+    require_executable(client_dist / "run-agent-scape.command", "macOS launcher wrapper")
     require_executable(client_dist / "check-setup-macos-linux.sh", "macOS/Linux setup checker")
     require_file(client_dist / "check-setup-windows.bat", "Windows setup checker")
     require_executable(client_dist / "run-macos-linux.sh", "macOS/Linux launcher")
@@ -578,14 +578,14 @@ def verify_client_package_text(config, client_dist):
         "check-setup-macos-linux.sh",
     )
     require_text(
-        client_dist / "Run-2006Scape.command",
+        client_dist / "run-agent-scape.command",
         "macOS launcher wrapper",
         "run-macos-linux.sh",
     )
     require_text(
         client_dist / "check-setup-macos-linux.sh",
         "macOS/Linux setup checker",
-        "Java is required to run 2006Scape",
+        "Java is required to run agent-scape",
     )
     require_text(
         client_dist / "check-setup-macos-linux.sh",
@@ -615,7 +615,7 @@ def verify_client_package_text(config, client_dist):
     require_text(
         client_dist / "check-setup-windows.bat",
         "Windows setup checker",
-        "Java is required to run 2006Scape",
+        "Java is required to run agent-scape",
     )
     require_text(
         client_dist / "check-setup-windows.bat",
@@ -665,7 +665,7 @@ def verify_client_package_text(config, client_dist):
     require_text(
         client_dist / "run-macos-linux.sh",
         "macOS/Linux launcher",
-        "Java is required to run 2006Scape",
+        "Java is required to run agent-scape",
     )
     require_text(
         client_dist / "run-macos-linux.sh",
@@ -675,7 +675,7 @@ def verify_client_package_text(config, client_dist):
     require_text(
         client_dist / "run-windows.bat",
         "Windows launcher",
-        "Java is required to run 2006Scape",
+        "Java is required to run agent-scape",
     )
     require_text(
         client_dist / "run-windows.bat",
@@ -694,7 +694,7 @@ def verify_client_package_text(config, client_dist):
     require_text(
         client_dist / "README.txt",
         "client README",
-        "double-click Run-2006Scape.command",
+        "double-click run-agent-scape.command",
     )
     require_text(
         client_dist / "README.txt",
@@ -791,7 +791,7 @@ def verify_client_package_text(config, client_dist):
         require_text(
             client_dist / "README.txt",
             "client README",
-            "use a password unique to this 2006Scape server",
+            "use a password unique to this agent-scape server",
         )
     else:
         require_text(
@@ -827,12 +827,12 @@ def verify_client_package_text(config, client_dist):
         require_text(
             client_dist / "run-macos-linux.sh",
             "macOS/Linux launcher",
-            "Starting stunnel for encrypted 2006Scape transport",
+            "Starting stunnel for encrypted agent-scape transport",
         )
         require_text(
             client_dist / "run-windows.bat",
             "Windows launcher",
-            "Starting stunnel for encrypted 2006Scape transport",
+            "Starting stunnel for encrypted agent-scape transport",
         )
         require_text(
             client_dist / "README.txt",
@@ -1132,7 +1132,7 @@ def verify_server_deployment(config, server_deployment_dir):
     require_text(readme, "server deployment README", "--agent-chat-delivery-log-text")
     require_text(readme, "server deployment README", "After the service is intentionally running")
     require_text(player_handoff, "player handoff template", "# Player Handoff Template")
-    require_text(player_handoff, "player handoff template", "Share `2006scape-client.zip`")
+    require_text(player_handoff, "player handoff template", "Share `agent-scape-client.zip`")
     require_text(player_handoff, "player handoff template", "PBKDF2 account record")
     require_text(player_handoff, "player handoff template", "12+ character password")
     require_text(player_handoff, "player handoff template", "--allowed-character")
@@ -1142,7 +1142,7 @@ def verify_server_deployment(config, server_deployment_dir):
     require_text(player_handoff, "player handoff template", "approved HTTPS `/agent` gateway")
     require_text(player_handoff, "player handoff template", "Do not reuse a RuneScape.com password")
     require_text(player_handoff, "player handoff template", "Do Not Send To Players")
-    require_text(player_handoff, "player handoff template", "2006Scape Server/data/accounts/*.json")
+    require_text(player_handoff, "player handoff template", "Server account-record JSON files")
     require_text(player_handoff, "player handoff template", "Bridge session files")
     require_text(proof_manifest_template, "deployment proof manifest template", "live_login_password_env")
     require_text(proof_manifest_template, "deployment proof manifest template", "live_local_login_password_env")
@@ -1273,7 +1273,7 @@ def verify_client_archive_permissions(entry, info):
         return
     if archive_unix_file_type(info) not in (0, stat.S_IFREG):
         fail("client archive file entry must be a regular file: {}".format(entry))
-    if entry.endswith("/Run-2006Scape.command"):
+    if entry.endswith("/run-agent-scape.command"):
         if not mode & 0o111:
             fail("client archive macOS launcher wrapper is not executable: {}".format(entry))
     elif entry.endswith("/Check-Setup.command"):
@@ -1667,7 +1667,7 @@ def verify_live_discord(secrets_path, timeout):
 def main():
     parser = argparse.ArgumentParser(description="Verify 2006Scape external deployment artifacts.")
     parser.add_argument("--config", default=str(ROOT_DIR / "2006Scape Server" / "ServerConfig.json"))
-    parser.add_argument("--client-dist", default=str(ROOT_DIR / "dist" / "2006scape-client"))
+    parser.add_argument("--client-dist", default=str(ROOT_DIR / "dist" / "agent-scape-client"))
     parser.add_argument("--archive", default="",
             help="Client zip to verify. Defaults to CLIENT_DIST.zip next to --client-dist.")
     parser.add_argument("--server-deployment-dir", default="",

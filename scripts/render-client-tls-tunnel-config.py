@@ -138,7 +138,7 @@ def tunnel_ports(config):
 
 def render_client_stunnel(config, public_host, client_host, cert_host):
     lines = [
-        "; 2006Scape player-side stunnel config.",
+        "; agent-scape player-side stunnel config.",
         "; Start this before launching the Java client.",
         "foreground = yes",
         "client = yes",
@@ -193,7 +193,7 @@ def render_readme(config, public_host, client_host, server_accept_host, cert_hos
         if client_only
         else "This folder includes both player-side and operator-side stunnel templates."
     )
-    return """2006Scape Client TLS Tunnel
+    return """agent-scape client TLS Tunnel
 
 This package targets external_transport_mode=client_tls_tunnel.
 The Java client still speaks plaintext to {client_host}; stunnel carries that traffic
@@ -201,11 +201,11 @@ over TLS 1.2 or newer to {public_host}. {cache_line}
 
 Player setup:
 1. Install stunnel. See INSTALL-STUNNEL.txt in this folder for OS-specific hints.
-2. Normally use the packaged 2006Scape launcher; it starts this stunnel config
+2. Normally use the packaged agent-scape launcher; it starts this stunnel config
    automatically when stunnel is installed.
 3. If you need to start the tunnel manually, run this from this folder:
      stunnel stunnel-client.conf
-4. Leave stunnel running, then launch the 2006Scape client.
+4. Leave stunnel running, then launch the agent-scape client.
 
 Expected endpoints:
 - local client endpoint: {client_host}
@@ -230,10 +230,10 @@ requires TLS handshakes on the public game/cache ports, not plain TCP.
 
 
 def render_install_help():
-    return """Installing stunnel for 2006Scape client_tls_tunnel
+    return """Installing stunnel for agent-scape client_tls_tunnel
 
 This package does not bundle stunnel binaries. Install stunnel through a trusted
-OS package manager or installer, then use the packaged 2006Scape launchers.
+OS package manager or installer, then use the packaged agent-scape launchers.
 
 macOS with Homebrew:
   brew install stunnel

@@ -7,8 +7,8 @@ source "$SCRIPT_DIR/lib/launcher-common.sh"
 ROOT_DIR="$(launcher_repo_root)"
 CLIENT_DIR="$ROOT_DIR/2006Scape Client"
 CLIENT_JAR="$CLIENT_DIR/target/client-1.0-jar-with-dependencies.jar"
-DIST_DIR="${CLIENT_DIST_DIR:-$ROOT_DIR/dist/2006scape-client}"
-ARCHIVE_PATH="${CLIENT_ARCHIVE_PATH:-$ROOT_DIR/dist/2006scape-client.zip}"
+DIST_DIR="${CLIENT_DIST_DIR:-$ROOT_DIR/dist/agent-scape-client}"
+ARCHIVE_PATH="${CLIENT_ARCHIVE_PATH:-$ROOT_DIR/dist/agent-scape-client.zip}"
 SERVER_CONFIG="${CLIENT_SERVER_CONFIG:-}"
 
 CONFIG_SERVER_HOST=""
@@ -90,6 +90,10 @@ BUILD_TIME_UTC="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 SOURCE_SERVER_CONFIG_SHA256=""
 if [[ -n "$SERVER_CONFIG" ]]; then
     SOURCE_SERVER_CONFIG_SHA256="$(shasum -a 256 "$SERVER_CONFIG" | awk '{print $1}')"
+fi
+SOURCE_SERVER_CONFIG_LABEL="${SERVER_CONFIG##*/}"
+if [[ -z "$SOURCE_SERVER_CONFIG_LABEL" ]]; then
+    SOURCE_SERVER_CONFIG_LABEL="manual-env"
 fi
 
 lowercase() {
@@ -335,7 +339,7 @@ TRANSPORT_GUIDANCE="$(transport_guidance)"
 rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR"
 
-cp "$CLIENT_JAR" "$DIST_DIR/2006scape-client.jar"
+cp "$CLIENT_JAR" "$DIST_DIR/agent-scape-client.jar"
 
 cat > "$DIST_DIR/client.properties" <<EOF
 server.host=$SERVER_HOST
@@ -422,7 +426,7 @@ start_client_tls_tunnel_if_needed() {
         echo "  stunnel \"$config\"" >&2
         exit 1
     fi
-    echo "Starting stunnel for encrypted 2006Scape transport..."
+    echo "Starting stunnel for encrypted agent-scape transport..."
     stunnel "$config" &
     STUNNEL_PID="$!"
     trap cleanup_tunnel EXIT INT TERM
@@ -467,7 +471,7 @@ find_java() {
 
 JAVA_BIN="$(find_java || true)"
 if [[ -z "$JAVA_BIN" ]]; then
-    echo "Java is required to run 2006Scape." >&2
+    echo "Java is required to run agent-scape." >&2
     echo "Install Java 8 or newer, then run this launcher again." >&2
     echo "On macOS, install a current JDK from Adoptium or Homebrew, then reopen the app." >&2
     exit 1
@@ -488,28 +492,28 @@ fi
 
 JAVA_DOCK_OPTS=()
 if [[ "$(uname -s)" == "Darwin" ]]; then
-    JAVA_DOCK_OPTS=("-Xdock:name=${CLIENT_DOCK_NAME:-2006Scape}")
+    JAVA_DOCK_OPTS=("-Xdock:name=${CLIENT_DOCK_NAME:-agent-scape}")
     if [[ -n "${CLIENT_DOCK_ICON:-}" && -f "${CLIENT_DOCK_ICON:-}" ]]; then
         JAVA_DOCK_OPTS+=("-Xdock:icon=$CLIENT_DOCK_ICON")
     fi
 fi
 
 set +e
-"$JAVA_BIN" "${JAVA_DOCK_OPTS[@]}" -jar "$DIR/2006scape-client.jar" -no-java-warnings -client-config "$PROPERTIES" "$@"
+"$JAVA_BIN" "${JAVA_DOCK_OPTS[@]}" -jar "$DIR/agent-scape-client.jar" -no-java-warnings -client-config "$PROPERTIES" "$@"
 status=$?
 set -e
 exit "$status"
 EOF
 chmod +x "$DIST_DIR/run-macos-linux.sh"
 
-cat > "$DIST_DIR/Run-2006Scape.command" <<'EOF'
+cat > "$DIST_DIR/run-agent-scape.command" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 exec "$DIR/run-macos-linux.sh" "$@"
 EOF
-chmod +x "$DIST_DIR/Run-2006Scape.command"
+chmod +x "$DIST_DIR/run-agent-scape.command"
 
 {
     printf '%s\r\n' '@echo off'
@@ -518,7 +522,7 @@ chmod +x "$DIST_DIR/Run-2006Scape.command"
     printf '%s\r\n' 'set PROPERTIES=%DIR%client.properties'
     printf '%s\r\n' 'where java >nul 2>nul'
     printf '%s\r\n' 'if errorlevel 1 ('
-    printf '%s\r\n' '    echo Java is required to run 2006Scape.'
+    printf '%s\r\n' '    echo Java is required to run agent-scape.'
     printf '%s\r\n' '    echo Install Java 8 or newer, then run this launcher again.'
     printf '%s\r\n' '    exit /b 1'
     printf '%s\r\n' ')'
@@ -533,7 +537,7 @@ chmod +x "$DIST_DIR/Run-2006Scape.command"
     printf '%s\r\n' ')'
     printf '%s\r\n' 'if /I "%TRANSPORT%"=="client_tls_tunnel" call :ensuretunnel'
     printf '%s\r\n' 'if errorlevel 1 exit /b 1'
-    printf '%s\r\n' 'java -jar "%DIR%2006scape-client.jar" -no-java-warnings -client-config "%PROPERTIES%" %*'
+    printf '%s\r\n' 'java -jar "%DIR%agent-scape-client.jar" -no-java-warnings -client-config "%PROPERTIES%" %*'
     printf '%s\r\n' 'exit /b %ERRORLEVEL%'
     printf '%s\r\n' ':ensuretunnel'
     printf '%s\r\n' 'set TUNNEL_CONFIG=%DIR%client-tls-tunnel\stunnel-client.conf'
@@ -554,8 +558,8 @@ chmod +x "$DIST_DIR/Run-2006Scape.command"
     printf '%s\r\n' '    echo   stunnel "%TUNNEL_CONFIG%"'
     printf '%s\r\n' '    exit /b 1'
     printf '%s\r\n' ')'
-    printf '%s\r\n' 'echo Starting stunnel for encrypted 2006Scape transport...'
-    printf '%s\r\n' 'start "2006Scape stunnel" /min stunnel "%TUNNEL_CONFIG%"'
+    printf '%s\r\n' 'echo Starting stunnel for encrypted agent-scape transport...'
+    printf '%s\r\n' 'start "agent-scape stunnel" /min stunnel "%TUNNEL_CONFIG%"'
     printf '%s\r\n' 'for /L %%I in (1,1,15) do ('
     printf '%s\r\n' '    call :tcpcheckquiet "%SERVER_HOST%" "%SERVER_PORT%"'
     printf '%s\r\n' '    if not errorlevel 1 exit /b 0'
@@ -671,7 +675,7 @@ start_client_tls_tunnel_for_setup() {
 }
 
 if ! command -v java >/dev/null 2>&1; then
-    echo "Java is required to run 2006Scape." >&2
+    echo "Java is required to run agent-scape." >&2
     echo "Install Java 8 or newer, then run this checker again." >&2
     exit 1
 fi
@@ -752,7 +756,7 @@ chmod +x "$DIST_DIR/Check-Setup.command"
     printf '%s\r\n' 'set PROPERTIES=%DIR%client.properties'
     printf '%s\r\n' 'where java >nul 2>nul'
     printf '%s\r\n' 'if errorlevel 1 ('
-    printf '%s\r\n' '    echo Java is required to run 2006Scape.'
+    printf '%s\r\n' '    echo Java is required to run agent-scape.'
     printf '%s\r\n' '    echo Install Java 8 or newer, then run this checker again.'
     printf '%s\r\n' '    exit /b 1'
     printf '%s\r\n' ')'
@@ -833,7 +837,7 @@ chmod +x "$DIST_DIR/Check-Setup.command"
 } > "$DIST_DIR/check-setup-windows.bat"
 
 cat > "$DIST_DIR/README.txt" <<EOF
-2006Scape Client
+agent-scape client
 
 First run checklist:
   1. Install Java 8 or newer.
@@ -851,7 +855,7 @@ Check setup:
   without logging in or changing server state.
 
 Run:
-  macOS: double-click Run-2006Scape.command, or run ./run-macos-linux.sh from Terminal.
+  macOS: double-click run-agent-scape.command, or run ./run-macos-linux.sh from Terminal.
   Linux: ./run-macos-linux.sh
   Windows: double-click run-windows.bat or run it from Command Prompt.
   For client_tls_tunnel packages, the launchers try to start the bundled
@@ -885,7 +889,7 @@ $TRANSPORT_GUIDANCE
 Login:
   Use the username and password provided by the server operator.
   Do not use a RuneScape.com password or reuse passwords from other services.
-  For direct_tcp packages, use a password unique to this 2006Scape server because
+  For direct_tcp packages, use a password unique to this agent-scape server because
   the legacy game/cache protocol is plaintext to the public host.
 
 AI agent mode:
@@ -915,14 +919,14 @@ if [[ "$(lowercase "$SECURE_TRANSPORT")" == "client_tls_tunnel" ]]; then
         "${TUNNEL_RENDER_ARGS[@]}"
 fi
 
-JAR_SHA256="$(shasum -a 256 "$DIST_DIR/2006scape-client.jar" | awk '{print $1}')"
+JAR_SHA256="$(shasum -a 256 "$DIST_DIR/agent-scape-client.jar" | awk '{print $1}')"
 
 cat > "$DIST_DIR/MANIFEST.txt" <<EOF
-2006Scape Client Package
+agent-scape client package
 
 build_time_utc=$BUILD_TIME_UTC
 git_revision=$GIT_REVISION
-source_server_config=$SERVER_CONFIG
+source_server_config=$SOURCE_SERVER_CONFIG_LABEL
 source_server_config_sha256=$SOURCE_SERVER_CONFIG_SHA256
 server_host=$SERVER_HOST
 public_game_host=$PUBLIC_GAME_HOST
@@ -949,9 +953,9 @@ EOF
 (
     cd "$DIST_DIR"
     CHECKSUM_FILES=(
-        2006scape-client.jar \
+        agent-scape-client.jar \
         Check-Setup.command \
-        Run-2006Scape.command \
+        run-agent-scape.command \
         client.properties \
         check-setup-macos-linux.sh \
         check-setup-windows.bat \
@@ -992,7 +996,7 @@ def zip_info(path, arcname):
     else:
         mode = 0o755 if path.name in {
             "Check-Setup.command",
-            "Run-2006Scape.command",
+            "run-agent-scape.command",
             "run-macos-linux.sh",
             "check-setup-macos-linux.sh",
         } else 0o644

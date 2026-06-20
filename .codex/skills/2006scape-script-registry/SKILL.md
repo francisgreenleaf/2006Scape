@@ -85,8 +85,8 @@ python3 agent-navigation/tools/script_registry.py run install account record -- 
 python3 agent-navigation/tools/script_registry.py run client tls tunnel -- --config "2006Scape Server/ServerConfig.json" --output-dir dist/client-tls-tunnel-operator
 python3 agent-navigation/tools/script_registry.py run server deployment files -- --config "2006Scape Server/ServerConfig.json" --output-dir dist/server-deployment
 python3 agent-navigation/tools/script_registry.py run network proof -- --config "2006Scape Server/ServerConfig.json"
-python3 agent-navigation/tools/script_registry.py run deployment readiness -- --config "2006Scape Server/ServerConfig.json" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --client-tls-tunnel-dir dist/client-tls-tunnel-operator
-python3 agent-navigation/tools/script_registry.py run deployment readiness -- --config "2006Scape Server/ServerConfig.json" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --live --update-proof-manifest dist/external-deployment/deployment-proof-manifest.json
+python3 agent-navigation/tools/script_registry.py run deployment readiness -- --config "2006Scape Server/ServerConfig.json" --client-dist dist/agent-scape-client --server-deployment-dir dist/server-deployment --client-tls-tunnel-dir dist/client-tls-tunnel-operator
+python3 agent-navigation/tools/script_registry.py run deployment readiness -- --config "2006Scape Server/ServerConfig.json" --client-dist dist/agent-scape-client --server-deployment-dir dist/server-deployment --live --update-proof-manifest dist/external-deployment/deployment-proof-manifest.json
 python3 agent-navigation/tools/script_registry.py show deployment_readiness_status --json
 python3 agent-navigation/tools/script_registry.py run deployment_readiness_status -- --prepared-dir dist/external-deployment --show-next-commands
 python3 agent-navigation/tools/script_registry.py run proof manifest check -- dist/external-deployment/deployment-proof-manifest.json --require-full-proof

@@ -73,8 +73,8 @@ Lower-level commands:
 CLIENT_SERVER_CONFIG="2006Scape Server/ServerConfig.json" scripts/package-client.sh
 CLIENT_AGENT_BRIDGE_URL=https://AGENT_GATEWAY_HOST CLIENT_SERVER_CONFIG="2006Scape Server/ServerConfig.json" scripts/package-client.sh
 scripts/render-server-deployment-files.py --config "2006Scape Server/ServerConfig.json" --output-dir dist/server-deployment
-scripts/verify-external-deployment.py --config "2006Scape Server/ServerConfig.json" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment
-scripts/deployment-readiness-report.py --config "2006Scape Server/ServerConfig.json" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --json-output dist/deployment-readiness-report.json
+scripts/verify-external-deployment.py --config "2006Scape Server/ServerConfig.json" --client-dist dist/agent-scape-client --server-deployment-dir dist/server-deployment
+scripts/deployment-readiness-report.py --config "2006Scape Server/ServerConfig.json" --client-dist dist/agent-scape-client --server-deployment-dir dist/server-deployment --json-output dist/deployment-readiness-report.json
 ```
 
 Use `--json-output PATH` when automation or handoff records need machine-readable `status`, `deploymentProofStatus`, command summaries, proof coverage, and remaining live-proof items alongside the Markdown report. `prepare-external-deployment.py` passes this flag through when supplied.
@@ -86,8 +86,8 @@ Use `scripts/deployment-readiness-status.py --readiness-json PATH` or `--prepare
 For collected live/manual proof, prefer a JSON manifest over a very long final command:
 
 ```sh
-scripts/deployment-readiness-report.py --config "2006Scape Server/ServerConfig.json" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --proof-manifest PATH
-scripts/deployment-readiness-report.py --config "2006Scape Server/ServerConfig.json" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --live --update-proof-manifest PATH
+scripts/deployment-readiness-report.py --config "2006Scape Server/ServerConfig.json" --client-dist dist/agent-scape-client --server-deployment-dir dist/server-deployment --proof-manifest PATH
+scripts/deployment-readiness-report.py --config "2006Scape Server/ServerConfig.json" --client-dist dist/agent-scape-client --server-deployment-dir dist/server-deployment --live --update-proof-manifest PATH
 scripts/prepare-external-deployment.py --config "2006Scape Server/ServerConfig.json" --proof-manifest PATH
 scripts/check-deployment-proof-manifest.py PATH --config "2006Scape Server/ServerConfig.json" --secrets "2006Scape Server/data/secrets.json" --require-full-proof --check-files
 scripts/package-deployment-proof.py --prepared-dir dist/external-deployment
@@ -140,7 +140,7 @@ If no HTTPS gateway URL or valid profile session file is available, stop and ask
 
 Package generation also refuses symlinked output directories, archive paths, or output parent directories before deleting or writing package artifacts.
 
-Packaged client README text must stay player-facing: a short first-run checklist, Java install guidance, setup-check commands, transport setup, operator-provided username/password guidance, and a no-password-reuse warning. The package includes macOS double-click `Run-2006Scape.command` and `Check-Setup.command` wrappers, plus `check-setup-macos-linux.sh` and `check-setup-windows.bat` so players can verify Java, print `client.properties`, and attempt TCP checks without logging in or changing server state. Mac DMGs are a wrapper around the same prepared client folder and handoff note, not a different security model; they must include an iconed `2006Scape.app`, search common macOS Java locations from Finder, show a normal alert on launch failure, write details to `~/Library/Logs/2006Scape/2006Scape-launch.log`, and exclude passwords, account records, private credentials, runtime data, secrets, and bridge/session tokens. Tailscale package checkers should keep non-fatal CLI/status hints before TCP checks so player troubleshooting starts with "is the tailnet connected?" instead of login/auth guessing. For `client_tls_tunnel`, packaged launchers must try to start the bundled player-side stunnel config automatically when `stunnel` is installed and still show a clear manual fallback when it is not; the package must include `client-tls-tunnel/INSTALL-STUNNEL.txt` because stunnel itself is not bundled. The macOS/Linux setup checker may also start the bundled stunnel config temporarily for no-login TCP diagnostics, while the Windows checker expects the local tunnel endpoint to be reachable first. This matters most for `direct_tcp`, where regular players do not need a VPN/tunnel but the legacy game/cache protocol is plaintext to the public host.
+Packaged client README text must stay player-facing: a short first-run checklist, Java install guidance, setup-check commands, transport setup, operator-provided username/password guidance, and a no-password-reuse warning. Player-facing generated names should use lowercase `agent-scape`: `agent-scape-client.zip`, `agent-scape-client.jar`, `run-agent-scape.command`, and `agent-scape.app`. The package includes macOS double-click `run-agent-scape.command` and `Check-Setup.command` wrappers, plus `check-setup-macos-linux.sh` and `check-setup-windows.bat` so players can verify Java, print `client.properties`, and attempt TCP checks without logging in or changing server state. Mac DMGs are a wrapper around the same prepared client folder and handoff note, not a different security model; they must include an iconed `agent-scape.app`, search common macOS Java locations from Finder, show a normal alert on launch failure, write details to `~/Library/Logs/agent-scape/agent-scape-launch.log`, and exclude passwords, account records, private credentials, runtime data, secrets, and bridge/session tokens. Tailscale package checkers should keep non-fatal CLI/status hints before TCP checks so player troubleshooting starts with "is the tailnet connected?" instead of login/auth guessing. For `client_tls_tunnel`, packaged launchers must try to start the bundled player-side stunnel config automatically when `stunnel` is installed and still show a clear manual fallback when it is not; the package must include `client-tls-tunnel/INSTALL-STUNNEL.txt` because stunnel itself is not bundled. The macOS/Linux setup checker may also start the bundled stunnel config temporarily for no-login TCP diagnostics, while the Windows checker expects the local tunnel endpoint to be reachable first. This matters most for `direct_tcp`, where regular players do not need a VPN/tunnel but the legacy game/cache protocol is plaintext to the public host.
 
 The browser-client investigation is settled for this MVP: Java applet mode is not viable in modern browsers, and the current client depends on AWT/Swing plus raw game/cache sockets. Do not spend MVP implementation time trying to revive applet/browser play; treat it as a separate future web-client, protocol-adapter, WebAssembly, or streaming project.
 
@@ -156,7 +156,7 @@ scripts/backup-runtime-data.py --data-dir "2006Scape Server/data" --proof-manife
 Pass the generated proof note to readiness tooling:
 
 ```sh
-scripts/deployment-readiness-report.py --config "2006Scape Server/ServerConfig.json" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --runtime-data-backup-proof-file PATH
+scripts/deployment-readiness-report.py --config "2006Scape Server/ServerConfig.json" --client-dist dist/agent-scape-client --server-deployment-dir dist/server-deployment --runtime-data-backup-proof-file PATH
 ```
 
 The optional `--proof-manifest` flag updates only the manifest's `runtime_data_backup_proof_file` with the generated proof-note path; other manifest fields are preserved. The helper archives `data/characters`, `data/accounts`, and `data/secrets.json`, writes owner-only archive/proof files on POSIX systems, writes a readiness-compatible proof note, refuses symlinked runtime-data paths and symlinked archive/proof/manifest output paths, including symlinked output directories or parent directories, and does not start, stop, or restart the runtime. Readiness validation rejects symlinked proof notes, verifies the proof/archive owner-only modes where supported, and checks the proof's archive path, `backup archive sha256`, required tar entries, the no runtime start/stop/restart proof line, and the `readiness argument: --runtime-data-backup-proof-file ...` line, so keep the archive with the proof or use an absolute archive path.
@@ -168,7 +168,7 @@ Run these only after the remote server is intentionally built, configured, and r
 ```sh
 scripts/probe-deployment-network.py --config "2006Scape Server/ServerConfig.json"
 scripts/probe-agent-bridge-gateway.py --gateway-url https://AGENT_GATEWAY_HOST
-scripts/verify-external-deployment.py --config "2006Scape Server/ServerConfig.json" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --live
+scripts/verify-external-deployment.py --config "2006Scape Server/ServerConfig.json" --client-dist dist/agent-scape-client --server-deployment-dir dist/server-deployment --live
 ```
 
 Use `probe-deployment-network.py` first when you only need public game/cache reachability plus agent bridge non-exposure; it does not package, build, log in, start, stop, or restart runtime. Use the full verifier/readiness path to record artifact-coupled live proof.
@@ -176,8 +176,8 @@ Use `probe-deployment-network.py` first when you only need public game/cache rea
 Add live account proof with environment-held throwaway passwords:
 
 ```sh
-EXTERNAL_PASSWORD="throwaway external password" LOCAL_PASSWORD="throwaway local password" scripts/verify-external-deployment.py --config "2006Scape Server/ServerConfig.json" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --live --live-login-username EXTERNAL_TEST --live-login-password-env EXTERNAL_PASSWORD --live-local-login-username LOCAL_TEST --live-local-login-password-env LOCAL_PASSWORD
-REJECT_PASSWORD="wrong or disabled-account password" scripts/verify-external-deployment.py --config "2006Scape Server/ServerConfig.json" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --live --live-reject-login-username REJECT_TEST --live-reject-login-password-env REJECT_PASSWORD --live-reject-login-expected-statuses 3,4
+EXTERNAL_PASSWORD="throwaway external password" LOCAL_PASSWORD="throwaway local password" scripts/verify-external-deployment.py --config "2006Scape Server/ServerConfig.json" --client-dist dist/agent-scape-client --server-deployment-dir dist/server-deployment --live --live-login-username EXTERNAL_TEST --live-login-password-env EXTERNAL_PASSWORD --live-local-login-username LOCAL_TEST --live-local-login-password-env LOCAL_PASSWORD
+REJECT_PASSWORD="wrong or disabled-account password" scripts/verify-external-deployment.py --config "2006Scape Server/ServerConfig.json" --client-dist dist/agent-scape-client --server-deployment-dir dist/server-deployment --live --live-reject-login-username REJECT_TEST --live-reject-login-password-env REJECT_PASSWORD --live-reject-login-expected-statuses 3,4
 REJECT_PASSWORD="wrong or disabled-account password" scripts/probe-game-login.py --host HOST --port 43594 --username REJECT_TEST --password-env REJECT_PASSWORD --expect-failure --expect-statuses 3,4
 EXTERNAL_PASSWORD="throwaway external password" LOCAL_PASSWORD="throwaway local password" scripts/probe-concurrent-logins.py --external-host HOST --external-username EXTERNAL_TEST --external-password-env EXTERNAL_PASSWORD --local-host 127.0.0.1 --local-username LOCAL_TEST --local-password-env LOCAL_PASSWORD
 ```
@@ -210,7 +210,7 @@ Full readiness needs one direct player-delivery audit event even when Discord is
 
 ```sh
 scripts/verify-agent-chat-log.py --event agent_chat_player_delivery --text-contains MARKER --to-type player --to-name PLAYER --delivered-to PLAYER --no-undelivered --channel agent --proof-manifest dist/external-deployment/deployment-proof-manifest.json
-scripts/deployment-readiness-report.py --config "2006Scape Server/ServerConfig.json" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --agent-chat-delivery-log-text MARKER --agent-chat-delivery-log-to-name PLAYER --agent-chat-delivery-log-channel agent
+scripts/deployment-readiness-report.py --config "2006Scape Server/ServerConfig.json" --client-dist dist/agent-scape-client --server-deployment-dir dist/server-deployment --agent-chat-delivery-log-text MARKER --agent-chat-delivery-log-to-name PLAYER --agent-chat-delivery-log-channel agent
 ```
 
 Create the marker from an active agent bridge session with `agent_chat_send`/`agent_chat_send_XS` targeting `player`, or from a game client with `::agentchat @player:PLAYER MARKER`. This proves the player chatbox delivery path; it is separate from Discord ingress or mirroring.

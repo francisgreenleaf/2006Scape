@@ -106,7 +106,7 @@ def transport_steps(transport):
         return [
             "1. No VPN or client-side tunnel is expected for this package.",
             "2. This mode uses plaintext game/cache TCP to the public host.",
-            "3. Use only a password unique to this 2006Scape server.",
+            "3. Use only a password unique to this agent-scape server.",
         ]
     return [
         "1. Connect the transport specified by the operator before launching.",
@@ -126,8 +126,8 @@ def agent_gateway_note(agent_gateway):
 
 def render_note(args):
     prepared_dir = Path(args.prepared_dir)
-    client_dist = Path(args.client_dist) if args.client_dist else prepared_dir / "2006scape-client"
-    client_archive = Path(args.client_archive) if args.client_archive else prepared_dir / "2006scape-client.zip"
+    client_dist = Path(args.client_dist) if args.client_dist else prepared_dir / "agent-scape-client"
+    client_archive = Path(args.client_archive) if args.client_archive else prepared_dir / "agent-scape-client.zip"
     server_deployment = Path(args.server_deployment_dir) if args.server_deployment_dir else prepared_dir / "server-deployment"
 
     manifest = require_file(client_dist / "MANIFEST.txt", "client MANIFEST.txt")
@@ -149,11 +149,11 @@ def render_note(args):
     jaggrab_port = manifest_values.get("jaggrab_port") or prop_values.get("jaggrab.port") or "43595"
     agent_gateway = args.agent_gateway_url or manifest_values.get("agent_bridge_url") or prop_values.get("agent.bridge.url") or ""
 
-    archive_label = archive_path.name if archive_path else "2006scape-client.zip"
+    archive_label = archive_path.name if archive_path else "agent-scape-client.zip"
     archive_sha = sha256_file(archive_path) if archive_path else ""
 
     lines = [
-        "# 2006Scape Player Handoff",
+        "# agent-scape player handoff",
         "",
         "This note is safe to send to the player. Send the account password separately through a private channel.",
         "Do not paste passwords, account JSON files, bridge tokens, claim nonces, API keys, or Discord bot tokens into this note.",
@@ -165,11 +165,11 @@ def render_note(args):
     if archive_sha:
         lines.append("- client archive SHA-256: `{}`".format(archive_sha))
     lines.extend([
-        "- manifest: `2006scape-client/MANIFEST.txt`",
-        "- checksums: `2006scape-client/SHA256SUMS`",
+        "- manifest: `agent-scape-client/MANIFEST.txt`",
+        "- checksums: `agent-scape-client/SHA256SUMS`",
         "",
         "After unzipping, the player can verify package files by opening `SHA256SUMS` or running checksum verification from the extracted client folder.",
-        "If the operator also sends a macOS DMG, open it and launch `2006Scape.app`; the password is still sent separately.",
+        "If the operator also sends a macOS DMG, open it and launch `agent-scape.app`; the password is still sent separately.",
         "",
         "## Account",
         "",
@@ -177,7 +177,7 @@ def render_note(args):
         "- character: `{}`".format(character),
         "- password: sent separately through a private channel",
         "",
-        "Use a password unique to this 2006Scape server. Do not reuse a RuneScape.com password or any password from another service.",
+        "Use a password unique to this agent-scape server. Do not reuse a RuneScape.com password or any password from another service.",
         "",
         "## Connection",
         "",
@@ -197,13 +197,13 @@ def render_note(args):
         "## Start The Client",
         "",
         "1. Run the setup checker before logging in:",
-        "   - macOS DMG: open the DMG and double-click `2006Scape.app` after reading this note.",
+        "   - macOS DMG: open the DMG and double-click `agent-scape.app` after reading this note.",
         "   - macOS zip fallback: double-click `Check-Setup.command`.",
         "   - Linux: run `./check-setup-macos-linux.sh`.",
         "   - Windows: double-click `check-setup-windows.bat`.",
         "2. If setup passes, start the game:",
-        "   - macOS DMG: double-click `2006Scape.app`.",
-        "   - macOS zip fallback: double-click `Run-2006Scape.command`.",
+        "   - macOS DMG: double-click `agent-scape.app`.",
+        "   - macOS zip fallback: double-click `run-agent-scape.command`.",
         "   - Linux: run `./run-macos-linux.sh`.",
         "   - Windows: double-click `run-windows.bat`.",
         "3. Log in with the username above and the privately supplied password.",
@@ -214,8 +214,8 @@ def render_note(args):
         "",
         "## Do Not Send",
         "",
-        "- `2006Scape Server/data/accounts/*.json` account records.",
-        "- `2006Scape Server/data/secrets.json`.",
+        "- Server account-record JSON files.",
+        "- Server secrets files.",
         "- Runtime backup archives containing character saves, account records, or secrets.",
         "- Bridge session files, bridge tokens, `/agent` claim nonces, API keys, or Discord bot tokens.",
         "",
@@ -240,14 +240,14 @@ def render_note(args):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Render a public-safe per-player handoff note from prepared 2006Scape deployment artifacts."
+        description="Render a public-safe per-player handoff note from prepared agent-scape deployment artifacts."
     )
     parser.add_argument("--prepared-dir", default=str(DEFAULT_PREPARED_DIR),
             help="Directory created by prepare-external-deployment.py. Defaults to dist/external-deployment.")
     parser.add_argument("--client-dist", default="",
-            help="Packaged client directory. Defaults to PREPARED_DIR/2006scape-client.")
+            help="Packaged client directory. Defaults to PREPARED_DIR/agent-scape-client.")
     parser.add_argument("--client-archive", default="",
-            help="Client zip path. Defaults to PREPARED_DIR/2006scape-client.zip.")
+            help="Client zip path. Defaults to PREPARED_DIR/agent-scape-client.zip.")
     parser.add_argument("--server-deployment-dir", default="",
             help="Rendered server-deployment directory. Defaults to PREPARED_DIR/server-deployment.")
     parser.add_argument("--username", required=True,

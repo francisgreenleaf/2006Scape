@@ -32,9 +32,9 @@ def reject_symlink(path, label):
 
 def prepared_bundle_exists(prepared_dir):
     required = [
-        prepared_dir / "2006scape-client" / "MANIFEST.txt",
-        prepared_dir / "2006scape-client" / "client.properties",
-        prepared_dir / "2006scape-client.zip",
+        prepared_dir / "agent-scape-client" / "MANIFEST.txt",
+        prepared_dir / "agent-scape-client" / "client.properties",
+        prepared_dir / "agent-scape-client.zip",
         prepared_dir / "server-deployment" / "player-handoff-template.md",
     ]
     return all(path.is_file() and not path.is_symlink() for path in required)

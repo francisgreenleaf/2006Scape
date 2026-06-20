@@ -147,13 +147,13 @@ Add `--json-output dist/external-deployment/deployment-readiness-report.json` wh
 
 Important outputs:
 
-- `dist/external-deployment/2006scape-client.zip`
-- `dist/external-deployment/2006scape-client/Run-2006Scape.command`
-- `dist/external-deployment/2006scape-client/Check-Setup.command`
-- `dist/external-deployment/2006scape-client/check-setup-macos-linux.sh`
-- `dist/external-deployment/2006scape-client/check-setup-windows.bat`
-- `dist/external-deployment/2006scape-client/MANIFEST.txt`
-- `dist/external-deployment/2006scape-client/SHA256SUMS`
+- `dist/external-deployment/agent-scape-client.zip`
+- `dist/external-deployment/agent-scape-client/run-agent-scape.command`
+- `dist/external-deployment/agent-scape-client/Check-Setup.command`
+- `dist/external-deployment/agent-scape-client/check-setup-macos-linux.sh`
+- `dist/external-deployment/agent-scape-client/check-setup-windows.bat`
+- `dist/external-deployment/agent-scape-client/MANIFEST.txt`
+- `dist/external-deployment/agent-scape-client/SHA256SUMS`
 - `dist/external-deployment/server-deployment/`
 - `dist/external-deployment/server-deployment/player-handoff-template.md`
 - `dist/external-deployment/server-deployment/tailscale-policy-grants.example.json` for Tailscale deployments
@@ -190,7 +190,7 @@ That helper prepares `dist/external-deployment/` when needed, provisions the
 ignored PBKDF2 account, writes the generated password only under
 `dist/external-deployment/private/`, creates the public-safe
 `player-kit-PLAYER_USERNAME.zip`, and on macOS can create a Finder-friendly DMG
-containing `2006Scape.app` plus the README-first handoff note. It reports the
+containing `agent-scape.app` plus the README-first handoff note. It reports the
 artifact paths to send and the private credential path, but does not print the
 password and does not start, stop, or restart runtime. To reuse an already
 prepared bundle without rebuilding it, add `--prepare-policy never`.
@@ -204,7 +204,7 @@ scripts/provision-player-account.py PLAYER_USERNAME \
   --prepared-dir dist/external-deployment
 ```
 
-That helper creates the ignored PBKDF2 account record, audits the account store, writes the generated password only to an owner-only ignored credentials env file under `dist/external-deployment/private/`, and renders the filled handoff note. It does not print the password and does not start, stop, or restart runtime. The rendered note includes the client archive checksum, transport setup, username/character, and agent-gateway guidance, but it never accepts or prints the password. Send the password separately through a private channel. Do not send account JSON files, `data/secrets.json`, runtime backup archives, bridge session files, bridge tokens, claim nonces, API keys, or Discord bot tokens. Have the player open the package README and follow its first-run checklist: install Java, connect the selected transport, run the setup checker, launch the client, and log in with the operator-provided account. On macOS, they can double-click `Check-Setup.command`, then double-click `Run-2006Scape.command` to play; Terminal and Linux users can still run the shared shell scripts, and Windows users run the `.bat` files. The checker verifies Java, prints the packaged `client.properties`, and attempts game/cache TCP checks without logging in or changing server state. In Tailscale mode, the checkers also print non-fatal Tailscale CLI/status hints before the TCP checks. In `client_tls_tunnel` mode the macOS/Linux setup checker can start the bundled stunnel config temporarily when `stunnel` is installed; the Windows setup checker expects the local tunnel endpoint to be reachable first, while the launcher still manages stunnel when possible. If stunnel is missing, the player package includes `client-tls-tunnel/INSTALL-STUNNEL.txt`.
+That helper creates the ignored PBKDF2 account record, audits the account store, writes the generated password only to an owner-only ignored credentials env file under `dist/external-deployment/private/`, and renders the filled handoff note. It does not print the password and does not start, stop, or restart runtime. The rendered note includes the client archive checksum, transport setup, username/character, and agent-gateway guidance, but it never accepts or prints the password. Send the password separately through a private channel. Do not send account JSON files, `data/secrets.json`, runtime backup archives, bridge session files, bridge tokens, claim nonces, API keys, or Discord bot tokens. Have the player open the package README and follow its first-run checklist: install Java, connect the selected transport, run the setup checker, launch the client, and log in with the operator-provided account. On macOS, they can double-click `Check-Setup.command`, then double-click `run-agent-scape.command` to play; Terminal and Linux users can still run the shared shell scripts, and Windows users run the `.bat` files. The checker verifies Java, prints the packaged `client.properties`, and attempts game/cache TCP checks without logging in or changing server state. In Tailscale mode, the checkers also print non-fatal Tailscale CLI/status hints before the TCP checks. In `client_tls_tunnel` mode the macOS/Linux setup checker can start the bundled stunnel config temporarily when `stunnel` is installed; the Windows setup checker expects the local tunnel endpoint to be reachable first, while the launcher still manages stunnel when possible. If stunnel is missing, the player package includes `client-tls-tunnel/INSTALL-STUNNEL.txt`.
 
 Package only the public-safe files for the player:
 
@@ -237,9 +237,9 @@ scripts/package-macos-player-app.py PLAYER_USERNAME \
 
 Send the DMG to Mac players when you want them to open a normal iconed app
 bundle instead of seeing the repo-style client folder. Players double-click
-`2006Scape.app`; if Java is missing or launch fails, the app shows a normal
+`agent-scape.app`; if Java is missing or launch fails, the app shows a normal
 macOS alert and writes details to
-`~/Library/Logs/2006Scape/2006Scape-launch.log`. Keep the zip/player-kit flow
+`~/Library/Logs/agent-scape/agent-scape-launch.log`. Keep the zip/player-kit flow
 for Windows, Linux, and checksum-oriented handoffs.
 
 To install the newly created account record onto a VPS or deployment host, start
@@ -309,8 +309,8 @@ This focused check isolates public game/cache reachability and agent bridge non-
 ```sh
 scripts/verify-external-deployment.py \
   --config "2006Scape Server/ServerConfig.json" \
-  --client-dist dist/external-deployment/2006scape-client \
-  --archive dist/external-deployment/2006scape-client.zip \
+  --client-dist dist/external-deployment/agent-scape-client \
+  --archive dist/external-deployment/agent-scape-client.zip \
   --server-deployment-dir dist/external-deployment/server-deployment \
   --live \
   --live-login-username ExternalTest \
@@ -338,11 +338,11 @@ If you are following the generated `scripts/deployment-readiness-status.py --sho
 
 Give the external tester:
 
-- `dist/external-deployment/2006scape-client.zip`
+- `dist/external-deployment/agent-scape-client.zip`
 - the selected external transport requirement, such as "connect Tailscale first"
 - the test username and password through a private channel
 
-Use a password unique to this 2006Scape server. The packaged README tells testers to use the operator-provided account and not to reuse RuneScape.com or other service passwords, which matters especially for `direct_tcp` because the legacy game/cache protocol is plaintext to the public host.
+Use a password unique to this agent-scape server. The packaged README tells testers to use the operator-provided account and not to reuse RuneScape.com or other service passwords, which matters especially for `direct_tcp` because the legacy game/cache protocol is plaintext to the public host.
 
 Then connect:
 
@@ -424,8 +424,8 @@ scripts/check-deployment-proof-manifest.py \
   --check-files
 scripts/deployment-readiness-report.py \
   --config "2006Scape Server/ServerConfig.json" \
-  --client-dist dist/external-deployment/2006scape-client \
-  --archive dist/external-deployment/2006scape-client.zip \
+  --client-dist dist/external-deployment/agent-scape-client \
+  --archive dist/external-deployment/agent-scape-client.zip \
   --server-deployment-dir dist/external-deployment/server-deployment \
   --proof-manifest dist/external-deployment/deployment-proof-manifest.json
 ```
@@ -494,7 +494,7 @@ If something fails, check these first:
 - `agent_bridge_bind_host` is still loopback.
 - Account records were created with `scripts/create-account.py` and pass `scripts/account-admin.py --require-password-policy audit`.
 - The running server was intentionally restarted after building the deployment bits.
-- The packaged client zip is from `dist/external-deployment/`, not an old `dist/2006scape-client.zip`.
+- The packaged client zip is from `dist/external-deployment/`, not an old `dist/agent-scape-client.zip`.
 
 ## Detailed References
 

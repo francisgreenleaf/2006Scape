@@ -18,7 +18,7 @@
 - 2026-06-14: Mac-side `scripts/probe-deployment-network.py --config "2006Scape Server/ServerConfig.json"` passed.
 - 2026-06-14: Mac-side live verifier accepted `ExternalTest` and rejected disabled `RejectTest`.
 - 2026-06-14: VPS-side concurrent login probe accepted external `ExternalTest` and local `LocalTest` at the same time.
-- 2026-06-14: Packaged Mac setup checker passed from `dist/external-deployment/2006scape-client/check-setup-macos-linux.sh`.
+- 2026-06-14: Packaged Mac setup checker passed from `dist/external-deployment/agent-scape-client/check-setup-macos-linux.sh`.
 - 2026-06-14: Rotated `ExternalTest` to an 8-character convenience password for manual testing. Live game login accepted it, but strict deployment account audit now flags that account as weak-policy. Rotate to a 12+ character password before treating this deployment as final-readiness-grade.
 - 2026-06-14: Added VPS PBKDF2 accounts and copied character saves for the named test profiles. Live protocol login probes accepted all of them over the private public host and game port.
 - 2026-06-14: Packaged client launch defaults were changed to `client.scale=2` and `show_navbar=false` so the larger testing window uses repo-native canvas scaling instead of macOS JVM UI scaling.
@@ -51,12 +51,12 @@ These are eight-character direct-TCP convenience passwords. They are fine for ma
 1. From the repo machine, use the packaged client folder:
 
    ```sh
-   cd <local-worktree>/dist/external-deployment/2006scape-client
+   cd <local-worktree>/dist/external-deployment/agent-scape-client
    ./check-setup-macos-linux.sh
    ./run-macos-linux.sh
    ```
 
-2. On macOS Finder, the same flow is double-click `Check-Setup.command`, then double-click `Run-2006Scape.command`.
+2. On macOS Finder, the same flow is double-click `Check-Setup.command`, then double-click `run-agent-scape.command`.
 3. On Windows, use `check-setup-windows.bat`, then `run-windows.bat`.
 4. Log in with one of the named test profiles and the matching password from the private env file.
 

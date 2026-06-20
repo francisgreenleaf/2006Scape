@@ -150,19 +150,19 @@ def write_launcher(path):
 set -u
 
 APP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CLIENT_DIR="$APP_ROOT/Resources/2006scape-client"
-LOG_DIR="${HOME:-/tmp}/Library/Logs/2006Scape"
+CLIENT_DIR="$APP_ROOT/Resources/agent-scape-client"
+LOG_DIR="${HOME:-/tmp}/Library/Logs/agent-scape"
 if ! mkdir -p "$LOG_DIR" 2>/dev/null; then
     LOG_DIR="/tmp"
 fi
-LOG_FILE="$LOG_DIR/2006Scape-launch.log"
+LOG_FILE="$LOG_DIR/agent-scape-launch.log"
 
 show_error() {
     local message="$1"
     if command -v osascript >/dev/null 2>&1; then
         osascript \\
             -e 'on run argv' \\
-            -e 'display dialog (item 1 of argv) with title "2006Scape" buttons {"OK"} default button "OK" with icon caution' \\
+            -e 'display dialog (item 1 of argv) with title "agent-scape" buttons {"OK"} default button "OK" with icon caution' \\
             -e 'end run' \\
             "$message" >/dev/null 2>&1 || true
     fi
@@ -170,22 +170,22 @@ show_error() {
 
 {
     echo ""
-    echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] Starting 2006Scape from $APP_ROOT"
+    echo "[$(date -u '+%Y-%m-%dT%H:%M:%SZ')] Starting agent-scape from $APP_ROOT"
 } >>"$LOG_FILE" 2>&1
 exec >>"$LOG_FILE" 2>&1
 
 export PATH="/opt/homebrew/opt/openjdk/bin:/opt/homebrew/bin:/usr/local/opt/openjdk/bin:/usr/local/bin:/Library/Java/JavaVirtualMachines/temurin-8.jdk/Contents/Home/bin:${PATH:-}"
-export CLIENT_DOCK_NAME="2006Scape"
-if [[ -f "$APP_ROOT/Resources/2006Scape.icns" ]]; then
-    export CLIENT_DOCK_ICON="$APP_ROOT/Resources/2006Scape.icns"
+export CLIENT_DOCK_NAME="agent-scape"
+if [[ -f "$APP_ROOT/Resources/agent-scape.icns" ]]; then
+    export CLIENT_DOCK_ICON="$APP_ROOT/Resources/agent-scape.icns"
 fi
 
 if [[ ! -d "$CLIENT_DIR" ]]; then
-    show_error "2006Scape could not find its bundled client files. Reopen the DMG or download a fresh package. Log: $LOG_FILE"
+    show_error "agent-scape could not find its bundled client files. Reopen the DMG or download a fresh package. Log: $LOG_FILE"
     exit 1
 fi
 if [[ ! -x "$CLIENT_DIR/run-macos-linux.sh" ]]; then
-    show_error "2006Scape could not find its launcher. Reopen the DMG or download a fresh package. Log: $LOG_FILE"
+    show_error "agent-scape could not find its launcher. Reopen the DMG or download a fresh package. Log: $LOG_FILE"
     exit 1
 fi
 
@@ -195,7 +195,7 @@ set +e
 status=$?
 set -e
 if [[ "$status" -ne 0 ]]; then
-    show_error "2006Scape could not start. Install Java 8 or newer, then try again. Details were written to: $LOG_FILE"
+    show_error "agent-scape could not start. Install Java 8 or newer, then try again. Details were written to: $LOG_FILE"
 fi
 exit "$status"
 """,
@@ -268,6 +268,33 @@ def draw_circle(pixels, width, height, cx, cy, radius, color):
                 blend_pixel(pixels, width, x, y, color)
 
 
+def draw_line(pixels, width, height, x0, y0, x1, y1, radius, color):
+    steps = max(1, int(max(abs(x1 - x0), abs(y1 - y0)) * 2))
+    for index in range(steps + 1):
+        t = index / steps
+        x = int(round(x0 + (x1 - x0) * t))
+        y = int(round(y0 + (y1 - y0) * t))
+        draw_circle(pixels, width, height, x, y, radius, color)
+
+
+def draw_triangle(pixels, width, height, points, color):
+    min_x = max(0, min(x for x, _ in points))
+    max_x = min(width - 1, max(x for x, _ in points))
+    min_y = max(0, min(y for _, y in points))
+    max_y = min(height - 1, max(y for _, y in points))
+    (x1, y1), (x2, y2), (x3, y3) = points
+    denom = ((y2 - y3) * (x1 - x3)) + ((x3 - x2) * (y1 - y3))
+    if denom == 0:
+        return
+    for y in range(min_y, max_y + 1):
+        for x in range(min_x, max_x + 1):
+            a = ((y2 - y3) * (x - x3) + (x3 - x2) * (y - y3)) / denom
+            b = ((y3 - y1) * (x - x3) + (x1 - x3) * (y - y3)) / denom
+            c = 1.0 - a - b
+            if a >= 0 and b >= 0 and c >= 0:
+                blend_pixel(pixels, width, x, y, color)
+
+
 def rounded_rect_contains(x, y, x0, y0, x1, y1, radius):
     if x < x0 or x >= x1 or y < y0 or y >= y1:
         return False
@@ -321,45 +348,41 @@ def write_icon_png(path, size):
     pixels = bytearray(size * size * 4)
     s = lambda value: max(1, int(round(value * size)))
 
-    draw_rounded_rect(pixels, size, size, s(0.04), s(0.04), s(0.96), s(0.96), s(0.18), (17, 74, 50, 255))
-    draw_rounded_rect(pixels, size, size, s(0.08), s(0.08), s(0.92), s(0.92), s(0.14), (35, 112, 68, 255))
+    draw_rounded_rect(pixels, size, size, s(0.04), s(0.04), s(0.96), s(0.96), s(0.18), (9, 21, 33, 255))
+    draw_rounded_rect(pixels, size, size, s(0.08), s(0.08), s(0.92), s(0.92), s(0.14), (14, 42, 52, 255))
+    draw_rounded_rect(pixels, size, size, s(0.13), s(0.13), s(0.87), s(0.87), s(0.10), (18, 58, 64, 255))
 
-    for i in range(s(0.08)):
-        draw_rounded_rect(
-            pixels,
-            size,
-            size,
-            s(0.09) + i,
-            s(0.09) + i,
-            s(0.91) - i,
-            s(0.91) - i,
-            max(1, s(0.13) - i),
-            (214, 170, 79, 55),
-        )
+    for coord in (0.28, 0.45, 0.62, 0.78):
+        draw_line(pixels, size, size, s(coord), s(0.16), s(coord), s(0.84), max(1, s(0.006)), (88, 122, 128, 90))
+        draw_line(pixels, size, size, s(0.16), s(coord), s(0.84), s(coord), max(1, s(0.006)), (88, 122, 128, 90))
 
-    # River slash and path give the icon a tiny map feel without needing asset files.
-    for offset in range(-s(0.045), s(0.045) + 1):
-        for t in range(s(0.10), s(0.90)):
-            x = t
-            y = int(s(0.22) + (t - s(0.10)) * 0.48) + offset
-            blend_pixel(pixels, size, x, y, (65, 145, 176, 210))
+    route = [
+        (s(0.21), s(0.70)),
+        (s(0.36), s(0.55)),
+        (s(0.48), s(0.64)),
+        (s(0.71), s(0.33)),
+    ]
+    for start, end in zip(route, route[1:]):
+        draw_line(pixels, size, size, start[0], start[1], end[0], end[1], max(1, s(0.020)), (28, 221, 191, 255))
+        draw_line(pixels, size, size, start[0], start[1], end[0], end[1], max(1, s(0.008)), (197, 255, 244, 255))
+    for index, (x, y) in enumerate(route):
+        draw_circle(pixels, size, size, x, y, max(2, s(0.055)), (7, 25, 32, 245))
+        draw_circle(pixels, size, size, x, y, max(1, s(0.034)), (255, 198, 92, 255) if index in (0, len(route) - 1) else (51, 226, 196, 255))
 
-    draw_circle(pixels, size, size, s(0.50), s(0.50), s(0.31), (235, 201, 116, 245))
-    draw_circle(pixels, size, size, s(0.50), s(0.50), s(0.26), (54, 88, 59, 255))
-    draw_circle(pixels, size, size, s(0.50), s(0.50), s(0.22), (42, 128, 78, 255))
-
-    digit_color = (251, 230, 157, 255)
-    draw_segment_digit(pixels, size, size, "0", s(0.23), s(0.35), s(0.23), s(0.31), digit_color)
-    draw_segment_digit(pixels, size, size, "6", s(0.54), s(0.35), s(0.23), s(0.31), digit_color)
-    draw_circle(pixels, size, size, s(0.73), s(0.28), max(1, s(0.055)), (181, 59, 49, 255))
-    draw_circle(pixels, size, size, s(0.73), s(0.28), max(1, s(0.026)), (255, 236, 185, 255))
+    # Abstract navigation cursor: no text mark, so it scales cleanly in Finder.
+    shadow = [(s(0.53), s(0.20)), (s(0.42), s(0.79)), (s(0.61), s(0.63))]
+    cursor = [(s(0.52), s(0.17)), (s(0.40), s(0.76)), (s(0.59), s(0.60))]
+    cutout = [(s(0.51), s(0.36)), (s(0.46), s(0.62)), (s(0.54), s(0.56))]
+    draw_triangle(pixels, size, size, shadow, (2, 8, 13, 130))
+    draw_triangle(pixels, size, size, cursor, (236, 250, 247, 255))
+    draw_triangle(pixels, size, size, cutout, (14, 42, 52, 255))
+    draw_line(pixels, size, size, s(0.52), s(0.19), s(0.58), s(0.59), max(1, s(0.007)), (94, 234, 212, 210))
 
     write_png_rgba(path, size, size, pixels)
 
 
 def write_app_icon(resources_dir):
-    if sys.platform != "darwin" or shutil.which("iconutil") is None:
-        return ""
+    icon_path = resources_dir / "agent-scape.icns"
     iconset = resources_dir / "AppIcon.iconset"
     if iconset.exists():
         if iconset.is_symlink():
@@ -367,30 +390,25 @@ def write_app_icon(resources_dir):
         shutil.rmtree(str(iconset))
     iconset.mkdir(parents=True)
     specs = [
-        ("icon_16x16.png", 16),
-        ("icon_16x16@2x.png", 32),
-        ("icon_32x32.png", 32),
-        ("icon_32x32@2x.png", 64),
-        ("icon_128x128.png", 128),
-        ("icon_128x128@2x.png", 256),
-        ("icon_256x256.png", 256),
-        ("icon_256x256@2x.png", 512),
-        ("icon_512x512.png", 512),
-        ("icon_512x512@2x.png", 1024),
+        ("icp4", "icon_16x16.png", 16),
+        ("icp5", "icon_32x32.png", 32),
+        ("icp6", "icon_32x32@2x.png", 64),
+        ("ic07", "icon_128x128.png", 128),
+        ("ic08", "icon_256x256.png", 256),
+        ("ic09", "icon_512x512.png", 512),
+        ("ic10", "icon_512x512@2x.png", 1024),
     ]
-    for filename, size in specs:
-        write_icon_png(iconset / filename, size)
-    icon_path = resources_dir / "2006Scape.icns"
-    completed = subprocess.run(
-        ["iconutil", "-c", "icns", str(iconset), "-o", str(icon_path)],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        check=False,
-    )
-    shutil.rmtree(str(iconset))
-    if completed.returncode != 0:
-        fail("iconutil icon creation failed:\n{}".format((completed.stdout or "").strip()))
+    chunks = []
+    try:
+        for icon_type, filename, size in specs:
+            png_path = iconset / filename
+            write_icon_png(png_path, size)
+            data = png_path.read_bytes()
+            chunks.append(icon_type.encode("ascii") + struct.pack(">I", len(data) + 8) + data)
+        body = b"".join(chunks)
+        icon_path.write_bytes(b"icns" + struct.pack(">I", len(body) + 8) + body)
+    finally:
+        shutil.rmtree(str(iconset))
     return str(icon_path)
 
 
@@ -410,7 +428,7 @@ def write_info_plist(path, app_name, bundle_id, icon_file):
         "NSHighResolutionCapable": True,
     }
     if icon_file:
-        payload["CFBundleIconFile"] = "2006Scape"
+        payload["CFBundleIconFile"] = "agent-scape"
     with path.open("wb") as handle:
         plistlib.dump(payload, handle, sort_keys=True)
 
@@ -424,7 +442,7 @@ def build_app(args):
     if not prepared_dir.is_dir():
         fail("prepared deployment directory is missing: {}".format(prepared_dir))
 
-    client_dist = resolve_under_root(Path(args.client_dist)) if args.client_dist else prepared_dir / "2006scape-client"
+    client_dist = resolve_under_root(Path(args.client_dist)) if args.client_dist else prepared_dir / "agent-scape-client"
     handoff_note = (
         resolve_under_root(Path(args.handoff_note))
         if args.handoff_note
@@ -435,12 +453,12 @@ def build_app(args):
         if args.output_dir
         else prepared_dir / "macos-player-packages" / stem
     )
-    app_name = args.app_name.strip() or "2006Scape"
+    app_name = args.app_name.strip() or "agent-scape"
     app_path = output_dir / "{}.app".format(app_name)
     dmg_output = (
         resolve_under_root(Path(args.dmg_output))
         if args.dmg_output
-        else prepared_dir / "2006scape-player-{}-mac.dmg".format(stem)
+        else prepared_dir / "agent-scape-player-{}-mac.dmg".format(stem)
     )
 
     validate_public_tree(client_dist, "client distribution")
@@ -461,7 +479,7 @@ def build_app(args):
     macos_dir.mkdir(parents=True)
     resources_dir.mkdir(parents=True)
 
-    copy_tree(client_dist, resources_dir / "2006scape-client")
+    copy_tree(client_dist, resources_dir / "agent-scape-client")
     app_icon = write_app_icon(resources_dir)
     write_launcher(macos_dir / app_name)
     write_info_plist(contents_dir / "Info.plist", app_name, args.bundle_id, app_icon)
@@ -482,11 +500,11 @@ def build_app(args):
         dmg_root.mkdir(parents=True)
         copy_tree(app_path, dmg_root / app_path.name)
         (dmg_root / "README-FIRST.md").write_text(handoff_text, encoding="utf-8")
-        (dmg_root / "OPEN-2006SCAPE.txt").write_text(
+        (dmg_root / "open-agent-scape.txt").write_text(
             "\n".join([
-                "Open 2006Scape.app to launch the game client.",
-                "If macOS blocks a first launch, right-click 2006Scape.app and choose Open.",
-                "If Java is missing or the client cannot start, the app shows an alert and writes a log to ~/Library/Logs/2006Scape/2006Scape-launch.log.",
+                "Open agent-scape.app to launch the game client.",
+                "If macOS blocks a first launch, right-click agent-scape.app and choose Open.",
+                "If Java is missing or the client cannot start, the app shows an alert and writes a log to ~/Library/Logs/agent-scape/agent-scape-launch.log.",
                 "Read README-FIRST.md for the account name, transport setup, and login steps.",
                 "The password is not included in this DMG; the operator sends it separately.",
                 "",
@@ -503,7 +521,7 @@ def build_app(args):
                 "hdiutil",
                 "create",
                 "-volname",
-                "2006Scape",
+                "agent-scape",
                 "-srcfolder",
                 str(dmg_root),
                 "-ov",
@@ -541,7 +559,7 @@ def build_app(args):
 def main():
     parser = argparse.ArgumentParser(
         description=(
-            "Create a Finder-friendly macOS .app wrapper around a prepared 2006Scape "
+            "Create a Finder-friendly macOS .app wrapper around a prepared agent-scape "
             "client distribution, and optionally create a DMG. Passwords, account records, "
             "secrets, bridge sessions, and runtime data are never included."
         )
@@ -549,13 +567,13 @@ def main():
     parser.add_argument("username", help="Player account username for the handoff note.")
     parser.add_argument("--character", default="", help="Allowed/logged-in character. Defaults to username.")
     parser.add_argument("--prepared-dir", default=str(DEFAULT_PREPARED_DIR))
-    parser.add_argument("--client-dist", default="", help="Prepared client folder. Defaults to PREPARED_DIR/2006scape-client.")
+    parser.add_argument("--client-dist", default="", help="Prepared client folder. Defaults to PREPARED_DIR/agent-scape-client.")
     parser.add_argument("--handoff-note", default="", help="Player handoff note. Defaults to PREPARED_DIR/player-handoff-USERNAME.md.")
     parser.add_argument("--output-dir", default="", help="Output directory for the .app bundle.")
-    parser.add_argument("--app-name", default="2006Scape", help="macOS app display/executable name.")
-    parser.add_argument("--bundle-id", default="com.2006scape.client", help="macOS bundle identifier.")
+    parser.add_argument("--app-name", default="agent-scape", help="macOS app display/executable name.")
+    parser.add_argument("--bundle-id", default="com.agentscape.client", help="macOS bundle identifier.")
     parser.add_argument("--dmg", action="store_true", help="Also build a compressed DMG with hdiutil.")
-    parser.add_argument("--dmg-output", default="", help="DMG output path. Defaults to PREPARED_DIR/2006scape-player-USERNAME-mac.dmg.")
+    parser.add_argument("--dmg-output", default="", help="DMG output path. Defaults to PREPARED_DIR/agent-scape-player-USERNAME-mac.dmg.")
     parser.add_argument("--json", action="store_true", help="Print compact JSON summary.")
     args = parser.parse_args()
 
