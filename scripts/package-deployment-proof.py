@@ -49,6 +49,7 @@ CLIENT_METADATA_FILES = (
 )
 SERVER_METADATA_FILES = (
     "README.md",
+    "player-handoff-template.md",
     "ServerConfig.json",
 )
 RUNTIME_ARCHIVE_RE = re.compile(r"(?m)^-\s*archive:\s*(.+?)\s*$")
@@ -238,6 +239,7 @@ def validate_final_proof_bundle(readiness_data, manifest_values, proof_manifest_
     checker = load_manifest_checker()
     checker_args = argparse.Namespace(
         require_full_proof=True,
+        require_encrypted_external=True,
         discord_required=proof_status == FULL_DISCORD_PROOF_STATUS,
         blocked_routing_required=(
             proof_status == FULL_DISCORD_PROOF_STATUS
@@ -279,7 +281,7 @@ Generated at: {generated_at}
 
 This archive is a non-secret handoff bundle for external deployment proof review.
 It includes readiness reports, a filled proof manifest when supplied, proof notes,
-and selected client/server metadata.
+and selected client/server metadata such as the player handoff template.
 
 It deliberately does not include runtime-data backup archives, character saves,
 PBKDF2 account records, `data/secrets.json`, passwords, bridge tokens, or Discord
@@ -399,6 +401,7 @@ def main():
             "path": str(proof_manifest),
             "fieldCount": len(manifest_values),
             "requireFullProof": manifest_values.get("require_full_proof") is True,
+            "requireEncryptedExternal": manifest_values.get("require_encrypted_external") is True,
             "live": manifest_values.get("live") is True,
             "liveDiscord": manifest_values.get("live_discord") is True,
         }
@@ -409,6 +412,7 @@ def main():
         result = validate_final_proof_bundle(readiness_data, manifest_values, args.proof_manifest)
         metadata["finalProofCheck"] = {
             "status": result["status"],
+            "requireEncryptedExternal": result["requireEncryptedExternal"],
             "discordRequired": result["discordRequired"],
             "blockedRoutingRequired": result["blockedRoutingRequired"],
             "proofFileChecks": result.get("proofFileChecks", []),

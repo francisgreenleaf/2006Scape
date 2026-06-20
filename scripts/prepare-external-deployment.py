@@ -79,6 +79,8 @@ def build_report_args(args, client_dist, archive, report_path, server_deployment
         argv.append("--allow-placeholder-discord-secrets")
     if args.require_full_proof:
         argv.append("--require-full-proof")
+    if args.require_encrypted_external:
+        argv.append("--require-encrypted-external")
     if args.live:
         argv.append("--live")
     if args.timeout:
@@ -221,6 +223,24 @@ def validate_require_full_proof_args(parser, args):
         )
 
 
+def validate_encrypted_external_args(parser, args, config):
+    if not args.require_encrypted_external:
+        return
+    mode = str(config.get("external_transport_mode", "") or "").strip().lower()
+    allowed = ("tailscale", "wireguard", "vpn", "client_tls_tunnel")
+    if mode not in allowed:
+        parser.error(
+            "--require-encrypted-external requires external_transport_mode to be one of {}; "
+            "direct_tcp is plaintext and should only be used for explicit no-install smoke tests".format(
+                ", ".join(allowed)
+            )
+        )
+    if config.get("require_secure_external_transport") is not True:
+        parser.error("--require-encrypted-external requires require_secure_external_transport=true")
+    if config.get("secure_external_transport_confirmed") is not True:
+        parser.error("--require-encrypted-external requires secure_external_transport_confirmed=true")
+
+
 def merged_proof_manifest_values(args):
     values = {}
     for field in sorted(FIELD_TYPES):
@@ -315,6 +335,9 @@ def main():
     parser.add_argument("--require-full-proof", action="store_true",
             help=("Fail unless the generated readiness report records all required live/manual proof categories. "
                   "Use only for final deployment gates after the remote runtime and evidence exist."))
+    parser.add_argument("--require-encrypted-external", action="store_true",
+            help=("Refuse to prepare/package a downloadable external client unless the config uses an encrypted/private "
+                  "transport: tailscale, wireguard, vpn, or client_tls_tunnel. direct_tcp is plaintext."))
     parser.add_argument("--live", action="store_true",
             help="Record live reachability checks in the readiness report after the remote server is intentionally running.")
     parser.add_argument("--timeout", type=float, default=2.0)
@@ -381,6 +404,7 @@ def main():
     validate_require_full_proof_args(parser, args)
 
     config = load_config(args.config)
+    validate_encrypted_external_args(parser, args, config)
     run_final_proof_manifest_precheck(args)
     output_dir = Path(args.output_dir)
     client_dist = output_dir / "2006scape-client"
@@ -400,6 +424,8 @@ def main():
         package_env["CLIENT_ALLOW_WILDCARD_BIND"] = "1"
     if args.allow_placeholder_network_config:
         package_env["CLIENT_ALLOW_PLACEHOLDER_NETWORK_CONFIG"] = "1"
+    if args.require_encrypted_external:
+        package_env["CLIENT_REQUIRE_ENCRYPTED_EXTERNAL"] = "1"
 
     run(["scripts/package-client.sh"], env=package_env)
 
@@ -463,6 +489,7 @@ def main():
         print("client_tls_tunnel_operator: {}".format(tunnel_operator_dir))
     else:
         print("client_tls_tunnel_operator: skipped; external_transport_mode={}".format(mode or "unspecified"))
+    print("encrypted_external_required: {}".format("yes" if args.require_encrypted_external else "no"))
     print("server_deployment: {}".format(server_deployment_dir))
     print("runtime: not started, stopped, or restarted")
     return 0

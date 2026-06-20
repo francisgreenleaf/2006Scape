@@ -1,8 +1,8 @@
 # External Deployment Quickstart
 
-This is the short path for a first regular-player external test. Use this when you want to get one remote 2006Scape server, one local client, and one external client online safely without reading the full design document first.
+This is the short path for a first external-player test. Use this when you want to get one remote 2006Scape server, one local client, and one external client online safely without reading the full design document first. The recommended encrypted path is Tailscale; use `direct_tcp` only as an explicit plaintext smoke path.
 
-For the simplest live test, use the tracked `direct_tcp` sample. It exposes the legacy game/cache sockets as plaintext TCP to the configured public host, so keep PBKDF2 account auth enabled, open only the required game/cache ports in the host firewall, and keep the Codex agent bridge loopback-only. If you need encrypted/private external traffic instead, use Tailscale, WireGuard, a VPN, or start from `2006Scape Server/ServerConfig.ClientTlsTunnel.Sample.json` for the paired stunnel path.
+For a turnkey encrypted private beta, use the tracked Tailscale sample. Tailscale handles the encrypted network and user/device access while the server still uses PBKDF2 account records for in-game login. For the simplest no-install public smoke test, `direct_tcp` still works, but it exposes the legacy game/cache sockets as plaintext TCP to the configured public host. Keep the Codex agent bridge loopback-only in every mode. If you need a public encrypted path without a VPN, start from `2006Scape Server/ServerConfig.ClientTlsTunnel.Sample.json` for the paired stunnel path.
 
 ## What This Sets Up
 
@@ -17,7 +17,7 @@ For the simplest live test, use the tracked `direct_tcp` sample. It exposes the 
 You need:
 
 - A test VM, VPS, or other host where the server can run.
-- A public host/IP or DNS name for `direct_tcp`, or an already chosen private/VPN/tunnel transport if not using direct TCP.
+- A Tailscale tailnet and a server Tailscale hostname/IP for the recommended encrypted private path, or a public host/IP for `direct_tcp`.
 - Java and Maven available on the server.
 - This repo copied or checked out on the server.
 - A throwaway external test account name and password.
@@ -31,7 +31,32 @@ agent gateway and package its URL as `agent.bridge.url`. Start with
 
 ## 1. Create The External Config
 
-From the repo root on the server, copy the direct public sample:
+For the recommended Tailscale path, install and connect Tailscale on the server first, then copy the Tailscale sample:
+
+```sh
+cp "2006Scape Server/ServerConfig.Tailscale.Sample.json" "2006Scape Server/ServerConfig.json"
+$EDITOR "2006Scape Server/ServerConfig.json"
+```
+
+Set these values:
+
+- `public_game_host`: the server's Tailscale MagicDNS name or Tailscale IP, replacing `example-tailnet-host`.
+- `game_bind_hosts`: include `127.0.0.1` and the server's Tailscale interface IP, replacing `REPLACE_WITH_TAILSCALE_IP`.
+- `http_bind_hosts` and `jaggrab_bind_hosts`: include the same Tailscale interface IP if `file_server` is enabled.
+- `external_transport_mode`: `tailscale`.
+- `external_players_enabled`: `true`.
+- `require_secure_external_transport`: `true`.
+- `secure_external_transport_confirmed`: `true`, after Tailscale access is configured.
+- `direct_tcp_external_transport_confirmed`: `false`.
+- `account_auth_enabled`: `true`.
+- `account_auth_legacy_fallback`: `false` for external mode.
+- `account_auth_auto_create`: `false`.
+- `agent_bridge_bind_host`: `127.0.0.1`.
+
+Grant players access only to the game/cache ports they need, normally TCP `43594`, `43595`, and `8080` when `file_server=true`. Do not grant or expose TCP `43610`.
+The prepared server deployment bundle includes `server-deployment/tailscale-policy-grants.example.json` as a least-privilege starting point for this policy.
+
+For the direct public no-install path instead, copy the direct public sample:
 
 ```sh
 cp "2006Scape Server/ServerConfig.External.Sample.json" "2006Scape Server/ServerConfig.json"
@@ -53,7 +78,7 @@ Set these values for the default `direct_tcp` path:
 - `account_auth_auto_create`: `false`.
 - `agent_bridge_bind_host`: `127.0.0.1`.
 
-For Tailscale/WireGuard/VPN/client TLS tunnel instead, use the relevant private host/bind values, set that `external_transport_mode`, set `require_secure_external_transport=true`, and set `secure_external_transport_confirmed=true`.
+For WireGuard/VPN instead, use the relevant private host/bind values, set that `external_transport_mode`, set `require_secure_external_transport=true`, and set `secure_external_transport_confirmed=true`.
 
 For the tracked client TLS tunnel sample instead:
 
@@ -62,7 +87,7 @@ cp "2006Scape Server/ServerConfig.ClientTlsTunnel.Sample.json" "2006Scape Server
 $EDITOR "2006Scape Server/ServerConfig.json"
 ```
 
-Replace `REPLACE_WITH_PUBLIC_TLS_HOST` with the public DNS name that has the TLS certificate and stunnel listener. In this mode the Java game/cache listeners stay loopback-only and packaged clients connect to `127.0.0.1`; the packaged launchers try to start the bundled `client-tls-tunnel/stunnel-client.conf` automatically when `stunnel` is installed, and the README still gives the manual command as a fallback.
+Replace `REPLACE_WITH_PUBLIC_TLS_HOST` with the public DNS name that has the TLS certificate and stunnel listener. In this mode the Java game/cache listeners stay loopback-only and packaged clients connect to `127.0.0.1`; the packaged launchers try to start the bundled `client-tls-tunnel/stunnel-client.conf` automatically when `stunnel` is installed, and `client-tls-tunnel/INSTALL-STUNNEL.txt` gives players OS-specific install hints when it is not. The README still gives the manual command as a fallback.
 
 Then preflight:
 
@@ -105,6 +130,14 @@ This packages the client, renders server deployment files, and writes a static r
 scripts/prepare-external-deployment.py --config "2006Scape Server/ServerConfig.json"
 ```
 
+For an encrypted external-player package, add the explicit guard:
+
+```sh
+scripts/prepare-external-deployment.py --config "2006Scape Server/ServerConfig.json" --require-encrypted-external
+```
+
+That guard refuses `direct_tcp` and any config that has not confirmed a secure external transport. Use it for Tailscale, WireGuard/VPN, or `client_tls_tunnel` packages that you intend to give to players. Leave it off only for a deliberate plaintext `direct_tcp` smoke test.
+
 Add `--json-output dist/external-deployment/deployment-readiness-report.json` when you also want machine-readable readiness status for scripts or handoff records.
 
 Important outputs:
@@ -117,6 +150,8 @@ Important outputs:
 - `dist/external-deployment/2006scape-client/MANIFEST.txt`
 - `dist/external-deployment/2006scape-client/SHA256SUMS`
 - `dist/external-deployment/server-deployment/`
+- `dist/external-deployment/server-deployment/player-handoff-template.md`
+- `dist/external-deployment/server-deployment/tailscale-policy-grants.example.json` for Tailscale deployments
 - `dist/external-deployment/deployment-readiness-report.md`
 
 Open the readiness report and check:
@@ -126,7 +161,45 @@ Open the readiness report and check:
 
 That means the artifacts are statically valid but not live-proven yet.
 
-Before a player launches the client, have them run the package's setup checker for their OS if anything is unclear. On macOS, they can double-click `Check-Setup.command`, then double-click `Run-2006Scape.command` to play; Terminal and Linux users can still run the shared shell scripts, and Windows users run the `.bat` files. The checker verifies Java, prints the packaged `client.properties`, and attempts game/cache TCP checks without logging in or changing server state. In `client_tls_tunnel` mode the macOS/Linux setup checker can start the bundled stunnel config temporarily when `stunnel` is installed; the Windows setup checker expects the local tunnel endpoint to be reachable first, while the launcher still manages stunnel when possible.
+Before a player launches the client, use `server-deployment/player-handoff-template.md` as the operator checklist for what to send: the client zip, transport requirement, private username/password, and optional `/agent` gateway note. For a filled player-facing note, run:
+
+```sh
+scripts/render-player-handoff.py \
+  --prepared-dir dist/external-deployment \
+  --username PLAYER_USERNAME \
+  --character CHARACTER_NAME \
+  --output dist/external-deployment/player-handoff-PLAYER_USERNAME.md
+```
+
+For a one-command player provisioning path after the bundle exists, use:
+
+```sh
+scripts/provision-player-account.py PLAYER_USERNAME \
+  --character CHARACTER_NAME \
+  --prepared-dir dist/external-deployment
+```
+
+That helper creates the ignored PBKDF2 account record, audits the account store, writes the generated password only to an owner-only ignored credentials env file under `dist/external-deployment/private/`, and renders the filled handoff note. It does not print the password and does not start, stop, or restart runtime. The rendered note includes the client archive checksum, transport setup, username/character, and agent-gateway guidance, but it never accepts or prints the password. Send the password separately through a private channel. Do not send account JSON files, `data/secrets.json`, runtime backup archives, bridge session files, bridge tokens, claim nonces, API keys, or Discord bot tokens. Have the player open the package README and follow its first-run checklist: install Java, connect the selected transport, run the setup checker, launch the client, and log in with the operator-provided account. On macOS, they can double-click `Check-Setup.command`, then double-click `Run-2006Scape.command` to play; Terminal and Linux users can still run the shared shell scripts, and Windows users run the `.bat` files. The checker verifies Java, prints the packaged `client.properties`, and attempts game/cache TCP checks without logging in or changing server state. In Tailscale mode, the checkers also print non-fatal Tailscale CLI/status hints before the TCP checks. In `client_tls_tunnel` mode the macOS/Linux setup checker can start the bundled stunnel config temporarily when `stunnel` is installed; the Windows setup checker expects the local tunnel endpoint to be reachable first, while the launcher still manages stunnel when possible. If stunnel is missing, the player package includes `client-tls-tunnel/INSTALL-STUNNEL.txt`.
+
+Package only the public-safe files for the player:
+
+```sh
+scripts/package-player-kit.py PLAYER_USERNAME \
+  --character CHARACTER_NAME \
+  --prepared-dir dist/external-deployment
+```
+
+Verify the copied kit before sending it:
+
+```sh
+scripts/verify-player-kit.py \
+  --kit dist/external-deployment/player-kit-PLAYER_USERNAME.zip \
+  --prepared-dir dist/external-deployment \
+  --username PLAYER_USERNAME \
+  --character CHARACTER_NAME
+```
+
+Send the verified `player-kit-PLAYER_USERNAME.zip` and send the password separately. The kit contains the client archive, README-first handoff note, and checksums; packaging self-verifies the generated zip, and the standalone verifier re-checks copied/downloaded kits. Both reject private credentials, account records, secrets, runtime data, bridge tokens, and other secret-bearing paths.
 
 The default package uses `client.scale=2` and `show_navbar=false`. Keep those defaults for normal external tester packages so the larger desktop window uses the client scale code path instead of JVM UI scaling, which avoids macOS mouse-click offset issues.
 
@@ -201,7 +274,7 @@ If you are following the generated `scripts/deployment-readiness-status.py --sho
 Give the external tester:
 
 - `dist/external-deployment/2006scape-client.zip`
-- the selected external transport requirement, if any
+- the selected external transport requirement, such as "connect Tailscale first"
 - the test username and password through a private channel
 
 Use a password unique to this 2006Scape server. The packaged README tells testers to use the operator-provided account and not to reuse RuneScape.com or other service passwords, which matters especially for `direct_tcp` because the legacy game/cache protocol is plaintext to the public host.
@@ -277,6 +350,7 @@ After live network/auth proof, runtime backup proof, desktop-client proof, and d
 ```sh
 cp dist/external-deployment/server-deployment/proof-templates/deployment-proof-manifest.json dist/external-deployment/deployment-proof-manifest.json
 # Edit the copied manifest: replace proof paths, usernames, markers, and password env var names.
+# Keep require_full_proof:true and require_encrypted_external:true for a player-distributable final gate.
 scripts/check-deployment-proof-manifest.py \
   dist/external-deployment/deployment-proof-manifest.json \
   --config "2006Scape Server/ServerConfig.json" \
@@ -291,7 +365,7 @@ scripts/deployment-readiness-report.py \
   --proof-manifest dist/external-deployment/deployment-proof-manifest.json
 ```
 
-The manifest stores proof file paths, live-test usernames, unique markers, and password environment-variable names. Relative proof-note paths in the manifest resolve from the manifest's directory, so `desktop-client-proof.md` and `runtime-data-backup-proof.md` can be short filenames when they sit beside `dist/external-deployment/deployment-proof-manifest.json`. Do not put passwords, Discord tokens, or other secrets in it. CLI flags still override manifest fields when one proof value needs to be adjusted for a rerun.
+The manifest stores proof file paths, live-test usernames, unique markers, password environment-variable names, and final-gate booleans. Relative proof-note paths in the manifest resolve from the manifest's directory, so `desktop-client-proof.md` and `runtime-data-backup-proof.md` can be short filenames when they sit beside `dist/external-deployment/deployment-proof-manifest.json`. Do not put passwords, Discord tokens, or other secrets in it. CLI flags still override manifest fields when one proof value needs to be adjusted for a rerun.
 
 For review or handoff, package the non-secret proof artifacts after the report is written:
 
@@ -300,7 +374,7 @@ scripts/package-deployment-proof.py \
   --prepared-dir dist/external-deployment
 ```
 
-This bundle intentionally excludes runtime backup archives, character saves, account records, `data/secrets.json`, passwords, bridge tokens, and Discord bot tokens. Keep the real runtime backup archive in the operator's secure backup location. For the final external-ready handoff, add `--require-full-proof`; it fails unless the readiness JSON records a full live proof status and the proof manifest passes full-proof plus proof-file validation.
+This bundle intentionally excludes runtime backup archives, character saves, account records, `data/secrets.json`, passwords, bridge tokens, and Discord bot tokens. Keep the real runtime backup archive in the operator's secure backup location. For the final external-ready handoff, add `--require-full-proof`; it fails unless the readiness JSON records a full live proof status and the proof manifest passes full-proof, encrypted-transport, and proof-file validation.
 
 To re-check status later without rerunning probes or touching runtime:
 

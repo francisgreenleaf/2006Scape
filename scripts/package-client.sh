@@ -78,6 +78,7 @@ CLIENT_SCALE="${CLIENT_SCALE:-2}"
 SHOW_NAVBAR="${CLIENT_SHOW_NAVBAR:-false}"
 SECURE_TRANSPORT="${CLIENT_SECURE_TRANSPORT:-${CONFIG_SECURE_TRANSPORT:-external transport not specified}}"
 AGENT_BRIDGE_URL="${CLIENT_AGENT_BRIDGE_URL:-${CONFIG_AGENT_BRIDGE_URL:-http://127.0.0.1:43610}}"
+REQUIRE_ENCRYPTED_EXTERNAL="${CLIENT_REQUIRE_ENCRYPTED_EXTERNAL:-0}"
 if [[ -z "${CLIENT_SERVER_HOST:-}" && "$(printf '%s' "$SECURE_TRANSPORT" | tr '[:upper:]' '[:lower:]')" == "client_tls_tunnel" ]]; then
     SERVER_HOST="${CONFIG_CLIENT_CONNECT_HOST:-127.0.0.1}"
 else
@@ -139,6 +140,17 @@ is_allowed_external_transport() {
     return 1
 }
 
+is_encrypted_external_transport() {
+    local transport
+    transport="$(lowercase "$1")"
+    case "$transport" in
+        tailscale|wireguard|vpn|client_tls_tunnel)
+            return 0
+            ;;
+    esac
+    return 1
+}
+
 require_single_line_value() {
     local label="$1"
     local value="$2"
@@ -192,6 +204,13 @@ require_single_line_value "client check_crc" "$CHECK_CRC"
 require_single_line_value "client single_ondemand" "$SINGLE_ONDEMAND"
 require_single_line_value "client scale" "$CLIENT_SCALE"
 require_single_line_value "client show_navbar" "$SHOW_NAVBAR"
+require_single_line_value "client encrypted external requirement" "$REQUIRE_ENCRYPTED_EXTERNAL"
+
+if [[ "$REQUIRE_ENCRYPTED_EXTERNAL" == "1" ]] && ! is_encrypted_external_transport "$SECURE_TRANSPORT"; then
+    echo "Refusing to package client because CLIENT_REQUIRE_ENCRYPTED_EXTERNAL=1 requires encrypted external transport." >&2
+    echo "Use tailscale, wireguard, vpn, or client_tls_tunnel. direct_tcp is plaintext and is only for explicit no-install public smoke tests." >&2
+    exit 1
+fi
 
 if is_wildcard_client_host "$SERVER_HOST"; then
     echo "Refusing to package a client with wildcard server.host=$SERVER_HOST." >&2
@@ -252,8 +271,11 @@ transport_guidance() {
         tailscale)
             cat <<EOF
 Transport setup:
-  Connect Tailscale before launching the client. The configured server host is
-  $PUBLIC_GAME_HOST, which should be reachable through the tailnet.
+  Install Tailscale and sign in with the account or invite provided by the
+  server operator. Connect Tailscale before launching the client. The configured
+  server host is $PUBLIC_GAME_HOST, which should be reachable through the
+  tailnet. If setup checks fail, confirm Tailscale is connected and that the
+  operator has granted your account access to this server's game/cache ports.
 EOF
             ;;
         wireguard)
@@ -276,6 +298,8 @@ Transport setup:
   The packaged launchers try to start the bundled client-side stunnel config
   automatically when stunnel is installed:
     client-tls-tunnel/stunnel-client.conf
+  If stunnel is not installed yet, read:
+    client-tls-tunnel/INSTALL-STUNNEL.txt
   The Java client connects locally to $SERVER_HOST, and stunnel carries that
   traffic over TLS to $PUBLIC_GAME_HOST. If the automatic start fails, start
   the tunnel manually with: stunnel client-tls-tunnel/stunnel-client.conf
@@ -388,6 +412,7 @@ start_client_tls_tunnel_if_needed() {
     fi
     if ! command -v stunnel >/dev/null 2>&1; then
         echo "This package uses client_tls_tunnel, but stunnel was not found on PATH." >&2
+        echo "See client-tls-tunnel/INSTALL-STUNNEL.txt for install hints." >&2
         echo "Install stunnel, or start the tunnel manually before launching:" >&2
         echo "  stunnel \"$config\"" >&2
         exit 1
@@ -481,6 +506,7 @@ chmod +x "$DIST_DIR/Run-2006Scape.command"
     printf '%s\r\n' 'where stunnel >nul 2>nul'
     printf '%s\r\n' 'if errorlevel 1 ('
     printf '%s\r\n' '    echo This package uses client_tls_tunnel, but stunnel was not found on PATH.'
+    printf '%s\r\n' '    echo See client-tls-tunnel\INSTALL-STUNNEL.txt for install hints.'
     printf '%s\r\n' '    echo Install stunnel, or start the tunnel manually before launching:'
     printf '%s\r\n' '    echo   stunnel "%TUNNEL_CONFIG%"'
     printf '%s\r\n' '    exit /b 1'
@@ -586,6 +612,7 @@ start_client_tls_tunnel_for_setup() {
     fi
     if ! command -v stunnel >/dev/null 2>&1; then
         echo "This package uses client_tls_tunnel, but stunnel was not found on PATH." >&2
+        echo "See client-tls-tunnel/INSTALL-STUNNEL.txt for install hints." >&2
         echo "Install stunnel, or start the tunnel manually before running this setup check:" >&2
         echo "  stunnel \"$config\"" >&2
         return 1
@@ -616,6 +643,7 @@ SERVER_PORT="$(read_prop server.port)"
 HTTP_PORT="$(read_prop http.port)"
 JAGGRAB_PORT="$(read_prop jaggrab.port)"
 TRANSPORT="$(read_prop secure.transport)"
+AGENT_BRIDGE_URL="$(read_prop agent.bridge.url)"
 
 echo "Java:"
 java -version 2>&1 | sed 's/^/  /'
@@ -639,7 +667,16 @@ case "$(printf '%s' "$TRANSPORT" | tr '[:upper:]' '[:lower:]')" in
         echo "Transport note: direct_tcp connects directly to the public host over plaintext TCP."
         ;;
     tailscale|wireguard|vpn)
-        echo "Transport note: connect the configured private network before running the client."
+        if [[ "$(printf '%s' "$TRANSPORT" | tr '[:upper:]' '[:lower:]')" == "tailscale" ]]; then
+            echo "Transport note: connect Tailscale before running the client."
+            if command -v tailscale >/dev/null 2>&1; then
+                tailscale status >/dev/null 2>&1 || echo "Tailscale CLI is installed but status is not ready; open Tailscale and sign in/connect first."
+            else
+                echo "Tailscale CLI was not found on PATH; if using the desktop app, confirm it is connected before launching."
+            fi
+        else
+            echo "Transport note: connect the configured private network before running the client."
+        fi
         ;;
 esac
 
@@ -699,9 +736,18 @@ chmod +x "$DIST_DIR/Check-Setup.command"
     printf '%s\r\n' 'echo   secure.transport=%TRANSPORT%'
     printf '%s\r\n' 'echo   agent.bridge.url=%AGENT_BRIDGE_URL%'
     printf '%s\r\n' 'echo.'
-    printf '%s\r\n' 'if /I "%TRANSPORT%"=="client_tls_tunnel" echo Transport note: the launcher can start stunnel automatically, but this Windows checker expects the local tunnel endpoint to be reachable first.'
+    printf '%s\r\n' 'if /I "%TRANSPORT%"=="client_tls_tunnel" echo Transport note: the launcher can start stunnel automatically; if stunnel is missing, read client-tls-tunnel\INSTALL-STUNNEL.txt. This Windows checker expects the local tunnel endpoint to be reachable first.'
     printf '%s\r\n' 'if /I "%TRANSPORT%"=="direct_tcp" echo Transport note: direct_tcp connects directly to the public host over plaintext TCP.'
-    printf '%s\r\n' 'if /I "%TRANSPORT%"=="tailscale" echo Transport note: connect the configured private network before running the client.'
+    printf '%s\r\n' 'if /I "%TRANSPORT%"=="tailscale" ('
+    printf '%s\r\n' '    echo Transport note: connect Tailscale before running the client, and confirm the operator granted this account access to the server game/cache ports.'
+    printf '%s\r\n' '    where tailscale >nul 2>nul'
+    printf '%s\r\n' '    if errorlevel 1 ('
+    printf '%s\r\n' '        echo Tailscale CLI was not found on PATH; if using the desktop app, confirm it is connected before launching.'
+    printf '%s\r\n' '    ) else ('
+    printf '%s\r\n' '        tailscale status >nul 2>nul'
+    printf '%s\r\n' '        if errorlevel 1 echo Tailscale CLI is installed but status is not ready; open Tailscale and sign in/connect first.'
+    printf '%s\r\n' '    )'
+    printf '%s\r\n' ')'
     printf '%s\r\n' 'if /I "%TRANSPORT%"=="wireguard" echo Transport note: connect the configured private network before running the client.'
     printf '%s\r\n' 'if /I "%TRANSPORT%"=="vpn" echo Transport note: connect the configured private network before running the client.'
     printf '%s\r\n' 'set STATUS=0'
@@ -746,6 +792,14 @@ chmod +x "$DIST_DIR/Check-Setup.command"
 cat > "$DIST_DIR/README.txt" <<EOF
 2006Scape Client
 
+First run checklist:
+  1. Install Java 8 or newer.
+  2. Connect the transport named below before launching. Tailscale, WireGuard,
+     VPN, and client_tls_tunnel need that extra step; direct_tcp does not.
+  3. Run the setup checker for your OS before logging in.
+  4. Start the client with the launcher for your OS.
+  5. Log in with the operator-provided username and password for this server.
+
 Check setup:
   macOS: double-click Check-Setup.command, or run ./check-setup-macos-linux.sh from Terminal.
   Linux: ./check-setup-macos-linux.sh
@@ -759,6 +813,7 @@ Run:
   Windows: double-click run-windows.bat or run it from Command Prompt.
   For client_tls_tunnel packages, the launchers try to start the bundled
   stunnel config automatically when stunnel is installed.
+  If stunnel is not installed yet, read client-tls-tunnel/INSTALL-STUNNEL.txt.
   macOS/Linux setup checker: can start stunnel temporarily for TCP checks.
   Windows setup checker: expects the local tunnel endpoint to be reachable first.
 
@@ -798,6 +853,7 @@ AI agent mode:
 
 Edit client.properties only if the server host, ports, or agent bridge URL change.
 If this package uses Tailscale, WireGuard, or VPN, connect that transport first.
+For Tailscale, install the Tailscale app, sign in with the invited/shared account, and confirm the server host is reachable before launching the game.
 If this package uses client_tls_tunnel, the launcher starts stunnel when it can; otherwise start it manually first.
 If this package uses direct_tcp, no VPN/tunnel is expected; the game/cache protocol is plaintext to the public host.
 EOF
@@ -836,6 +892,7 @@ client_scale=$CLIENT_SCALE
 show_navbar=$SHOW_NAVBAR
 expected_external_transport=$SECURE_TRANSPORT
 agent_bridge_url=$AGENT_BRIDGE_URL
+encrypted_external_required=$REQUIRE_ENCRYPTED_EXTERNAL
 jar_sha256=$JAR_SHA256
 
 Security note:
@@ -861,6 +918,9 @@ EOF
     )
     if [[ -f client-tls-tunnel/README.txt ]]; then
         CHECKSUM_FILES+=(client-tls-tunnel/README.txt)
+    fi
+    if [[ -f client-tls-tunnel/INSTALL-STUNNEL.txt ]]; then
+        CHECKSUM_FILES+=(client-tls-tunnel/INSTALL-STUNNEL.txt)
     fi
     if [[ -f client-tls-tunnel/stunnel-client.conf ]]; then
         CHECKSUM_FILES+=(client-tls-tunnel/stunnel-client.conf)

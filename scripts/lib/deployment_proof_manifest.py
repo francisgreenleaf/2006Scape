@@ -9,6 +9,7 @@ ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 FIELD_TYPES = {
     "require_full_proof": bool,
+    "require_encrypted_external": bool,
     "live": bool,
     "timeout": float,
     "tls_sni_host": str,

@@ -57,9 +57,6 @@ public class AgentBridgeServerTest {
         AgentSessionManager.ClaimResult claim = AgentSessionManager.INSTANCE.consumeClaim("nonce-bridge-test");
         session = claim.getSession();
 
-        server = AgentBridgeServer.createServerForTests(new InetSocketAddress("127.0.0.1", 0));
-        server.start();
-        port = server.getAddress().getPort();
     }
 
     @After
@@ -210,6 +207,7 @@ public class AgentBridgeServerTest {
     }
 
     private HttpResult request(String method, String path, JsonObject body, String authToken) throws Exception {
+        ensureServerStarted();
         URL url = new URL("http://127.0.0.1:" + port + path);
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestMethod(method);
@@ -235,6 +233,15 @@ public class AgentBridgeServerTest {
                 : new JsonParser().parse(responseText).getAsJsonObject();
         connection.disconnect();
         return new HttpResult(status, response);
+    }
+
+    private void ensureServerStarted() throws Exception {
+        if (server != null) {
+            return;
+        }
+        server = AgentBridgeServer.createServerForTests(new InetSocketAddress("127.0.0.1", 0));
+        server.start();
+        port = server.getAddress().getPort();
     }
 
     private String readAll(InputStream stream) throws Exception {

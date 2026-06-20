@@ -294,6 +294,37 @@ def firewall_text(config, args):
     return "\n".join(lines)
 
 
+def tailscale_policy_grants_text(config):
+    ports = ["tcp:{}".format(port_value) for _, port_value in firewall_ports(config)]
+    return json.dumps(
+        {
+            "groups": {
+                "group:2006scape-players": [
+                    "player@example.com",
+                ],
+            },
+            "tagOwners": {
+                "tag:2006scape-server": [
+                    "autogroup:admin",
+                ],
+            },
+            "grants": [
+                {
+                    "src": [
+                        "group:2006scape-players",
+                    ],
+                    "dst": [
+                        "tag:2006scape-server",
+                    ],
+                    "ip": ports,
+                },
+            ],
+        },
+        indent=2,
+        sort_keys=True,
+    ) + "\n"
+
+
 def readme_text(config, args):
     transport = mode(config) or "unspecified"
     public_host = str(config.get("public_game_host", "") or "").strip() or "(not configured)"
@@ -315,6 +346,8 @@ def readme_text(config, args):
         "- `2006scape-server.env`: systemd environment file.",
         "- `2006scape-server.service`: systemd unit that runs `scripts/start-server.sh` from the deployed repo.",
         "- `firewall-ufw-example.sh`: dry-run UFW commands for the selected transport.",
+        "- `tailscale-policy-grants.example.json`: Tailscale grants example for this deployment's game/cache ports; present only for Tailscale transport.",
+        "- `player-handoff-template.md`: public-safe template for telling one player how to download, verify, connect, and log in without exposing secrets.",
         "- `proof-templates/deployment-proof-manifest.json`: fill-in manifest for live/manual readiness proof flags.",
         "- `proof-templates/desktop-client-proof.md`: fill-in note for same-host plus external Java client coexistence evidence.",
         "- `proof-templates/runtime-data-backup-proof.md`: fill-in note for runtime data backup evidence.",
@@ -422,14 +455,14 @@ def readme_text(config, args):
                       "--require-full-proof", "--check-files", "--check-env"),
         "```",
         "",
-        "With `--check-files`, the checker validates desktop proof evidence and runtime-backup archive/checksum details, not just path existence.",
-        "Final-gate manifests must keep `require_full_proof:true` in the copied manifest itself so handoff evidence stays self-describing.",
+        "With `--check-files`, the checker validates encrypted/private transport, desktop proof evidence, and runtime-backup archive/checksum details, not just path existence.",
+        "Final-gate manifests must keep `require_full_proof:true` and `require_encrypted_external:true` in the copied manifest itself so handoff evidence stays self-describing.",
         "Relative proof-note paths in the manifest are resolved from the manifest file's directory, so keep completed proof notes beside `deployment-proof-manifest.json` or use absolute paths.",
         "Keep `live_reject_login_expected_statuses` in the final manifest, normally `3,4`, so fail-closed login proof pins the accepted rejection status codes instead of treating any rejection-looking response as enough.",
         "After filling them in, pass the completed copies to `scripts/deployment-readiness-report.py` with `--desktop-client-proof-file` and `--runtime-data-backup-proof-file`, or let `scripts/backup-runtime-data.py --proof-manifest deployment-proof-manifest.json` fill the runtime-backup proof field after the backup runs.",
         "Desktop client proof must include an `evidence` path to a real non-symlink screenshot/log file; readiness validation checks that file exists and is not empty.",
         "After observing one same-host Java client and one external Java client online together, prefer `scripts/write-desktop-client-proof.py --same-host-client LOCAL --external-client EXTERNAL --transport TRANSPORT --public-host HOST --evidence PATH` to write the desktop proof note. It validates the existing evidence file and does not start, stop, restart, log in, or probe runtime.",
-        "After the final readiness report is written, `scripts/package-deployment-proof.py` can package non-secret handoff evidence from the readiness Markdown/JSON, filled proof manifest, proof notes, and selected client/server metadata while excluding runtime backup archives, character saves, account records, secrets, passwords, bridge tokens, and Discord bot tokens.",
+        "After the final readiness report is written, `scripts/package-deployment-proof.py` can package non-secret handoff evidence from the readiness Markdown/JSON, filled proof manifest, proof notes, and selected client/server metadata while excluding runtime backup archives, character saves, account records, secrets, passwords, bridge tokens, and Discord bot tokens. Its `--require-full-proof` gate also requires the encrypted/private transport proof to pass.",
         "",
         "## Live Chat Proof",
         "",
@@ -444,7 +477,126 @@ def readme_text(config, args):
         "",
         "After the service is intentionally running, run the deployment verifier with `--live` from a machine that has the selected transport path.",
     ]
+    if transport == "tailscale":
+        ports_text = ", ".join("tcp:{}".format(port_value) for _, port_value in firewall_ports(config))
+        lines.extend([
+            "",
+            "## Tailscale Access Policy",
+            "",
+            "`tailscale-policy-grants.example.json` is a copy/paste starting point for the tailnet policy file.",
+            "It grants `group:2006scape-players` access to `tag:2006scape-server` only on this deployment's game/cache ports: {}.".format(ports_text),
+            "Replace the placeholder player email, group name, or server tag to match your tailnet before applying it.",
+            "Do not add TCP `{}` to that grant; the agent bridge must stay loopback-only and reachable only through the approved HTTPS gateway when remote agent mode is used.".format(port(config, "agent_bridge_port", 43610)),
+        ])
     return "\n".join(lines) + "\n"
+
+
+def player_handoff_template_text(config, args):
+    transport = mode(config) or "REPLACE_TRANSPORT"
+    public_host = str(config.get("public_game_host", "") or "").strip() or "REPLACE_PUBLIC_HOST"
+    game_port = port(config, "game_port", 43594)
+    http_port = port(config, "http_port", 8080)
+    jaggrab_port = port(config, "jaggrab_port", 43595)
+    agent_gateway = str(config.get("agent_bridge_public_url", "") or "").strip() or "REPLACE_AGENT_GATEWAY_OR_NA"
+    if transport == "tailscale":
+        transport_steps = [
+            "1. Install Tailscale from https://tailscale.com/download.",
+            "2. Sign in with the account or invite supplied by the operator.",
+            "3. Confirm Tailscale is connected before running the setup checker.",
+        ]
+        security_note = "This package expects the game/cache sockets to be reachable only through Tailscale."
+    elif transport in {"wireguard", "vpn"}:
+        transport_steps = [
+            "1. Install/connect the private network profile supplied by the operator.",
+            "2. Confirm the VPN is connected before running the setup checker.",
+        ]
+        security_note = "This package expects the game/cache sockets to be reachable only through the private network."
+    elif transport == "client_tls_tunnel":
+        transport_steps = [
+            "1. Install stunnel if the launcher cannot start the bundled tunnel automatically.",
+            "2. Run the packaged setup checker; on macOS/Linux it can start the bundled stunnel config temporarily for TCP checks.",
+            "3. If the checker says the local tunnel endpoint is unreachable, start `client-tls-tunnel/stunnel-client.conf` manually first.",
+        ]
+        security_note = "This package keeps the Java client on loopback and sends game/cache traffic through a TLS tunnel."
+    elif transport == "direct_tcp":
+        transport_steps = [
+            "1. No VPN or client-side tunnel is required.",
+            "2. Run the setup checker before logging in so plain TCP reachability is confirmed without changing server state.",
+        ]
+        security_note = "This package connects directly over plaintext TCP; use only server-unique passwords."
+    else:
+        transport_steps = [
+            "1. Confirm the transport requirement with the operator before launching the client.",
+            "2. Run the setup checker before logging in.",
+        ]
+        security_note = "Confirm the intended encrypted/private transport before distributing this package."
+
+    lines = [
+        "# Player Handoff Template",
+        "",
+        "Use this as the operator checklist for one player. Replace placeholders, then send only the player-facing section plus that player's credentials through a private channel.",
+        "",
+        "## Operator Checklist",
+        "",
+        "- Build the client from the final config: `scripts/prepare-external-deployment.py --config \"2006Scape Server/ServerConfig.json\" --require-encrypted-external` for encrypted/private player packages.",
+        "- Share `2006scape-client.zip`, plus `MANIFEST.txt` and `SHA256SUMS` if the player wants to verify the download.",
+        "- Create a PBKDF2 account record with `scripts/create-account.py PLAYER_USERNAME --password-env PLAYER_PASSWORD`.",
+        "- Use a 12+ character password by default; short or reused passwords are only acceptable for local throwaway smoke tests.",
+        "- If this account should only load one character, preserve that boundary with account metadata such as `--allowed-character CHARACTER_NAME`.",
+        "- Run `scripts/account-admin.py --require-password-policy audit` before sending credentials.",
+        "- Send username and password privately. Do not put passwords, account JSON files, bridge tokens, Discord tokens, or claim nonces in Git, Discord channels, screenshots, or proof bundles.",
+        "- Never expose raw TCP `43610`; remote `/agent` use needs the approved HTTPS `/agent` gateway only.",
+        "",
+        "## Package Details To Confirm",
+        "",
+        "- public game host: `{}`".format(public_host),
+        "- external transport: `{}`".format(transport),
+        "- game port: `{}`".format(game_port),
+        "- HTTP cache port: `{}`".format(http_port),
+        "- JAGGRAB/cache port: `{}`".format(jaggrab_port),
+        "- agent gateway for `/agent`: `{}`".format(agent_gateway),
+        "- security note: {}".format(security_note),
+        "",
+        "## Player-Facing Message",
+        "",
+        "Download and unzip `2006scape-client.zip`.",
+        "",
+        "Before logging in:",
+    ]
+    lines.extend(transport_steps)
+    lines.extend([
+        "",
+        "Then run the setup checker:",
+        "",
+        "- macOS: double-click `Check-Setup.command`.",
+        "- Linux: run `./check-setup-macos-linux.sh`.",
+        "- Windows: double-click `check-setup-windows.bat`.",
+        "",
+        "If the setup checker passes, start the game:",
+        "",
+        "- macOS: double-click `Run-2006Scape.command`.",
+        "- Linux: run `./run-macos-linux.sh`.",
+        "- Windows: double-click `run-windows.bat`.",
+        "",
+        "Login details:",
+        "",
+        "- username: `PLAYER_USERNAME`",
+        "- password: sent privately",
+        "- character: `CHARACTER_NAME_OR_ANY_ALLOWED_CHARACTER`",
+        "",
+        "Use a password unique to this 2006Scape server. Do not reuse a RuneScape.com password or any password from another service.",
+        "",
+        "If `/agent ...` is enabled for this package, it uses the `agent.bridge.url` value in `client.properties`. If that value is not an HTTPS `/agent` gateway supplied by the operator, `/agent` is not available for remote play.",
+        "",
+        "## Do Not Send To Players",
+        "",
+        "- `2006Scape Server/data/accounts/*.json` account records.",
+        "- `2006Scape Server/data/secrets.json`.",
+        "- Runtime backup archives containing character saves, account records, or secrets.",
+        "- Bridge session files, bridge tokens, `/agent` claim nonces, API keys, or Discord bot tokens.",
+        "",
+    ])
+    return "\n".join(lines)
 
 
 def desktop_client_proof_template_text(config, args):
@@ -522,7 +674,8 @@ def deployment_proof_manifest_template_text(config):
             "discord_channel_message_text": "SERVER_TO_DISCORD_MARKER",
             "discord_channel_message_agent": ["AGENT_PROFILE"],
             "require_full_proof": True,
-            "_notes": "Replace every placeholder and remove unused Discord fields before passing with --proof-manifest. Password fields are environment variable names, not passwords. Keep live_reject_login_expected_statuses, usually 3,4, so final fail-closed auth proof pins the accepted rejection status codes. require_full_proof=true makes readiness/prep treat this as a final gate. Transport: {}".format(transport),
+            "require_encrypted_external": True,
+            "_notes": "Replace every placeholder and remove unused Discord fields before passing with --proof-manifest. Password fields are environment variable names, not passwords. Keep live_reject_login_expected_statuses, usually 3,4, so final fail-closed auth proof pins the accepted rejection status codes. require_full_proof=true makes readiness/prep treat this as a final gate. require_encrypted_external=true keeps final player packages on Tailscale, WireGuard/VPN, or client_tls_tunnel instead of plaintext direct_tcp. Transport: {}".format(transport),
         },
         indent=2,
         sort_keys=True,
@@ -566,7 +719,13 @@ def main():
     write_text(output_dir / "2006scape-server.service", service_text(args))
     write_text(output_dir / "2006scape-server.env", env_text(args))
     write_text(output_dir / "firewall-ufw-example.sh", firewall_text(config, args), 0o755)
+    tailscale_policy_path = output_dir / "tailscale-policy-grants.example.json"
+    if mode(config) == "tailscale":
+        write_text(tailscale_policy_path, tailscale_policy_grants_text(config))
+    elif tailscale_policy_path.exists():
+        tailscale_policy_path.unlink()
     write_text(output_dir / "README.md", readme_text(config, args))
+    write_text(output_dir / "player-handoff-template.md", player_handoff_template_text(config, args))
     write_text(output_dir / "proof-templates" / "deployment-proof-manifest.json", deployment_proof_manifest_template_text(config))
     write_text(output_dir / "proof-templates" / "desktop-client-proof.md", desktop_client_proof_template_text(config, args))
     write_text(output_dir / "proof-templates" / "runtime-data-backup-proof.md", runtime_data_backup_proof_template_text(args))

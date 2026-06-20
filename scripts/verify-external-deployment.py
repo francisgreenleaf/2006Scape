@@ -30,6 +30,7 @@ MIN_EXTERNAL_PBKDF2_ITERATIONS = 120000
 MIN_PASSWORD_LENGTH = 12
 MIN_PASSWORD_POLICY_VERSION = 1
 AGENT_BRIDGE_PORT = 43610
+ENCRYPTED_EXTERNAL_TRANSPORTS = ("tailscale", "wireguard", "vpn", "client_tls_tunnel")
 ACCOUNT_USERNAME_RE = re.compile(r"[a-z0-9 .]{1,12}")
 ACCOUNT_ROLE_RE = re.compile(r"[A-Za-z0-9_.:-]{1,32}")
 DISCORD_USER_ID_RE = re.compile(r"\d{15,25}")
@@ -49,6 +50,7 @@ BASE_EXPECTED_CLIENT_FILES = {
     "README.txt",
 }
 CLIENT_TLS_TUNNEL_CLIENT_FILES = {
+    "client-tls-tunnel/INSTALL-STUNNEL.txt",
     "client-tls-tunnel/README.txt",
     "client-tls-tunnel/stunnel-client.conf",
 }
@@ -475,6 +477,26 @@ def expected_client_dirs(expected_files):
     return dirs
 
 
+def verify_encrypted_external_config(config):
+    mode = string_value(config, "external_transport_mode").lower()
+    if mode not in ENCRYPTED_EXTERNAL_TRANSPORTS:
+        fail(
+            "--require-encrypted-external requires external_transport_mode to be one of {}; "
+            "direct_tcp is plaintext and should only be used for explicit no-install smoke tests".format(
+                ", ".join(ENCRYPTED_EXTERNAL_TRANSPORTS)
+            )
+        )
+    if config.get("require_secure_external_transport") is not True:
+        fail("--require-encrypted-external requires require_secure_external_transport=true")
+    if config.get("secure_external_transport_confirmed") is not True:
+        fail("--require-encrypted-external requires secure_external_transport_confirmed=true")
+
+
+def verify_encrypted_external_manifest(manifest):
+    if manifest.get("encrypted_external_required", "") != "1":
+        fail("client manifest must record encrypted_external_required=1 when --require-encrypted-external is used")
+
+
 def require_no_symlink_under(path, label, root):
     current = Path(path)
     root = Path(root)
@@ -496,7 +518,7 @@ def run_preflight(config_path, allow_wildcard_bind):
         fail("preflight failed for {}{}{}".format(config_path, ": " if output else "", output))
 
 
-def verify_client_package(config, config_path, client_dist, warnings):
+def verify_client_package(config, config_path, client_dist, warnings, require_encrypted_external=False):
     require_directory(client_dist, "client distribution directory")
     require_not_symlink(client_dist, "client distribution directory")
     for relative in sorted(expected_client_files(config)):
@@ -516,6 +538,8 @@ def verify_client_package(config, config_path, client_dist, warnings):
 
     properties = read_key_values(client_dist / "client.properties")
     manifest = read_key_values(client_dist / "MANIFEST.txt")
+    if require_encrypted_external:
+        verify_encrypted_external_manifest(manifest)
     expected_client_host = effective_client_host(config)
     expect_equal(properties.get("server.host", ""), expected_client_host, "client server.host")
     expect_equal(properties.get("server.port", ""), int_value(config, "game_port", 43594), "client server.port")
@@ -622,6 +646,22 @@ def verify_client_package_text(config, client_dist):
         client_dist / "check-setup-windows.bat",
         "Windows setup checker",
     )
+    if string_value(config, "external_transport_mode").lower() == "tailscale":
+        require_text(
+            client_dist / "check-setup-macos-linux.sh",
+            "macOS/Linux setup checker",
+            "tailscale status",
+        )
+        require_text(
+            client_dist / "check-setup-windows.bat",
+            "Windows setup checker",
+            "tailscale status",
+        )
+        require_text(
+            client_dist / "check-setup-windows.bat",
+            "Windows setup checker",
+            "Tailscale CLI was not found on PATH",
+        )
     require_text(
         client_dist / "run-macos-linux.sh",
         "macOS/Linux launcher",
@@ -655,6 +695,21 @@ def verify_client_package_text(config, client_dist):
         client_dist / "README.txt",
         "client README",
         "double-click Run-2006Scape.command",
+    )
+    require_text(
+        client_dist / "README.txt",
+        "client README",
+        "First run checklist:",
+    )
+    require_text(
+        client_dist / "README.txt",
+        "client README",
+        "Run the setup checker for your OS before logging in",
+    )
+    require_text(
+        client_dist / "README.txt",
+        "client README",
+        "Log in with the operator-provided username and password",
     )
     require_text(
         client_dist / "README.txt",
@@ -785,6 +840,11 @@ def verify_client_package_text(config, client_dist):
             "the launchers try to start the bundled",
         )
         require_text(
+            client_dist / "README.txt",
+            "client README",
+            "client-tls-tunnel/INSTALL-STUNNEL.txt",
+        )
+        require_text(
             client_dist / "client-tls-tunnel" / "README.txt",
             "client TLS tunnel README",
             "it starts this stunnel config",
@@ -798,6 +858,26 @@ def verify_client_package_text(config, client_dist):
             client_dist / "client-tls-tunnel" / "README.txt",
             "client TLS tunnel README",
             "requires TLS handshakes on the public game/cache ports",
+        )
+        require_text(
+            client_dist / "client-tls-tunnel" / "INSTALL-STUNNEL.txt",
+            "client TLS tunnel stunnel install guide",
+            "does not bundle stunnel binaries",
+        )
+        require_text(
+            client_dist / "client-tls-tunnel" / "INSTALL-STUNNEL.txt",
+            "client TLS tunnel stunnel install guide",
+            "brew install stunnel",
+        )
+        require_text(
+            client_dist / "client-tls-tunnel" / "INSTALL-STUNNEL.txt",
+            "client TLS tunnel stunnel install guide",
+            "sudo apt-get install stunnel4",
+        )
+        require_text(
+            client_dist / "client-tls-tunnel" / "INSTALL-STUNNEL.txt",
+            "client TLS tunnel stunnel install guide",
+            "run-windows.bat",
         )
         require_text(
             client_dist / "client-tls-tunnel" / "stunnel-client.conf",
@@ -870,9 +950,12 @@ def verify_server_deployment(config, server_deployment_dir):
     env_file = server_deployment_dir / "2006scape-server.env"
     firewall = server_deployment_dir / "firewall-ufw-example.sh"
     readme = server_deployment_dir / "README.md"
+    player_handoff = server_deployment_dir / "player-handoff-template.md"
+    tailscale_policy = server_deployment_dir / "tailscale-policy-grants.example.json"
     proof_manifest_template = server_deployment_dir / "proof-templates" / "deployment-proof-manifest.json"
     desktop_proof_template = server_deployment_dir / "proof-templates" / "desktop-client-proof.md"
     backup_proof_template = server_deployment_dir / "proof-templates" / "runtime-data-backup-proof.md"
+    mode = string_value(config, "external_transport_mode").lower()
 
     for path, label in (
         (config_copy, "server deployment config copy"),
@@ -880,22 +963,33 @@ def verify_server_deployment(config, server_deployment_dir):
         (env_file, "server deployment environment file"),
         (firewall, "server deployment firewall helper"),
         (readme, "server deployment README"),
+        (player_handoff, "player handoff template"),
         (proof_manifest_template, "deployment proof manifest template"),
         (desktop_proof_template, "desktop client proof template"),
         (backup_proof_template, "runtime data backup proof template"),
     ):
         require_not_symlink(path, label)
+    if mode == "tailscale":
+        require_not_symlink(tailscale_policy, "Tailscale grants policy example")
+    elif tailscale_policy.exists():
+        fail("server deployment should not include Tailscale grants policy example for {} transport".format(mode))
     require_file(config_copy, "server deployment config copy")
     require_file(service, "server deployment systemd unit")
     require_file(env_file, "server deployment environment file")
     require_executable(firewall, "server deployment firewall helper")
     require_file(readme, "server deployment README")
+    require_file(player_handoff, "player handoff template")
+    if mode == "tailscale":
+        require_file(tailscale_policy, "Tailscale grants policy example")
     require_file(proof_manifest_template, "deployment proof manifest template")
     require_file(desktop_proof_template, "desktop client proof template")
     require_file(backup_proof_template, "runtime data backup proof template")
     require_not_executable(service, "server deployment systemd unit")
     require_not_executable(env_file, "server deployment environment file")
     require_not_executable(readme, "server deployment README")
+    require_not_executable(player_handoff, "player handoff template")
+    if mode == "tailscale":
+        require_not_executable(tailscale_policy, "Tailscale grants policy example")
     require_not_executable(proof_manifest_template, "deployment proof manifest template")
     require_not_executable(desktop_proof_template, "desktop client proof template")
     require_not_executable(backup_proof_template, "runtime data backup proof template")
@@ -974,13 +1068,34 @@ def verify_server_deployment(config, server_deployment_dir):
     require_text(firewall, "server deployment firewall helper", "Default is dry-run")
     require_text(firewall, "server deployment firewall helper", "Do not expose 2006Scape AgentBridgeServer")
     require_text(firewall, "server deployment firewall helper", str(int_value(config, "agent_bridge_port", AGENT_BRIDGE_PORT)))
-    mode = string_value(config, "external_transport_mode").lower()
     if mode == "client_tls_tunnel":
         require_text(firewall, "server deployment firewall helper", "client_tls_tunnel mode")
     elif mode == "direct_tcp":
         require_text(firewall, "server deployment firewall helper", "direct_tcp mode")
     elif mode == "tailscale":
         require_text(firewall, "server deployment firewall helper", "Tailscale mode")
+        require_text(readme, "server deployment README", "## Tailscale Access Policy")
+        require_text(readme, "server deployment README", "tailscale-policy-grants.example.json")
+        tailscale_policy_json = load_json(tailscale_policy)
+        grant_ports = ["tcp:{}".format(int_value(config, key, fallback)) for key, fallback in (
+            ("game_port", 43594),
+            ("http_port", 8080),
+            ("jaggrab_port", 43595),
+        )]
+        if config.get("file_server", True) is False:
+            grant_ports = grant_ports[:1]
+        grants = tailscale_policy_json.get("grants")
+        if not isinstance(grants, list) or not grants:
+            fail("Tailscale grants policy example must contain at least one grant")
+        grant = grants[0]
+        if not isinstance(grant, dict):
+            fail("Tailscale grants policy example first grant must be an object")
+        if grant.get("ip") != grant_ports:
+            fail("Tailscale grants policy example must grant only game/cache ports: {}".format(", ".join(grant_ports)))
+        if "tcp:{}".format(int_value(config, "agent_bridge_port", AGENT_BRIDGE_PORT)) in grant.get("ip", []):
+            fail("Tailscale grants policy example must not grant the agent bridge port")
+        require_text(tailscale_policy, "Tailscale grants policy example", "group:2006scape-players")
+        require_text(tailscale_policy, "Tailscale grants policy example", "tag:2006scape-server")
     elif mode in ("wireguard", "vpn"):
         require_text(firewall, "server deployment firewall helper", "VPN mode")
 
@@ -1006,6 +1121,7 @@ def verify_server_deployment(config, server_deployment_dir):
     require_text(readme, "server deployment README", "proof-templates/deployment-proof-manifest.json")
     require_text(readme, "server deployment README", "proof-templates/desktop-client-proof.md")
     require_text(readme, "server deployment README", "proof-templates/runtime-data-backup-proof.md")
+    require_text(readme, "server deployment README", "player-handoff-template.md")
     require_text(readme, "server deployment README", "--proof-manifest")
     require_text(readme, "server deployment README", "scripts/check-deployment-proof-manifest.py deployment-proof-manifest.json")
     require_text(readme, "server deployment README", "--secrets")
@@ -1015,6 +1131,19 @@ def verify_server_deployment(config, server_deployment_dir):
     require_text(readme, "server deployment README", "agent_chat_player_delivery")
     require_text(readme, "server deployment README", "--agent-chat-delivery-log-text")
     require_text(readme, "server deployment README", "After the service is intentionally running")
+    require_text(player_handoff, "player handoff template", "# Player Handoff Template")
+    require_text(player_handoff, "player handoff template", "Share `2006scape-client.zip`")
+    require_text(player_handoff, "player handoff template", "PBKDF2 account record")
+    require_text(player_handoff, "player handoff template", "12+ character password")
+    require_text(player_handoff, "player handoff template", "--allowed-character")
+    require_text(player_handoff, "player handoff template", "scripts/account-admin.py --require-password-policy audit")
+    require_text(player_handoff, "player handoff template", "through a private channel")
+    require_text(player_handoff, "player handoff template", "Never expose raw TCP `43610`")
+    require_text(player_handoff, "player handoff template", "approved HTTPS `/agent` gateway")
+    require_text(player_handoff, "player handoff template", "Do not reuse a RuneScape.com password")
+    require_text(player_handoff, "player handoff template", "Do Not Send To Players")
+    require_text(player_handoff, "player handoff template", "2006Scape Server/data/accounts/*.json")
+    require_text(player_handoff, "player handoff template", "Bridge session files")
     require_text(proof_manifest_template, "deployment proof manifest template", "live_login_password_env")
     require_text(proof_manifest_template, "deployment proof manifest template", "live_local_login_password_env")
     require_text(proof_manifest_template, "deployment proof manifest template", "runtime_data_backup_proof_file")
@@ -1037,10 +1166,13 @@ def verify_server_deployment(config, server_deployment_dir):
                 "agent_chat_delivery_log_text",
                 "agent_chat_delivery_log_to_name",
                 "require_full_proof",
+                "require_encrypted_external",
             },
         )
         if proof_manifest_values.get("require_full_proof") is not True:
             fail("deployment proof manifest template must set require_full_proof=true")
+        if proof_manifest_values.get("require_encrypted_external") is not True:
+            fail("deployment proof manifest template must set require_encrypted_external=true")
     except ValueError as exc:
         fail("deployment proof manifest template is invalid: {}".format(exc))
     require_text(desktop_proof_template, "desktop client proof template", "LOCAL_USERNAME")
@@ -1071,6 +1203,7 @@ def verify_client_tls_tunnel_operator(config, tunnel_dir, tls_sni_host, warnings
     require_directory(tunnel_dir, "client TLS tunnel operator directory")
     require_not_symlink(tunnel_dir, "client TLS tunnel operator directory")
     expected_files = {
+        "INSTALL-STUNNEL.txt",
         "README.txt",
         "stunnel-client.conf",
         "stunnel-server.conf",
@@ -1107,6 +1240,7 @@ def verify_client_tls_tunnel_operator(config, tunnel_dir, tls_sni_host, warnings
     require_text(tunnel_dir / "README.txt", "client TLS tunnel operator README", "server-side tunnel accept host: {}".format(server_accept_host))
     require_text(tunnel_dir / "README.txt", "client TLS tunnel operator README", "certificate host checked by stunnel: {}".format(cert_host))
     require_text(tunnel_dir / "README.txt", "client TLS tunnel operator README", "requires TLS handshakes on the public game/cache ports")
+    require_text(tunnel_dir / "INSTALL-STUNNEL.txt", "client TLS tunnel stunnel install guide", "does not bundle stunnel binaries")
 
     require_text(tunnel_dir / "stunnel-client.conf", "client TLS tunnel client config", "client = yes")
     require_text(tunnel_dir / "stunnel-client.conf", "client TLS tunnel client config", "verifyChain = yes")
@@ -1579,6 +1713,9 @@ def main():
             help="Allow tracked sample Discord token/channel placeholders. Source validation only; do not use for real deployments.")
     parser.add_argument("--allow-placeholder-network-config", action="store_true",
             help="Allow tracked sample public_game_host/bind host placeholders. Source validation only; do not use for real deployments.")
+    parser.add_argument("--require-encrypted-external", action="store_true",
+            help=("Require an encrypted/private external transport and a package manifest produced with "
+                  "CLIENT_REQUIRE_ENCRYPTED_EXTERNAL=1. Allows tailscale, wireguard, vpn, and client_tls_tunnel; refuses plaintext direct_tcp."))
     args = parser.parse_args()
 
     config_path = Path(args.config)
@@ -1593,10 +1730,12 @@ def main():
     config = load_json(config_path)
     if not bool(config.get("external_players_enabled", False)):
         fail("external_players_enabled is false in {}".format(config_path))
+    if args.require_encrypted_external:
+        verify_encrypted_external_config(config)
     args.tls_sni_host = validate_tls_sni_host(args.tls_sni_host, args.allow_placeholder_network_config)
     run_preflight(config_path, args.allow_wildcard_bind)
     verify_network_placeholders(config, args.allow_placeholder_network_config)
-    verify_client_package(config, config_path, client_dist, warnings)
+    verify_client_package(config, config_path, client_dist, warnings, args.require_encrypted_external)
     verify_client_archive(config, client_dist, archive_path)
     verify_server_deployment(config, server_deployment_dir)
     verify_client_tls_tunnel_operator(
@@ -1692,6 +1831,8 @@ def main():
         print("server_deployment: {}".format(server_deployment_dir))
     if client_tls_tunnel_dir is not None:
         print("client_tls_tunnel: {}".format(client_tls_tunnel_dir))
+    if args.require_encrypted_external:
+        print("encrypted_external_required: yes")
     if args.live:
         if string_value(config, "external_transport_mode").lower() == "client_tls_tunnel":
             print("live: checked public game/cache TLS handshakes and bridge non-exposure")

@@ -69,6 +69,16 @@ def report_input(data, name, default):
     return default
 
 
+def report_input_bool(data, name, default=False):
+    inputs = data.get("inputs", {})
+    if not isinstance(inputs, dict):
+        return default
+    value = inputs.get(name)
+    if isinstance(value, bool):
+        return value
+    return default
+
+
 def coverage_status(data, requirement):
     coverage = data.get("proofCoverage", [])
     if not isinstance(coverage, list):
@@ -106,6 +116,8 @@ def readiness_base_args(data, readiness_json_path):
         argv.extend(["--server-deployment-dir", server_dir])
     if tls_dir:
         argv.extend(["--client-tls-tunnel-dir", tls_dir])
+    if report_input_bool(data, "requireEncryptedExternal", False):
+        argv.append("--require-encrypted-external")
     if accounts_dir:
         argv.extend(["--accounts-dir", accounts_dir])
     if secrets:

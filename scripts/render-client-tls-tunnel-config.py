@@ -200,7 +200,7 @@ The Java client still speaks plaintext to {client_host}; stunnel carries that tr
 over TLS 1.2 or newer to {public_host}. {cache_line}
 
 Player setup:
-1. Install stunnel.
+1. Install stunnel. See INSTALL-STUNNEL.txt in this folder for OS-specific hints.
 2. Normally use the packaged 2006Scape launcher; it starts this stunnel config
    automatically when stunnel is installed.
 3. If you need to start the tunnel manually, run this from this folder:
@@ -227,6 +227,34 @@ requires TLS handshakes on the public game/cache ports, not plain TCP.
         server_accept_host=server_accept_host,
         server_note=server_note,
     )
+
+
+def render_install_help():
+    return """Installing stunnel for 2006Scape client_tls_tunnel
+
+This package does not bundle stunnel binaries. Install stunnel through a trusted
+OS package manager or installer, then use the packaged 2006Scape launchers.
+
+macOS with Homebrew:
+  brew install stunnel
+
+Debian or Ubuntu:
+  sudo apt-get update
+  sudo apt-get install stunnel4
+
+Fedora or RHEL-family Linux:
+  sudo dnf install stunnel
+
+Windows:
+  Install stunnel from a trusted Windows package source or installer, then make
+  sure stunnel.exe is on PATH before running run-windows.bat.
+
+After installation:
+  - macOS/Linux: run ./check-setup-macos-linux.sh or ./run-macos-linux.sh.
+  - Windows: run run-windows.bat. The Windows setup checker expects the local
+    tunnel endpoint to be reachable first.
+  - Manual fallback from this folder: stunnel stunnel-client.conf
+"""
 
 
 def write_text(path, text):
@@ -269,6 +297,7 @@ def main():
         args.output_dir / "stunnel-client.conf",
         render_client_stunnel(config, public_host, client_host, cert_host),
     )
+    write_text(args.output_dir / "INSTALL-STUNNEL.txt", render_install_help())
     if not args.client_only:
         write_text(
             args.output_dir / "stunnel-server.conf",

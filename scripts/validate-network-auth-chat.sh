@@ -59,8 +59,10 @@ git diff --check
 
 echo "Preflighting tracked external-player configs..."
 assert_repo_visible_sample_config "2006Scape Server/ServerConfig.External.Sample.json"
+assert_repo_visible_sample_config "2006Scape Server/ServerConfig.Tailscale.Sample.json"
 assert_repo_visible_sample_config "2006Scape Server/ServerConfig.ClientTlsTunnel.Sample.json"
 scripts/preflight-external-config.py "2006Scape Server/ServerConfig.External.Sample.json"
+scripts/preflight-external-config.py "2006Scape Server/ServerConfig.Tailscale.Sample.json" | grep -q "ok: external-player config passed preflight"
 scripts/preflight-external-config.py "2006Scape Server/ServerConfig.ClientTlsTunnel.Sample.json" | grep -q "ok: external-player config passed preflight"
 
 echo "Checking local Docker Compose server ports stay loopback-only..."
@@ -81,7 +83,7 @@ echo "Running focused client config tests..."
 "$MAVEN_BIN" -q -pl "2006Scape Client" -Dtest=MainClientConfigTest test
 
 echo "Checking Python helper syntax..."
-python3 -m py_compile scripts/account-admin.py scripts/backup-runtime-data.py scripts/check-deployment-proof-manifest.py scripts/create-account.py scripts/deployment-readiness-report.py scripts/deployment-readiness-status.py scripts/package-deployment-proof.py scripts/prepare-external-deployment.py scripts/preflight-external-config.py scripts/probe-agent-bridge-gateway.py scripts/probe-concurrent-logins.py scripts/probe-deployment-network.py scripts/probe-game-login.py scripts/probe-discord-agent-bots.py scripts/render-agent-bridge-gateway-config.py scripts/render-client-tls-tunnel-config.py scripts/render-server-deployment-files.py scripts/verify-agent-chat-log.py scripts/verify-discord-channel-message.py scripts/verify-external-deployment.py scripts/write-desktop-client-proof.py scripts/smoke-network-auth-chat-runtime.py scripts/lib/deployment_proof_manifest.py scripts/lib/game_login_probe.py scripts/lib/discord_bot_probe.py agent-navigation/tools/agent_chat_XS.py agent-navigation/tools/remote_claim.py agent-navigation/tools/rs-tool_XS.py
+python3 -m py_compile scripts/account-admin.py scripts/backup-runtime-data.py scripts/check-deployment-proof-manifest.py scripts/create-account.py scripts/deployment-readiness-report.py scripts/deployment-readiness-status.py scripts/package-deployment-proof.py scripts/package-player-kit.py scripts/prepare-external-deployment.py scripts/preflight-external-config.py scripts/probe-agent-bridge-gateway.py scripts/probe-concurrent-logins.py scripts/probe-deployment-network.py scripts/probe-game-login.py scripts/probe-discord-agent-bots.py scripts/provision-player-account.py scripts/render-agent-bridge-gateway-config.py scripts/render-client-tls-tunnel-config.py scripts/render-player-handoff.py scripts/render-server-deployment-files.py scripts/verify-agent-chat-log.py scripts/verify-discord-channel-message.py scripts/verify-external-deployment.py scripts/verify-player-kit.py scripts/write-desktop-client-proof.py scripts/smoke-network-auth-chat-runtime.py scripts/lib/deployment_proof_manifest.py scripts/lib/game_login_probe.py scripts/lib/discord_bot_probe.py agent-navigation/tools/agent_chat_XS.py agent-navigation/tools/remote_claim.py agent-navigation/tools/rs-tool_XS.py
 
 echo "Checking remote agent bridge claim and gateway helpers..."
 python3 - <<'PY'
@@ -878,6 +880,11 @@ python3 agent-navigation/tools/script_registry.py search "proof manifest" --json
 python3 agent-navigation/tools/script_registry.py search "proof bundle" --json | grep -q '"id": "deployment_proof_bundle"'
 python3 agent-navigation/tools/script_registry.py search "readiness status" --json | grep -q '"id": "deployment_readiness_status"'
 python3 agent-navigation/tools/script_registry.py search "client package" --json | grep -q '"id": "standalone_client_package"'
+python3 agent-navigation/tools/script_registry.py search "player handoff" --json | grep -q '"id": "player_handoff_render"'
+python3 agent-navigation/tools/script_registry.py search "player provisioning" --json | grep -q '"id": "player_account_provision"'
+python3 agent-navigation/tools/script_registry.py search "player kit" --json | grep -q '"id": "player_kit_package"'
+python3 agent-navigation/tools/script_registry.py search "tailscale" --json | grep -q '"id": "standalone_client_package"'
+python3 agent-navigation/tools/script_registry.py search "tailscale" --json | grep -q '"id": "external_config_preflight"'
 python3 agent-navigation/tools/script_registry.py search "tls tunnel" --json | grep -q '"id": "client_tls_tunnel_config"'
 python3 agent-navigation/tools/script_registry.py search "server deployment templates" --json | grep -q '"id": "server_deployment_files"'
 python3 agent-navigation/tools/script_registry.py search "account audit" --json | grep -q '"id": "external_account_admin"'
@@ -889,6 +896,18 @@ python3 agent-navigation/tools/script_registry.py search "server to discord proo
 python3 agent-navigation/tools/script_registry.py search "discord proof" --json | grep -q '"id": "discord_agent_probe"'
 python3 agent-navigation/tools/script_registry.py show external_config_preflight --json | grep -q '"path": "scripts/preflight-external-config.py"'
 python3 agent-navigation/tools/script_registry.py show external_deployment_prepare --json | grep -q '"path": "scripts/prepare-external-deployment.py"'
+python3 agent-navigation/tools/script_registry.py show player_handoff_render --json | grep -q '"path": "scripts/render-player-handoff.py"'
+python3 agent-navigation/tools/script_registry.py show player_handoff_render --json | grep -q -- "--username MrGem"
+python3 agent-navigation/tools/script_registry.py show player_handoff_render --json | grep -q "without accepting or printing passwords"
+python3 agent-navigation/tools/script_registry.py show player_account_provision --json | grep -q '"path": "scripts/provision-player-account.py"'
+python3 agent-navigation/tools/script_registry.py show player_account_provision --json | grep -q -- "--prepared-dir dist/external-deployment"
+python3 agent-navigation/tools/script_registry.py show player_account_provision --json | grep -q "ignored private credentials env file"
+python3 agent-navigation/tools/script_registry.py show player_kit_package --json | grep -q '"path": "scripts/package-player-kit.py"'
+python3 agent-navigation/tools/script_registry.py show player_kit_package --json | grep -q -- "--prepared-dir dist/external-deployment"
+python3 agent-navigation/tools/script_registry.py show player_kit_package --json | grep -q "public-safe per-player zip"
+python3 agent-navigation/tools/script_registry.py show player_kit_verify --json | grep -q '"path": "scripts/verify-player-kit.py"'
+python3 agent-navigation/tools/script_registry.py show player_kit_verify --json | grep -q -- "--kit dist/external-deployment/player-kit-MrGem.zip"
+python3 agent-navigation/tools/script_registry.py show player_kit_verify --json | grep -q "absence of passwords"
 python3 agent-navigation/tools/script_registry.py show standalone_client_package --json | grep -q '"path": "scripts/package-client.sh"'
 python3 agent-navigation/tools/script_registry.py show client_tls_tunnel_config --json | grep -q '"path": "scripts/render-client-tls-tunnel-config.py"'
 python3 agent-navigation/tools/script_registry.py show server_deployment_files --json | grep -q '"path": "scripts/render-server-deployment-files.py"'
@@ -930,7 +949,18 @@ grep -q "ServerConfig.ClientTlsTunnel.Sample.json" docs/deployment-networking.md
 grep -q "ServerConfig.ClientTlsTunnel.Sample.json" docs/network-auth-agent-chat-design.md
 grep -q "ServerConfig.ClientTlsTunnel.Sample.json" .codex/skills/2006scape/SKILL.md
 grep -q "ServerConfig.ClientTlsTunnel.Sample.json" .codex/skills/2006scape-external-deployment/SKILL.md
-grep -q 'Recommended MVP: use `direct_tcp`' docs/network-auth-agent-chat-design.md
+grep -q "ServerConfig.Tailscale.Sample.json" README.md
+grep -q "ServerConfig.Tailscale.Sample.json" AGENTS.md
+grep -q "ServerConfig.Tailscale.Sample.json" docs/external-deployment-quickstart.md
+grep -q "ServerConfig.Tailscale.Sample.json" docs/deployment-networking.md
+grep -q "ServerConfig.Tailscale.Sample.json" docs/network-auth-agent-chat-design.md
+grep -q "ServerConfig.Tailscale.Sample.json" .codex/skills/2006scape/SKILL.md
+grep -q "ServerConfig.Tailscale.Sample.json" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q "recommended turnkey encrypted private" README.md
+grep -q "recommended Tailscale path" docs/external-deployment-quickstart.md
+grep -q "Recommended Turnkey Encrypted Path: Tailscale" docs/deployment-networking.md
+grep -q "Recommended encrypted MVP: use Tailscale" docs/network-auth-agent-chat-design.md
+grep -q 'Plaintext smoke path: `direct_tcp` remains useful' docs/network-auth-agent-chat-design.md
 grep -q '`direct_tcp` account-auth external defaults' docs/network-auth-agent-chat-design.md
 grep -q "direct_tcp_external_transport_confirmed" README.md
 grep -q "direct_tcp_external_transport_confirmed" AGENTS.md
@@ -1098,6 +1128,43 @@ grep -q -- "--prepared-dir dist/external-deployment" .codex/skills/2006scape/SKI
 grep -q -- "--prepared-dir dist/external-deployment" .codex/skills/2006scape-script-registry/SKILL.md
 grep -q -- "--prepared-dir dist/external-deployment" .codex/skills/2006scape-external-deployment/SKILL.md
 python3 agent-navigation/tools/script_registry.py show deployment_proof_bundle --json | grep -q -- "--prepared-dir dist/external-deployment"
+grep -q "scripts/render-player-handoff.py" README.md
+grep -q "scripts/provision-player-account.py" README.md
+grep -q "scripts/package-player-kit.py" README.md
+grep -q "scripts/verify-player-kit.py" README.md
+grep -q "scripts/render-player-handoff.py" AGENTS.md
+grep -q "scripts/provision-player-account.py" AGENTS.md
+grep -q "scripts/package-player-kit.py" AGENTS.md
+grep -q "scripts/verify-player-kit.py" AGENTS.md
+grep -q "scripts/render-player-handoff.py" docs/deployment-networking.md
+grep -q "scripts/provision-player-account.py" docs/deployment-networking.md
+grep -q "scripts/package-player-kit.py" docs/deployment-networking.md
+grep -q "scripts/verify-player-kit.py" docs/deployment-networking.md
+grep -q "scripts/render-player-handoff.py" docs/external-deployment-quickstart.md
+grep -q "scripts/provision-player-account.py" docs/external-deployment-quickstart.md
+grep -q "scripts/package-player-kit.py" docs/external-deployment-quickstart.md
+grep -q "scripts/verify-player-kit.py" docs/external-deployment-quickstart.md
+grep -q "scripts/render-player-handoff.py" docs/network-auth-agent-chat-design.md
+grep -q "scripts/provision-player-account.py" docs/network-auth-agent-chat-design.md
+grep -q "scripts/package-player-kit.py" docs/network-auth-agent-chat-design.md
+grep -q "scripts/verify-player-kit.py" docs/network-auth-agent-chat-design.md
+grep -q "scripts/render-player-handoff.py" .codex/skills/2006scape/SKILL.md
+grep -q "scripts/provision-player-account.py" .codex/skills/2006scape/SKILL.md
+grep -q "scripts/package-player-kit.py" .codex/skills/2006scape/SKILL.md
+grep -q "scripts/verify-player-kit.py" .codex/skills/2006scape/SKILL.md
+grep -q "scripts/render-player-handoff.py" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q "scripts/provision-player-account.py" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q "scripts/package-player-kit.py" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q "scripts/verify-player-kit.py" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q "scripts/render-player-handoff.py" agent-navigation/data/script_registry.json
+grep -q "scripts/provision-player-account.py" agent-navigation/data/script_registry.json
+grep -q "scripts/package-player-kit.py" agent-navigation/data/script_registry.json
+grep -q "scripts/verify-player-kit.py" agent-navigation/data/script_registry.json
+grep -q "without accepting or printing the password" README.md
+grep -q "without accepting or printing the password" docs/network-auth-agent-chat-design.md
+grep -q "never accepts or prints the password" docs/external-deployment-quickstart.md
+grep -q "password only to an owner-only ignored credentials env file" docs/external-deployment-quickstart.md
+grep -q "public-safe files" docs/external-deployment-quickstart.md
 grep -q "Final-gate manifests must keep \`require_full_proof:true\`" README.md
 grep -q "Final-gate manifests must keep \`require_full_proof:true\`" AGENTS.md
 grep -q "Final-gate manifests must keep \`require_full_proof:true\`" docs/deployment-networking.md
@@ -1121,6 +1188,25 @@ grep -q -- "--json-output" .codex/skills/2006scape/SKILL.md
 grep -q -- "--json-output" .codex/skills/2006scape-agent-bridge-dev/SKILL.md
 grep -q -- "--json-output" .codex/skills/2006scape-external-deployment/SKILL.md
 grep -q -- "--json-output" agent-navigation/data/script_registry.json
+grep -q -- "--require-encrypted-external" AGENTS.md
+grep -q -- "--require-encrypted-external" README.md
+grep -q -- "--require-encrypted-external" docs/deployment-networking.md
+grep -q -- "--require-encrypted-external" docs/external-deployment-quickstart.md
+grep -q -- "--require-encrypted-external" docs/network-auth-agent-chat-design.md
+grep -q -- "--require-encrypted-external" .codex/skills/2006scape/SKILL.md
+grep -q -- "--require-encrypted-external" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q -- "--require-encrypted-external" agent-navigation/data/script_registry.json
+grep -q "require_encrypted_external:true" README.md
+grep -q "require_encrypted_external:true" AGENTS.md
+grep -q "require_encrypted_external:true" docs/deployment-networking.md
+grep -q "require_encrypted_external:true" docs/external-deployment-quickstart.md
+grep -q "require_encrypted_external:true" docs/network-auth-agent-chat-design.md
+grep -q "require_encrypted_external:true" .codex/skills/2006scape/SKILL.md
+grep -q "require_encrypted_external:true" .codex/skills/2006scape-agent-bridge-dev/SKILL.md
+grep -q "require_encrypted_external:true" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q "CLIENT_REQUIRE_ENCRYPTED_EXTERNAL" docs/deployment-networking.md
+grep -q "CLIENT_REQUIRE_ENCRYPTED_EXTERNAL" README.md
+grep -q "CLIENT_REQUIRE_ENCRYPTED_EXTERNAL" agent-navigation/data/script_registry.json
 grep -q "deployment-proof-manifest.json" AGENTS.md
 grep -q "deployment-proof-manifest.json" README.md
 grep -q "deployment-proof-manifest.json" docs/deployment-networking.md
@@ -1268,6 +1354,9 @@ grep -q '"id": "desktop_client_proof"' agent-navigation/data/script_registry.jso
 grep -q '"id": "deployment_proof_manifest_check"' agent-navigation/data/script_registry.json
 grep -q '"id": "deployment_proof_bundle"' agent-navigation/data/script_registry.json
 grep -q '"id": "external_deployment_prepare"' agent-navigation/data/script_registry.json
+grep -q '"id": "player_handoff_render"' agent-navigation/data/script_registry.json
+grep -q '"id": "player_account_provision"' agent-navigation/data/script_registry.json
+grep -q '"id": "player_kit_package"' agent-navigation/data/script_registry.json
 grep -q '"id": "standalone_client_package"' agent-navigation/data/script_registry.json
 grep -q '"id": "client_tls_tunnel_config"' agent-navigation/data/script_registry.json
 grep -q '"id": "server_deployment_files"' agent-navigation/data/script_registry.json
@@ -1315,6 +1404,7 @@ grep -q "placeholder.*--tls-sni-host" docs/network-auth-agent-chat-design.md
 grep -q "real certificate hostname" .codex/skills/2006scape-external-deployment/SKILL.md
 grep -q "client_tls_tunnel operator" agent-navigation/data/script_registry.json
 grep -q "client-tls-tunnel/stunnel-client.conf" README.md
+grep -q "client-tls-tunnel/INSTALL-STUNNEL.txt" README.md
 grep -q "TLS 1.2 or newer" docs/deployment-networking.md
 grep -q "scripts/account-admin.py --require-password-policy audit" README.md
 grep -q "rejects passwords shorter than 12 characters" README.md
@@ -1333,8 +1423,8 @@ grep -q "WebSocket/WebTransport protocol adapter" docs/network-auth-agent-chat-d
 grep -q "do not pursue browser play for the external-player MVP" docs/network-auth-agent-chat-design.md
 grep -q "## Future Decisions" docs/network-auth-agent-chat-design.md
 grep -q "not blockers for the external-player MVP" docs/network-auth-agent-chat-design.md
-grep -q "current regular-player MVP uses \`direct_tcp\`" docs/network-auth-agent-chat-design.md
-grep -q "Tailscale, WireGuard, VPN, and the packaged \`client_tls_tunnel\` path remain supported alternatives" docs/network-auth-agent-chat-design.md
+grep -q "current encrypted player-distributable MVP uses Tailscale" docs/network-auth-agent-chat-design.md
+grep -q "\`direct_tcp\` remains available only as an explicit plaintext smoke/no-install path" docs/network-auth-agent-chat-design.md
 grep -q "## Completion And Proof Status" docs/network-auth-agent-chat-design.md
 grep -q "### Requirement Evidence Matrix" docs/network-auth-agent-chat-design.md
 grep -q "Multiple local and external players" docs/network-auth-agent-chat-design.md
@@ -1794,6 +1884,7 @@ grep -Eq '^source_server_config_sha256=[0-9a-f]{64}$' "$TMP_DIR/client-tls-tunne
 grep -q "secure.transport=client_tls_tunnel" "$TMP_DIR/client-tls-tunnel-client/client.properties"
 grep -q "Transport setup:" "$TMP_DIR/client-tls-tunnel-client/README.txt"
 grep -q "launchers try to start the bundled" "$TMP_DIR/client-tls-tunnel-client/README.txt"
+grep -q "client-tls-tunnel/INSTALL-STUNNEL.txt" "$TMP_DIR/client-tls-tunnel-client/README.txt"
 grep -q "stunnel client-tls-tunnel/stunnel-client.conf" "$TMP_DIR/client-tls-tunnel-client/README.txt"
 grep -q "stunnel carries that" "$TMP_DIR/client-tls-tunnel-client/README.txt"
 grep -q "macOS/Linux setup checker: can start stunnel temporarily for TCP checks" "$TMP_DIR/client-tls-tunnel-client/README.txt"
@@ -1801,16 +1892,25 @@ grep -q "Windows setup checker: expects the local tunnel endpoint" "$TMP_DIR/cli
 grep -q "traffic over TLS to tls.example.net" "$TMP_DIR/client-tls-tunnel-client/README.txt"
 grep -q "Use the username and password provided by the server operator" "$TMP_DIR/client-tls-tunnel-client/README.txt"
 grep -q "Do not use a RuneScape.com password or reuse passwords from other services" "$TMP_DIR/client-tls-tunnel-client/README.txt"
+grep -q "See client-tls-tunnel/INSTALL-STUNNEL.txt" "$TMP_DIR/client-tls-tunnel-client/run-macos-linux.sh"
 grep -q "Starting stunnel for encrypted 2006Scape transport" "$TMP_DIR/client-tls-tunnel-client/run-macos-linux.sh"
+grep -q "See client-tls-tunnel\\\\INSTALL-STUNNEL.txt" "$TMP_DIR/client-tls-tunnel-client/run-windows.bat"
 grep -q "Starting stunnel for encrypted 2006Scape transport" "$TMP_DIR/client-tls-tunnel-client/run-windows.bat"
+grep -q "See client-tls-tunnel/INSTALL-STUNNEL.txt" "$TMP_DIR/client-tls-tunnel-client/check-setup-macos-linux.sh"
 grep -q "Starting stunnel temporarily for setup checks" "$TMP_DIR/client-tls-tunnel-client/check-setup-macos-linux.sh"
 grep -q "start_client_tls_tunnel_for_setup" "$TMP_DIR/client-tls-tunnel-client/check-setup-macos-linux.sh"
+grep -q "INSTALL-STUNNEL.txt" "$TMP_DIR/client-tls-tunnel-client/check-setup-windows.bat"
 grep -q "expects the local tunnel endpoint to be reachable first" "$TMP_DIR/client-tls-tunnel-client/check-setup-windows.bat"
 test -f "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/README.txt"
+test -f "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/INSTALL-STUNNEL.txt"
 test -f "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/stunnel-client.conf"
 grep -q "it starts this stunnel config" "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/README.txt"
 grep -q "The Java client still speaks plaintext to 127.0.0.1" "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/README.txt"
 grep -q "TLS 1.2 or newer" "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/README.txt"
+grep -q "does not bundle stunnel binaries" "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/INSTALL-STUNNEL.txt"
+grep -q "brew install stunnel" "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/INSTALL-STUNNEL.txt"
+grep -q "sudo apt-get install stunnel4" "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/INSTALL-STUNNEL.txt"
+grep -q "run-windows.bat" "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/INSTALL-STUNNEL.txt"
 grep -q "sslVersionMin = TLSv1.2" "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/stunnel-client.conf"
 grep -q "connect = tls.example.net:43594" "$TMP_DIR/client-tls-tunnel-client/client-tls-tunnel/stunnel-client.conf"
 (cd "$TMP_DIR/client-tls-tunnel-client" && shasum -a 256 -c SHA256SUMS >/dev/null)
@@ -1896,9 +1996,11 @@ scripts/prepare-external-deployment.py \
     --output-dir "$TMP_DIR/prepared-client-tls-tunnel" \
     --json-output "$TMP_DIR/prepared-client-tls-tunnel/deployment-readiness-report.json" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
+    --require-encrypted-external \
     --skip-build > "$TMP_DIR/prepare-client-tls-tunnel.out"
 grep -q "prepared external deployment artifacts" "$TMP_DIR/prepare-client-tls-tunnel.out"
 grep -q "readiness_json: $TMP_DIR/prepared-client-tls-tunnel/deployment-readiness-report.json" "$TMP_DIR/prepare-client-tls-tunnel.out"
+grep -q "encrypted_external_required: yes" "$TMP_DIR/prepare-client-tls-tunnel.out"
 grep -q "runtime: not started, stopped, or restarted" "$TMP_DIR/prepare-client-tls-tunnel.out"
 test -f "$TMP_DIR/prepared-client-tls-tunnel/2006scape-client/client.properties"
 test -f "$TMP_DIR/prepared-client-tls-tunnel/2006scape-client.zip"
@@ -1909,6 +2011,7 @@ test -f "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/2006scape-server.
 test -f "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/2006scape-server.env"
 test -f "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/firewall-ufw-example.sh"
 test -f "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/ServerConfig.json"
+test -f "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
 test -f "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/proof-templates/desktop-client-proof.md"
 test -f "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/proof-templates/runtime-data-backup-proof.md"
 grep -q 'status: `PASS`' "$TMP_DIR/prepared-client-tls-tunnel/deployment-readiness-report.md"
@@ -1927,9 +2030,11 @@ assert data["schemaVersion"] == 1, data
 assert data["status"] == "PASS", data
 assert data["deploymentProofStatus"] == "STATIC_CHECKS_PASS_NEEDS_LIVE_PROOF", data
 assert data["liveChecksRequested"] is False, data
+assert data["inputs"]["requireEncryptedExternal"] is True, data
 assert data["inputs"]["clientTlsTunnelDir"], data
 assert data["inputs"]["serverDeploymentDir"], data
 coverage = {item["requirement"]: item for item in data["proofCoverage"]}
+assert coverage["Encrypted/private external transport gate"]["status"] == "REQUESTED", coverage
 assert coverage["Public reachability and bridge non-exposure"]["status"] == "MISSING", coverage
 assert any(check["label"] == "deployment verification" and check["status"] == "PASS" for check in data["checks"]), data["checks"]
 assert data["markdownReport"].endswith("deployment-readiness-report.md"), data
@@ -1944,6 +2049,7 @@ grep -q "RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX" "$TMP_DIR/prepared-cl
 grep -q "SystemCallArchitectures=native" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/2006scape-server.service"
 grep -q "SERVER_CONFIG=/etc/2006scape/ServerConfig.json" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/2006scape-server.env"
 grep -q "Do not expose 2006Scape AgentBridgeServer" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/firewall-ufw-example.sh"
+grep -q "player-handoff-template.md" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
 grep -q 'This bundle does not include real `data/secrets.json`' "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
 grep -q "## Account And Secret Files" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
 grep -q "2006Scape Server/data/accounts" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
@@ -1970,19 +2076,33 @@ grep -q "proof-templates/desktop-client-proof.md" "$TMP_DIR/prepared-client-tls-
 grep -q "proof-templates/runtime-data-backup-proof.md" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
 grep -q -- "--proof-manifest" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
 grep -q "scripts/check-deployment-proof-manifest.py deployment-proof-manifest.json --config ServerConfig.json --secrets '/opt/2006scape/2006Scape Server/data/secrets.json' --require-full-proof --check-files --check-env" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
-grep -q "validates desktop proof evidence and runtime-backup archive/checksum details" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
-grep -q "Final-gate manifests must keep \`require_full_proof:true\`" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
+grep -q "validates encrypted/private transport, desktop proof evidence, and runtime-backup archive/checksum details" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
+grep -q "Final-gate manifests must keep \`require_full_proof:true\` and \`require_encrypted_external:true\`" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
 grep -q "Relative proof-note paths in the manifest are resolved from the manifest file's directory" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
 grep -q "scripts/package-deployment-proof.py" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
 grep -q "## Live Chat Proof" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
 grep -q "agent_chat_player_delivery" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
 grep -q -- "--agent-chat-delivery-log-text" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
+grep -q "# Player Handoff Template" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
+grep -q "Share \`2006scape-client.zip\`" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
+grep -q "PBKDF2 account record" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
+grep -q "12+ character password" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
+grep -q -- "--allowed-character" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
+grep -q "scripts/account-admin.py --require-password-policy audit" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
+grep -q "through a private channel" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
+grep -q 'Never expose raw TCP `43610`' "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
+grep -q 'approved HTTPS `/agent` gateway' "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
+grep -q "Do not reuse a RuneScape.com password" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
+grep -q "Do Not Send To Players" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
+grep -Fq "2006Scape Server/data/accounts/*.json" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
+grep -q "Bridge session files" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
 grep -q "live_login_password_env" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/proof-templates/deployment-proof-manifest.json"
 grep -q "live_reject_login_expected_statuses" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/proof-templates/deployment-proof-manifest.json"
 grep -q "runtime_data_backup_proof_file" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/proof-templates/deployment-proof-manifest.json"
 grep -q "agent_chat_delivery_log_text" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/proof-templates/deployment-proof-manifest.json"
 grep -q "discord_channel_message_text" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/proof-templates/deployment-proof-manifest.json"
 grep -q '"require_full_proof": true' "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/proof-templates/deployment-proof-manifest.json"
+grep -q '"require_encrypted_external": true' "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/proof-templates/deployment-proof-manifest.json"
 grep -q "LOCAL_USERNAME" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/proof-templates/desktop-client-proof.md"
 grep -q "EXTERNAL_USERNAME" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/proof-templates/desktop-client-proof.md"
 grep -q "SCREENSHOT_PATH_OR_LOG_PATH" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/proof-templates/desktop-client-proof.md"
@@ -2295,8 +2415,12 @@ grep -q "agent.bridge.url" "$TMP_DIR/2006scape-client/check-setup-macos-linux.sh
 grep -q "agent.bridge.url" "$TMP_DIR/2006scape-client/check-setup-windows.bat"
 grep -q "Java is required to run 2006Scape" "$TMP_DIR/2006scape-client/run-macos-linux.sh"
 grep -q "Java is required to run 2006Scape" "$TMP_DIR/2006scape-client/run-windows.bat"
+grep -Fq 'AGENT_BRIDGE_URL="$(read_prop agent.bridge.url)"' "$TMP_DIR/2006scape-client/check-setup-macos-linux.sh"
 grep -q -- "-no-java-warnings" "$TMP_DIR/2006scape-client/run-macos-linux.sh"
 grep -q -- "-no-java-warnings" "$TMP_DIR/2006scape-client/run-windows.bat"
+grep -q "First run checklist:" "$TMP_DIR/2006scape-client/README.txt"
+grep -q "Run the setup checker for your OS before logging in" "$TMP_DIR/2006scape-client/README.txt"
+grep -q "Log in with the operator-provided username and password" "$TMP_DIR/2006scape-client/README.txt"
 grep -q "Check setup:" "$TMP_DIR/2006scape-client/README.txt"
 grep -q "without logging in" "$TMP_DIR/2006scape-client/README.txt"
 grep -q "Install Java 8 or newer" "$TMP_DIR/2006scape-client/README.txt"
@@ -2304,6 +2428,7 @@ grep -q "double-click Check-Setup.command" "$TMP_DIR/2006scape-client/README.txt
 grep -q "double-click Run-2006Scape.command" "$TMP_DIR/2006scape-client/README.txt"
 grep -q "suppress the legacy Parabot-focused Java-version warning" "$TMP_DIR/2006scape-client/README.txt"
 grep -q "Transport setup:" "$TMP_DIR/2006scape-client/README.txt"
+grep -q "Install Tailscale" "$TMP_DIR/2006scape-client/README.txt"
 grep -q "Connect Tailscale before launching the client" "$TMP_DIR/2006scape-client/README.txt"
 grep -q "public game host: example-tailnet-host" "$TMP_DIR/2006scape-client/README.txt"
 grep -q "agent bridge URL: http://127.0.0.1:43610" "$TMP_DIR/2006scape-client/README.txt"
@@ -2319,6 +2444,336 @@ grep -q "public_game_host=example-tailnet-host" "$TMP_DIR/2006scape-client/MANIF
 grep -q "expected_external_transport=tailscale" "$TMP_DIR/2006scape-client/MANIFEST.txt"
 grep -q "agent_bridge_url=http://127.0.0.1:43610" "$TMP_DIR/2006scape-client/MANIFEST.txt"
 (cd "$TMP_DIR/2006scape-client" && shasum -a 256 -c SHA256SUMS >/dev/null)
+
+echo "Smoke-testing standalone Tailscale client packaging from server config..."
+CLIENT_DIST_DIR="$TMP_DIR/2006scape-client-tailscale-from-config" \
+CLIENT_ARCHIVE_PATH="$TMP_DIR/2006scape-client-tailscale-from-config.zip" \
+SKIP_BUILD=1 \
+CLIENT_SERVER_CONFIG="2006Scape Server/ServerConfig.Tailscale.Sample.json" \
+CLIENT_CHECK_CRC=false \
+CLIENT_SINGLE_ONDEMAND=true \
+CLIENT_SCALE=1 \
+CLIENT_SHOW_NAVBAR=true \
+    scripts/package-client.sh
+
+test -f "$TMP_DIR/2006scape-client-tailscale-from-config/client.properties"
+test -f "$TMP_DIR/2006scape-client-tailscale-from-config/2006scape-client.jar"
+test -f "$TMP_DIR/2006scape-client-tailscale-from-config/MANIFEST.txt"
+test -f "$TMP_DIR/2006scape-client-tailscale-from-config/SHA256SUMS"
+test -x "$TMP_DIR/2006scape-client-tailscale-from-config/Check-Setup.command"
+test -x "$TMP_DIR/2006scape-client-tailscale-from-config/Run-2006Scape.command"
+test -x "$TMP_DIR/2006scape-client-tailscale-from-config/check-setup-macos-linux.sh"
+test -f "$TMP_DIR/2006scape-client-tailscale-from-config/check-setup-windows.bat"
+test -x "$TMP_DIR/2006scape-client-tailscale-from-config/run-macos-linux.sh"
+test -f "$TMP_DIR/2006scape-client-tailscale-from-config/run-windows.bat"
+test -f "$TMP_DIR/2006scape-client-tailscale-from-config.zip"
+assert_archive_launcher_executable "$TMP_DIR/2006scape-client-tailscale-from-config.zip" "2006scape-client-tailscale-from-config/Check-Setup.command"
+assert_archive_launcher_executable "$TMP_DIR/2006scape-client-tailscale-from-config.zip" "2006scape-client-tailscale-from-config/Run-2006Scape.command"
+assert_archive_launcher_executable "$TMP_DIR/2006scape-client-tailscale-from-config.zip" "2006scape-client-tailscale-from-config/check-setup-macos-linux.sh"
+assert_archive_launcher_executable "$TMP_DIR/2006scape-client-tailscale-from-config.zip" "2006scape-client-tailscale-from-config/run-macos-linux.sh"
+assert_windows_launcher_crlf "$TMP_DIR/2006scape-client-tailscale-from-config/check-setup-windows.bat"
+assert_windows_launcher_crlf "$TMP_DIR/2006scape-client-tailscale-from-config/run-windows.bat"
+grep -q "First run checklist:" "$TMP_DIR/2006scape-client-tailscale-from-config/README.txt"
+grep -q "Run the setup checker for your OS before logging in" "$TMP_DIR/2006scape-client-tailscale-from-config/README.txt"
+grep -q "Log in with the operator-provided username and password" "$TMP_DIR/2006scape-client-tailscale-from-config/README.txt"
+grep -q "Transport setup:" "$TMP_DIR/2006scape-client-tailscale-from-config/README.txt"
+grep -q "Install Tailscale" "$TMP_DIR/2006scape-client-tailscale-from-config/README.txt"
+grep -q "Connect Tailscale before launching the client" "$TMP_DIR/2006scape-client-tailscale-from-config/README.txt"
+grep -Fq 'AGENT_BRIDGE_URL="$(read_prop agent.bridge.url)"' "$TMP_DIR/2006scape-client-tailscale-from-config/check-setup-macos-linux.sh"
+grep -q "tailscale status" "$TMP_DIR/2006scape-client-tailscale-from-config/check-setup-macos-linux.sh"
+grep -q "tailscale status" "$TMP_DIR/2006scape-client-tailscale-from-config/check-setup-windows.bat"
+grep -q "Tailscale CLI was not found on PATH" "$TMP_DIR/2006scape-client-tailscale-from-config/check-setup-windows.bat"
+grep -q "public game host: example-tailnet-host" "$TMP_DIR/2006scape-client-tailscale-from-config/README.txt"
+grep -q "agent bridge URL: http://127.0.0.1:43610" "$TMP_DIR/2006scape-client-tailscale-from-config/README.txt"
+grep -q "raw server-side bridge port 43610 must stay private" "$TMP_DIR/2006scape-client-tailscale-from-config/README.txt"
+grep -q "Use the username and password provided by the server operator" "$TMP_DIR/2006scape-client-tailscale-from-config/README.txt"
+grep -q "server.host=example-tailnet-host" "$TMP_DIR/2006scape-client-tailscale-from-config/client.properties"
+grep -q "server.port=43594" "$TMP_DIR/2006scape-client-tailscale-from-config/client.properties"
+grep -q "http.port=8080" "$TMP_DIR/2006scape-client-tailscale-from-config/client.properties"
+grep -q "jaggrab.port=43595" "$TMP_DIR/2006scape-client-tailscale-from-config/client.properties"
+grep -q "secure.transport=tailscale" "$TMP_DIR/2006scape-client-tailscale-from-config/client.properties"
+grep -q "agent.bridge.url=http://127.0.0.1:43610" "$TMP_DIR/2006scape-client-tailscale-from-config/client.properties"
+grep -q "source_server_config=2006Scape Server/ServerConfig.Tailscale.Sample.json" "$TMP_DIR/2006scape-client-tailscale-from-config/MANIFEST.txt"
+grep -Eq '^source_server_config_sha256=[0-9a-f]{64}$' "$TMP_DIR/2006scape-client-tailscale-from-config/MANIFEST.txt"
+grep -q "public_game_host=example-tailnet-host" "$TMP_DIR/2006scape-client-tailscale-from-config/MANIFEST.txt"
+grep -q "expected_external_transport=tailscale" "$TMP_DIR/2006scape-client-tailscale-from-config/MANIFEST.txt"
+grep -q "agent_bridge_url=http://127.0.0.1:43610" "$TMP_DIR/2006scape-client-tailscale-from-config/MANIFEST.txt"
+grep -q "encrypted_external_required=0" "$TMP_DIR/2006scape-client-tailscale-from-config/MANIFEST.txt"
+(cd "$TMP_DIR/2006scape-client-tailscale-from-config" && shasum -a 256 -c SHA256SUMS >/dev/null)
+
+echo "Smoke-testing encrypted external package guard..."
+CLIENT_DIST_DIR="$TMP_DIR/2006scape-client-tailscale-encrypted-required" \
+CLIENT_ARCHIVE_PATH="$TMP_DIR/2006scape-client-tailscale-encrypted-required.zip" \
+SKIP_BUILD=1 \
+CLIENT_SERVER_CONFIG="2006Scape Server/ServerConfig.Tailscale.Sample.json" \
+CLIENT_REQUIRE_ENCRYPTED_EXTERNAL=1 \
+    scripts/package-client.sh > "$TMP_DIR/package-tailscale-encrypted-required.out"
+test -f "$TMP_DIR/2006scape-client-tailscale-encrypted-required/client.properties"
+grep -q "secure.transport=tailscale" "$TMP_DIR/2006scape-client-tailscale-encrypted-required/client.properties"
+grep -q "encrypted_external_required=1" "$TMP_DIR/2006scape-client-tailscale-encrypted-required/MANIFEST.txt"
+if CLIENT_DIST_DIR="$TMP_DIR/2006scape-client-direct-encrypted-required" \
+    CLIENT_ARCHIVE_PATH="$TMP_DIR/2006scape-client-direct-encrypted-required.zip" \
+    SKIP_BUILD=1 \
+    CLIENT_SERVER_CONFIG="2006Scape Server/ServerConfig.External.Sample.json" \
+    CLIENT_REQUIRE_ENCRYPTED_EXTERNAL=1 \
+        scripts/package-client.sh > "$TMP_DIR/package-direct-encrypted-required.out" 2>&1; then
+    echo "Expected direct_tcp package to fail with CLIENT_REQUIRE_ENCRYPTED_EXTERNAL=1" >&2
+    exit 1
+fi
+grep -q "requires encrypted external transport" "$TMP_DIR/package-direct-encrypted-required.out"
+grep -q "direct_tcp is plaintext" "$TMP_DIR/package-direct-encrypted-required.out"
+if scripts/prepare-external-deployment.py \
+    --config "2006Scape Server/ServerConfig.External.Sample.json" \
+    --output-dir "$TMP_DIR/prepared-direct-encrypted-required" \
+    --allow-empty-accounts \
+    --allow-placeholder-network-config \
+    --require-encrypted-external \
+    --skip-build > "$TMP_DIR/prepare-direct-encrypted-required.out" 2>&1; then
+    echo "Expected direct_tcp prepare to fail with --require-encrypted-external" >&2
+    exit 1
+fi
+grep -q -- "--require-encrypted-external requires external_transport_mode" "$TMP_DIR/prepare-direct-encrypted-required.out"
+grep -q "direct_tcp is plaintext" "$TMP_DIR/prepare-direct-encrypted-required.out"
+
+echo "Smoke-testing prepared Tailscale deployment bundle from server config..."
+TAILSCALE_EMPTY_ACCOUNTS="$TMP_DIR/tailscale-empty-accounts"
+mkdir -p "$TAILSCALE_EMPTY_ACCOUNTS"
+chmod 700 "$TAILSCALE_EMPTY_ACCOUNTS"
+scripts/prepare-external-deployment.py \
+    --config "2006Scape Server/ServerConfig.Tailscale.Sample.json" \
+    --output-dir "$TMP_DIR/prepared-tailscale" \
+    --json-output "$TMP_DIR/prepared-tailscale/deployment-readiness-report.json" \
+    --accounts-dir "$TAILSCALE_EMPTY_ACCOUNTS" \
+    --allow-empty-accounts \
+    --allow-placeholder-network-config \
+    --require-encrypted-external \
+    --skip-build > "$TMP_DIR/prepare-tailscale.out"
+grep -q "prepared external deployment artifacts" "$TMP_DIR/prepare-tailscale.out"
+grep -q "client_tls_tunnel_operator: skipped; external_transport_mode=tailscale" "$TMP_DIR/prepare-tailscale.out"
+grep -q "encrypted_external_required: yes" "$TMP_DIR/prepare-tailscale.out"
+grep -q "runtime: not started, stopped, or restarted" "$TMP_DIR/prepare-tailscale.out"
+test -f "$TMP_DIR/prepared-tailscale/2006scape-client/client.properties"
+test -f "$TMP_DIR/prepared-tailscale/2006scape-client.zip"
+test -f "$TMP_DIR/prepared-tailscale/server-deployment/firewall-ufw-example.sh"
+test -f "$TMP_DIR/prepared-tailscale/server-deployment/tailscale-policy-grants.example.json"
+test -f "$TMP_DIR/prepared-tailscale/server-deployment/proof-templates/deployment-proof-manifest.json"
+test -f "$TMP_DIR/prepared-tailscale/deployment-readiness-report.md"
+test -f "$TMP_DIR/prepared-tailscale/deployment-readiness-report.json"
+grep -q "secure.transport=tailscale" "$TMP_DIR/prepared-tailscale/2006scape-client/client.properties"
+grep -q "encrypted_external_required=1" "$TMP_DIR/prepared-tailscale/2006scape-client/MANIFEST.txt"
+grep -q "Tailscale mode: expose game/cache only on the Tailscale interface" "$TMP_DIR/prepared-tailscale/server-deployment/firewall-ufw-example.sh"
+grep -q "ufw allow in on tailscale0" "$TMP_DIR/prepared-tailscale/server-deployment/firewall-ufw-example.sh"
+grep -q "Do not expose 2006Scape AgentBridgeServer" "$TMP_DIR/prepared-tailscale/server-deployment/firewall-ufw-example.sh"
+grep -q "## Tailscale Access Policy" "$TMP_DIR/prepared-tailscale/server-deployment/README.md"
+grep -q "tailscale-policy-grants.example.json" "$TMP_DIR/prepared-tailscale/server-deployment/README.md"
+grep -q '"group:2006scape-players"' "$TMP_DIR/prepared-tailscale/server-deployment/tailscale-policy-grants.example.json"
+grep -q '"tag:2006scape-server"' "$TMP_DIR/prepared-tailscale/server-deployment/tailscale-policy-grants.example.json"
+grep -q '"tcp:43594"' "$TMP_DIR/prepared-tailscale/server-deployment/tailscale-policy-grants.example.json"
+grep -q '"tcp:43595"' "$TMP_DIR/prepared-tailscale/server-deployment/tailscale-policy-grants.example.json"
+grep -q '"tcp:8080"' "$TMP_DIR/prepared-tailscale/server-deployment/tailscale-policy-grants.example.json"
+if grep -q '"tcp:43610"' "$TMP_DIR/prepared-tailscale/server-deployment/tailscale-policy-grants.example.json"; then
+    echo "Tailscale policy example must not grant the agent bridge port." >&2
+    exit 1
+fi
+grep -q 'deploymentProofStatus: `STATIC_CHECKS_PASS_NEEDS_LIVE_PROOF`' "$TMP_DIR/prepared-tailscale/deployment-readiness-report.md"
+python3 - "$TMP_DIR/prepared-tailscale/deployment-readiness-report.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+assert data["schemaVersion"] == 1, data
+assert data["status"] == "PASS", data
+assert data["deploymentProofStatus"] == "STATIC_CHECKS_PASS_NEEDS_LIVE_PROOF", data
+assert data["liveChecksRequested"] is False, data
+assert data["inputs"]["requireEncryptedExternal"] is True, data
+assert data["inputs"]["serverDeploymentDir"], data
+assert not data["inputs"].get("clientTlsTunnelDir"), data
+coverage = {item["requirement"]: item for item in data["proofCoverage"]}
+assert coverage["Encrypted/private external transport gate"]["status"] == "REQUESTED", coverage
+assert coverage["Public reachability and bridge non-exposure"]["status"] == "MISSING", coverage
+assert any(check["label"] == "deployment verification" and check["status"] == "PASS" for check in data["checks"]), data["checks"]
+PY
+scripts/render-player-handoff.py \
+    --prepared-dir "$TMP_DIR/prepared-tailscale" \
+    --username MrGem \
+    --character MrGem \
+    --output "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md" > "$TMP_DIR/player-handoff-render.out"
+grep -q "ok: wrote player handoff note" "$TMP_DIR/player-handoff-render.out"
+grep -q "# 2006Scape Player Handoff" "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
+grep -q 'client archive: `2006scape-client.zip`' "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
+grep -Eq 'client archive SHA-256: `[0-9a-f]{64}`' "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
+grep -q 'username: `MrGem`' "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
+grep -q 'character: `MrGem`' "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
+grep -q "password: sent separately through a private channel" "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
+grep -q 'external transport: `tailscale`' "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
+grep -q "Install Tailscale" "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
+grep -q 'agent bridge URL in package: `http://127.0.0.1:43610`' "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
+grep -q 'Never expose raw TCP `43610`' "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
+grep -q "Do not paste passwords, account JSON files, bridge tokens" "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
+PROVISION_ACCOUNTS="$TMP_DIR/provision-accounts"
+mkdir -p "$PROVISION_ACCOUNTS"
+chmod 700 "$PROVISION_ACCOUNTS"
+if BAD_PLAYER_PASSWORD=$'bad\npassword' scripts/provision-player-account.py BadProvision \
+    --character BadProvision \
+    --prepared-dir "$TMP_DIR/prepared-tailscale" \
+    --accounts-dir "$PROVISION_ACCOUNTS" \
+    --password-env BAD_PLAYER_PASSWORD > "$TMP_DIR/provision-bad-password.out" 2>&1; then
+    echo "provision-player-account accepted newline-containing password" >&2
+    exit 1
+fi
+grep -q "must not contain NUL or newline characters" "$TMP_DIR/provision-bad-password.out"
+scripts/provision-player-account.py MrProvision \
+    --character MrProvision \
+    --prepared-dir "$TMP_DIR/prepared-tailscale" \
+    --accounts-dir "$PROVISION_ACCOUNTS" \
+    --handoff-output "$TMP_DIR/prepared-tailscale/player-handoff-MrProvision.md" \
+    --credentials-output "$TMP_DIR/prepared-tailscale/private/player-credentials-MrProvision.env" \
+    --json > "$TMP_DIR/provision-player-account.json"
+python3 - "$TMP_DIR/provision-player-account.json" "$TMP_DIR/prepared-tailscale/player-handoff-MrProvision.md" "$TMP_DIR/prepared-tailscale/private/player-credentials-MrProvision.env" "$PROVISION_ACCOUNTS/mrprovision.json" <<'PY'
+import json
+import os
+import re
+import stat
+import sys
+from pathlib import Path
+
+summary_path, handoff_path, credentials_path, account_path = [Path(value) for value in sys.argv[1:]]
+summary_text = summary_path.read_text(encoding="utf-8")
+summary = json.loads(summary_text)
+assert summary["success"] is True, summary
+assert summary["username"] == "MrProvision", summary
+assert summary["character"] == "MrProvision", summary
+assert summary["passwordPrinted"] is False, summary
+assert summary["runtimeTouched"] is False, summary
+assert Path(summary["handoffNote"]) == handoff_path, summary
+assert Path(summary["privateCredentials"]) == credentials_path, summary
+
+credentials_text = credentials_path.read_text(encoding="utf-8")
+match = re.search(r"^MRPROVISION_PASSWORD='([A-Za-z0-9]+)'$", credentials_text, re.MULTILINE)
+assert match, credentials_text
+password = match.group(1)
+assert len(password) >= 12
+assert password not in summary_text
+
+handoff_text = handoff_path.read_text(encoding="utf-8")
+assert "# 2006Scape Player Handoff" in handoff_text
+assert "username: `MrProvision`" in handoff_text
+assert "character: `MrProvision`" in handoff_text
+assert "password: sent separately through a private channel" in handoff_text
+assert password not in handoff_text
+
+account = json.loads(account_path.read_text(encoding="utf-8"))
+assert account["username"] == "mrprovision", account
+assert account["allowedCharacters"] == ["mrprovision"], account
+assert account["passwordPolicy"]["minLength"] >= 12, account
+assert account["passwordPolicy"]["allowWeakPassword"] is False, account
+
+if os.name == "posix":
+    for path in (credentials_path, account_path):
+        mode = stat.S_IMODE(path.stat().st_mode)
+        assert mode & (stat.S_IRWXG | stat.S_IRWXO) == 0, (path, oct(mode))
+    for path in (credentials_path.parent, account_path.parent):
+        mode = stat.S_IMODE(path.stat().st_mode)
+        assert mode & (stat.S_IRWXG | stat.S_IRWXO) == 0, (path, oct(mode))
+PY
+scripts/package-player-kit.py MrProvision \
+    --character MrProvision \
+    --prepared-dir "$TMP_DIR/prepared-tailscale" \
+    --handoff-note "$TMP_DIR/prepared-tailscale/player-handoff-MrProvision.md" \
+    --output "$TMP_DIR/prepared-tailscale/player-kit-MrProvision.zip" \
+    --json > "$TMP_DIR/package-player-kit.json"
+python3 - "$TMP_DIR/package-player-kit.json" "$TMP_DIR/prepared-tailscale/player-kit-MrProvision.zip" "$TMP_DIR/prepared-tailscale/private/player-credentials-MrProvision.env" <<'PY'
+import json
+import re
+import sys
+import zipfile
+from pathlib import Path
+
+summary_path, kit_path, credentials_path = [Path(value) for value in sys.argv[1:]]
+summary_text = summary_path.read_text(encoding="utf-8")
+summary = json.loads(summary_text)
+assert summary["username"] == "MrProvision", summary
+assert summary["character"] == "MrProvision", summary
+assert summary["passwordIncluded"] is False, summary
+assert summary["privateFilesIncluded"] is False, summary
+assert summary["runtimeTouched"] is False, summary
+assert Path(summary["playerKit"]) == kit_path, summary
+assert re.fullmatch(r"[0-9a-f]{64}", summary["playerKitSha256"]), summary
+assert summary["selfVerified"] is True, summary
+assert summary["clientArchiveMatchesExpected"] is True, summary
+assert summary["handoffNoteMatchesExpected"] is True, summary
+
+credentials_text = credentials_path.read_text(encoding="utf-8")
+password = re.search(r"^MRPROVISION_PASSWORD='([A-Za-z0-9]+)'$", credentials_text, re.MULTILINE).group(1)
+assert password not in summary_text
+
+with zipfile.ZipFile(kit_path, "r") as archive:
+    names = set(archive.namelist())
+    assert "2006scape-player-kit-mrprovision/2006scape-client.zip" in names, names
+    assert "2006scape-player-kit-mrprovision/README-FIRST.md" in names, names
+    assert "2006scape-player-kit-mrprovision/client-SHA256SUMS.txt" in names, names
+    assert "2006scape-player-kit-mrprovision/client-MANIFEST.txt" in names, names
+    assert "2006scape-player-kit-mrprovision/KIT-MANIFEST.txt" in names, names
+    assert "2006scape-player-kit-mrprovision/KIT-METADATA.json" in names, names
+    assert not any("/private/" in name or "/accounts/" in name or "/characters/" in name or "credential" in name.lower() for name in names), names
+    readme = archive.read("2006scape-player-kit-mrprovision/README-FIRST.md").decode("utf-8")
+    kit_manifest = archive.read("2006scape-player-kit-mrprovision/KIT-MANIFEST.txt").decode("utf-8")
+    kit_metadata = json.loads(archive.read("2006scape-player-kit-mrprovision/KIT-METADATA.json").decode("utf-8"))
+    assert "username: `MrProvision`" in readme, readme
+    assert "password: sent separately through a private channel" in readme, readme
+    assert password not in readme
+    assert "password_included: 0" in kit_manifest, kit_manifest
+    assert "private_files_included: 0" in kit_manifest, kit_manifest
+    assert password not in kit_manifest
+    assert kit_metadata["passwordIncluded"] is False, kit_metadata
+    assert kit_metadata["privateFilesIncluded"] is False, kit_metadata
+    assert kit_metadata["expectedExternalTransport"] == "tailscale", kit_metadata
+    assert password not in json.dumps(kit_metadata, sort_keys=True)
+PY
+scripts/verify-player-kit.py \
+    --kit "$TMP_DIR/prepared-tailscale/player-kit-MrProvision.zip" \
+    --prepared-dir "$TMP_DIR/prepared-tailscale" \
+    --username MrProvision \
+    --character MrProvision \
+    --json > "$TMP_DIR/verify-player-kit.json"
+python3 - "$TMP_DIR/verify-player-kit.json" "$TMP_DIR/prepared-tailscale/private/player-credentials-MrProvision.env" <<'PY'
+import json
+import re
+import sys
+from pathlib import Path
+
+summary_path, credentials_path = [Path(value) for value in sys.argv[1:]]
+summary_text = summary_path.read_text(encoding="utf-8")
+summary = json.loads(summary_text)
+assert summary["success"] is True, summary
+assert summary["username"] == "MrProvision", summary
+assert summary["character"] == "MrProvision", summary
+assert summary["passwordIncluded"] is False, summary
+assert summary["privateFilesIncluded"] is False, summary
+assert summary["runtimeTouched"] is False, summary
+assert summary["clientArchiveMatchesExpected"] is True, summary
+assert summary["handoffNoteMatchesExpected"] is True, summary
+assert re.fullmatch(r"[0-9a-f]{64}", summary["playerKitSha256"]), summary
+assert re.fullmatch(r"[0-9a-f]{64}", summary["clientArchiveSha256"]), summary
+credentials_text = credentials_path.read_text(encoding="utf-8")
+password = re.search(r"^MRPROVISION_PASSWORD='([A-Za-z0-9]+)'$", credentials_text, re.MULTILINE).group(1)
+assert password not in summary_text
+PY
+scripts/verify-external-deployment.py \
+    --config "2006Scape Server/ServerConfig.Tailscale.Sample.json" \
+    --client-dist "$TMP_DIR/prepared-tailscale/2006scape-client" \
+    --archive "$TMP_DIR/prepared-tailscale/2006scape-client.zip" \
+    --server-deployment-dir "$TMP_DIR/prepared-tailscale/server-deployment" \
+    --accounts-dir "$TAILSCALE_EMPTY_ACCOUNTS" \
+    --allow-empty-accounts \
+    --allow-placeholder-network-config \
+    --require-encrypted-external > "$TMP_DIR/verify-tailscale-encrypted-required.out"
+grep -q "encrypted_external_required: yes" "$TMP_DIR/verify-tailscale-encrypted-required.out"
+scripts/deployment-readiness-status.py \
+    --readiness-json "$TMP_DIR/prepared-tailscale/deployment-readiness-report.json" \
+    --show-next-commands > "$TMP_DIR/prepared-tailscale-status.out"
+grep -q -- "--require-encrypted-external" "$TMP_DIR/prepared-tailscale-status.out"
 
 echo "Smoke-testing standalone client packaging from server config..."
 CLIENT_DIST_DIR="$TMP_DIR/2006scape-client-from-config" \
@@ -2360,6 +2815,9 @@ grep -q "Java is required to run 2006Scape" "$TMP_DIR/2006scape-client-from-conf
 grep -q "Java is required to run 2006Scape" "$TMP_DIR/2006scape-client-from-config/run-windows.bat"
 grep -q -- "-no-java-warnings" "$TMP_DIR/2006scape-client-from-config/run-macos-linux.sh"
 grep -q -- "-no-java-warnings" "$TMP_DIR/2006scape-client-from-config/run-windows.bat"
+grep -q "First run checklist:" "$TMP_DIR/2006scape-client-from-config/README.txt"
+grep -q "Run the setup checker for your OS before logging in" "$TMP_DIR/2006scape-client-from-config/README.txt"
+grep -q "Log in with the operator-provided username and password" "$TMP_DIR/2006scape-client-from-config/README.txt"
 grep -q "Check setup:" "$TMP_DIR/2006scape-client-from-config/README.txt"
 grep -q "without logging in" "$TMP_DIR/2006scape-client-from-config/README.txt"
 grep -q "Install Java 8 or newer" "$TMP_DIR/2006scape-client-from-config/README.txt"
@@ -2451,6 +2909,7 @@ grep -q "ok: rendered server deployment files" "$TMP_DIR/sample-server-deploymen
 test -f "$TMP_DIR/sample-server-deployment/proof-templates/desktop-client-proof.md"
 test -f "$TMP_DIR/sample-server-deployment/proof-templates/runtime-data-backup-proof.md"
 test -f "$TMP_DIR/sample-server-deployment/proof-templates/deployment-proof-manifest.json"
+test -f "$TMP_DIR/sample-server-deployment/player-handoff-template.md"
 grep -q "direct_tcp mode: exposes plaintext game/cache listeners directly" "$TMP_DIR/sample-server-deployment/firewall-ufw-example.sh"
 grep -q "run sudo ufw allow 43594/tcp comment '2006Scape direct TCP game'" "$TMP_DIR/sample-server-deployment/firewall-ufw-example.sh"
 grep -q "sudo install -d -o 2006scape -g 2006scape -m 0700 '/opt/2006scape/2006Scape Server/data/accounts'" "$TMP_DIR/sample-server-deployment/README.md"
@@ -2464,19 +2923,26 @@ grep -q "## Live Chat Proof" "$TMP_DIR/sample-server-deployment/README.md"
 grep -q "proof-templates/deployment-proof-manifest.json" "$TMP_DIR/sample-server-deployment/README.md"
 grep -q -- "--proof-manifest" "$TMP_DIR/sample-server-deployment/README.md"
 grep -q "scripts/check-deployment-proof-manifest.py deployment-proof-manifest.json --config ServerConfig.json --secrets '/opt/2006scape/2006Scape Server/data/secrets.json' --require-full-proof --check-files --check-env" "$TMP_DIR/sample-server-deployment/README.md"
-grep -q "validates desktop proof evidence and runtime-backup archive/checksum details" "$TMP_DIR/sample-server-deployment/README.md"
-grep -q "Final-gate manifests must keep \`require_full_proof:true\`" "$TMP_DIR/sample-server-deployment/README.md"
+grep -q "validates encrypted/private transport, desktop proof evidence, and runtime-backup archive/checksum details" "$TMP_DIR/sample-server-deployment/README.md"
+grep -q "Final-gate manifests must keep \`require_full_proof:true\` and \`require_encrypted_external:true\`" "$TMP_DIR/sample-server-deployment/README.md"
 grep -q "Relative proof-note paths in the manifest are resolved from the manifest file's directory" "$TMP_DIR/sample-server-deployment/README.md"
 grep -q "scripts/package-deployment-proof.py" "$TMP_DIR/sample-server-deployment/README.md"
 grep -q "live_reject_login_expected_statuses" "$TMP_DIR/sample-server-deployment/README.md"
 grep -q "accepted rejection status codes" "$TMP_DIR/sample-server-deployment/README.md"
 grep -q "agent_chat_player_delivery" "$TMP_DIR/sample-server-deployment/README.md"
 grep -q -- "--agent-chat-delivery-log-text" "$TMP_DIR/sample-server-deployment/README.md"
+grep -q "player-handoff-template.md" "$TMP_DIR/sample-server-deployment/README.md"
+grep -q "No VPN or client-side tunnel is required" "$TMP_DIR/sample-server-deployment/player-handoff-template.md"
+grep -q "This package connects directly over plaintext TCP; use only server-unique passwords" "$TMP_DIR/sample-server-deployment/player-handoff-template.md"
+grep -q "PBKDF2 account record" "$TMP_DIR/sample-server-deployment/player-handoff-template.md"
+grep -q "Use a password unique to this 2006Scape server" "$TMP_DIR/sample-server-deployment/player-handoff-template.md"
+grep -q 'Never expose raw TCP `43610`' "$TMP_DIR/sample-server-deployment/player-handoff-template.md"
 grep -q "live_login_password_env" "$TMP_DIR/sample-server-deployment/proof-templates/deployment-proof-manifest.json"
 grep -q "live_reject_login_expected_statuses" "$TMP_DIR/sample-server-deployment/proof-templates/deployment-proof-manifest.json"
 grep -q "usually 3,4" "$TMP_DIR/sample-server-deployment/proof-templates/deployment-proof-manifest.json"
 grep -q "agent_chat_delivery_log_text" "$TMP_DIR/sample-server-deployment/proof-templates/deployment-proof-manifest.json"
 grep -q '"require_full_proof": true' "$TMP_DIR/sample-server-deployment/proof-templates/deployment-proof-manifest.json"
+grep -q '"require_encrypted_external": true' "$TMP_DIR/sample-server-deployment/proof-templates/deployment-proof-manifest.json"
 grep -q "SCREENSHOT_PATH_OR_LOG_PATH" "$TMP_DIR/sample-server-deployment/proof-templates/desktop-client-proof.md"
 grep -q "scripts/write-desktop-client-proof.py" "$TMP_DIR/sample-server-deployment/proof-templates/desktop-client-proof.md"
 grep -q "scripts/backup-runtime-data.py" "$TMP_DIR/sample-server-deployment/proof-templates/runtime-data-backup-proof.md"
@@ -2553,6 +3019,19 @@ scripts/verify-external-deployment.py \
     --server-deployment-dir "$TMP_DIR/sample-server-deployment" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config
+if scripts/verify-external-deployment.py \
+    --config "2006Scape Server/ServerConfig.External.Sample.json" \
+    --client-dist "$TMP_DIR/2006scape-client-from-config" \
+    --server-deployment-dir "$TMP_DIR/sample-server-deployment" \
+    --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
+    --allow-placeholder-network-config \
+    --require-encrypted-external > "$TMP_DIR/direct-verify-encrypted-required.out" 2>&1; then
+    echo "verify-external-deployment.py unexpectedly accepted direct_tcp with --require-encrypted-external." >&2
+    cat "$TMP_DIR/direct-verify-encrypted-required.out" >&2
+    exit 1
+fi
+grep -q -- "--require-encrypted-external requires external_transport_mode" "$TMP_DIR/direct-verify-encrypted-required.out"
+grep -q "direct_tcp is plaintext" "$TMP_DIR/direct-verify-encrypted-required.out"
 
 echo "Smoke-testing deployment verifier rejects mismatched source config hashes..."
 cp "2006Scape Server/ServerConfig.External.Sample.json" "$TMP_DIR/source-config-hash-mismatch.json"
@@ -3058,6 +3537,7 @@ args = SimpleNamespace(
     live_reject_login_username="RejectTest",
     live_reject_login_password_env="REJECT_PASSWORD",
     live_reject_login_expected_statuses="3,4",
+    require_encrypted_external=False,
     desktop_client_proof_file="",
     runtime_data_backup_proof_file="",
     live_discord=False,
@@ -3080,6 +3560,7 @@ assert updates["live_local_login_password_env"] == "LOCAL_PASSWORD", updates
 assert updates["live_local_host"] == "127.0.0.1", updates
 assert updates["live_local_port"] == 43594, updates
 assert updates["live_reject_login_expected_statuses"] == "3,4", updates
+assert "require_encrypted_external" not in updates, updates
 assert "agent_chat_log_root" not in updates, updates
 assert "discord_channel_message_limit" not in updates, updates
 assert "discord_channel_message_allow_human_author" not in updates, updates
@@ -3714,6 +4195,7 @@ def args(**overrides):
         "runtime_data_backup_proof_file": "",
         "agent_chat_delivery_log_text": "",
         "agent_chat_delivery_log_to_name": "",
+        "require_encrypted_external": True,
         "live_discord": False,
         "agent_chat_log_text": "",
         "agent_chat_blocked_log_text": "",
@@ -4006,11 +4488,13 @@ cat > "$TMP_DIR/proof-manifest-check-ok.json" <<EOF
   "agent_chat_delivery_log_text": "agent-to-player-marker",
   "agent_chat_delivery_log_to_name": "MrGem",
   "require_full_proof": true,
+  "require_encrypted_external": true,
   "_notes": "validation fixture"
 }
 EOF
 scripts/check-deployment-proof-manifest.py \
     "$TMP_DIR/proof-manifest-check-ok.json" \
+    --config "$TMP_DIR/client-tls-tunnel-config.json" \
     --require-full-proof \
     --check-files \
     --json > "$TMP_DIR/proof-manifest-check-ok.out"
@@ -4029,6 +4513,7 @@ with open(target, "w", encoding="utf-8") as handle:
 PY
 if scripts/check-deployment-proof-manifest.py \
     "$TMP_DIR/proof-manifest-check-missing-final-gate.json" \
+    --config "$TMP_DIR/client-tls-tunnel-config.json" \
     --require-full-proof > "$TMP_DIR/proof-manifest-check-missing-final-gate.out" 2>&1; then
     echo "check-deployment-proof-manifest.py unexpectedly accepted a final manifest without require_full_proof=true." >&2
     exit 1
@@ -4069,6 +4554,7 @@ grep -q '^client/SHA256SUMS$' "$TMP_DIR/deployment-proof-bundle.entries"
 grep -q '^client/README.txt$' "$TMP_DIR/deployment-proof-bundle.entries"
 grep -q '^client/client.properties$' "$TMP_DIR/deployment-proof-bundle.entries"
 grep -q '^server-deployment/README.md$' "$TMP_DIR/deployment-proof-bundle.entries"
+grep -q '^server-deployment/player-handoff-template.md$' "$TMP_DIR/deployment-proof-bundle.entries"
 grep -q '^server-deployment/ServerConfig.json$' "$TMP_DIR/deployment-proof-bundle.entries"
 if grep -q '2006scape-runtime-data-test.tgz' "$TMP_DIR/deployment-proof-bundle.entries"; then
     echo "package-deployment-proof.py bundled a runtime-data backup archive." >&2
@@ -4092,7 +4578,8 @@ for required in (
         "proof/01-desktop-client-proof.md",
         "proof/02-runtime-data-backup-proof.md",
         "client/MANIFEST.txt",
-        "server-deployment/README.md"):
+        "server-deployment/README.md",
+        "server-deployment/player-handoff-template.md"):
     assert required in included, included
 assert any(
         "runtime backup archive contains" in item.get("reason", "")
@@ -4122,6 +4609,7 @@ grep -q '^proof/01-desktop-client-proof.md$' "$TMP_DIR/deployment-proof-bundle-p
 grep -q '^proof/02-runtime-data-backup-proof.md$' "$TMP_DIR/deployment-proof-bundle-prepared-dir.entries"
 grep -q '^client/MANIFEST.txt$' "$TMP_DIR/deployment-proof-bundle-prepared-dir.entries"
 grep -q '^server-deployment/README.md$' "$TMP_DIR/deployment-proof-bundle-prepared-dir.entries"
+grep -q '^server-deployment/player-handoff-template.md$' "$TMP_DIR/deployment-proof-bundle-prepared-dir.entries"
 if grep -q '2006scape-runtime-data-test.tgz' "$TMP_DIR/deployment-proof-bundle-prepared-dir.entries"; then
     echo "package-deployment-proof.py --prepared-dir bundled a runtime-data backup archive." >&2
     exit 1
@@ -4136,6 +4624,7 @@ data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 assert data["runtimeTouched"] is False, data
 assert data["preparedDir"] == sys.argv[2], data
 assert data["proofManifest"]["requireFullProof"] is True, data
+assert data["proofManifest"]["requireEncryptedExternal"] is True, data
 assert data["readiness"]["deploymentProofStatus"] == "STATIC_CHECKS_PASS_NEEDS_LIVE_PROOF", data
 PY
 if scripts/package-deployment-proof.py \
@@ -4148,7 +4637,7 @@ fi
 grep -q "requires final deploymentProofStatus" "$TMP_DIR/deployment-proof-bundle-require-full-partial.out"
 PREPARED_FULL_PROOF_DIR="$TMP_DIR/prepared-full-proof-dir"
 cp -R "$PREPARED_PROOF_DIR" "$PREPARED_FULL_PROOF_DIR"
-python3 - "$PREPARED_PROOF_DIR/deployment-readiness-report.json" "$PREPARED_FULL_PROOF_DIR/deployment-readiness-report.json" <<'PY'
+python3 - "$PREPARED_PROOF_DIR/deployment-readiness-report.json" "$PREPARED_FULL_PROOF_DIR/deployment-readiness-report.json" "$TMP_DIR/client-tls-tunnel-config.json" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -4158,7 +4647,10 @@ data = json.loads(source.read_text(encoding="utf-8"))
 data["deploymentProofStatus"] = "LIVE_NETWORK_AUTH_CLIENT_CHAT_BACKUP_PROOF_RECORDED_DISCORD_NOT_REQUESTED"
 data["liveChecksRequested"] = True
 data["remainingLiveProof"] = []
+data["inputs"]["config"] = sys.argv[3]
+data["inputs"]["requireEncryptedExternal"] = True
 status_by_requirement = {
+    "Encrypted/private external transport gate": "REQUESTED",
     "Public reachability and bridge non-exposure": "REQUESTED",
     "External PBKDF2 game-protocol login": "REQUESTED",
     "Concurrent external plus same-host local protocol login": "REQUESTED",
@@ -4191,7 +4683,9 @@ data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 assert data["runtimeTouched"] is False, data
 assert data["readiness"]["deploymentProofStatus"] == "LIVE_NETWORK_AUTH_CLIENT_CHAT_BACKUP_PROOF_RECORDED_DISCORD_NOT_REQUESTED", data
 assert data["proofManifest"]["requireFullProof"] is True, data
+assert data["proofManifest"]["requireEncryptedExternal"] is True, data
 assert data["finalProofCheck"]["status"] == "PASS", data
+assert data["finalProofCheck"]["requireEncryptedExternal"] is True, data
 checks = {check["field"]: check for check in data["finalProofCheck"]["proofFileChecks"]}
 assert checks["desktop_client_proof_file"]["status"] == "PASS", checks
 assert checks["runtime_data_backup_proof_file"]["status"] == "PASS", checks
@@ -4247,11 +4741,13 @@ cat > "$TMP_DIR/proof-manifest-check-missing-reject-statuses.json" <<EOF
   "runtime_data_backup_proof_file": "$TMP_DIR/runtime-data-backup-proof.md",
   "agent_chat_delivery_log_text": "agent-to-player-marker",
   "agent_chat_delivery_log_to_name": "MrGem",
-  "require_full_proof": true
+  "require_full_proof": true,
+  "require_encrypted_external": true
 }
 EOF
 if scripts/check-deployment-proof-manifest.py \
     "$TMP_DIR/proof-manifest-check-missing-reject-statuses.json" \
+    --config "$TMP_DIR/client-tls-tunnel-config.json" \
     --require-full-proof > "$TMP_DIR/proof-manifest-check-missing-reject-statuses.out" 2>&1; then
     echo "check-deployment-proof-manifest.py unexpectedly accepted missing reject-login expected statuses." >&2
     exit 1
@@ -4271,6 +4767,7 @@ fi
 grep -q "backup archive sha256 mismatch" "$TMP_DIR/proof-manifest-check-bad-runtime-proof.out"
 if scripts/check-deployment-proof-manifest.py \
     "$TMP_DIR/proof-manifest-check-ok.json" \
+    --config "$TMP_DIR/client-tls-tunnel-config.json" \
     --require-full-proof \
     --check-env > "$TMP_DIR/proof-manifest-check-missing-env.out" 2>&1; then
     echo "check-deployment-proof-manifest.py unexpectedly accepted missing password env vars." >&2
@@ -4280,6 +4777,7 @@ grep -q "environment variable named by live_login_password_env is not set" "$TMP
 EXTERNAL_PASSWORD=external LOCAL_PASSWORD=local REJECT_PASSWORD=reject \
     scripts/check-deployment-proof-manifest.py \
     "$TMP_DIR/proof-manifest-check-ok.json" \
+    --config "$TMP_DIR/client-tls-tunnel-config.json" \
     --require-full-proof \
     --check-env > "$TMP_DIR/proof-manifest-check-env-ok.out"
 grep -q "status: PASS" "$TMP_DIR/proof-manifest-check-env-ok.out"
@@ -4296,7 +4794,10 @@ fi
 grep -q "placeholder value" "$TMP_DIR/proof-manifest-check-placeholder.out"
 cat > "$TMP_DIR/proof-manifest-check-discord-config.json" <<'EOF'
 {
-  "agent_chat_discord_enabled": true
+  "agent_chat_discord_enabled": true,
+  "external_transport_mode": "client_tls_tunnel",
+  "require_secure_external_transport": true,
+  "secure_external_transport_confirmed": true
 }
 EOF
 if scripts/check-deployment-proof-manifest.py \
@@ -4321,6 +4822,7 @@ cat > "$TMP_DIR/proof-manifest-check-discord.json" <<EOF
   "runtime_data_backup_proof_file": "$TMP_DIR/runtime-data-backup-proof.md",
   "agent_chat_delivery_log_text": "agent-to-player-marker",
   "agent_chat_delivery_log_to_name": "MrGem",
+  "require_encrypted_external": true,
   "live_discord": true,
   "agent_chat_log_text": "discord-to-server-marker",
   "agent_chat_log_from_type": "discord",
@@ -4331,6 +4833,7 @@ cat > "$TMP_DIR/proof-manifest-check-discord.json" <<EOF
 EOF
 if scripts/check-deployment-proof-manifest.py \
     "$TMP_DIR/proof-manifest-check-discord.json" \
+    --config "$TMP_DIR/client-tls-tunnel-config.json" \
     --require-full-proof \
     --blocked-routing-required > "$TMP_DIR/proof-manifest-check-blocked-missing.out" 2>&1; then
     echo "check-deployment-proof-manifest.py unexpectedly accepted missing blocked-routing proof field." >&2
@@ -4357,6 +4860,7 @@ args = SimpleNamespace(
         allow_placeholder_network_config=False,
         allow_placeholder_discord_secrets=False,
         require_full_proof=False,
+        require_encrypted_external=False,
         live=False,
         timeout=2.0,
         tls_sni_host="",
@@ -4441,6 +4945,7 @@ assert "--runtime-data-backup-proof-file" in argv, argv
 index = argv.index("--runtime-data-backup-proof-file")
 assert argv[index + 1] == "runtime-data-backup-proof.md", argv
 args.require_full_proof = True
+args.require_encrypted_external = True
 argv = module.build_report_args(
         args,
         Path("client-dist"),
@@ -4449,8 +4954,10 @@ argv = module.build_report_args(
         Path("server-deployment"),
 )
 assert "--require-full-proof" in argv, argv
+assert "--require-encrypted-external" in argv, argv
 values = module.merged_proof_manifest_values(args)
 assert values["require_full_proof"] is True, values
+assert values["require_encrypted_external"] is True, values
 assert values["agent_chat_log_text"] == "discord-marker", values
 assert values["agent_chat_delivery_log_text"] == "delivery-marker", values
 assert values["runtime_data_backup_proof_file"] == "runtime-data-backup-proof.md", values

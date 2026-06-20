@@ -44,6 +44,7 @@ FILE_FIELDS = (
     "desktop_client_proof_file",
     "runtime_data_backup_proof_file",
 )
+ENCRYPTED_EXTERNAL_TRANSPORTS = ("tailscale", "wireguard", "vpn", "client_tls_tunnel")
 
 READINESS_REPORT_SCRIPT = SCRIPT_DIR / "deployment-readiness-report.py"
 READINESS_REPORT_MODULE = None
@@ -121,13 +122,33 @@ def value_present(values, field):
     return True
 
 
+def encrypted_external_config_errors(config_path):
+    if not config_path:
+        return ["require_encrypted_external needs --config so transport settings can be checked"]
+    config = load_json_file(config_path, "config")
+    mode = str(config.get("external_transport_mode", "") or "").strip().lower()
+    errors = []
+    if mode not in ENCRYPTED_EXTERNAL_TRANSPORTS:
+        errors.append(
+            "require_encrypted_external requires external_transport_mode to be one of {}; "
+            "direct_tcp is plaintext".format(", ".join(ENCRYPTED_EXTERNAL_TRANSPORTS))
+        )
+    if config.get("require_secure_external_transport") is not True:
+        errors.append("require_encrypted_external requires require_secure_external_transport=true")
+    if config.get("secure_external_transport_confirmed") is not True:
+        errors.append("require_encrypted_external requires secure_external_transport_confirmed=true")
+    return errors
+
+
 def evaluate_manifest(values, args):
     errors = []
     warnings = []
     proof_file_checks = []
 
     manifest_requests_full = values.get("require_full_proof") is True
+    manifest_requests_encrypted = values.get("require_encrypted_external") is True
     require_full = args.require_full_proof or manifest_requests_full
+    require_encrypted = args.require_encrypted_external or manifest_requests_encrypted
     discord_required = bool(
         args.discord_required
         or values.get("live_discord") is True
@@ -144,11 +165,18 @@ def evaluate_manifest(values, args):
     if require_full:
         if args.require_full_proof and not manifest_requests_full:
             errors.append("final proof manifest must set require_full_proof=true")
+        if not manifest_requests_encrypted:
+            errors.append("final proof manifest must set require_encrypted_external=true")
         for field in BASE_FULL_PROOF_FIELDS:
             if not value_present(values, field):
                 errors.append("missing required full-proof field: {}".format(field))
         if values.get("live") is not True:
             errors.append("full proof requires live=true")
+
+    if require_encrypted:
+        if args.require_encrypted_external and not manifest_requests_encrypted:
+            errors.append("encrypted proof manifest must set require_encrypted_external=true")
+        errors.extend(encrypted_external_config_errors(args.config))
 
     if require_full and discord_required:
         for field in DISCORD_FULL_PROOF_FIELDS:
@@ -197,7 +225,9 @@ def evaluate_manifest(values, args):
     return {
         "status": "PASS" if not errors else "FAIL",
         "requireFullProof": require_full,
+        "requireEncryptedExternal": require_encrypted,
         "manifestRequestsFullProof": manifest_requests_full,
+        "manifestRequestsEncryptedExternal": manifest_requests_encrypted,
         "discordRequired": discord_required,
         "blockedRoutingRequired": blocked_required,
         "fieldCount": len(values),
@@ -211,6 +241,7 @@ def print_human(manifest_path, result):
     print("manifest: {}".format(manifest_path))
     print("status: {}".format(result["status"]))
     print("requireFullProof: {}".format("yes" if result["requireFullProof"] else "no"))
+    print("requireEncryptedExternal: {}".format("yes" if result["requireEncryptedExternal"] else "no"))
     print("discordRequired: {}".format("yes" if result["discordRequired"] else "no"))
     print("blockedRoutingRequired: {}".format("yes" if result["blockedRoutingRequired"] else "no"))
     print("fields: {}".format(result["fieldCount"]))
@@ -231,6 +262,8 @@ def main(argv=None):
     parser.add_argument("--secrets", default="", help="Optional secrets JSON used to infer blocked Discord routing proof.")
     parser.add_argument("--require-full-proof", action="store_true",
             help="Require the manifest to contain the full live/manual proof field set.")
+    parser.add_argument("--require-encrypted-external", action="store_true",
+            help="Require the manifest and config to prove an encrypted/private external transport.")
     parser.add_argument("--discord-required", action="store_true",
             help="Require Discord bot/channel, Discord-to-server, and server-to-Discord proof fields.")
     parser.add_argument("--blocked-routing-required", action="store_true",
@@ -250,7 +283,9 @@ def main(argv=None):
         result = {
             "status": "FAIL",
             "requireFullProof": args.require_full_proof,
+            "requireEncryptedExternal": args.require_encrypted_external,
             "manifestRequestsFullProof": False,
+            "manifestRequestsEncryptedExternal": False,
             "discordRequired": args.discord_required,
             "blockedRoutingRequired": args.blocked_routing_required,
             "fieldCount": 0,

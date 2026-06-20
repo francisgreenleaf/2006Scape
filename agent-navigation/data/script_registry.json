@@ -1404,7 +1404,7 @@
       "name": "Deployment Proof Bundle",
       "path": "scripts/package-deployment-proof.py",
       "kind": "deployment_tool",
-      "description": "Packages non-secret deployment proof handoff artifacts from a prepared deployment directory or explicit readiness/proof paths, including reports, a filled proof manifest, proof notes, and selected client/server metadata while deliberately excluding runtime backup archives, character saves, account records, and secrets. Use --require-full-proof for the final external-ready bundle.",
+      "description": "Packages non-secret deployment proof handoff artifacts from a prepared deployment directory or explicit readiness/proof paths, including reports, a filled proof manifest, proof notes, and selected client/server metadata while deliberately excluding runtime backup archives, character saves, account records, and secrets. Use --require-full-proof for the final external-ready bundle; it also validates the manifest's encrypted/private transport gate.",
       "aliases": [
         "deployment proof bundle",
         "proof bundle",
@@ -1433,6 +1433,8 @@
       "aliases": [
         "external config preflight",
         "preflight external config",
+        "tailscale preflight",
+        "tailscale config preflight",
         "deployment preflight",
         "network preflight"
       ],
@@ -1441,9 +1443,11 @@
         "network",
         "auth",
         "external",
+        "tailscale",
         "preflight"
       ],
       "examples": [
+        "python3 scripts/preflight-external-config.py \"2006Scape Server/ServerConfig.Tailscale.Sample.json\"",
         "python3 agent-navigation/tools/script_registry.py run external config preflight -- \"2006Scape Server/ServerConfig.External.Sample.json\"",
         "python3 scripts/preflight-external-config.py \"2006Scape Server/ServerConfig.json\""
       ]
@@ -1457,6 +1461,8 @@
       "aliases": [
         "prepare external deployment",
         "external deployment prepare",
+        "tailscale deployment prepare",
+        "tailscale deployment bundle",
         "deployment bundle",
         "package external deployment"
       ],
@@ -1465,13 +1471,120 @@
         "client",
         "packaging",
         "readiness",
+        "tailscale",
         "external"
       ],
       "examples": [
+        "cp \"2006Scape Server/ServerConfig.Tailscale.Sample.json\" \"2006Scape Server/ServerConfig.json\" && python3 scripts/prepare-external-deployment.py --config \"2006Scape Server/ServerConfig.json\"",
         "python3 agent-navigation/tools/script_registry.py run prepare external deployment -- --config \"2006Scape Server/ServerConfig.json\"",
         "python3 scripts/prepare-external-deployment.py --config \"2006Scape Server/ServerConfig.json\"",
+        "python3 scripts/prepare-external-deployment.py --config \"2006Scape Server/ServerConfig.json\" --require-encrypted-external",
         "python3 scripts/prepare-external-deployment.py --config \"2006Scape Server/ServerConfig.json\" --proof-manifest dist/external-deployment/deployment-proof-manifest.json",
         "python3 scripts/prepare-external-deployment.py --config \"2006Scape Server/ServerConfig.json\" --json-output dist/external-deployment/deployment-readiness-report.json"
+      ]
+    },
+    {
+      "id": "player_handoff_render",
+      "name": "Player Handoff Render",
+      "path": "scripts/render-player-handoff.py",
+      "kind": "deployment_tool",
+      "description": "Renders a public-safe per-player handoff note from a prepared external deployment bundle, filling username, character, transport details, client archive checksum, setup steps, and agent-gateway guidance without accepting or printing passwords.",
+      "aliases": [
+        "player handoff",
+        "render player handoff",
+        "client handoff",
+        "player setup note",
+        "player download instructions"
+      ],
+      "tags": [
+        "deployment",
+        "client",
+        "handoff",
+        "player",
+        "external"
+      ],
+      "examples": [
+        "python3 scripts/render-player-handoff.py --prepared-dir dist/external-deployment --username MrGem --character MrGem --output dist/external-deployment/player-handoff-MrGem.md",
+        "python3 agent-navigation/tools/script_registry.py run player handoff -- --prepared-dir dist/external-deployment --username NewPlayer --character NewPlayer"
+      ]
+    },
+    {
+      "id": "player_account_provision",
+      "name": "Player Account Provision",
+      "path": "scripts/provision-player-account.py",
+      "kind": "deployment_tool",
+      "description": "Creates an ignored PBKDF2 account record, audits the account store, writes the generated or environment-supplied password only to an owner-only ignored private credentials env file, and renders a public-safe player handoff note from a prepared external deployment bundle.",
+      "aliases": [
+        "player provisioning",
+        "provision player account",
+        "create player account",
+        "player credentials",
+        "account handoff"
+      ],
+      "tags": [
+        "deployment",
+        "auth",
+        "account",
+        "handoff",
+        "player",
+        "external"
+      ],
+      "examples": [
+        "python3 scripts/provision-player-account.py MrGem --character MrGem --prepared-dir dist/external-deployment",
+        "python3 agent-navigation/tools/script_registry.py run player provisioning -- MrGem --character MrGem --prepared-dir dist/external-deployment"
+      ]
+    },
+    {
+      "id": "player_kit_package",
+      "name": "Player Kit Package",
+      "path": "scripts/package-player-kit.py",
+      "kind": "deployment_tool",
+      "description": "Packages and self-verifies a public-safe per-player zip from a prepared external deployment bundle, including the downloadable client archive, README-first handoff note, client checksums, and a kit manifest while excluding passwords, private credentials, account records, secrets, runtime data, and bridge tokens.",
+      "aliases": [
+        "player kit",
+        "package player kit",
+        "client handoff zip",
+        "player download zip",
+        "public player package"
+      ],
+      "tags": [
+        "deployment",
+        "client",
+        "packaging",
+        "handoff",
+        "player",
+        "external"
+      ],
+      "examples": [
+        "python3 scripts/package-player-kit.py MrGem --character MrGem --prepared-dir dist/external-deployment",
+        "python3 agent-navigation/tools/script_registry.py run player kit -- MrGem --character MrGem --prepared-dir dist/external-deployment"
+      ]
+    },
+    {
+      "id": "player_kit_verify",
+      "name": "Player Kit Verify",
+      "path": "scripts/verify-player-kit.py",
+      "kind": "deployment_tool",
+      "description": "Verifies a public-safe per-player kit zip before distribution, checking required entries, embedded checksums, nested client archive safety, optional prepared-artifact matches, and absence of passwords, private runtime data, account records, secrets, and bridge tokens.",
+      "aliases": [
+        "verify player kit",
+        "player kit verify",
+        "check player zip",
+        "verify client handoff zip",
+        "safe player package check"
+      ],
+      "tags": [
+        "deployment",
+        "client",
+        "packaging",
+        "handoff",
+        "player",
+        "security",
+        "external"
+      ],
+      "examples": [
+        "python3 scripts/verify-player-kit.py --kit dist/external-deployment/player-kit-MrGem.zip --prepared-dir dist/external-deployment --username MrGem --character MrGem",
+        "python3 agent-navigation/tools/script_registry.py run verify player kit -- --kit dist/external-deployment/player-kit-MrGem.zip --prepared-dir dist/external-deployment --username MrGem --character MrGem"
       ]
     },
     {
@@ -1479,11 +1592,13 @@
       "name": "Standalone Client Package",
       "path": "scripts/package-client.sh",
       "kind": "deployment_tool",
-      "description": "Packages the downloadable Java desktop client folder and zip from an external-player ServerConfig, including launcher scripts, macOS double-click .command wrappers, setup-check scripts, client.properties, source config hash manifest, checksums, transport guidance, and symlinked output path rejection.",
+      "description": "Packages the downloadable Java desktop client folder and zip from an external-player ServerConfig, including launcher scripts, macOS double-click .command wrappers, setup-check scripts, client.properties, source config hash manifest, checksums, transport guidance, optional client_tls_tunnel stunnel install guidance, and symlinked output path rejection.",
       "aliases": [
         "package client",
         "client package",
         "standalone client",
+        "tailscale client package",
+        "tailscale package",
         "downloadable client",
         "client zip"
       ],
@@ -1492,9 +1607,12 @@
         "client",
         "packaging",
         "download",
+        "tailscale",
         "external"
       ],
       "examples": [
+        "CLIENT_SERVER_CONFIG=\"2006Scape Server/ServerConfig.Tailscale.Sample.json\" scripts/package-client.sh",
+        "CLIENT_SERVER_CONFIG=\"2006Scape Server/ServerConfig.json\" CLIENT_REQUIRE_ENCRYPTED_EXTERNAL=1 scripts/package-client.sh",
         "CLIENT_SERVER_CONFIG=\"2006Scape Server/ServerConfig.json\" python3 agent-navigation/tools/script_registry.py run package client",
         "CLIENT_SERVER_CONFIG=\"2006Scape Server/ServerConfig.json\" scripts/package-client.sh"
       ]
@@ -1504,7 +1622,7 @@
       "name": "Client TLS Tunnel Config",
       "path": "scripts/render-client-tls-tunnel-config.py",
       "kind": "deployment_tool",
-      "description": "Renders player-side and operator-side stunnel templates for client_tls_tunnel deployments so the legacy plaintext client can use an encrypted external path.",
+      "description": "Renders player-side and operator-side stunnel templates plus stunnel install guidance for client_tls_tunnel deployments so the legacy plaintext client can use an encrypted external path.",
       "aliases": [
         "client tls tunnel",
         "tls tunnel config",
@@ -1552,7 +1670,7 @@
       "name": "External Deployment Verify",
       "path": "scripts/verify-external-deployment.py",
       "kind": "deployment_tool",
-      "description": "Verifies packaged client artifacts, checksums, archive contents, account records, Discord secrets, server deployment templates, optional client_tls_tunnel operator stunnel templates, and optional live reachability/login proof.",
+      "description": "Verifies packaged client artifacts, checksums, archive contents, account records, Discord secrets, server deployment templates, optional client_tls_tunnel operator stunnel templates, optional encrypted/private transport gating, and optional live reachability/login proof.",
       "aliases": [
         "verify external deployment",
         "external deployment verify",
@@ -1568,7 +1686,7 @@
       ],
       "examples": [
         "python3 agent-navigation/tools/script_registry.py run verify external deployment -- --config \"2006Scape Server/ServerConfig.json\" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --client-tls-tunnel-dir dist/client-tls-tunnel-operator",
-        "python3 scripts/verify-external-deployment.py --config \"2006Scape Server/ServerConfig.json\" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --live"
+        "python3 scripts/verify-external-deployment.py --config \"2006Scape Server/ServerConfig.json\" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --require-encrypted-external --live"
       ]
     },
     {
@@ -1651,7 +1769,7 @@
       "name": "Deployment Readiness Report",
       "path": "scripts/deployment-readiness-report.py",
       "kind": "deployment_tool",
-      "description": "Writes redacted Markdown and optional JSON readiness reports that separate command success from live/manual deployment proof coverage for external-player releases, including optional client_tls_tunnel operator template verification, JSON proof-manifest input, and success-only --update-proof-manifest output.",
+      "description": "Writes redacted Markdown and optional JSON readiness reports that separate command success from live/manual deployment proof coverage for external-player releases, including optional encrypted/private transport gating, optional client_tls_tunnel operator template verification, JSON proof-manifest input, and success-only --update-proof-manifest output.",
       "aliases": [
         "deployment readiness",
         "readiness report",
@@ -1666,7 +1784,7 @@
       ],
       "examples": [
         "python3 agent-navigation/tools/script_registry.py run deployment readiness -- --config \"2006Scape Server/ServerConfig.json\" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --client-tls-tunnel-dir dist/client-tls-tunnel-operator",
-        "python3 scripts/deployment-readiness-report.py --config \"2006Scape Server/ServerConfig.json\" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --require-full-proof",
+        "python3 scripts/deployment-readiness-report.py --config \"2006Scape Server/ServerConfig.json\" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --require-full-proof --require-encrypted-external",
         "python3 scripts/deployment-readiness-report.py --config \"2006Scape Server/ServerConfig.json\" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --proof-manifest dist/deployment-proof-manifest.json",
         "python3 scripts/deployment-readiness-report.py --config \"2006Scape Server/ServerConfig.json\" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --live --update-proof-manifest dist/external-deployment/deployment-proof-manifest.json",
         "python3 scripts/deployment-readiness-report.py --config \"2006Scape Server/ServerConfig.json\" --client-dist dist/2006scape-client --server-deployment-dir dist/server-deployment --json-output dist/deployment-readiness-report.json"
@@ -1704,7 +1822,7 @@
       "name": "Deployment Proof Manifest Check",
       "path": "scripts/check-deployment-proof-manifest.py",
       "kind": "deployment_tool",
-      "description": "Checks a copied deployment-proof-manifest JSON for known fields, placeholder values, raw secret mistakes, full-proof completeness, optional Discord/blocked-routing proof fields, and optional env/file presence without running deployment verification.",
+      "description": "Checks a copied deployment-proof-manifest JSON for known fields, placeholder values, raw secret mistakes, full-proof completeness, encrypted/private transport intent, optional Discord/blocked-routing proof fields, and optional env/file presence without running deployment verification.",
       "aliases": [
         "deployment proof manifest check",
         "proof manifest check",
