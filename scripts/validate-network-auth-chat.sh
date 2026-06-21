@@ -2860,17 +2860,14 @@ if summary["dmg"]:
     assert dmg.is_file() and dmg.stat().st_size > 0, summary
     assert re.fullmatch(r"[0-9a-f]{64}", summary["dmgSha256"]), summary
     dmg_root = app.parent / "dmg-root"
-    assert (dmg_root / "README-FIRST.md").is_file(), summary
-    assert (dmg_root / "open-agent-scape.txt").is_file(), summary
-    guidance = {
-        "Quick Start.txt": "agent-scape quick start",
-        "Troubleshooting.txt": "agent-scape troubleshooting",
-        "Account Safety.txt": "account safety",
-    }
-    for name, marker in guidance.items():
-        text = (dmg_root / name).read_text(encoding="utf-8")
-        assert marker in text, (name, text)
-        assert password not in text, (name, text)
+    assert sorted(path.name for path in dmg_root.iterdir()) == ["README.md", app.name], summary
+    readme = (dmg_root / "README.md").read_text(encoding="utf-8")
+    assert "# agent-scape" in readme, readme
+    assert "Open `agent-scape.app`" in readme, readme
+    assert "MrProvision" in readme, readme
+    assert "https://github.com/francisgreenleaf/2006Scape" in readme, readme
+    assert "https://github.com/francisgreenleaf/2006Scape/pull/37" in readme, readme
+    assert password not in readme, readme
 assert password not in summary_text
 PY
 

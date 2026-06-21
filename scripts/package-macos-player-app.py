@@ -460,46 +460,25 @@ def write_info_plist(path, app_name, bundle_id, icon_file):
         plistlib.dump(payload, handle, sort_keys=True)
 
 
-def write_dmg_guidance_files(dmg_root):
-    (dmg_root / "Quick Start.txt").write_text(
+def write_dmg_readme(dmg_root, username, character):
+    (dmg_root / "README.md").write_text(
         "\n".join(
             [
-                "agent-scape quick start",
+                "# agent-scape",
                 "",
-                "1. Read README-FIRST.md for your username, character, transport setup, and login notes.",
-                "2. Open agent-scape.app.",
-                "3. If macOS blocks the first launch, right-click agent-scape.app and choose Open.",
-                "4. Log in with the operator-provided password. The password is not included in this DMG.",
+                "1. Open `agent-scape.app`.",
+                "2. Log in as `{}` / `{}` with the password sent separately.".format(username, character),
+                "3. Play.",
                 "",
-            ]
-        ),
-        encoding="utf-8",
-    )
-    (dmg_root / "Troubleshooting.txt").write_text(
-        "\n".join(
-            [
-                "agent-scape troubleshooting",
+                "If macOS blocks the first launch, right-click `agent-scape.app` and choose `Open`.",
+                "If it still will not launch, send Kevin `~/Library/Logs/agent-scape/agent-scape-launch.log`.",
                 "",
-                "- If the app does not open, install Java 8 or newer, then try again.",
-                "- If Java is installed but the app still fails, check:",
-                "  ~/Library/Logs/agent-scape/agent-scape-launch.log",
-                "- If the setup uses Tailscale, connect Tailscale before launching.",
-                "- If the setup uses a TLS tunnel, install stunnel if the launcher asks for it.",
-                "- If login fails, ask the operator to confirm the username, password, and character name.",
+                "Agent features are available in the in-game Agent Terminal or with `/agent ...`.",
                 "",
-            ]
-        ),
-        encoding="utf-8",
-    )
-    (dmg_root / "Account Safety.txt").write_text(
-        "\n".join(
-            [
-                "account safety",
+                "Project: https://github.com/francisgreenleaf/2006Scape",
+                "Mac package PR: https://github.com/francisgreenleaf/2006Scape/pull/37",
                 "",
-                "- Use only the password sent privately by the server operator.",
-                "- Do not reuse a RuneScape.com password or a password from another service.",
-                "- This DMG does not include passwords, account records, bridge tokens, API keys, or server secrets.",
-                "- Do not expose raw TCP 43610; remote agent control must use the approved HTTPS /agent gateway.",
+                "Use only the password made for this server. Do not reuse a RuneScape.com password.",
                 "",
             ]
         ),
@@ -586,19 +565,7 @@ def build_app(args):
             shutil.rmtree(str(dmg_root))
         dmg_root.mkdir(parents=True)
         copy_tree(app_path, dmg_root / app_path.name)
-        (dmg_root / "README-FIRST.md").write_text(handoff_text, encoding="utf-8")
-        (dmg_root / "open-agent-scape.txt").write_text(
-            "\n".join([
-                "Open agent-scape.app to launch the game client.",
-                "If macOS blocks a first launch, right-click agent-scape.app and choose Open.",
-                "If Java is missing or the client cannot start, the app shows an alert and writes a log to ~/Library/Logs/agent-scape/agent-scape-launch.log.",
-                "Read README-FIRST.md for the account name, transport setup, and login steps.",
-                "The password is not included in this DMG; the operator sends it separately.",
-                "",
-            ]),
-            encoding="utf-8",
-        )
-        write_dmg_guidance_files(dmg_root)
+        write_dmg_readme(dmg_root, username, character)
         validate_public_tree(dmg_root, "DMG staging directory")
         if dmg_output.exists():
             if dmg_output.is_symlink():
