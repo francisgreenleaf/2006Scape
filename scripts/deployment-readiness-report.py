@@ -22,7 +22,7 @@ from lib.deployment_proof_manifest import apply_proof_manifest, write_manifest_u
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = ROOT_DIR / "2006Scape Server" / "ServerConfig.json"
-DEFAULT_CLIENT_DIST = ROOT_DIR / "dist" / "2006scape-client"
+DEFAULT_CLIENT_DIST = ROOT_DIR / "dist" / "agent-scape-client"
 DEFAULT_ACCOUNTS_DIR = ROOT_DIR / "2006Scape Server" / "data" / "accounts"
 DEFAULT_SECRETS = ROOT_DIR / "2006Scape Server" / "data" / "secrets.json"
 DEFAULT_AGENT_CHAT_LOG_ROOT = ROOT_DIR / "2006Scape Server" / "data" / "logs" / "agent-chat"

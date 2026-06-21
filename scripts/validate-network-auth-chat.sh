@@ -83,7 +83,7 @@ echo "Running focused client config tests..."
 "$MAVEN_BIN" -q -pl "2006Scape Client" -Dtest=MainClientConfigTest test
 
 echo "Checking Python helper syntax..."
-python3 -m py_compile scripts/account-admin.py scripts/backup-runtime-data.py scripts/check-deployment-proof-manifest.py scripts/create-account.py scripts/deployment-readiness-report.py scripts/deployment-readiness-status.py scripts/package-deployment-proof.py scripts/package-player-kit.py scripts/prepare-external-deployment.py scripts/preflight-external-config.py scripts/probe-agent-bridge-gateway.py scripts/probe-concurrent-logins.py scripts/probe-deployment-network.py scripts/probe-game-login.py scripts/probe-discord-agent-bots.py scripts/provision-player-account.py scripts/render-agent-bridge-gateway-config.py scripts/render-client-tls-tunnel-config.py scripts/render-player-handoff.py scripts/render-server-deployment-files.py scripts/verify-agent-chat-log.py scripts/verify-discord-channel-message.py scripts/verify-external-deployment.py scripts/verify-player-kit.py scripts/write-desktop-client-proof.py scripts/smoke-network-auth-chat-runtime.py scripts/lib/deployment_proof_manifest.py scripts/lib/game_login_probe.py scripts/lib/discord_bot_probe.py agent-navigation/tools/agent_chat_XS.py agent-navigation/tools/remote_claim.py agent-navigation/tools/rs-tool_XS.py
+python3 -m py_compile scripts/account-admin.py scripts/backup-runtime-data.py scripts/check-deployment-proof-manifest.py scripts/create-account.py scripts/deployment-readiness-report.py scripts/deployment-readiness-status.py scripts/install-player-account-record.py scripts/package-deployment-proof.py scripts/package-macos-player-app.py scripts/package-player-kit.py scripts/prepare-external-deployment.py scripts/prepare-player-package.py scripts/preflight-external-config.py scripts/probe-agent-bridge-gateway.py scripts/probe-concurrent-logins.py scripts/probe-deployment-network.py scripts/probe-game-login.py scripts/probe-discord-agent-bots.py scripts/provision-player-account.py scripts/render-agent-bridge-gateway-config.py scripts/render-client-tls-tunnel-config.py scripts/render-player-handoff.py scripts/render-server-deployment-files.py scripts/verify-agent-chat-log.py scripts/verify-discord-channel-message.py scripts/verify-external-deployment.py scripts/verify-player-kit.py scripts/write-desktop-client-proof.py scripts/smoke-network-auth-chat-runtime.py scripts/lib/deployment_proof_manifest.py scripts/lib/game_login_probe.py scripts/lib/discord_bot_probe.py agent-navigation/tools/agent_chat_XS.py agent-navigation/tools/remote_claim.py agent-navigation/tools/rs-tool_XS.py
 
 echo "Checking remote agent bridge claim and gateway helpers..."
 python3 - <<'PY'
@@ -882,7 +882,10 @@ python3 agent-navigation/tools/script_registry.py search "readiness status" --js
 python3 agent-navigation/tools/script_registry.py search "client package" --json | grep -q '"id": "standalone_client_package"'
 python3 agent-navigation/tools/script_registry.py search "player handoff" --json | grep -q '"id": "player_handoff_render"'
 python3 agent-navigation/tools/script_registry.py search "player provisioning" --json | grep -q '"id": "player_account_provision"'
+python3 agent-navigation/tools/script_registry.py search "friend package" --json | grep -q '"id": "player_package_prepare"'
 python3 agent-navigation/tools/script_registry.py search "player kit" --json | grep -q '"id": "player_kit_package"'
+python3 agent-navigation/tools/script_registry.py search "mac dmg" --json | grep -q '"id": "macos_player_app_package"'
+python3 agent-navigation/tools/script_registry.py search "vps account install" --json | grep -q '"id": "player_account_install_plan"'
 python3 agent-navigation/tools/script_registry.py search "tailscale" --json | grep -q '"id": "standalone_client_package"'
 python3 agent-navigation/tools/script_registry.py search "tailscale" --json | grep -q '"id": "external_config_preflight"'
 python3 agent-navigation/tools/script_registry.py search "tls tunnel" --json | grep -q '"id": "client_tls_tunnel_config"'
@@ -902,9 +905,16 @@ python3 agent-navigation/tools/script_registry.py show player_handoff_render --j
 python3 agent-navigation/tools/script_registry.py show player_account_provision --json | grep -q '"path": "scripts/provision-player-account.py"'
 python3 agent-navigation/tools/script_registry.py show player_account_provision --json | grep -q -- "--prepared-dir dist/external-deployment"
 python3 agent-navigation/tools/script_registry.py show player_account_provision --json | grep -q "ignored private credentials env file"
+python3 agent-navigation/tools/script_registry.py show player_package_prepare --json | grep -q '"path": "scripts/prepare-player-package.py"'
+python3 agent-navigation/tools/script_registry.py show player_package_prepare --json | grep -q -- "--mac-dmg"
+python3 agent-navigation/tools/script_registry.py show player_package_prepare --json | grep -q "One-command external player helper"
 python3 agent-navigation/tools/script_registry.py show player_kit_package --json | grep -q '"path": "scripts/package-player-kit.py"'
 python3 agent-navigation/tools/script_registry.py show player_kit_package --json | grep -q -- "--prepared-dir dist/external-deployment"
 python3 agent-navigation/tools/script_registry.py show player_kit_package --json | grep -q "public-safe per-player zip"
+python3 agent-navigation/tools/script_registry.py show macos_player_app_package --json | grep -q '"path": "scripts/package-macos-player-app.py"'
+python3 agent-navigation/tools/script_registry.py show macos_player_app_package --json | grep -q -- "--dmg"
+python3 agent-navigation/tools/script_registry.py show player_account_install_plan --json | grep -q '"path": "scripts/install-player-account-record.py"'
+python3 agent-navigation/tools/script_registry.py show player_account_install_plan --json | grep -q "Dry-run by default"
 python3 agent-navigation/tools/script_registry.py show player_kit_verify --json | grep -q '"path": "scripts/verify-player-kit.py"'
 python3 agent-navigation/tools/script_registry.py show player_kit_verify --json | grep -q -- "--kit dist/external-deployment/player-kit-MrGem.zip"
 python3 agent-navigation/tools/script_registry.py show player_kit_verify --json | grep -q "absence of passwords"
@@ -1043,7 +1053,7 @@ grep -q "scripts/probe-discord-agent-bots.py" docs/network-auth-agent-chat-desig
 grep -q "scripts/verify-agent-chat-log.py" docs/deployment-networking.md
 grep -q "scripts/verify-discord-channel-message.py" docs/deployment-networking.md
 grep -q "macOS double-click .command wrappers" README.md
-grep -q "Run-2006Scape.command" docs/external-deployment-quickstart.md
+grep -q "run-agent-scape.command" docs/external-deployment-quickstart.md
 grep -q "Check-Setup.command" docs/external-deployment-quickstart.md
 grep -q "macOS .command wrappers plus" docs/network-auth-agent-chat-design.md
 grep -q "macOS double-click wrappers" docs/network-auth-agent-chat-design.md
@@ -1055,9 +1065,9 @@ grep -q "refuses symlinked output directories" .codex/skills/2006scape-external-
 grep -q "symlinked package output paths are rejected" .codex/skills/2006scape/SKILL.md
 python3 agent-navigation/tools/script_registry.py show standalone_client_package --json | grep -q "symlinked output path rejection"
 grep -q "macOS double-click \`.command\` wrappers" .codex/skills/2006scape/SKILL.md
-grep -q "Run-2006Scape.command" .codex/skills/2006scape-agent-bridge-dev/SKILL.md
+grep -q "run-agent-scape.command" .codex/skills/2006scape-agent-bridge-dev/SKILL.md
 grep -q "Check-Setup.command" .codex/skills/2006scape-agent-bridge-dev/SKILL.md
-grep -q "Run-2006Scape.command" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q "run-agent-scape.command" .codex/skills/2006scape-external-deployment/SKILL.md
 grep -q "macOS double-click .command wrappers" agent-navigation/data/script_registry.json
 grep -q "non-symlink screenshot/log evidence file" README.md
 grep -q "scripts/write-desktop-client-proof.py" README.md
@@ -1129,42 +1139,76 @@ grep -q -- "--prepared-dir dist/external-deployment" .codex/skills/2006scape-scr
 grep -q -- "--prepared-dir dist/external-deployment" .codex/skills/2006scape-external-deployment/SKILL.md
 python3 agent-navigation/tools/script_registry.py show deployment_proof_bundle --json | grep -q -- "--prepared-dir dist/external-deployment"
 grep -q "scripts/render-player-handoff.py" README.md
+grep -q "scripts/prepare-player-package.py" README.md
+grep -q -- "--random-name" README.md
 grep -q "scripts/provision-player-account.py" README.md
+grep -q "scripts/package-macos-player-app.py" README.md
 grep -q "scripts/package-player-kit.py" README.md
+grep -q "scripts/install-player-account-record.py" README.md
 grep -q "scripts/verify-player-kit.py" README.md
 grep -q "scripts/render-player-handoff.py" AGENTS.md
+grep -q "scripts/prepare-player-package.py" AGENTS.md
+grep -q -- "--random-name" AGENTS.md
 grep -q "scripts/provision-player-account.py" AGENTS.md
+grep -q "scripts/package-macos-player-app.py" AGENTS.md
 grep -q "scripts/package-player-kit.py" AGENTS.md
+grep -q "scripts/install-player-account-record.py" AGENTS.md
 grep -q "scripts/verify-player-kit.py" AGENTS.md
 grep -q "scripts/render-player-handoff.py" docs/deployment-networking.md
+grep -q "scripts/prepare-player-package.py" docs/deployment-networking.md
+grep -q -- "--random-name" docs/deployment-networking.md
 grep -q "scripts/provision-player-account.py" docs/deployment-networking.md
+grep -q "scripts/package-macos-player-app.py" docs/deployment-networking.md
 grep -q "scripts/package-player-kit.py" docs/deployment-networking.md
+grep -q "scripts/install-player-account-record.py" docs/deployment-networking.md
 grep -q "scripts/verify-player-kit.py" docs/deployment-networking.md
 grep -q "scripts/render-player-handoff.py" docs/external-deployment-quickstart.md
+grep -q "scripts/prepare-player-package.py" docs/external-deployment-quickstart.md
+grep -q -- "--random-name" docs/external-deployment-quickstart.md
 grep -q "scripts/provision-player-account.py" docs/external-deployment-quickstart.md
+grep -q "scripts/package-macos-player-app.py" docs/external-deployment-quickstart.md
 grep -q "scripts/package-player-kit.py" docs/external-deployment-quickstart.md
+grep -q "scripts/install-player-account-record.py" docs/external-deployment-quickstart.md
 grep -q "scripts/verify-player-kit.py" docs/external-deployment-quickstart.md
 grep -q "scripts/render-player-handoff.py" docs/network-auth-agent-chat-design.md
+grep -q "scripts/prepare-player-package.py" docs/network-auth-agent-chat-design.md
 grep -q "scripts/provision-player-account.py" docs/network-auth-agent-chat-design.md
+grep -q "scripts/package-macos-player-app.py" docs/network-auth-agent-chat-design.md
 grep -q "scripts/package-player-kit.py" docs/network-auth-agent-chat-design.md
+grep -q "scripts/install-player-account-record.py" docs/network-auth-agent-chat-design.md
 grep -q "scripts/verify-player-kit.py" docs/network-auth-agent-chat-design.md
 grep -q "scripts/render-player-handoff.py" .codex/skills/2006scape/SKILL.md
+grep -q "scripts/prepare-player-package.py" .codex/skills/2006scape/SKILL.md
+grep -q -- "--random-name" .codex/skills/2006scape/SKILL.md
 grep -q "scripts/provision-player-account.py" .codex/skills/2006scape/SKILL.md
+grep -q -- "--random-name" .codex/skills/2006scape-script-registry/SKILL.md
+grep -q "scripts/package-macos-player-app.py" .codex/skills/2006scape/SKILL.md
 grep -q "scripts/package-player-kit.py" .codex/skills/2006scape/SKILL.md
+grep -q "scripts/install-player-account-record.py" .codex/skills/2006scape/SKILL.md
 grep -q "scripts/verify-player-kit.py" .codex/skills/2006scape/SKILL.md
 grep -q "scripts/render-player-handoff.py" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q "scripts/prepare-player-package.py" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q -- "--random-name" .codex/skills/2006scape-external-deployment/SKILL.md
 grep -q "scripts/provision-player-account.py" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q "scripts/package-macos-player-app.py" .codex/skills/2006scape-external-deployment/SKILL.md
 grep -q "scripts/package-player-kit.py" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q "scripts/install-player-account-record.py" .codex/skills/2006scape-external-deployment/SKILL.md
 grep -q "scripts/verify-player-kit.py" .codex/skills/2006scape-external-deployment/SKILL.md
 grep -q "scripts/render-player-handoff.py" agent-navigation/data/script_registry.json
+grep -q "scripts/prepare-player-package.py" agent-navigation/data/script_registry.json
+grep -q -- "--random-name" agent-navigation/data/script_registry.json
 grep -q "scripts/provision-player-account.py" agent-navigation/data/script_registry.json
+grep -q "scripts/package-macos-player-app.py" agent-navigation/data/script_registry.json
 grep -q "scripts/package-player-kit.py" agent-navigation/data/script_registry.json
+grep -q "scripts/install-player-account-record.py" agent-navigation/data/script_registry.json
 grep -q "scripts/verify-player-kit.py" agent-navigation/data/script_registry.json
 grep -q "without accepting or printing the password" README.md
 grep -q "without accepting or printing the password" docs/network-auth-agent-chat-design.md
 grep -q "never accepts or prints the password" docs/external-deployment-quickstart.md
 grep -q "password only to an owner-only ignored credentials env file" docs/external-deployment-quickstart.md
 grep -q "public-safe files" docs/external-deployment-quickstart.md
+grep -q "Future Self-Service Signup" docs/external-deployment-quickstart.md
+grep -q "Future Public Self-Signup" docs/deployment-networking.md
 grep -q "Final-gate manifests must keep \`require_full_proof:true\`" README.md
 grep -q "Final-gate manifests must keep \`require_full_proof:true\`" AGENTS.md
 grep -q "Final-gate manifests must keep \`require_full_proof:true\`" docs/deployment-networking.md
@@ -1893,9 +1937,9 @@ grep -q "traffic over TLS to tls.example.net" "$TMP_DIR/client-tls-tunnel-client
 grep -q "Use the username and password provided by the server operator" "$TMP_DIR/client-tls-tunnel-client/README.txt"
 grep -q "Do not use a RuneScape.com password or reuse passwords from other services" "$TMP_DIR/client-tls-tunnel-client/README.txt"
 grep -q "See client-tls-tunnel/INSTALL-STUNNEL.txt" "$TMP_DIR/client-tls-tunnel-client/run-macos-linux.sh"
-grep -q "Starting stunnel for encrypted 2006Scape transport" "$TMP_DIR/client-tls-tunnel-client/run-macos-linux.sh"
+grep -q "Starting stunnel for encrypted agent-scape transport" "$TMP_DIR/client-tls-tunnel-client/run-macos-linux.sh"
 grep -q "See client-tls-tunnel\\\\INSTALL-STUNNEL.txt" "$TMP_DIR/client-tls-tunnel-client/run-windows.bat"
-grep -q "Starting stunnel for encrypted 2006Scape transport" "$TMP_DIR/client-tls-tunnel-client/run-windows.bat"
+grep -q "Starting stunnel for encrypted agent-scape transport" "$TMP_DIR/client-tls-tunnel-client/run-windows.bat"
 grep -q "See client-tls-tunnel/INSTALL-STUNNEL.txt" "$TMP_DIR/client-tls-tunnel-client/check-setup-macos-linux.sh"
 grep -q "Starting stunnel temporarily for setup checks" "$TMP_DIR/client-tls-tunnel-client/check-setup-macos-linux.sh"
 grep -q "start_client_tls_tunnel_for_setup" "$TMP_DIR/client-tls-tunnel-client/check-setup-macos-linux.sh"
@@ -2002,8 +2046,8 @@ grep -q "prepared external deployment artifacts" "$TMP_DIR/prepare-client-tls-tu
 grep -q "readiness_json: $TMP_DIR/prepared-client-tls-tunnel/deployment-readiness-report.json" "$TMP_DIR/prepare-client-tls-tunnel.out"
 grep -q "encrypted_external_required: yes" "$TMP_DIR/prepare-client-tls-tunnel.out"
 grep -q "runtime: not started, stopped, or restarted" "$TMP_DIR/prepare-client-tls-tunnel.out"
-test -f "$TMP_DIR/prepared-client-tls-tunnel/2006scape-client/client.properties"
-test -f "$TMP_DIR/prepared-client-tls-tunnel/2006scape-client.zip"
+test -f "$TMP_DIR/prepared-client-tls-tunnel/agent-scape-client/client.properties"
+test -f "$TMP_DIR/prepared-client-tls-tunnel/agent-scape-client.zip"
 test -f "$TMP_DIR/prepared-client-tls-tunnel/deployment-readiness-report.md"
 test -f "$TMP_DIR/prepared-client-tls-tunnel/deployment-readiness-report.json"
 test -f "$TMP_DIR/prepared-client-tls-tunnel/client-tls-tunnel-operator/stunnel-server.conf"
@@ -2084,7 +2128,7 @@ grep -q "## Live Chat Proof" "$TMP_DIR/prepared-client-tls-tunnel/server-deploym
 grep -q "agent_chat_player_delivery" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
 grep -q -- "--agent-chat-delivery-log-text" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/README.md"
 grep -q "# Player Handoff Template" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
-grep -q "Share \`2006scape-client.zip\`" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
+grep -q "Share \`agent-scape-client.zip\`" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
 grep -q "PBKDF2 account record" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
 grep -q "12+ character password" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
 grep -q -- "--allowed-character" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
@@ -2094,7 +2138,7 @@ grep -q 'Never expose raw TCP `43610`' "$TMP_DIR/prepared-client-tls-tunnel/serv
 grep -q 'approved HTTPS `/agent` gateway' "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
 grep -q "Do not reuse a RuneScape.com password" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
 grep -q "Do Not Send To Players" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
-grep -Fq "2006Scape Server/data/accounts/*.json" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
+grep -Fq "Server account-record JSON files" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
 grep -q "Bridge session files" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/player-handoff-template.md"
 grep -q "live_login_password_env" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/proof-templates/deployment-proof-manifest.json"
 grep -q "live_reject_login_expected_statuses" "$TMP_DIR/prepared-client-tls-tunnel/server-deployment/proof-templates/deployment-proof-manifest.json"
@@ -2373,8 +2417,8 @@ if CLIENT_DIST_DIR="$TMP_DIR/package-parent-link/client" \
 fi
 grep -q "refusing to write client distribution directory through symlinked parent directory" "$TMP_DIR/symlink-parent-client.out"
 
-CLIENT_DIST_DIR="$TMP_DIR/2006scape-client" \
-CLIENT_ARCHIVE_PATH="$TMP_DIR/2006scape-client.zip" \
+CLIENT_DIST_DIR="$TMP_DIR/agent-scape-client" \
+CLIENT_ARCHIVE_PATH="$TMP_DIR/agent-scape-client.zip" \
 SKIP_BUILD=1 \
 CLIENT_SERVER_HOST=example-tailnet-host \
 CLIENT_SERVER_PORT=43594 \
@@ -2388,66 +2432,66 @@ CLIENT_SHOW_NAVBAR=true \
 CLIENT_SECURE_TRANSPORT=tailscale \
     scripts/package-client.sh
 
-test -f "$TMP_DIR/2006scape-client/2006scape-client.jar"
-test -f "$TMP_DIR/2006scape-client/client.properties"
-test -f "$TMP_DIR/2006scape-client/MANIFEST.txt"
-test -f "$TMP_DIR/2006scape-client/SHA256SUMS"
-test -x "$TMP_DIR/2006scape-client/Check-Setup.command"
-test -x "$TMP_DIR/2006scape-client/Run-2006Scape.command"
-test -x "$TMP_DIR/2006scape-client/check-setup-macos-linux.sh"
-test -f "$TMP_DIR/2006scape-client/check-setup-windows.bat"
-test -x "$TMP_DIR/2006scape-client/run-macos-linux.sh"
-test -f "$TMP_DIR/2006scape-client/run-windows.bat"
-test -f "$TMP_DIR/2006scape-client.zip"
-assert_archive_launcher_executable "$TMP_DIR/2006scape-client.zip" "2006scape-client/Check-Setup.command"
-assert_archive_launcher_executable "$TMP_DIR/2006scape-client.zip" "2006scape-client/Run-2006Scape.command"
-assert_archive_launcher_executable "$TMP_DIR/2006scape-client.zip" "2006scape-client/check-setup-macos-linux.sh"
-assert_archive_launcher_executable "$TMP_DIR/2006scape-client.zip" "2006scape-client/run-macos-linux.sh"
-assert_windows_launcher_crlf "$TMP_DIR/2006scape-client/check-setup-windows.bat"
-assert_windows_launcher_crlf "$TMP_DIR/2006scape-client/run-windows.bat"
-grep -q "check-setup-macos-linux.sh" "$TMP_DIR/2006scape-client/Check-Setup.command"
-grep -q "run-macos-linux.sh" "$TMP_DIR/2006scape-client/Run-2006Scape.command"
-grep -q "Java is required to run 2006Scape" "$TMP_DIR/2006scape-client/check-setup-macos-linux.sh"
-grep -q "Java is required to run 2006Scape" "$TMP_DIR/2006scape-client/check-setup-windows.bat"
-grep -q "Game TCP check" "$TMP_DIR/2006scape-client/check-setup-macos-linux.sh"
-grep -q "PowerShell is required for TCP checks" "$TMP_DIR/2006scape-client/check-setup-windows.bat"
-grep -q "agent.bridge.url" "$TMP_DIR/2006scape-client/check-setup-macos-linux.sh"
-grep -q "agent.bridge.url" "$TMP_DIR/2006scape-client/check-setup-windows.bat"
-grep -q "Java is required to run 2006Scape" "$TMP_DIR/2006scape-client/run-macos-linux.sh"
-grep -q "Java is required to run 2006Scape" "$TMP_DIR/2006scape-client/run-windows.bat"
-grep -Fq 'AGENT_BRIDGE_URL="$(read_prop agent.bridge.url)"' "$TMP_DIR/2006scape-client/check-setup-macos-linux.sh"
-grep -q -- "-no-java-warnings" "$TMP_DIR/2006scape-client/run-macos-linux.sh"
-grep -q -- "-no-java-warnings" "$TMP_DIR/2006scape-client/run-windows.bat"
-grep -q "First run checklist:" "$TMP_DIR/2006scape-client/README.txt"
-grep -q "Run the setup checker for your OS before logging in" "$TMP_DIR/2006scape-client/README.txt"
-grep -q "Log in with the operator-provided username and password" "$TMP_DIR/2006scape-client/README.txt"
-grep -q "Check setup:" "$TMP_DIR/2006scape-client/README.txt"
-grep -q "without logging in" "$TMP_DIR/2006scape-client/README.txt"
-grep -q "Install Java 8 or newer" "$TMP_DIR/2006scape-client/README.txt"
-grep -q "double-click Check-Setup.command" "$TMP_DIR/2006scape-client/README.txt"
-grep -q "double-click Run-2006Scape.command" "$TMP_DIR/2006scape-client/README.txt"
-grep -q "suppress the legacy Parabot-focused Java-version warning" "$TMP_DIR/2006scape-client/README.txt"
-grep -q "Transport setup:" "$TMP_DIR/2006scape-client/README.txt"
-grep -q "Install Tailscale" "$TMP_DIR/2006scape-client/README.txt"
-grep -q "Connect Tailscale before launching the client" "$TMP_DIR/2006scape-client/README.txt"
-grep -q "public game host: example-tailnet-host" "$TMP_DIR/2006scape-client/README.txt"
-grep -q "agent bridge URL: http://127.0.0.1:43610" "$TMP_DIR/2006scape-client/README.txt"
-grep -q "operator's HTTPS /agent gateway" "$TMP_DIR/2006scape-client/README.txt"
-grep -q "Use the username and password provided by the server operator" "$TMP_DIR/2006scape-client/README.txt"
-grep -q "Do not use a RuneScape.com password or reuse passwords from other services" "$TMP_DIR/2006scape-client/README.txt"
-grep -q "server.host=example-tailnet-host" "$TMP_DIR/2006scape-client/client.properties"
-grep -q "http.port=8080" "$TMP_DIR/2006scape-client/client.properties"
-grep -q "secure.transport=tailscale" "$TMP_DIR/2006scape-client/client.properties"
-grep -q "agent.bridge.url=http://127.0.0.1:43610" "$TMP_DIR/2006scape-client/client.properties"
-grep -q "http_port=8080" "$TMP_DIR/2006scape-client/MANIFEST.txt"
-grep -q "public_game_host=example-tailnet-host" "$TMP_DIR/2006scape-client/MANIFEST.txt"
-grep -q "expected_external_transport=tailscale" "$TMP_DIR/2006scape-client/MANIFEST.txt"
-grep -q "agent_bridge_url=http://127.0.0.1:43610" "$TMP_DIR/2006scape-client/MANIFEST.txt"
-(cd "$TMP_DIR/2006scape-client" && shasum -a 256 -c SHA256SUMS >/dev/null)
+test -f "$TMP_DIR/agent-scape-client/agent-scape-client.jar"
+test -f "$TMP_DIR/agent-scape-client/client.properties"
+test -f "$TMP_DIR/agent-scape-client/MANIFEST.txt"
+test -f "$TMP_DIR/agent-scape-client/SHA256SUMS"
+test -x "$TMP_DIR/agent-scape-client/Check-Setup.command"
+test -x "$TMP_DIR/agent-scape-client/run-agent-scape.command"
+test -x "$TMP_DIR/agent-scape-client/check-setup-macos-linux.sh"
+test -f "$TMP_DIR/agent-scape-client/check-setup-windows.bat"
+test -x "$TMP_DIR/agent-scape-client/run-macos-linux.sh"
+test -f "$TMP_DIR/agent-scape-client/run-windows.bat"
+test -f "$TMP_DIR/agent-scape-client.zip"
+assert_archive_launcher_executable "$TMP_DIR/agent-scape-client.zip" "agent-scape-client/Check-Setup.command"
+assert_archive_launcher_executable "$TMP_DIR/agent-scape-client.zip" "agent-scape-client/run-agent-scape.command"
+assert_archive_launcher_executable "$TMP_DIR/agent-scape-client.zip" "agent-scape-client/check-setup-macos-linux.sh"
+assert_archive_launcher_executable "$TMP_DIR/agent-scape-client.zip" "agent-scape-client/run-macos-linux.sh"
+assert_windows_launcher_crlf "$TMP_DIR/agent-scape-client/check-setup-windows.bat"
+assert_windows_launcher_crlf "$TMP_DIR/agent-scape-client/run-windows.bat"
+grep -q "check-setup-macos-linux.sh" "$TMP_DIR/agent-scape-client/Check-Setup.command"
+grep -q "run-macos-linux.sh" "$TMP_DIR/agent-scape-client/run-agent-scape.command"
+grep -q "Java is required to run agent-scape" "$TMP_DIR/agent-scape-client/check-setup-macos-linux.sh"
+grep -q "Java is required to run agent-scape" "$TMP_DIR/agent-scape-client/check-setup-windows.bat"
+grep -q "Game TCP check" "$TMP_DIR/agent-scape-client/check-setup-macos-linux.sh"
+grep -q "PowerShell is required for TCP checks" "$TMP_DIR/agent-scape-client/check-setup-windows.bat"
+grep -q "agent.bridge.url" "$TMP_DIR/agent-scape-client/check-setup-macos-linux.sh"
+grep -q "agent.bridge.url" "$TMP_DIR/agent-scape-client/check-setup-windows.bat"
+grep -q "Java is required to run agent-scape" "$TMP_DIR/agent-scape-client/run-macos-linux.sh"
+grep -q "Java is required to run agent-scape" "$TMP_DIR/agent-scape-client/run-windows.bat"
+grep -Fq 'AGENT_BRIDGE_URL="$(read_prop agent.bridge.url)"' "$TMP_DIR/agent-scape-client/check-setup-macos-linux.sh"
+grep -q -- "-no-java-warnings" "$TMP_DIR/agent-scape-client/run-macos-linux.sh"
+grep -q -- "-no-java-warnings" "$TMP_DIR/agent-scape-client/run-windows.bat"
+grep -q "First run checklist:" "$TMP_DIR/agent-scape-client/README.txt"
+grep -q "Run the setup checker for your OS before logging in" "$TMP_DIR/agent-scape-client/README.txt"
+grep -q "Log in with the operator-provided username and password" "$TMP_DIR/agent-scape-client/README.txt"
+grep -q "Check setup:" "$TMP_DIR/agent-scape-client/README.txt"
+grep -q "without logging in" "$TMP_DIR/agent-scape-client/README.txt"
+grep -q "Install Java 8 or newer" "$TMP_DIR/agent-scape-client/README.txt"
+grep -q "double-click Check-Setup.command" "$TMP_DIR/agent-scape-client/README.txt"
+grep -q "double-click run-agent-scape.command" "$TMP_DIR/agent-scape-client/README.txt"
+grep -q "suppress the legacy Parabot-focused Java-version warning" "$TMP_DIR/agent-scape-client/README.txt"
+grep -q "Transport setup:" "$TMP_DIR/agent-scape-client/README.txt"
+grep -q "Install Tailscale" "$TMP_DIR/agent-scape-client/README.txt"
+grep -q "Connect Tailscale before launching the client" "$TMP_DIR/agent-scape-client/README.txt"
+grep -q "public game host: example-tailnet-host" "$TMP_DIR/agent-scape-client/README.txt"
+grep -q "agent bridge URL: http://127.0.0.1:43610" "$TMP_DIR/agent-scape-client/README.txt"
+grep -q "operator's HTTPS /agent gateway" "$TMP_DIR/agent-scape-client/README.txt"
+grep -q "Use the username and password provided by the server operator" "$TMP_DIR/agent-scape-client/README.txt"
+grep -q "Do not use a RuneScape.com password or reuse passwords from other services" "$TMP_DIR/agent-scape-client/README.txt"
+grep -q "server.host=example-tailnet-host" "$TMP_DIR/agent-scape-client/client.properties"
+grep -q "http.port=8080" "$TMP_DIR/agent-scape-client/client.properties"
+grep -q "secure.transport=tailscale" "$TMP_DIR/agent-scape-client/client.properties"
+grep -q "agent.bridge.url=http://127.0.0.1:43610" "$TMP_DIR/agent-scape-client/client.properties"
+grep -q "http_port=8080" "$TMP_DIR/agent-scape-client/MANIFEST.txt"
+grep -q "public_game_host=example-tailnet-host" "$TMP_DIR/agent-scape-client/MANIFEST.txt"
+grep -q "expected_external_transport=tailscale" "$TMP_DIR/agent-scape-client/MANIFEST.txt"
+grep -q "agent_bridge_url=http://127.0.0.1:43610" "$TMP_DIR/agent-scape-client/MANIFEST.txt"
+(cd "$TMP_DIR/agent-scape-client" && shasum -a 256 -c SHA256SUMS >/dev/null)
 
 echo "Smoke-testing standalone Tailscale client packaging from server config..."
-CLIENT_DIST_DIR="$TMP_DIR/2006scape-client-tailscale-from-config" \
-CLIENT_ARCHIVE_PATH="$TMP_DIR/2006scape-client-tailscale-from-config.zip" \
+CLIENT_DIST_DIR="$TMP_DIR/agent-scape-client-tailscale-from-config" \
+CLIENT_ARCHIVE_PATH="$TMP_DIR/agent-scape-client-tailscale-from-config.zip" \
 SKIP_BUILD=1 \
 CLIENT_SERVER_CONFIG="2006Scape Server/ServerConfig.Tailscale.Sample.json" \
 CLIENT_CHECK_CRC=false \
@@ -2456,63 +2500,63 @@ CLIENT_SCALE=1 \
 CLIENT_SHOW_NAVBAR=true \
     scripts/package-client.sh
 
-test -f "$TMP_DIR/2006scape-client-tailscale-from-config/client.properties"
-test -f "$TMP_DIR/2006scape-client-tailscale-from-config/2006scape-client.jar"
-test -f "$TMP_DIR/2006scape-client-tailscale-from-config/MANIFEST.txt"
-test -f "$TMP_DIR/2006scape-client-tailscale-from-config/SHA256SUMS"
-test -x "$TMP_DIR/2006scape-client-tailscale-from-config/Check-Setup.command"
-test -x "$TMP_DIR/2006scape-client-tailscale-from-config/Run-2006Scape.command"
-test -x "$TMP_DIR/2006scape-client-tailscale-from-config/check-setup-macos-linux.sh"
-test -f "$TMP_DIR/2006scape-client-tailscale-from-config/check-setup-windows.bat"
-test -x "$TMP_DIR/2006scape-client-tailscale-from-config/run-macos-linux.sh"
-test -f "$TMP_DIR/2006scape-client-tailscale-from-config/run-windows.bat"
-test -f "$TMP_DIR/2006scape-client-tailscale-from-config.zip"
-assert_archive_launcher_executable "$TMP_DIR/2006scape-client-tailscale-from-config.zip" "2006scape-client-tailscale-from-config/Check-Setup.command"
-assert_archive_launcher_executable "$TMP_DIR/2006scape-client-tailscale-from-config.zip" "2006scape-client-tailscale-from-config/Run-2006Scape.command"
-assert_archive_launcher_executable "$TMP_DIR/2006scape-client-tailscale-from-config.zip" "2006scape-client-tailscale-from-config/check-setup-macos-linux.sh"
-assert_archive_launcher_executable "$TMP_DIR/2006scape-client-tailscale-from-config.zip" "2006scape-client-tailscale-from-config/run-macos-linux.sh"
-assert_windows_launcher_crlf "$TMP_DIR/2006scape-client-tailscale-from-config/check-setup-windows.bat"
-assert_windows_launcher_crlf "$TMP_DIR/2006scape-client-tailscale-from-config/run-windows.bat"
-grep -q "First run checklist:" "$TMP_DIR/2006scape-client-tailscale-from-config/README.txt"
-grep -q "Run the setup checker for your OS before logging in" "$TMP_DIR/2006scape-client-tailscale-from-config/README.txt"
-grep -q "Log in with the operator-provided username and password" "$TMP_DIR/2006scape-client-tailscale-from-config/README.txt"
-grep -q "Transport setup:" "$TMP_DIR/2006scape-client-tailscale-from-config/README.txt"
-grep -q "Install Tailscale" "$TMP_DIR/2006scape-client-tailscale-from-config/README.txt"
-grep -q "Connect Tailscale before launching the client" "$TMP_DIR/2006scape-client-tailscale-from-config/README.txt"
-grep -Fq 'AGENT_BRIDGE_URL="$(read_prop agent.bridge.url)"' "$TMP_DIR/2006scape-client-tailscale-from-config/check-setup-macos-linux.sh"
-grep -q "tailscale status" "$TMP_DIR/2006scape-client-tailscale-from-config/check-setup-macos-linux.sh"
-grep -q "tailscale status" "$TMP_DIR/2006scape-client-tailscale-from-config/check-setup-windows.bat"
-grep -q "Tailscale CLI was not found on PATH" "$TMP_DIR/2006scape-client-tailscale-from-config/check-setup-windows.bat"
-grep -q "public game host: example-tailnet-host" "$TMP_DIR/2006scape-client-tailscale-from-config/README.txt"
-grep -q "agent bridge URL: http://127.0.0.1:43610" "$TMP_DIR/2006scape-client-tailscale-from-config/README.txt"
-grep -q "raw server-side bridge port 43610 must stay private" "$TMP_DIR/2006scape-client-tailscale-from-config/README.txt"
-grep -q "Use the username and password provided by the server operator" "$TMP_DIR/2006scape-client-tailscale-from-config/README.txt"
-grep -q "server.host=example-tailnet-host" "$TMP_DIR/2006scape-client-tailscale-from-config/client.properties"
-grep -q "server.port=43594" "$TMP_DIR/2006scape-client-tailscale-from-config/client.properties"
-grep -q "http.port=8080" "$TMP_DIR/2006scape-client-tailscale-from-config/client.properties"
-grep -q "jaggrab.port=43595" "$TMP_DIR/2006scape-client-tailscale-from-config/client.properties"
-grep -q "secure.transport=tailscale" "$TMP_DIR/2006scape-client-tailscale-from-config/client.properties"
-grep -q "agent.bridge.url=http://127.0.0.1:43610" "$TMP_DIR/2006scape-client-tailscale-from-config/client.properties"
-grep -q "source_server_config=2006Scape Server/ServerConfig.Tailscale.Sample.json" "$TMP_DIR/2006scape-client-tailscale-from-config/MANIFEST.txt"
-grep -Eq '^source_server_config_sha256=[0-9a-f]{64}$' "$TMP_DIR/2006scape-client-tailscale-from-config/MANIFEST.txt"
-grep -q "public_game_host=example-tailnet-host" "$TMP_DIR/2006scape-client-tailscale-from-config/MANIFEST.txt"
-grep -q "expected_external_transport=tailscale" "$TMP_DIR/2006scape-client-tailscale-from-config/MANIFEST.txt"
-grep -q "agent_bridge_url=http://127.0.0.1:43610" "$TMP_DIR/2006scape-client-tailscale-from-config/MANIFEST.txt"
-grep -q "encrypted_external_required=0" "$TMP_DIR/2006scape-client-tailscale-from-config/MANIFEST.txt"
-(cd "$TMP_DIR/2006scape-client-tailscale-from-config" && shasum -a 256 -c SHA256SUMS >/dev/null)
+test -f "$TMP_DIR/agent-scape-client-tailscale-from-config/client.properties"
+test -f "$TMP_DIR/agent-scape-client-tailscale-from-config/agent-scape-client.jar"
+test -f "$TMP_DIR/agent-scape-client-tailscale-from-config/MANIFEST.txt"
+test -f "$TMP_DIR/agent-scape-client-tailscale-from-config/SHA256SUMS"
+test -x "$TMP_DIR/agent-scape-client-tailscale-from-config/Check-Setup.command"
+test -x "$TMP_DIR/agent-scape-client-tailscale-from-config/run-agent-scape.command"
+test -x "$TMP_DIR/agent-scape-client-tailscale-from-config/check-setup-macos-linux.sh"
+test -f "$TMP_DIR/agent-scape-client-tailscale-from-config/check-setup-windows.bat"
+test -x "$TMP_DIR/agent-scape-client-tailscale-from-config/run-macos-linux.sh"
+test -f "$TMP_DIR/agent-scape-client-tailscale-from-config/run-windows.bat"
+test -f "$TMP_DIR/agent-scape-client-tailscale-from-config.zip"
+assert_archive_launcher_executable "$TMP_DIR/agent-scape-client-tailscale-from-config.zip" "agent-scape-client-tailscale-from-config/Check-Setup.command"
+assert_archive_launcher_executable "$TMP_DIR/agent-scape-client-tailscale-from-config.zip" "agent-scape-client-tailscale-from-config/run-agent-scape.command"
+assert_archive_launcher_executable "$TMP_DIR/agent-scape-client-tailscale-from-config.zip" "agent-scape-client-tailscale-from-config/check-setup-macos-linux.sh"
+assert_archive_launcher_executable "$TMP_DIR/agent-scape-client-tailscale-from-config.zip" "agent-scape-client-tailscale-from-config/run-macos-linux.sh"
+assert_windows_launcher_crlf "$TMP_DIR/agent-scape-client-tailscale-from-config/check-setup-windows.bat"
+assert_windows_launcher_crlf "$TMP_DIR/agent-scape-client-tailscale-from-config/run-windows.bat"
+grep -q "First run checklist:" "$TMP_DIR/agent-scape-client-tailscale-from-config/README.txt"
+grep -q "Run the setup checker for your OS before logging in" "$TMP_DIR/agent-scape-client-tailscale-from-config/README.txt"
+grep -q "Log in with the operator-provided username and password" "$TMP_DIR/agent-scape-client-tailscale-from-config/README.txt"
+grep -q "Transport setup:" "$TMP_DIR/agent-scape-client-tailscale-from-config/README.txt"
+grep -q "Install Tailscale" "$TMP_DIR/agent-scape-client-tailscale-from-config/README.txt"
+grep -q "Connect Tailscale before launching the client" "$TMP_DIR/agent-scape-client-tailscale-from-config/README.txt"
+grep -Fq 'AGENT_BRIDGE_URL="$(read_prop agent.bridge.url)"' "$TMP_DIR/agent-scape-client-tailscale-from-config/check-setup-macos-linux.sh"
+grep -q "tailscale status" "$TMP_DIR/agent-scape-client-tailscale-from-config/check-setup-macos-linux.sh"
+grep -q "tailscale status" "$TMP_DIR/agent-scape-client-tailscale-from-config/check-setup-windows.bat"
+grep -q "Tailscale CLI was not found on PATH" "$TMP_DIR/agent-scape-client-tailscale-from-config/check-setup-windows.bat"
+grep -q "public game host: example-tailnet-host" "$TMP_DIR/agent-scape-client-tailscale-from-config/README.txt"
+grep -q "agent bridge URL: http://127.0.0.1:43610" "$TMP_DIR/agent-scape-client-tailscale-from-config/README.txt"
+grep -q "raw server-side bridge port 43610 must stay private" "$TMP_DIR/agent-scape-client-tailscale-from-config/README.txt"
+grep -q "Use the username and password provided by the server operator" "$TMP_DIR/agent-scape-client-tailscale-from-config/README.txt"
+grep -q "server.host=example-tailnet-host" "$TMP_DIR/agent-scape-client-tailscale-from-config/client.properties"
+grep -q "server.port=43594" "$TMP_DIR/agent-scape-client-tailscale-from-config/client.properties"
+grep -q "http.port=8080" "$TMP_DIR/agent-scape-client-tailscale-from-config/client.properties"
+grep -q "jaggrab.port=43595" "$TMP_DIR/agent-scape-client-tailscale-from-config/client.properties"
+grep -q "secure.transport=tailscale" "$TMP_DIR/agent-scape-client-tailscale-from-config/client.properties"
+grep -q "agent.bridge.url=http://127.0.0.1:43610" "$TMP_DIR/agent-scape-client-tailscale-from-config/client.properties"
+grep -q "source_server_config=ServerConfig.Tailscale.Sample.json" "$TMP_DIR/agent-scape-client-tailscale-from-config/MANIFEST.txt"
+grep -Eq '^source_server_config_sha256=[0-9a-f]{64}$' "$TMP_DIR/agent-scape-client-tailscale-from-config/MANIFEST.txt"
+grep -q "public_game_host=example-tailnet-host" "$TMP_DIR/agent-scape-client-tailscale-from-config/MANIFEST.txt"
+grep -q "expected_external_transport=tailscale" "$TMP_DIR/agent-scape-client-tailscale-from-config/MANIFEST.txt"
+grep -q "agent_bridge_url=http://127.0.0.1:43610" "$TMP_DIR/agent-scape-client-tailscale-from-config/MANIFEST.txt"
+grep -q "encrypted_external_required=0" "$TMP_DIR/agent-scape-client-tailscale-from-config/MANIFEST.txt"
+(cd "$TMP_DIR/agent-scape-client-tailscale-from-config" && shasum -a 256 -c SHA256SUMS >/dev/null)
 
 echo "Smoke-testing encrypted external package guard..."
-CLIENT_DIST_DIR="$TMP_DIR/2006scape-client-tailscale-encrypted-required" \
-CLIENT_ARCHIVE_PATH="$TMP_DIR/2006scape-client-tailscale-encrypted-required.zip" \
+CLIENT_DIST_DIR="$TMP_DIR/agent-scape-client-tailscale-encrypted-required" \
+CLIENT_ARCHIVE_PATH="$TMP_DIR/agent-scape-client-tailscale-encrypted-required.zip" \
 SKIP_BUILD=1 \
 CLIENT_SERVER_CONFIG="2006Scape Server/ServerConfig.Tailscale.Sample.json" \
 CLIENT_REQUIRE_ENCRYPTED_EXTERNAL=1 \
     scripts/package-client.sh > "$TMP_DIR/package-tailscale-encrypted-required.out"
-test -f "$TMP_DIR/2006scape-client-tailscale-encrypted-required/client.properties"
-grep -q "secure.transport=tailscale" "$TMP_DIR/2006scape-client-tailscale-encrypted-required/client.properties"
-grep -q "encrypted_external_required=1" "$TMP_DIR/2006scape-client-tailscale-encrypted-required/MANIFEST.txt"
-if CLIENT_DIST_DIR="$TMP_DIR/2006scape-client-direct-encrypted-required" \
-    CLIENT_ARCHIVE_PATH="$TMP_DIR/2006scape-client-direct-encrypted-required.zip" \
+test -f "$TMP_DIR/agent-scape-client-tailscale-encrypted-required/client.properties"
+grep -q "secure.transport=tailscale" "$TMP_DIR/agent-scape-client-tailscale-encrypted-required/client.properties"
+grep -q "encrypted_external_required=1" "$TMP_DIR/agent-scape-client-tailscale-encrypted-required/MANIFEST.txt"
+if CLIENT_DIST_DIR="$TMP_DIR/agent-scape-client-direct-encrypted-required" \
+    CLIENT_ARCHIVE_PATH="$TMP_DIR/agent-scape-client-direct-encrypted-required.zip" \
     SKIP_BUILD=1 \
     CLIENT_SERVER_CONFIG="2006Scape Server/ServerConfig.External.Sample.json" \
     CLIENT_REQUIRE_ENCRYPTED_EXTERNAL=1 \
@@ -2552,15 +2596,15 @@ grep -q "prepared external deployment artifacts" "$TMP_DIR/prepare-tailscale.out
 grep -q "client_tls_tunnel_operator: skipped; external_transport_mode=tailscale" "$TMP_DIR/prepare-tailscale.out"
 grep -q "encrypted_external_required: yes" "$TMP_DIR/prepare-tailscale.out"
 grep -q "runtime: not started, stopped, or restarted" "$TMP_DIR/prepare-tailscale.out"
-test -f "$TMP_DIR/prepared-tailscale/2006scape-client/client.properties"
-test -f "$TMP_DIR/prepared-tailscale/2006scape-client.zip"
+test -f "$TMP_DIR/prepared-tailscale/agent-scape-client/client.properties"
+test -f "$TMP_DIR/prepared-tailscale/agent-scape-client.zip"
 test -f "$TMP_DIR/prepared-tailscale/server-deployment/firewall-ufw-example.sh"
 test -f "$TMP_DIR/prepared-tailscale/server-deployment/tailscale-policy-grants.example.json"
 test -f "$TMP_DIR/prepared-tailscale/server-deployment/proof-templates/deployment-proof-manifest.json"
 test -f "$TMP_DIR/prepared-tailscale/deployment-readiness-report.md"
 test -f "$TMP_DIR/prepared-tailscale/deployment-readiness-report.json"
-grep -q "secure.transport=tailscale" "$TMP_DIR/prepared-tailscale/2006scape-client/client.properties"
-grep -q "encrypted_external_required=1" "$TMP_DIR/prepared-tailscale/2006scape-client/MANIFEST.txt"
+grep -q "secure.transport=tailscale" "$TMP_DIR/prepared-tailscale/agent-scape-client/client.properties"
+grep -q "encrypted_external_required=1" "$TMP_DIR/prepared-tailscale/agent-scape-client/MANIFEST.txt"
 grep -q "Tailscale mode: expose game/cache only on the Tailscale interface" "$TMP_DIR/prepared-tailscale/server-deployment/firewall-ufw-example.sh"
 grep -q "ufw allow in on tailscale0" "$TMP_DIR/prepared-tailscale/server-deployment/firewall-ufw-example.sh"
 grep -q "Do not expose 2006Scape AgentBridgeServer" "$TMP_DIR/prepared-tailscale/server-deployment/firewall-ufw-example.sh"
@@ -2600,8 +2644,8 @@ scripts/render-player-handoff.py \
     --character MrGem \
     --output "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md" > "$TMP_DIR/player-handoff-render.out"
 grep -q "ok: wrote player handoff note" "$TMP_DIR/player-handoff-render.out"
-grep -q "# 2006Scape Player Handoff" "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
-grep -q 'client archive: `2006scape-client.zip`' "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
+grep -q "# agent-scape player handoff" "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
+grep -q 'client archive: `agent-scape-client.zip`' "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
 grep -Eq 'client archive SHA-256: `[0-9a-f]{64}`' "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
 grep -q 'username: `MrGem`' "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
 grep -q 'character: `MrGem`' "$TMP_DIR/prepared-tailscale/player-handoff-MrGem.md"
@@ -2657,7 +2701,7 @@ assert len(password) >= 12
 assert password not in summary_text
 
 handoff_text = handoff_path.read_text(encoding="utf-8")
-assert "# 2006Scape Player Handoff" in handoff_text
+assert "# agent-scape player handoff" in handoff_text
 assert "username: `MrProvision`" in handoff_text
 assert "character: `MrProvision`" in handoff_text
 assert "password: sent separately through a private channel" in handoff_text
@@ -2710,16 +2754,16 @@ assert password not in summary_text
 
 with zipfile.ZipFile(kit_path, "r") as archive:
     names = set(archive.namelist())
-    assert "2006scape-player-kit-mrprovision/2006scape-client.zip" in names, names
-    assert "2006scape-player-kit-mrprovision/README-FIRST.md" in names, names
-    assert "2006scape-player-kit-mrprovision/client-SHA256SUMS.txt" in names, names
-    assert "2006scape-player-kit-mrprovision/client-MANIFEST.txt" in names, names
-    assert "2006scape-player-kit-mrprovision/KIT-MANIFEST.txt" in names, names
-    assert "2006scape-player-kit-mrprovision/KIT-METADATA.json" in names, names
+    assert "agent-scape-player-kit-mrprovision/agent-scape-client.zip" in names, names
+    assert "agent-scape-player-kit-mrprovision/README-FIRST.md" in names, names
+    assert "agent-scape-player-kit-mrprovision/client-SHA256SUMS.txt" in names, names
+    assert "agent-scape-player-kit-mrprovision/client-MANIFEST.txt" in names, names
+    assert "agent-scape-player-kit-mrprovision/KIT-MANIFEST.txt" in names, names
+    assert "agent-scape-player-kit-mrprovision/KIT-METADATA.json" in names, names
     assert not any("/private/" in name or "/accounts/" in name or "/characters/" in name or "credential" in name.lower() for name in names), names
-    readme = archive.read("2006scape-player-kit-mrprovision/README-FIRST.md").decode("utf-8")
-    kit_manifest = archive.read("2006scape-player-kit-mrprovision/KIT-MANIFEST.txt").decode("utf-8")
-    kit_metadata = json.loads(archive.read("2006scape-player-kit-mrprovision/KIT-METADATA.json").decode("utf-8"))
+    readme = archive.read("agent-scape-player-kit-mrprovision/README-FIRST.md").decode("utf-8")
+    kit_manifest = archive.read("agent-scape-player-kit-mrprovision/KIT-MANIFEST.txt").decode("utf-8")
+    kit_metadata = json.loads(archive.read("agent-scape-player-kit-mrprovision/KIT-METADATA.json").decode("utf-8"))
     assert "username: `MrProvision`" in readme, readme
     assert "password: sent separately through a private channel" in readme, readme
     assert password not in readme
@@ -2746,6 +2790,8 @@ from pathlib import Path
 summary_path, credentials_path = [Path(value) for value in sys.argv[1:]]
 summary_text = summary_path.read_text(encoding="utf-8")
 summary = json.loads(summary_text)
+credentials_text = credentials_path.read_text(encoding="utf-8")
+password = re.search(r"^MRPROVISION_PASSWORD='([A-Za-z0-9]+)'$", credentials_text, re.MULTILINE).group(1)
 assert summary["success"] is True, summary
 assert summary["username"] == "MrProvision", summary
 assert summary["character"] == "MrProvision", summary
@@ -2756,14 +2802,211 @@ assert summary["clientArchiveMatchesExpected"] is True, summary
 assert summary["handoffNoteMatchesExpected"] is True, summary
 assert re.fullmatch(r"[0-9a-f]{64}", summary["playerKitSha256"]), summary
 assert re.fullmatch(r"[0-9a-f]{64}", summary["clientArchiveSha256"]), summary
-credentials_text = credentials_path.read_text(encoding="utf-8")
-password = re.search(r"^MRPROVISION_PASSWORD='([A-Za-z0-9]+)'$", credentials_text, re.MULTILINE).group(1)
 assert password not in summary_text
 PY
+
+MAC_PACKAGE_ARGS=(
+    scripts/package-macos-player-app.py
+    MrProvision
+    --character MrProvision
+    --prepared-dir "$TMP_DIR/prepared-tailscale"
+    --handoff-note "$TMP_DIR/prepared-tailscale/player-handoff-MrProvision.md"
+    --output-dir "$TMP_DIR/prepared-tailscale/macos-player-packages/mrprovision"
+    --json
+)
+if [[ "$(uname -s)" == "Darwin" ]] && command -v hdiutil >/dev/null 2>&1; then
+    MAC_PACKAGE_ARGS+=(--dmg --dmg-output "$TMP_DIR/prepared-tailscale/agent-scape-player-mrprovision-mac.dmg")
+fi
+python3 "${MAC_PACKAGE_ARGS[@]}" > "$TMP_DIR/package-macos-player-app.json"
+python3 - "$TMP_DIR/package-macos-player-app.json" "$TMP_DIR/prepared-tailscale/private/player-credentials-MrProvision.env" <<'PY'
+import json
+import os
+import plistlib
+import re
+import stat
+import sys
+from pathlib import Path
+
+summary_path, credentials_path = [Path(value) for value in sys.argv[1:]]
+summary_text = summary_path.read_text(encoding="utf-8")
+summary = json.loads(summary_text)
+credentials_text = credentials_path.read_text(encoding="utf-8")
+password = re.search(r"^MRPROVISION_PASSWORD='([A-Za-z0-9]+)'$", credentials_text, re.MULTILINE).group(1)
+assert summary["success"] is True, summary
+assert summary["username"] == "MrProvision", summary
+assert summary["character"] == "MrProvision", summary
+assert summary["passwordIncluded"] is False, summary
+assert summary["privateFilesIncluded"] is False, summary
+assert summary["runtimeTouched"] is False, summary
+if Path("scripts/assets/agent-scape-icon.png").exists() and Path("/usr/bin/sips").exists():
+    assert summary.get("appIconSource", "").endswith("scripts/assets/agent-scape-icon.png"), summary
+app = Path(summary["appBundle"])
+info_plist = app / "Contents" / "Info.plist"
+assert info_plist.is_file(), summary
+plist = plistlib.loads(info_plist.read_bytes())
+assert plist["CFBundleName"] == "agent-scape", plist
+launcher = app / "Contents" / "MacOS" / "agent-scape"
+assert launcher.is_file(), summary
+launcher_text = launcher.read_text(encoding="utf-8")
+assert "Library/Logs/agent-scape" in launcher_text, launcher_text
+assert "display dialog" in launcher_text, launcher_text
+assert "CLIENT_DOCK_ICON" in launcher_text, launcher_text
+if os.name == "posix":
+    assert stat.S_IMODE(launcher.stat().st_mode) & 0o111, oct(stat.S_IMODE(launcher.stat().st_mode))
+assert (app / "Contents" / "Resources" / "agent-scape-client" / "client.properties").is_file(), summary
+if summary.get("appIcon"):
+    icon = app / "Contents" / "Resources" / "agent-scape.icns"
+    assert icon.is_file() and icon.stat().st_size > 0, summary
+    assert Path(summary["appIcon"]) == icon, summary
+    assert plist.get("CFBundleIconFile") == "agent-scape", plist
+for path in app.rglob("*"):
+    lowered = str(path.relative_to(app)).lower()
+    assert "/private/" not in lowered and "/accounts/" not in lowered and "/characters/" not in lowered, lowered
+    assert "credential" not in path.name.lower() and "password" not in path.name.lower(), lowered
+if summary["dmg"]:
+    dmg = Path(summary["dmg"])
+    assert dmg.is_file() and dmg.stat().st_size > 0, summary
+    assert re.fullmatch(r"[0-9a-f]{64}", summary["dmgSha256"]), summary
+    dmg_root = app.parent / "dmg-root"
+    assert sorted(path.name for path in dmg_root.iterdir()) == ["README.md", app.name], summary
+    readme = (dmg_root / "README.md").read_text(encoding="utf-8")
+    assert "# agent-scape" in readme, readme
+    assert "Open `agent-scape.app`" in readme, readme
+    assert "MrProvision" in readme, readme
+    assert "https://github.com/francisgreenleaf/2006Scape" in readme, readme
+    assert "https://github.com/francisgreenleaf/2006Scape/pull/37" in readme, readme
+    assert password not in readme, readme
+assert password not in summary_text
+PY
+
+PACKAGE_ACCOUNTS="$TMP_DIR/package-accounts"
+mkdir -p "$PACKAGE_ACCOUNTS"
+chmod 700 "$PACKAGE_ACCOUNTS"
+PREPARE_PLAYER_ARGS=(
+    scripts/prepare-player-package.py
+    MrOneCmd
+    --character MrOneCmd
+    --prepared-dir "$TMP_DIR/prepared-tailscale"
+    --accounts-dir "$PACKAGE_ACCOUNTS"
+    --prepare-policy never
+    --json
+)
+if [[ "$(uname -s)" == "Darwin" ]] && command -v hdiutil >/dev/null 2>&1; then
+    PREPARE_PLAYER_ARGS+=(--mac-dmg)
+else
+    PREPARE_PLAYER_ARGS+=(--mac-app)
+fi
+python3 "${PREPARE_PLAYER_ARGS[@]}" > "$TMP_DIR/prepare-player-package.json"
+python3 - "$TMP_DIR/prepare-player-package.json" "$PACKAGE_ACCOUNTS/mronecmd.json" <<'PY'
+import json
+import re
+import sys
+from pathlib import Path
+
+summary_path, account_path = [Path(value) for value in sys.argv[1:]]
+summary_text = summary_path.read_text(encoding="utf-8")
+summary = json.loads(summary_text)
+assert summary["success"] is True, summary
+assert summary["username"] == "MrOneCmd", summary
+assert summary["character"] == "MrOneCmd", summary
+assert summary["preparedBundleCreated"] is False, summary
+assert Path(summary["playerKit"]).is_file(), summary
+assert Path(summary["privateCredentials"]).is_file(), summary
+assert Path(summary["handoffNote"]).is_file(), summary
+assert Path(summary["accountRecord"]) == account_path, summary
+assert account_path.is_file(), summary
+assert Path(summary["macApp"]).is_dir(), summary
+if summary["macDmg"]:
+    assert Path(summary["macDmg"]).is_file(), summary
+    assert re.fullmatch(r"[0-9a-f]{64}", summary["macDmgSha256"]), summary
+credentials_text = Path(summary["privateCredentials"]).read_text(encoding="utf-8")
+password = re.search(r"^MRONECMD_PASSWORD='([A-Za-z0-9]+)'$", credentials_text, re.MULTILINE).group(1)
+assert password not in summary_text
+assert summary["passwordPrinted"] is False, summary
+assert summary["runtimeTouched"] is False, summary
+PY
+
+RANDOM_PACKAGE_ACCOUNTS="$TMP_DIR/random-package-accounts"
+mkdir -p "$RANDOM_PACKAGE_ACCOUNTS"
+chmod 700 "$RANDOM_PACKAGE_ACCOUNTS"
+python3 scripts/prepare-player-package.py \
+    --random-name \
+    --prepared-dir "$TMP_DIR/prepared-tailscale" \
+    --accounts-dir "$RANDOM_PACKAGE_ACCOUNTS" \
+    --prepare-policy never \
+    --json > "$TMP_DIR/prepare-player-package-random.json"
+python3 - "$TMP_DIR/prepare-player-package-random.json" <<'PY'
+import json
+import re
+import sys
+from pathlib import Path
+
+summary_path = Path(sys.argv[1])
+summary_text = summary_path.read_text(encoding="utf-8")
+summary = json.loads(summary_text)
+assert summary["success"] is True, summary
+assert summary["nameGenerated"] is True, summary
+assert re.fullmatch(r"Mr[A-Za-z0-9]{1,10}", summary["username"]), summary
+assert summary["character"] == summary["username"], summary
+assert summary["preparedBundleCreated"] is False, summary
+assert Path(summary["playerKit"]).is_file(), summary
+assert Path(summary["privateCredentials"]).is_file(), summary
+assert Path(summary["handoffNote"]).is_file(), summary
+assert Path(summary["accountRecord"]).is_file(), summary
+assert summary["passwordPrinted"] is False, summary
+assert summary["runtimeTouched"] is False, summary
+assert not summary["macApp"], summary
+assert not summary["macDmg"], summary
+
+credentials_text = Path(summary["privateCredentials"]).read_text(encoding="utf-8")
+prefix = re.sub(r"[^A-Za-z0-9_]+", "_", summary["username"].strip()).strip("_").upper()
+password = re.search(r"^{}_PASSWORD='([A-Za-z0-9]+)'$".format(re.escape(prefix)), credentials_text, re.MULTILINE).group(1)
+assert len(password) == 20, credentials_text
+assert any(ch.islower() for ch in password), password
+assert any(ch.isupper() for ch in password), password
+assert any(ch.isdigit() for ch in password), password
+assert password not in summary_text
+
+account = json.loads(Path(summary["accountRecord"]).read_text(encoding="utf-8"))
+assert account["username"] == summary["username"].lower(), account
+assert account["allowedCharacters"] == [summary["username"].lower()], account
+assert account["passwordPolicy"]["minLength"] >= 12, account
+assert account["passwordPolicy"]["allowWeakPassword"] is False, account
+PY
+
+scripts/install-player-account-record.py MrOneCmd \
+    --accounts-dir "$PACKAGE_ACCOUNTS" \
+    --ssh-target deploy@example.invalid \
+    --remote-accounts-dir '/opt/2006scape/2006Scape Server/data/accounts' \
+    --json > "$TMP_DIR/install-player-account-record.json"
+python3 - "$TMP_DIR/install-player-account-record.json" "$PACKAGE_ACCOUNTS/mronecmd.json" <<'PY'
+import json
+import re
+import sys
+from pathlib import Path
+
+summary_path, account_path = [Path(value) for value in sys.argv[1:]]
+summary_text = summary_path.read_text(encoding="utf-8")
+summary = json.loads(summary_text)
+assert summary["success"] is True, summary
+assert summary["dryRun"] is True, summary
+assert summary["applied"] is False, summary
+assert summary["username"] == "mronecmd", summary
+assert Path(summary["localAccountRecord"]) == account_path, summary
+assert summary["remoteAccountRecord"].endswith("/mronecmd.json"), summary
+assert "scp" in summary["scpCommand"], summary
+assert "install -d" in summary["sshInstallCommand"], summary
+assert summary["runtimeTouched"] is False, summary
+assert summary["passwordPrinted"] is False, summary
+account_text = account_path.read_text(encoding="utf-8")
+assert account_text not in summary_text
+assert not re.search(r"PASSWORD='", summary_text), summary_text
+PY
+
 scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.Tailscale.Sample.json" \
-    --client-dist "$TMP_DIR/prepared-tailscale/2006scape-client" \
-    --archive "$TMP_DIR/prepared-tailscale/2006scape-client.zip" \
+    --client-dist "$TMP_DIR/prepared-tailscale/agent-scape-client" \
+    --archive "$TMP_DIR/prepared-tailscale/agent-scape-client.zip" \
     --server-deployment-dir "$TMP_DIR/prepared-tailscale/server-deployment" \
     --accounts-dir "$TAILSCALE_EMPTY_ACCOUNTS" \
     --allow-empty-accounts \
@@ -2776,8 +3019,8 @@ scripts/deployment-readiness-status.py \
 grep -q -- "--require-encrypted-external" "$TMP_DIR/prepared-tailscale-status.out"
 
 echo "Smoke-testing standalone client packaging from server config..."
-CLIENT_DIST_DIR="$TMP_DIR/2006scape-client-from-config" \
-CLIENT_ARCHIVE_PATH="$TMP_DIR/2006scape-client-from-config.zip" \
+CLIENT_DIST_DIR="$TMP_DIR/agent-scape-client-from-config" \
+CLIENT_ARCHIVE_PATH="$TMP_DIR/agent-scape-client-from-config.zip" \
 SKIP_BUILD=1 \
 CLIENT_SERVER_CONFIG="2006Scape Server/ServerConfig.External.Sample.json" \
 CLIENT_CHECK_CRC=false \
@@ -2786,65 +3029,68 @@ CLIENT_SCALE=1 \
 CLIENT_SHOW_NAVBAR=true \
     scripts/package-client.sh
 
-test -f "$TMP_DIR/2006scape-client-from-config/client.properties"
-test -f "$TMP_DIR/2006scape-client-from-config/2006scape-client.jar"
-test -f "$TMP_DIR/2006scape-client-from-config/MANIFEST.txt"
-test -f "$TMP_DIR/2006scape-client-from-config/SHA256SUMS"
-test -x "$TMP_DIR/2006scape-client-from-config/Check-Setup.command"
-test -x "$TMP_DIR/2006scape-client-from-config/Run-2006Scape.command"
-test -x "$TMP_DIR/2006scape-client-from-config/check-setup-macos-linux.sh"
-test -f "$TMP_DIR/2006scape-client-from-config/check-setup-windows.bat"
-test -x "$TMP_DIR/2006scape-client-from-config/run-macos-linux.sh"
-test -f "$TMP_DIR/2006scape-client-from-config/run-windows.bat"
-test -f "$TMP_DIR/2006scape-client-from-config.zip"
-assert_archive_launcher_executable "$TMP_DIR/2006scape-client-from-config.zip" "2006scape-client-from-config/Check-Setup.command"
-assert_archive_launcher_executable "$TMP_DIR/2006scape-client-from-config.zip" "2006scape-client-from-config/Run-2006Scape.command"
-assert_archive_launcher_executable "$TMP_DIR/2006scape-client-from-config.zip" "2006scape-client-from-config/check-setup-macos-linux.sh"
-assert_archive_launcher_executable "$TMP_DIR/2006scape-client-from-config.zip" "2006scape-client-from-config/run-macos-linux.sh"
-assert_windows_launcher_crlf "$TMP_DIR/2006scape-client-from-config/check-setup-windows.bat"
-assert_windows_launcher_crlf "$TMP_DIR/2006scape-client-from-config/run-windows.bat"
-grep -q "check-setup-macos-linux.sh" "$TMP_DIR/2006scape-client-from-config/Check-Setup.command"
-grep -q "run-macos-linux.sh" "$TMP_DIR/2006scape-client-from-config/Run-2006Scape.command"
-grep -q "Java is required to run 2006Scape" "$TMP_DIR/2006scape-client-from-config/check-setup-macos-linux.sh"
-grep -q "Java is required to run 2006Scape" "$TMP_DIR/2006scape-client-from-config/check-setup-windows.bat"
-grep -q "Game TCP check" "$TMP_DIR/2006scape-client-from-config/check-setup-macos-linux.sh"
-grep -q "PowerShell is required for TCP checks" "$TMP_DIR/2006scape-client-from-config/check-setup-windows.bat"
-grep -q "agent.bridge.url" "$TMP_DIR/2006scape-client-from-config/check-setup-macos-linux.sh"
-grep -q "agent.bridge.url" "$TMP_DIR/2006scape-client-from-config/check-setup-windows.bat"
-grep -q "Java is required to run 2006Scape" "$TMP_DIR/2006scape-client-from-config/run-macos-linux.sh"
-grep -q "Java is required to run 2006Scape" "$TMP_DIR/2006scape-client-from-config/run-windows.bat"
-grep -q -- "-no-java-warnings" "$TMP_DIR/2006scape-client-from-config/run-macos-linux.sh"
-grep -q -- "-no-java-warnings" "$TMP_DIR/2006scape-client-from-config/run-windows.bat"
-grep -q "First run checklist:" "$TMP_DIR/2006scape-client-from-config/README.txt"
-grep -q "Run the setup checker for your OS before logging in" "$TMP_DIR/2006scape-client-from-config/README.txt"
-grep -q "Log in with the operator-provided username and password" "$TMP_DIR/2006scape-client-from-config/README.txt"
-grep -q "Check setup:" "$TMP_DIR/2006scape-client-from-config/README.txt"
-grep -q "without logging in" "$TMP_DIR/2006scape-client-from-config/README.txt"
-grep -q "Install Java 8 or newer" "$TMP_DIR/2006scape-client-from-config/README.txt"
-grep -q "double-click Check-Setup.command" "$TMP_DIR/2006scape-client-from-config/README.txt"
-grep -q "double-click Run-2006Scape.command" "$TMP_DIR/2006scape-client-from-config/README.txt"
-grep -q "suppress the legacy Parabot-focused Java-version warning" "$TMP_DIR/2006scape-client-from-config/README.txt"
-grep -q "No VPN or client-side tunnel is required for this package" "$TMP_DIR/2006scape-client-from-config/README.txt"
-grep -q "connects directly to server.example.com over plaintext TCP" "$TMP_DIR/2006scape-client-from-config/README.txt"
-grep -q "public game host: server.example.com" "$TMP_DIR/2006scape-client-from-config/README.txt"
-grep -q "agent bridge URL: http://127.0.0.1:43610" "$TMP_DIR/2006scape-client-from-config/README.txt"
-grep -q "raw server-side bridge port 43610 must stay private" "$TMP_DIR/2006scape-client-from-config/README.txt"
-grep -q "Use the username and password provided by the server operator" "$TMP_DIR/2006scape-client-from-config/README.txt"
-grep -q "Do not use a RuneScape.com password or reuse passwords from other services" "$TMP_DIR/2006scape-client-from-config/README.txt"
-grep -q "use a password unique to this 2006Scape server" "$TMP_DIR/2006scape-client-from-config/README.txt"
-grep -q "server.host=server.example.com" "$TMP_DIR/2006scape-client-from-config/client.properties"
-grep -q "server.port=43594" "$TMP_DIR/2006scape-client-from-config/client.properties"
-grep -q "http.port=8080" "$TMP_DIR/2006scape-client-from-config/client.properties"
-grep -q "jaggrab.port=43595" "$TMP_DIR/2006scape-client-from-config/client.properties"
-grep -q "secure.transport=direct_tcp" "$TMP_DIR/2006scape-client-from-config/client.properties"
-grep -q "agent.bridge.url=http://127.0.0.1:43610" "$TMP_DIR/2006scape-client-from-config/client.properties"
-grep -q "source_server_config=2006Scape Server/ServerConfig.External.Sample.json" "$TMP_DIR/2006scape-client-from-config/MANIFEST.txt"
-grep -Eq '^source_server_config_sha256=[0-9a-f]{64}$' "$TMP_DIR/2006scape-client-from-config/MANIFEST.txt"
-grep -q "public_game_host=server.example.com" "$TMP_DIR/2006scape-client-from-config/MANIFEST.txt"
-grep -q "expected_external_transport=direct_tcp" "$TMP_DIR/2006scape-client-from-config/MANIFEST.txt"
-grep -q "agent_bridge_url=http://127.0.0.1:43610" "$TMP_DIR/2006scape-client-from-config/MANIFEST.txt"
-grep -q "direct_tcp intentionally connects directly over plaintext TCP" "$TMP_DIR/2006scape-client-from-config/MANIFEST.txt"
-(cd "$TMP_DIR/2006scape-client-from-config" && shasum -a 256 -c SHA256SUMS >/dev/null)
+test -f "$TMP_DIR/agent-scape-client-from-config/client.properties"
+test -f "$TMP_DIR/agent-scape-client-from-config/agent-scape-client.jar"
+test -f "$TMP_DIR/agent-scape-client-from-config/MANIFEST.txt"
+test -f "$TMP_DIR/agent-scape-client-from-config/SHA256SUMS"
+test -x "$TMP_DIR/agent-scape-client-from-config/Check-Setup.command"
+test -x "$TMP_DIR/agent-scape-client-from-config/run-agent-scape.command"
+test -x "$TMP_DIR/agent-scape-client-from-config/check-setup-macos-linux.sh"
+test -f "$TMP_DIR/agent-scape-client-from-config/check-setup-windows.bat"
+test -x "$TMP_DIR/agent-scape-client-from-config/run-macos-linux.sh"
+grep -q "find_java" "$TMP_DIR/agent-scape-client-from-config/run-macos-linux.sh"
+grep -q "CLIENT_DOCK_ICON" "$TMP_DIR/agent-scape-client-from-config/run-macos-linux.sh"
+grep -q "/opt/homebrew/opt/openjdk/bin" "$TMP_DIR/agent-scape-client-from-config/run-macos-linux.sh"
+test -f "$TMP_DIR/agent-scape-client-from-config/run-windows.bat"
+test -f "$TMP_DIR/agent-scape-client-from-config.zip"
+assert_archive_launcher_executable "$TMP_DIR/agent-scape-client-from-config.zip" "agent-scape-client-from-config/Check-Setup.command"
+assert_archive_launcher_executable "$TMP_DIR/agent-scape-client-from-config.zip" "agent-scape-client-from-config/run-agent-scape.command"
+assert_archive_launcher_executable "$TMP_DIR/agent-scape-client-from-config.zip" "agent-scape-client-from-config/check-setup-macos-linux.sh"
+assert_archive_launcher_executable "$TMP_DIR/agent-scape-client-from-config.zip" "agent-scape-client-from-config/run-macos-linux.sh"
+assert_windows_launcher_crlf "$TMP_DIR/agent-scape-client-from-config/check-setup-windows.bat"
+assert_windows_launcher_crlf "$TMP_DIR/agent-scape-client-from-config/run-windows.bat"
+grep -q "check-setup-macos-linux.sh" "$TMP_DIR/agent-scape-client-from-config/Check-Setup.command"
+grep -q "run-macos-linux.sh" "$TMP_DIR/agent-scape-client-from-config/run-agent-scape.command"
+grep -q "Java is required to run agent-scape" "$TMP_DIR/agent-scape-client-from-config/check-setup-macos-linux.sh"
+grep -q "Java is required to run agent-scape" "$TMP_DIR/agent-scape-client-from-config/check-setup-windows.bat"
+grep -q "Game TCP check" "$TMP_DIR/agent-scape-client-from-config/check-setup-macos-linux.sh"
+grep -q "PowerShell is required for TCP checks" "$TMP_DIR/agent-scape-client-from-config/check-setup-windows.bat"
+grep -q "agent.bridge.url" "$TMP_DIR/agent-scape-client-from-config/check-setup-macos-linux.sh"
+grep -q "agent.bridge.url" "$TMP_DIR/agent-scape-client-from-config/check-setup-windows.bat"
+grep -q "Java is required to run agent-scape" "$TMP_DIR/agent-scape-client-from-config/run-macos-linux.sh"
+grep -q "Java is required to run agent-scape" "$TMP_DIR/agent-scape-client-from-config/run-windows.bat"
+grep -q -- "-no-java-warnings" "$TMP_DIR/agent-scape-client-from-config/run-macos-linux.sh"
+grep -q -- "-no-java-warnings" "$TMP_DIR/agent-scape-client-from-config/run-windows.bat"
+grep -q "First run checklist:" "$TMP_DIR/agent-scape-client-from-config/README.txt"
+grep -q "Run the setup checker for your OS before logging in" "$TMP_DIR/agent-scape-client-from-config/README.txt"
+grep -q "Log in with the operator-provided username and password" "$TMP_DIR/agent-scape-client-from-config/README.txt"
+grep -q "Check setup:" "$TMP_DIR/agent-scape-client-from-config/README.txt"
+grep -q "without logging in" "$TMP_DIR/agent-scape-client-from-config/README.txt"
+grep -q "Install Java 8 or newer" "$TMP_DIR/agent-scape-client-from-config/README.txt"
+grep -q "double-click Check-Setup.command" "$TMP_DIR/agent-scape-client-from-config/README.txt"
+grep -q "double-click run-agent-scape.command" "$TMP_DIR/agent-scape-client-from-config/README.txt"
+grep -q "suppress the legacy Parabot-focused Java-version warning" "$TMP_DIR/agent-scape-client-from-config/README.txt"
+grep -q "No VPN or client-side tunnel is required for this package" "$TMP_DIR/agent-scape-client-from-config/README.txt"
+grep -q "connects directly to server.example.com over plaintext TCP" "$TMP_DIR/agent-scape-client-from-config/README.txt"
+grep -q "public game host: server.example.com" "$TMP_DIR/agent-scape-client-from-config/README.txt"
+grep -q "agent bridge URL: http://127.0.0.1:43610" "$TMP_DIR/agent-scape-client-from-config/README.txt"
+grep -q "raw server-side bridge port 43610 must stay private" "$TMP_DIR/agent-scape-client-from-config/README.txt"
+grep -q "Use the username and password provided by the server operator" "$TMP_DIR/agent-scape-client-from-config/README.txt"
+grep -q "Do not use a RuneScape.com password or reuse passwords from other services" "$TMP_DIR/agent-scape-client-from-config/README.txt"
+grep -q "use a password unique to this agent-scape server" "$TMP_DIR/agent-scape-client-from-config/README.txt"
+grep -q "server.host=server.example.com" "$TMP_DIR/agent-scape-client-from-config/client.properties"
+grep -q "server.port=43594" "$TMP_DIR/agent-scape-client-from-config/client.properties"
+grep -q "http.port=8080" "$TMP_DIR/agent-scape-client-from-config/client.properties"
+grep -q "jaggrab.port=43595" "$TMP_DIR/agent-scape-client-from-config/client.properties"
+grep -q "secure.transport=direct_tcp" "$TMP_DIR/agent-scape-client-from-config/client.properties"
+grep -q "agent.bridge.url=http://127.0.0.1:43610" "$TMP_DIR/agent-scape-client-from-config/client.properties"
+grep -q "source_server_config=ServerConfig.External.Sample.json" "$TMP_DIR/agent-scape-client-from-config/MANIFEST.txt"
+grep -Eq '^source_server_config_sha256=[0-9a-f]{64}$' "$TMP_DIR/agent-scape-client-from-config/MANIFEST.txt"
+grep -q "public_game_host=server.example.com" "$TMP_DIR/agent-scape-client-from-config/MANIFEST.txt"
+grep -q "expected_external_transport=direct_tcp" "$TMP_DIR/agent-scape-client-from-config/MANIFEST.txt"
+grep -q "agent_bridge_url=http://127.0.0.1:43610" "$TMP_DIR/agent-scape-client-from-config/MANIFEST.txt"
+grep -q "direct_tcp intentionally connects directly over plaintext TCP" "$TMP_DIR/agent-scape-client-from-config/MANIFEST.txt"
+(cd "$TMP_DIR/agent-scape-client-from-config" && shasum -a 256 -c SHA256SUMS >/dev/null)
 
 echo "Smoke-testing wildcard-bind packaging requires explicit acknowledgement..."
 CLIENT_DIST_DIR="$TMP_DIR/wildcard-client" \
@@ -2894,7 +3140,7 @@ test -f "$TMP_DIR/prepared-wildcard/server-deployment/2006scape-server.service"
 echo "Verifying external deployment artifacts against the tracked sample config..."
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" > "$TMP_DIR/sample-placeholder-network-verify.out" 2>&1; then
     echo "verify-external-deployment.py unexpectedly accepted tracked sample network placeholders without an explicit sample flag." >&2
     cat "$TMP_DIR/sample-placeholder-network-verify.out" >&2
@@ -2935,7 +3181,7 @@ grep -q "player-handoff-template.md" "$TMP_DIR/sample-server-deployment/README.m
 grep -q "No VPN or client-side tunnel is required" "$TMP_DIR/sample-server-deployment/player-handoff-template.md"
 grep -q "This package connects directly over plaintext TCP; use only server-unique passwords" "$TMP_DIR/sample-server-deployment/player-handoff-template.md"
 grep -q "PBKDF2 account record" "$TMP_DIR/sample-server-deployment/player-handoff-template.md"
-grep -q "Use a password unique to this 2006Scape server" "$TMP_DIR/sample-server-deployment/player-handoff-template.md"
+grep -q "Use a password unique to this agent-scape server" "$TMP_DIR/sample-server-deployment/player-handoff-template.md"
 grep -q 'Never expose raw TCP `43610`' "$TMP_DIR/sample-server-deployment/player-handoff-template.md"
 grep -q "live_login_password_env" "$TMP_DIR/sample-server-deployment/proof-templates/deployment-proof-manifest.json"
 grep -q "live_reject_login_expected_statuses" "$TMP_DIR/sample-server-deployment/proof-templates/deployment-proof-manifest.json"
@@ -3015,13 +3261,13 @@ grep -q "external_transport_mode must be one of" "$TMP_DIR/bad-render-config.out
 test ! -e "$TMP_DIR/bad-render-config-deployment/2006scape-server.service"
 scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
     --server-deployment-dir "$TMP_DIR/sample-server-deployment" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
     --server-deployment-dir "$TMP_DIR/sample-server-deployment" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config \
@@ -3044,8 +3290,8 @@ path.write_text(path.read_text(encoding="utf-8") + "\n", encoding="utf-8")
 PY
 if scripts/verify-external-deployment.py \
     --config "$TMP_DIR/source-config-hash-mismatch.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
-    --archive "$TMP_DIR/2006scape-client-from-config.zip" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
+    --archive "$TMP_DIR/agent-scape-client-from-config.zip" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config > "$TMP_DIR/source-config-hash-mismatch-verify.out" 2>&1; then
     echo "verify-external-deployment.py unexpectedly accepted a package built from different config bytes." >&2
@@ -3572,8 +3818,8 @@ cat > "$TMP_DIR/readiness-update-proof-manifest.json" <<'EOF'
 EOF
 scripts/deployment-readiness-report.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
-    --archive "$TMP_DIR/2006scape-client-from-config.zip" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
+    --archive "$TMP_DIR/agent-scape-client-from-config.zip" \
     --server-deployment-dir "$TMP_DIR/sample-server-deployment" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config \
@@ -3987,8 +4233,8 @@ path.write_text(text, encoding="utf-8")
 PY
 if scripts/deployment-readiness-report.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
-    --archive "$TMP_DIR/2006scape-client-from-config.zip" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
+    --archive "$TMP_DIR/agent-scape-client-from-config.zip" \
     --server-deployment-dir "$TMP_DIR/sample-server-deployment" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config \
@@ -4535,7 +4781,7 @@ scripts/package-deployment-proof.py \
     --readiness-report "$TMP_DIR/deployment-readiness-report.md" \
     --readiness-json "$TMP_DIR/deployment-readiness-report.json" \
     --proof-manifest "$TMP_DIR/proof-manifest-check-ok.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
     --server-deployment-dir "$TMP_DIR/sample-server-deployment" \
     --archive "$TMP_DIR/deployment-proof-bundle.tgz" \
     --json > "$TMP_DIR/deployment-proof-bundle.out"
@@ -4593,7 +4839,7 @@ cp "$TMP_DIR/deployment-readiness-report.json" "$PREPARED_PROOF_DIR/deployment-r
 cp "$TMP_DIR/proof-manifest-check-ok.json" "$PREPARED_PROOF_DIR/deployment-proof-manifest.json"
 cp "$TMP_DIR/desktop-client-proof.md" "$PREPARED_PROOF_DIR/desktop-client-proof.md"
 cp "$TMP_DIR/runtime-data-backup-proof.md" "$PREPARED_PROOF_DIR/runtime-data-backup-proof.md"
-cp -R "$TMP_DIR/2006scape-client-from-config" "$PREPARED_PROOF_DIR/2006scape-client"
+cp -R "$TMP_DIR/agent-scape-client-from-config" "$PREPARED_PROOF_DIR/agent-scape-client"
 cp -R "$TMP_DIR/sample-server-deployment" "$PREPARED_PROOF_DIR/server-deployment"
 scripts/package-deployment-proof.py \
     --prepared-dir "$PREPARED_PROOF_DIR" \
@@ -5134,7 +5380,7 @@ cp -R "$TMP_DIR/sample-server-deployment" "$TMP_DIR/broken-server-deployment"
 printf '# Broken server deployment README\n' > "$TMP_DIR/broken-server-deployment/README.md"
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
     --server-deployment-dir "$TMP_DIR/broken-server-deployment" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config > "$TMP_DIR/broken-server-deployment-verify.out" 2>&1; then
@@ -5156,7 +5402,7 @@ path.write_text(text, encoding="utf-8")
 PY
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
     --server-deployment-dir "$TMP_DIR/broken-server-deployment-readme-secrets" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config > "$TMP_DIR/broken-server-deployment-readme-secrets-verify.out" 2>&1; then
@@ -5184,7 +5430,7 @@ path.write_text(json.dumps({
 PY
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
     --server-deployment-dir "$TMP_DIR/broken-server-deployment-proof-manifest" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config > "$TMP_DIR/broken-server-deployment-proof-manifest-verify.out" 2>&1; then
@@ -5207,7 +5453,7 @@ path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf
 PY
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
     --server-deployment-dir "$TMP_DIR/broken-server-deployment-proof-manifest-final-gate" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config > "$TMP_DIR/broken-server-deployment-proof-manifest-final-gate-verify.out" 2>&1; then
@@ -5231,7 +5477,7 @@ path.write_text(
 PY
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
     --server-deployment-dir "$TMP_DIR/broken-server-deployment-desktop-template" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config > "$TMP_DIR/broken-server-deployment-desktop-template-verify.out" 2>&1; then
@@ -5256,7 +5502,7 @@ path.write_text(
 PY
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
     --server-deployment-dir "$TMP_DIR/broken-server-deployment-runtime-backup-template" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config > "$TMP_DIR/broken-server-deployment-runtime-backup-template-verify.out" 2>&1; then
@@ -5276,7 +5522,7 @@ path.write_text(path.read_text(encoding="utf-8").replace("User=2006scape", "User
 PY
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
     --server-deployment-dir "$TMP_DIR/broken-server-deployment-service-user" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config > "$TMP_DIR/broken-server-deployment-service-user-verify.out" 2>&1; then
@@ -5296,7 +5542,7 @@ path.write_text(path.read_text(encoding="utf-8").replace("JAVA_BIN=/usr/bin/java
 PY
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
     --server-deployment-dir "$TMP_DIR/broken-server-deployment-env-path" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config > "$TMP_DIR/broken-server-deployment-env-path-verify.out" 2>&1; then
@@ -5307,14 +5553,14 @@ fi
 grep -q "server deployment environment JAVA_BIN must be an absolute path with simple characters" "$TMP_DIR/broken-server-deployment-env-path-verify.out"
 
 echo "Smoke-testing deployment verifier requires client guidance text..."
-cp -R "$TMP_DIR/2006scape-client-from-config" "$TMP_DIR/2006scape-client-missing-readme-guidance"
-printf '2006Scape Client\n' > "$TMP_DIR/2006scape-client-missing-readme-guidance/README.txt"
+cp -R "$TMP_DIR/agent-scape-client-from-config" "$TMP_DIR/agent-scape-client-missing-readme-guidance"
+printf 'agent-scape client\n' > "$TMP_DIR/agent-scape-client-missing-readme-guidance/README.txt"
 (
-    cd "$TMP_DIR/2006scape-client-missing-readme-guidance"
+    cd "$TMP_DIR/agent-scape-client-missing-readme-guidance"
     shasum -a 256 \
-        2006scape-client.jar \
+        agent-scape-client.jar \
         Check-Setup.command \
-        Run-2006Scape.command \
+        run-agent-scape.command \
         client.properties \
         check-setup-macos-linux.sh \
         check-setup-windows.bat \
@@ -5325,8 +5571,8 @@ printf '2006Scape Client\n' > "$TMP_DIR/2006scape-client-missing-readme-guidance
 )
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-missing-readme-guidance" \
-    --archive "$TMP_DIR/2006scape-client-from-config.zip" \
+    --client-dist "$TMP_DIR/agent-scape-client-missing-readme-guidance" \
+    --archive "$TMP_DIR/agent-scape-client-from-config.zip" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config > "$TMP_DIR/missing-readme-guidance-verify.out" 2>&1; then
     echo "verify-external-deployment.py unexpectedly accepted a client README without Java/transport guidance." >&2
@@ -5335,23 +5581,23 @@ if scripts/verify-external-deployment.py \
 fi
 grep -q "client README is missing required text" "$TMP_DIR/missing-readme-guidance-verify.out"
 
-cp -R "$TMP_DIR/2006scape-client-from-config" "$TMP_DIR/2006scape-client-missing-launcher-guidance"
-python3 - "$TMP_DIR/2006scape-client-missing-launcher-guidance/run-macos-linux.sh" <<'PY'
+cp -R "$TMP_DIR/agent-scape-client-from-config" "$TMP_DIR/agent-scape-client-missing-launcher-guidance"
+python3 - "$TMP_DIR/agent-scape-client-missing-launcher-guidance/run-macos-linux.sh" <<'PY'
 import sys
 
 path = sys.argv[1]
 with open(path, "r", encoding="utf-8") as source:
     text = source.read()
-text = text.replace("Java is required to run 2006Scape.", "Java is required.")
+text = text.replace("Java is required to run agent-scape.", "Java is required.")
 with open(path, "w", encoding="utf-8") as target:
     target.write(text)
 PY
 (
-    cd "$TMP_DIR/2006scape-client-missing-launcher-guidance"
+    cd "$TMP_DIR/agent-scape-client-missing-launcher-guidance"
     shasum -a 256 \
-        2006scape-client.jar \
+        agent-scape-client.jar \
         Check-Setup.command \
-        Run-2006Scape.command \
+        run-agent-scape.command \
         client.properties \
         check-setup-macos-linux.sh \
         check-setup-windows.bat \
@@ -5362,8 +5608,8 @@ PY
 )
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-missing-launcher-guidance" \
-    --archive "$TMP_DIR/2006scape-client-from-config.zip" \
+    --client-dist "$TMP_DIR/agent-scape-client-missing-launcher-guidance" \
+    --archive "$TMP_DIR/agent-scape-client-from-config.zip" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config > "$TMP_DIR/missing-launcher-guidance-verify.out" 2>&1; then
     echo "verify-external-deployment.py unexpectedly accepted a launcher without Java guidance." >&2
@@ -5372,23 +5618,23 @@ if scripts/verify-external-deployment.py \
 fi
 grep -q "macOS/Linux launcher is missing required text" "$TMP_DIR/missing-launcher-guidance-verify.out"
 
-cp -R "$TMP_DIR/2006scape-client-from-config" "$TMP_DIR/2006scape-client-missing-setup-guidance"
-python3 - "$TMP_DIR/2006scape-client-missing-setup-guidance/check-setup-macos-linux.sh" <<'PY'
+cp -R "$TMP_DIR/agent-scape-client-from-config" "$TMP_DIR/agent-scape-client-missing-setup-guidance"
+python3 - "$TMP_DIR/agent-scape-client-missing-setup-guidance/check-setup-macos-linux.sh" <<'PY'
 import sys
 
 path = sys.argv[1]
 with open(path, "r", encoding="utf-8") as source:
     text = source.read()
-text = text.replace("Java is required to run 2006Scape.", "Java is required.")
+text = text.replace("Java is required to run agent-scape.", "Java is required.")
 with open(path, "w", encoding="utf-8") as target:
     target.write(text)
 PY
 (
-    cd "$TMP_DIR/2006scape-client-missing-setup-guidance"
+    cd "$TMP_DIR/agent-scape-client-missing-setup-guidance"
     shasum -a 256 \
-        2006scape-client.jar \
+        agent-scape-client.jar \
         Check-Setup.command \
-        Run-2006Scape.command \
+        run-agent-scape.command \
         client.properties \
         check-setup-macos-linux.sh \
         check-setup-windows.bat \
@@ -5399,8 +5645,8 @@ PY
 )
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-missing-setup-guidance" \
-    --archive "$TMP_DIR/2006scape-client-from-config.zip" \
+    --client-dist "$TMP_DIR/agent-scape-client-missing-setup-guidance" \
+    --archive "$TMP_DIR/agent-scape-client-from-config.zip" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config > "$TMP_DIR/missing-setup-guidance-verify.out" 2>&1; then
     echo "verify-external-deployment.py unexpectedly accepted a setup checker without Java guidance." >&2
@@ -5409,8 +5655,8 @@ if scripts/verify-external-deployment.py \
 fi
 grep -q "macOS/Linux setup checker is missing required text" "$TMP_DIR/missing-setup-guidance-verify.out"
 
-cp -R "$TMP_DIR/2006scape-client-from-config" "$TMP_DIR/2006scape-client-missing-warning-suppression"
-python3 - "$TMP_DIR/2006scape-client-missing-warning-suppression/run-macos-linux.sh" "$TMP_DIR/2006scape-client-missing-warning-suppression/run-windows.bat" <<'PY'
+cp -R "$TMP_DIR/agent-scape-client-from-config" "$TMP_DIR/agent-scape-client-missing-warning-suppression"
+python3 - "$TMP_DIR/agent-scape-client-missing-warning-suppression/run-macos-linux.sh" "$TMP_DIR/agent-scape-client-missing-warning-suppression/run-windows.bat" <<'PY'
 import sys
 
 for filename in sys.argv[1:]:
@@ -5421,11 +5667,11 @@ for filename in sys.argv[1:]:
         target.write(text)
 PY
 (
-    cd "$TMP_DIR/2006scape-client-missing-warning-suppression"
+    cd "$TMP_DIR/agent-scape-client-missing-warning-suppression"
     shasum -a 256 \
-        2006scape-client.jar \
+        agent-scape-client.jar \
         Check-Setup.command \
-        Run-2006Scape.command \
+        run-agent-scape.command \
         client.properties \
         check-setup-macos-linux.sh \
         check-setup-windows.bat \
@@ -5436,8 +5682,8 @@ PY
 )
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-missing-warning-suppression" \
-    --archive "$TMP_DIR/2006scape-client-from-config.zip" \
+    --client-dist "$TMP_DIR/agent-scape-client-missing-warning-suppression" \
+    --archive "$TMP_DIR/agent-scape-client-from-config.zip" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config > "$TMP_DIR/missing-warning-suppression-verify.out" 2>&1; then
     echo "verify-external-deployment.py unexpectedly accepted launchers without -no-java-warnings." >&2
@@ -5446,8 +5692,8 @@ if scripts/verify-external-deployment.py \
 fi
 grep -q "macOS/Linux launcher is missing required text" "$TMP_DIR/missing-warning-suppression-verify.out"
 
-cp -R "$TMP_DIR/2006scape-client-from-config" "$TMP_DIR/2006scape-client-lf-windows-launcher"
-python3 - "$TMP_DIR/2006scape-client-lf-windows-launcher/run-windows.bat" <<'PY'
+cp -R "$TMP_DIR/agent-scape-client-from-config" "$TMP_DIR/agent-scape-client-lf-windows-launcher"
+python3 - "$TMP_DIR/agent-scape-client-lf-windows-launcher/run-windows.bat" <<'PY'
 import sys
 from pathlib import Path
 
@@ -5455,11 +5701,11 @@ path = Path(sys.argv[1])
 path.write_bytes(path.read_bytes().replace(b"\r\n", b"\n"))
 PY
 (
-    cd "$TMP_DIR/2006scape-client-lf-windows-launcher"
+    cd "$TMP_DIR/agent-scape-client-lf-windows-launcher"
     shasum -a 256 \
-        2006scape-client.jar \
+        agent-scape-client.jar \
         Check-Setup.command \
-        Run-2006Scape.command \
+        run-agent-scape.command \
         client.properties \
         check-setup-macos-linux.sh \
         check-setup-windows.bat \
@@ -5468,7 +5714,7 @@ PY
         README.txt \
         MANIFEST.txt > SHA256SUMS
 )
-python3 - "$TMP_DIR/2006scape-client-lf-windows-launcher" "$TMP_DIR/2006scape-client-lf-windows-launcher.zip" <<'PY'
+python3 - "$TMP_DIR/agent-scape-client-lf-windows-launcher" "$TMP_DIR/agent-scape-client-lf-windows-launcher.zip" <<'PY'
 import stat
 import sys
 import zipfile
@@ -5485,7 +5731,7 @@ def zip_info(path, arcname):
     else:
         mode = 0o755 if path.name in {
             "Check-Setup.command",
-            "Run-2006Scape.command",
+            "run-agent-scape.command",
             "run-macos-linux.sh",
             "check-setup-macos-linux.sh",
         } else 0o644
@@ -5503,8 +5749,8 @@ with zipfile.ZipFile(str(archive_path), "w", compression=zipfile.ZIP_DEFLATED) a
 PY
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-lf-windows-launcher" \
-    --archive "$TMP_DIR/2006scape-client-lf-windows-launcher.zip" \
+    --client-dist "$TMP_DIR/agent-scape-client-lf-windows-launcher" \
+    --archive "$TMP_DIR/agent-scape-client-lf-windows-launcher.zip" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config > "$TMP_DIR/lf-windows-launcher-verify.out" 2>&1; then
     echo "verify-external-deployment.py unexpectedly accepted a Windows launcher without CRLF line endings." >&2
@@ -5514,13 +5760,13 @@ fi
 grep -q "Windows launcher must use CRLF line endings" "$TMP_DIR/lf-windows-launcher-verify.out"
 
 echo "Smoke-testing deployment verifier rejects symlinked client package paths..."
-cp -R "$TMP_DIR/2006scape-client-from-config" "$TMP_DIR/2006scape-client-symlink-file"
-rm "$TMP_DIR/2006scape-client-symlink-file/README.txt"
-ln -s "$TMP_DIR/2006scape-client-from-config/README.txt" "$TMP_DIR/2006scape-client-symlink-file/README.txt"
+cp -R "$TMP_DIR/agent-scape-client-from-config" "$TMP_DIR/agent-scape-client-symlink-file"
+rm "$TMP_DIR/agent-scape-client-symlink-file/README.txt"
+ln -s "$TMP_DIR/agent-scape-client-from-config/README.txt" "$TMP_DIR/agent-scape-client-symlink-file/README.txt"
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-symlink-file" \
-    --archive "$TMP_DIR/2006scape-client-from-config.zip" \
+    --client-dist "$TMP_DIR/agent-scape-client-symlink-file" \
+    --archive "$TMP_DIR/agent-scape-client-from-config.zip" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config > "$TMP_DIR/symlink-client-file-verify.out" 2>&1; then
     echo "verify-external-deployment.py unexpectedly accepted a symlinked client package file." >&2
@@ -5548,7 +5794,7 @@ cp -R "$ACCOUNT_TMP_DIR/accounts" "$TMP_DIR/accounts-open-directory"
 chmod 755 "$TMP_DIR/accounts-open-directory"
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
     --accounts-dir "$TMP_DIR/accounts-open-directory" \
     --allow-placeholder-network-config > "$TMP_DIR/accounts-open-directory-verify.out" 2>&1; then
     echo "verify-external-deployment.py unexpectedly accepted a group/world-readable accounts directory." >&2
@@ -5562,7 +5808,7 @@ chmod 700 "$TMP_DIR/accounts-open-record"
 chmod 644 "$TMP_DIR/accounts-open-record/testuser.json"
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
     --accounts-dir "$TMP_DIR/accounts-open-record" \
     --allow-placeholder-network-config > "$TMP_DIR/accounts-open-record-verify.out" 2>&1; then
     echo "verify-external-deployment.py unexpectedly accepted a group/world-readable account record." >&2
@@ -5575,7 +5821,7 @@ cp -R "$ACCOUNT_TMP_DIR/accounts" "$TMP_DIR/accounts-filename-mismatch"
 mv "$TMP_DIR/accounts-filename-mismatch/testuser.json" "$TMP_DIR/accounts-filename-mismatch/not_testuser.json"
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
     --accounts-dir "$TMP_DIR/accounts-filename-mismatch" \
     --allow-placeholder-network-config > "$TMP_DIR/accounts-filename-mismatch-verify.out" 2>&1; then
     echo "verify-external-deployment.py unexpectedly accepted an account filename that the Java auth service would not use." >&2
@@ -5599,7 +5845,7 @@ with open(path, "w", encoding="utf-8") as target:
 PY
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
     --accounts-dir "$TMP_DIR/accounts-invalid-username" \
     --allow-placeholder-network-config > "$TMP_DIR/accounts-invalid-username-verify.out" 2>&1; then
     echo "verify-external-deployment.py unexpectedly accepted an invalid account username." >&2
@@ -5623,7 +5869,7 @@ with open(path, "w", encoding="utf-8") as target:
 PY
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
     --accounts-dir "$TMP_DIR/accounts-bad-base64" \
     --allow-placeholder-network-config > "$TMP_DIR/accounts-bad-base64-verify.out" 2>&1; then
     echo "verify-external-deployment.py unexpectedly accepted invalid account passwordHash base64." >&2
@@ -5648,7 +5894,7 @@ with open(path, "w", encoding="utf-8") as target:
 PY
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
     --accounts-dir "$TMP_DIR/accounts-short-salt" \
     --allow-placeholder-network-config > "$TMP_DIR/accounts-short-salt-verify.out" 2>&1; then
     echo "verify-external-deployment.py unexpectedly accepted an account passwordSalt with the wrong byte length." >&2
@@ -5672,7 +5918,7 @@ with open(path, "w", encoding="utf-8") as target:
 PY
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
     --accounts-dir "$TMP_DIR/accounts-string-disabled" \
     --allow-placeholder-network-config > "$TMP_DIR/accounts-string-disabled-verify.out" 2>&1; then
     echo "verify-external-deployment.py unexpectedly accepted a non-boolean account disabled flag." >&2
@@ -5696,7 +5942,7 @@ with open(path, "w", encoding="utf-8") as target:
 PY
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
     --accounts-dir "$TMP_DIR/accounts-string-roles" \
     --allow-placeholder-network-config > "$TMP_DIR/accounts-string-roles-verify.out" 2>&1; then
     echo "verify-external-deployment.py unexpectedly accepted non-array account roles metadata." >&2
@@ -5720,7 +5966,7 @@ with open(path, "w", encoding="utf-8") as target:
 PY
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
     --accounts-dir "$TMP_DIR/accounts-invalid-allowed-character" \
     --allow-placeholder-network-config > "$TMP_DIR/accounts-invalid-allowed-character-verify.out" 2>&1; then
     echo "verify-external-deployment.py unexpectedly accepted invalid account allowedCharacters metadata." >&2
@@ -5744,7 +5990,7 @@ with open(path, "w", encoding="utf-8") as target:
 PY
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
     --accounts-dir "$TMP_DIR/accounts-invalid-discord-user" \
     --allow-placeholder-network-config > "$TMP_DIR/accounts-invalid-discord-user-verify.out" 2>&1; then
     echo "verify-external-deployment.py unexpectedly accepted invalid account discordUserId metadata." >&2
@@ -5768,7 +6014,7 @@ with open(path, "w", encoding="utf-8") as target:
 PY
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
     --accounts-dir "$TMP_DIR/accounts-missing-password-policy" \
     --allow-placeholder-network-config > "$TMP_DIR/accounts-missing-password-policy-verify.out" 2>&1; then
     echo "verify-external-deployment.py unexpectedly accepted missing account passwordPolicy metadata." >&2
@@ -5792,7 +6038,7 @@ with open(path, "w", encoding="utf-8") as target:
 PY
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
     --accounts-dir "$TMP_DIR/accounts-weak-password-policy" \
     --allow-placeholder-network-config > "$TMP_DIR/accounts-weak-password-policy-verify.out" 2>&1; then
     echo "verify-external-deployment.py unexpectedly accepted weak account passwordPolicy metadata." >&2
@@ -5802,13 +6048,13 @@ fi
 grep -q "account record passwordPolicy must not allow weak passwords" "$TMP_DIR/accounts-weak-password-policy-verify.out"
 
 echo "Smoke-testing deployment verifier rejects archive-only client tampering..."
-python3 - "$TMP_DIR/2006scape-client-from-config.zip" "$TMP_DIR/2006scape-client-from-config-tampered.zip" <<'PY'
+python3 - "$TMP_DIR/agent-scape-client-from-config.zip" "$TMP_DIR/agent-scape-client-from-config-tampered.zip" <<'PY'
 import sys
 import zipfile
 
 source_path = sys.argv[1]
 target_path = sys.argv[2]
-tampered_name = "2006scape-client-from-config/README.txt"
+tampered_name = "agent-scape-client-from-config/README.txt"
 with zipfile.ZipFile(source_path, "r") as source:
     with zipfile.ZipFile(target_path, "w", compression=zipfile.ZIP_DEFLATED) as target:
         for info in source.infolist():
@@ -5819,8 +6065,8 @@ with zipfile.ZipFile(source_path, "r") as source:
 PY
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
-    --archive "$TMP_DIR/2006scape-client-from-config-tampered.zip" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
+    --archive "$TMP_DIR/agent-scape-client-from-config-tampered.zip" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config > "$TMP_DIR/tampered-client-verify.out" 2>&1; then
     echo "verify-external-deployment.py unexpectedly accepted an archive-only client tamper." >&2
@@ -5830,14 +6076,14 @@ fi
 grep -q "client archive entry does not match packaged folder file" "$TMP_DIR/tampered-client-verify.out"
 
 echo "Smoke-testing deployment verifier rejects non-executable archive launcher metadata..."
-python3 - "$TMP_DIR/2006scape-client-from-config.zip" "$TMP_DIR/2006scape-client-from-config-noexec.zip" <<'PY'
+python3 - "$TMP_DIR/agent-scape-client-from-config.zip" "$TMP_DIR/agent-scape-client-from-config-noexec.zip" <<'PY'
 import stat
 import sys
 import zipfile
 
 source_path = sys.argv[1]
 target_path = sys.argv[2]
-launcher_name = "2006scape-client-from-config/Run-2006Scape.command"
+launcher_name = "agent-scape-client-from-config/run-agent-scape.command"
 with zipfile.ZipFile(source_path, "r") as source:
     with zipfile.ZipFile(target_path, "w", compression=zipfile.ZIP_DEFLATED) as target:
         for source_info in source.infolist():
@@ -5855,8 +6101,8 @@ with zipfile.ZipFile(source_path, "r") as source:
 PY
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
-    --archive "$TMP_DIR/2006scape-client-from-config-noexec.zip" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
+    --archive "$TMP_DIR/agent-scape-client-from-config-noexec.zip" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config > "$TMP_DIR/noexec-archive-verify.out" 2>&1; then
     echo "verify-external-deployment.py unexpectedly accepted a non-executable archive launcher." >&2
@@ -5866,14 +6112,14 @@ fi
 grep -q "client archive macOS launcher wrapper is not executable" "$TMP_DIR/noexec-archive-verify.out"
 
 echo "Smoke-testing deployment verifier rejects symlink-type archive entries..."
-python3 - "$TMP_DIR/2006scape-client-from-config.zip" "$TMP_DIR/2006scape-client-from-config-symlink-entry.zip" <<'PY'
+python3 - "$TMP_DIR/agent-scape-client-from-config.zip" "$TMP_DIR/agent-scape-client-from-config-symlink-entry.zip" <<'PY'
 import stat
 import sys
 import zipfile
 
 source_path = sys.argv[1]
 target_path = sys.argv[2]
-launcher_name = "2006scape-client-from-config/run-macos-linux.sh"
+launcher_name = "agent-scape-client-from-config/run-macos-linux.sh"
 with zipfile.ZipFile(source_path, "r") as source:
     with zipfile.ZipFile(target_path, "w", compression=zipfile.ZIP_DEFLATED) as target:
         for source_info in source.infolist():
@@ -5887,13 +6133,13 @@ with zipfile.ZipFile(source_path, "r") as source:
             if source_info.filename == launcher_name:
                 target_info.create_system = 3
                 target_info.external_attr = (stat.S_IFLNK | 0o777) << 16
-                data = b"2006scape-client.jar"
+                data = b"agent-scape-client.jar"
             target.writestr(target_info, data)
 PY
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
-    --archive "$TMP_DIR/2006scape-client-from-config-symlink-entry.zip" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
+    --archive "$TMP_DIR/agent-scape-client-from-config-symlink-entry.zip" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config > "$TMP_DIR/symlink-entry-archive-verify.out" 2>&1; then
     echo "verify-external-deployment.py unexpectedly accepted a symlink-type archive entry." >&2
@@ -5903,12 +6149,12 @@ fi
 grep -q "client archive file entry must be a regular file" "$TMP_DIR/symlink-entry-archive-verify.out"
 
 echo "Smoke-testing deployment verifier rejects unexpected client package files..."
-cp -R "$TMP_DIR/2006scape-client-from-config" "$TMP_DIR/2006scape-client-extra-file"
-printf 'unexpected file\n' > "$TMP_DIR/2006scape-client-extra-file/install.sh"
+cp -R "$TMP_DIR/agent-scape-client-from-config" "$TMP_DIR/agent-scape-client-extra-file"
+printf 'unexpected file\n' > "$TMP_DIR/agent-scape-client-extra-file/install.sh"
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-extra-file" \
-    --archive "$TMP_DIR/2006scape-client-from-config.zip" \
+    --client-dist "$TMP_DIR/agent-scape-client-extra-file" \
+    --archive "$TMP_DIR/agent-scape-client-from-config.zip" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config > "$TMP_DIR/extra-file-verify.out" 2>&1; then
     echo "verify-external-deployment.py unexpectedly accepted an extra client package file." >&2
@@ -5918,15 +6164,15 @@ fi
 grep -q "client package contains unexpected files" "$TMP_DIR/extra-file-verify.out"
 
 echo "Smoke-testing deployment verifier rejects incomplete checksum manifests..."
-cp -R "$TMP_DIR/2006scape-client-from-config" "$TMP_DIR/2006scape-client-missing-checksum"
-grep -v 'README.txt$' "$TMP_DIR/2006scape-client-missing-checksum/SHA256SUMS" \
-    > "$TMP_DIR/2006scape-client-missing-checksum/SHA256SUMS.new"
-mv "$TMP_DIR/2006scape-client-missing-checksum/SHA256SUMS.new" \
-    "$TMP_DIR/2006scape-client-missing-checksum/SHA256SUMS"
+cp -R "$TMP_DIR/agent-scape-client-from-config" "$TMP_DIR/agent-scape-client-missing-checksum"
+grep -v 'README.txt$' "$TMP_DIR/agent-scape-client-missing-checksum/SHA256SUMS" \
+    > "$TMP_DIR/agent-scape-client-missing-checksum/SHA256SUMS.new"
+mv "$TMP_DIR/agent-scape-client-missing-checksum/SHA256SUMS.new" \
+    "$TMP_DIR/agent-scape-client-missing-checksum/SHA256SUMS"
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-missing-checksum" \
-    --archive "$TMP_DIR/2006scape-client-from-config.zip" \
+    --client-dist "$TMP_DIR/agent-scape-client-missing-checksum" \
+    --archive "$TMP_DIR/agent-scape-client-from-config.zip" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config > "$TMP_DIR/missing-checksum-verify.out" 2>&1; then
     echo "verify-external-deployment.py unexpectedly accepted an incomplete checksum manifest." >&2
@@ -5936,13 +6182,13 @@ fi
 grep -q "SHA256SUMS is missing entries" "$TMP_DIR/missing-checksum-verify.out"
 
 echo "Smoke-testing deployment verifier rejects unsafe checksum paths..."
-cp -R "$TMP_DIR/2006scape-client-from-config" "$TMP_DIR/2006scape-client-unsafe-checksum"
+cp -R "$TMP_DIR/agent-scape-client-from-config" "$TMP_DIR/agent-scape-client-unsafe-checksum"
 printf '0000000000000000000000000000000000000000000000000000000000000000  ../README.md\n' \
-    >> "$TMP_DIR/2006scape-client-unsafe-checksum/SHA256SUMS"
+    >> "$TMP_DIR/agent-scape-client-unsafe-checksum/SHA256SUMS"
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-unsafe-checksum" \
-    --archive "$TMP_DIR/2006scape-client-from-config.zip" \
+    --client-dist "$TMP_DIR/agent-scape-client-unsafe-checksum" \
+    --archive "$TMP_DIR/agent-scape-client-from-config.zip" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config > "$TMP_DIR/unsafe-checksum-verify.out" 2>&1; then
     echo "verify-external-deployment.py unexpectedly accepted an unsafe checksum path." >&2
@@ -5952,7 +6198,7 @@ fi
 grep -q "SHA256SUMS contains unsafe entry" "$TMP_DIR/unsafe-checksum-verify.out"
 
 echo "Smoke-testing deployment verifier rejects unexpected archive entries..."
-python3 - "$TMP_DIR/2006scape-client-from-config.zip" "$TMP_DIR/2006scape-client-from-config-extra.zip" <<'PY'
+python3 - "$TMP_DIR/agent-scape-client-from-config.zip" "$TMP_DIR/agent-scape-client-from-config-extra.zip" <<'PY'
 import sys
 import zipfile
 
@@ -5962,12 +6208,12 @@ with zipfile.ZipFile(source_path, "r") as source:
     with zipfile.ZipFile(target_path, "w", compression=zipfile.ZIP_DEFLATED) as target:
         for info in source.infolist():
             target.writestr(info, source.read(info.filename))
-        target.writestr("2006scape-client-from-config/install.sh", "unexpected archive entry\n")
+        target.writestr("agent-scape-client-from-config/install.sh", "unexpected archive entry\n")
 PY
 if scripts/verify-external-deployment.py \
     --config "2006Scape Server/ServerConfig.External.Sample.json" \
-    --client-dist "$TMP_DIR/2006scape-client-from-config" \
-    --archive "$TMP_DIR/2006scape-client-from-config-extra.zip" \
+    --client-dist "$TMP_DIR/agent-scape-client-from-config" \
+    --archive "$TMP_DIR/agent-scape-client-from-config-extra.zip" \
     --accounts-dir "$ACCOUNT_TMP_DIR/accounts" \
     --allow-placeholder-network-config > "$TMP_DIR/extra-archive-verify.out" 2>&1; then
     echo "verify-external-deployment.py unexpectedly accepted an extra archive entry." >&2

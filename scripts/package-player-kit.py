@@ -263,8 +263,8 @@ def build_kit(args):
     character = normalize_player_name(args.character or args.username, "character")
     stem = safe_stem(username)
 
-    client_dist = resolve_under_root(Path(args.client_dist)) if args.client_dist else prepared_dir / "2006scape-client"
-    client_archive = resolve_under_root(Path(args.client_archive)) if args.client_archive else prepared_dir / "2006scape-client.zip"
+    client_dist = resolve_under_root(Path(args.client_dist)) if args.client_dist else prepared_dir / "agent-scape-client"
+    client_archive = resolve_under_root(Path(args.client_archive)) if args.client_archive else prepared_dir / "agent-scape-client.zip"
     handoff_note = resolve_under_root(Path(args.handoff_note)) if args.handoff_note else prepared_dir / "player-handoff-{}.md".format(stem)
     output = resolve_under_root(Path(args.output)) if args.output else prepared_dir / "player-kit-{}.zip".format(stem)
 
@@ -289,7 +289,7 @@ def build_kit(args):
     manifest_values = parse_key_value_file(manifest)
     prop_values = parse_key_value_file(client_props)
     generated_at = utc_now()
-    kit_dir = "2006scape-player-kit-{}".format(stem)
+    kit_dir = "agent-scape-player-kit-{}".format(stem)
     client_sha = sha256_file(client_archive)
     handoff_sha = sha256_file(handoff_note)
     metadata = {
@@ -359,8 +359,8 @@ def main():
     parser.add_argument("--character", default="", help="Allowed/logged-in character. Defaults to username.")
     parser.add_argument("--prepared-dir", default=str(DEFAULT_PREPARED_DIR),
             help="Directory created by prepare-external-deployment.py. Defaults to dist/external-deployment.")
-    parser.add_argument("--client-dist", default="", help="Packaged client directory. Defaults to PREPARED_DIR/2006scape-client.")
-    parser.add_argument("--client-archive", default="", help="Client zip path. Defaults to PREPARED_DIR/2006scape-client.zip.")
+    parser.add_argument("--client-dist", default="", help="Packaged client directory. Defaults to PREPARED_DIR/agent-scape-client.")
+    parser.add_argument("--client-archive", default="", help="Client zip path. Defaults to PREPARED_DIR/agent-scape-client.zip.")
     parser.add_argument("--handoff-note", default="",
             help="Public handoff note path. Defaults to PREPARED_DIR/player-handoff-USERNAME.md and is rendered if missing.")
     parser.add_argument("--agent-gateway-url", default="",

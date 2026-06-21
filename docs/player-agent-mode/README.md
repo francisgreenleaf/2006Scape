@@ -47,7 +47,7 @@ For agent play:
    ./run-macos-linux.sh
    ```
 
-   On macOS you can also double-click `Run-2006Scape.command`. On Windows, run
+   On macOS you can also double-click `run-agent-scape.command`. On Windows, run
    `run-windows.bat`.
 
 4. Log in with the username and password supplied by the server operator.

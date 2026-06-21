@@ -13267,8 +13267,67 @@ public class Game extends RSApplet {
 		this.anInt1187 += (j << 1);
 	}
 
+	private boolean isPasteShortcut(KeyEvent keyevent) {
+		String osName = System.getProperty("os.name", "").toLowerCase();
+		boolean mac = osName.indexOf("mac") != -1;
+		return keyevent.getKeyCode() == KeyEvent.VK_V && (mac ? keyevent.isMetaDown() : keyevent.isControlDown());
+	}
+
+	private String appendClipboardToLoginField(String current, int maxLength) {
+		String value = current == null ? "" : current;
+		if (value.length() >= maxLength) {
+			return value.substring(0, maxLength);
+		}
+		String clipboard = getClipBoard();
+		StringBuilder result = new StringBuilder(value);
+		for (int i = 0; i < clipboard.length() && result.length() < maxLength; i++) {
+			char c = clipboard.charAt(i);
+			if (validUserPassChars.indexOf(c) != -1) {
+				result.append(c);
+			}
+		}
+		return result.toString();
+	}
+
+	private boolean pasteLoginClipboard() {
+		if (loggedIn || loginScreenState != 2) {
+			return false;
+		}
+		if (loginScreenCursorPos == 0) {
+			myUsername = appendClipboardToLoginField(myUsername, 12);
+			inputTaken = true;
+			return true;
+		}
+		if (loginScreenCursorPos == 1) {
+			myPassword = appendClipboardToLoginField(myPassword, 20);
+			inputTaken = true;
+			return true;
+		}
+		return false;
+	}
+
+	private void pasteChatClipboard() {
+		inputString += getClipBoard();
+		if (inputString.length() > 80) {
+			inputString = inputString.substring(0, 80);
+		}
+		inputTaken = true;
+	}
+
 	public void keyPressed(KeyEvent keyevent)
 	{
+		if (isPasteShortcut(keyevent)) {
+			idleTime = 0;
+			if (pasteLoginClipboard()) {
+				keyevent.consume();
+				return;
+			}
+			if (loggedIn) {
+				pasteChatClipboard();
+				keyevent.consume();
+				return;
+			}
+		}
 		super.keyPressed(keyevent);
 		switch (keyevent.getKeyCode())
 		{
@@ -13352,16 +13411,13 @@ public class Game extends RSApplet {
 				}
 				break;
 			case KeyEvent.VK_V:
-				if (keyevent.isControlDown()) {
-					inputString += getClipBoard();
-					if (inputString.length() > 80) {
-						inputString = inputString.substring(0, 80);
-					}
-					inputTaken = true;
+				if (isPasteShortcut(keyevent)) {
+					pasteChatClipboard();
 				}
+				break;
 
 		}
-		  if (ClientSettings.SCREENSHOTS_ENABLED && keyevent.getKeyCode() == KeyEvent.VK_PRINTSCREEN && keyevent.isControlDown()) {
+		if (ClientSettings.SCREENSHOTS_ENABLED && keyevent.getKeyCode() == KeyEvent.VK_PRINTSCREEN && keyevent.isControlDown()) {
 			screenshot(true);
 		}
 	}

@@ -170,7 +170,7 @@ def validate_client_archive_bytes(data):
             validate_archive_entries(archive, "nested client archive")
             validate_no_secret_assignments_in_text_entries(archive, "nested client archive")
             names = set(archive.namelist())
-            required = {"2006scape-client/client.properties", "2006scape-client/MANIFEST.txt"}
+            required = {"agent-scape-client/client.properties", "agent-scape-client/MANIFEST.txt"}
             missing = sorted(required - names)
             if missing:
                 fail("nested client archive is missing required entries: {}".format(", ".join(missing)))
@@ -207,7 +207,7 @@ def verify_kit(args):
             if len(top_levels) != 1:
                 fail("player kit must contain exactly one top-level directory; found {}".format(sorted(top_levels)))
             kit_dir = next(iter(top_levels))
-            if not kit_dir.startswith("2006scape-player-kit-"):
+            if not kit_dir.startswith("agent-scape-player-kit-"):
                 fail("player kit top-level directory has unexpected name: {}".format(kit_dir))
 
             metadata_name = kit_dir + "/KIT-METADATA.json"
@@ -221,7 +221,7 @@ def verify_kit(args):
             if not isinstance(metadata, dict):
                 fail("KIT-METADATA.json must contain an object")
 
-            client_archive_name = metadata.get("clientArchive") or "2006scape-client.zip"
+            client_archive_name = metadata.get("clientArchive") or "agent-scape-client.zip"
             if Path(client_archive_name).name != client_archive_name or zip_entry_is_sensitive(client_archive_name):
                 fail("KIT-METADATA.json has unsafe clientArchive: {}".format(client_archive_name))
             client_entry = kit_dir + "/" + client_archive_name
@@ -300,7 +300,7 @@ def verify_kit(args):
     client_archive_path = normalize_expected_path(args.client_archive)
     handoff_note_path = normalize_expected_path(args.handoff_note)
     if prepared_dir and not client_archive_path:
-        candidate = prepared_dir / "2006scape-client.zip"
+        candidate = prepared_dir / "agent-scape-client.zip"
         if candidate.is_file():
             client_archive_path = candidate
     if prepared_dir and not handoff_note_path:
@@ -356,7 +356,7 @@ def main(argv=None):
     )
     parser.add_argument("--kit", required=True, help="Player kit zip to verify.")
     parser.add_argument("--prepared-dir", default="", help="Prepared deployment directory used for optional expected-file checks.")
-    parser.add_argument("--client-archive", default="", help="Expected client zip. Defaults to PREPARED_DIR/2006scape-client.zip when present.")
+    parser.add_argument("--client-archive", default="", help="Expected client zip. Defaults to PREPARED_DIR/agent-scape-client.zip when present.")
     parser.add_argument("--handoff-note", default="", help="Expected handoff note. Defaults to PREPARED_DIR/player-handoff-USERNAME.md when present.")
     parser.add_argument("--username", default="", help="Expected username.")
     parser.add_argument("--character", default="", help="Expected character.")

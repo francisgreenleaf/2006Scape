@@ -214,7 +214,7 @@ final class RSFrame extends Frame {
 				+ "F1-F12 - switch side tabs\n"
 				+ "Esc - close the current interface\n"
 				+ "Page Up / Page Down - adjust camera zoom\n"
-				+ "Ctrl+V - paste into chat input\n"
+				+ "Command/Ctrl+V - paste into login or chat input\n"
 				+ "Command/Ctrl+Shift+N - open another client window\n"
 				+ "Command/Ctrl+1 - actual size\n"
 				+ "Command/Ctrl+2 - double size\n"

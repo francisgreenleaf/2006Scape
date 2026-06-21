@@ -1509,6 +1509,88 @@
       ]
     },
     {
+      "id": "player_package_prepare",
+      "name": "Player Package Prepare",
+      "path": "scripts/prepare-player-package.py",
+      "kind": "deployment_tool",
+      "description": "One-command external player helper: prepares the deployment bundle when needed, provisions one PBKDF2 account, can choose an unused Mr-style random name, writes the password only to an ignored private credentials file, creates the public-safe player kit, and can optionally build a macOS .app/DMG without touching runtime.",
+      "aliases": [
+        "prepare player package",
+        "player package",
+        "friend package",
+        "one command player package",
+        "provision and package",
+        "random player account",
+        "new vps player"
+      ],
+      "tags": [
+        "deployment",
+        "client",
+        "packaging",
+        "account",
+        "player",
+        "external"
+      ],
+      "examples": [
+        "python3 scripts/prepare-player-package.py --random-name --config \"2006Scape Server/ServerConfig.json\" --mac-dmg --json",
+        "python3 scripts/prepare-player-package.py MrGem --character MrGem --config \"2006Scape Server/ServerConfig.json\" --mac-dmg",
+        "python3 scripts/prepare-player-package.py MrGem --character MrGem --prepared-dir dist/external-deployment --prepare-policy never",
+        "python3 agent-navigation/tools/script_registry.py run player package -- MrGem --character MrGem --mac-dmg"
+      ]
+    },
+    {
+      "id": "macos_player_app_package",
+      "name": "macOS Player App Package",
+      "path": "scripts/package-macos-player-app.py",
+      "kind": "deployment_tool",
+      "description": "Builds a Finder-friendly macOS .app wrapper around the prepared Java client and can create a hdiutil DMG containing the app plus README-first handoff note, excluding passwords, account records, private credentials, secrets, runtime data, and bridge tokens.",
+      "aliases": [
+        "mac player app",
+        "macos app",
+        "mac dmg",
+        "dmg package",
+        "mac player package"
+      ],
+      "tags": [
+        "deployment",
+        "client",
+        "packaging",
+        "macos",
+        "dmg",
+        "player"
+      ],
+      "examples": [
+        "python3 scripts/package-macos-player-app.py MrGem --character MrGem --prepared-dir dist/external-deployment --dmg",
+        "python3 agent-navigation/tools/script_registry.py run mac dmg -- MrGem --character MrGem --prepared-dir dist/external-deployment --dmg"
+      ]
+    },
+    {
+      "id": "player_account_install_plan",
+      "name": "Player Account Install Plan",
+      "path": "scripts/install-player-account-record.py",
+      "kind": "deployment_tool",
+      "description": "Dry-run by default helper for installing one ignored PBKDF2 account record onto a VPS/deployment host over SSH/SCP; it prints the copy/install plan, never prints account contents or passwords, and never restarts runtime.",
+      "aliases": [
+        "install account record",
+        "vps account install",
+        "deploy player account",
+        "account install plan",
+        "scp account record"
+      ],
+      "tags": [
+        "deployment",
+        "auth",
+        "account",
+        "vps",
+        "ssh",
+        "external"
+      ],
+      "examples": [
+        "python3 scripts/install-player-account-record.py MrGem --ssh-target user@example.com --remote-accounts-dir '/opt/2006scape/2006Scape Server/data/accounts'",
+        "python3 scripts/install-player-account-record.py MrGem --ssh-target user@example.com --remote-accounts-dir '/opt/2006scape/2006Scape Server/data/accounts' --apply"
+      ]
+    },
+    {
       "id": "player_handoff_render",
       "name": "Player Handoff Render",
       "path": "scripts/render-player-handoff.py",

@@ -18,7 +18,7 @@
 - 2026-06-14: Mac-side `scripts/probe-deployment-network.py --config "2006Scape Server/ServerConfig.json"` passed.
 - 2026-06-14: Mac-side live verifier accepted `ExternalTest` and rejected disabled `RejectTest`.
 - 2026-06-14: VPS-side concurrent login probe accepted external `ExternalTest` and local `LocalTest` at the same time.
-- 2026-06-14: Packaged Mac setup checker passed from `dist/external-deployment/2006scape-client/check-setup-macos-linux.sh`.
+- 2026-06-14: Packaged Mac setup checker passed from `dist/external-deployment/agent-scape-client/check-setup-macos-linux.sh`.
 - 2026-06-14: Rotated `ExternalTest` to an 8-character convenience password for manual testing. Live game login accepted it, but strict deployment account audit now flags that account as weak-policy. Rotate to a 12+ character password before treating this deployment as final-readiness-grade.
 - 2026-06-14: Added VPS PBKDF2 accounts and copied character saves for the named test profiles. Live protocol login probes accepted all of them over the private public host and game port.
 - 2026-06-14: Packaged client launch defaults were changed to `client.scale=2` and `show_navbar=false` so the larger testing window uses repo-native canvas scaling instead of macOS JVM UI scaling.
@@ -46,17 +46,66 @@ env | LC_ALL=C sort | grep -E '(_USERNAME|_PASSWORD)='
 
 These are eight-character direct-TCP convenience passwords. They are fine for manual smoke testing with unique throwaway credentials, but they intentionally do not satisfy strict final deployment password policy.
 
+## Add A New VPS Player Account
+
+Use the player-package helper when an operator needs a new account, player kit,
+and optional Mac DMG. It writes the generated 20-character password only to an
+ignored owner-only private env file, never to stdout. The server reads PBKDF2
+account records during login, so installing one new account JSON does not require
+a server restart.
+
+For an operator-chosen name:
+
+```sh
+cd <local-worktree>
+scripts/prepare-player-package.py MrScout \
+  --character MrScout \
+  --config "2006Scape Server/ServerConfig.json" \
+  --mac-dmg \
+  --json
+```
+
+For a random unused name inspired by the existing `Mr...` test characters:
+
+```sh
+cd <local-worktree>
+scripts/prepare-player-package.py \
+  --random-name \
+  --config "2006Scape Server/ServerConfig.json" \
+  --mac-dmg \
+  --json
+```
+
+Read the JSON fields `username`, `privateCredentials`, `accountRecord`,
+`playerKit`, and `macDmg`. The password is in `privateCredentials` as
+`<USERNAME>_PASSWORD`; use it only for a private handoff to the player. Do not
+paste passwords into docs, logs, PRs, public chat, or Codex prompts unless the
+operator explicitly asks for a private local credential readout.
+
+Install only the generated account record onto the VPS with a dry-run first:
+
+```sh
+scripts/install-player-account-record.py USERNAME \
+  --accounts-dir "2006Scape Server/data/accounts" \
+  --ssh-target <operator-vps-ssh-target> \
+  --remote-accounts-dir '<vps-deploy-dir>/2006Scape Server/data/accounts'
+```
+
+If the printed plan is correct, rerun the same command with `--apply`. This
+copies one PBKDF2 account JSON, sets owner-only permissions through `install`,
+and does not start, stop, restart, or replace the live runtime.
+
 ## Player Connect Steps
 
 1. From the repo machine, use the packaged client folder:
 
    ```sh
-   cd <local-worktree>/dist/external-deployment/2006scape-client
+   cd <local-worktree>/dist/external-deployment/agent-scape-client
    ./check-setup-macos-linux.sh
    ./run-macos-linux.sh
    ```
 
-2. On macOS Finder, the same flow is double-click `Check-Setup.command`, then double-click `Run-2006Scape.command`.
+2. On macOS Finder, the same flow is double-click `Check-Setup.command`, then double-click `run-agent-scape.command`.
 3. On Windows, use `check-setup-windows.bat`, then `run-windows.bat`.
 4. Log in with one of the named test profiles and the matching password from the private env file.
 

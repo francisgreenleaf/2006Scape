@@ -407,8 +407,8 @@ def main():
     validate_encrypted_external_args(parser, args, config)
     run_final_proof_manifest_precheck(args)
     output_dir = Path(args.output_dir)
-    client_dist = output_dir / "2006scape-client"
-    archive = output_dir / "2006scape-client.zip"
+    client_dist = output_dir / "agent-scape-client"
+    archive = output_dir / "agent-scape-client.zip"
     report_path = output_dir / "deployment-readiness-report.md"
     tunnel_operator_dir = output_dir / "client-tls-tunnel-operator"
     server_deployment_dir = output_dir / "server-deployment"

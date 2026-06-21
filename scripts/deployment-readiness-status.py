@@ -99,7 +99,7 @@ def command_entry(label, why, command):
 
 def readiness_base_args(data, readiness_json_path):
     config = report_input(data, "config", "2006Scape Server/ServerConfig.json")
-    client_dist = report_input(data, "clientDist", "dist/2006scape-client")
+    client_dist = report_input(data, "clientDist", "dist/agent-scape-client")
     archive = report_input(data, "archive", "")
     server_dir = report_input(data, "serverDeploymentDir", "")
     tls_dir = report_input(data, "clientTlsTunnelDir", "")
