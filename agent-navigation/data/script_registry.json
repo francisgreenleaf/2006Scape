@@ -1513,13 +1513,15 @@
       "name": "Player Package Prepare",
       "path": "scripts/prepare-player-package.py",
       "kind": "deployment_tool",
-      "description": "One-command external player helper: prepares the deployment bundle when needed, provisions one PBKDF2 account, writes the password only to an ignored private credentials file, creates the public-safe player kit, and can optionally build a macOS .app/DMG without touching runtime.",
+      "description": "One-command external player helper: prepares the deployment bundle when needed, provisions one PBKDF2 account, can choose an unused Mr-style random name, writes the password only to an ignored private credentials file, creates the public-safe player kit, and can optionally build a macOS .app/DMG without touching runtime.",
       "aliases": [
         "prepare player package",
         "player package",
         "friend package",
         "one command player package",
-        "provision and package"
+        "provision and package",
+        "random player account",
+        "new vps player"
       ],
       "tags": [
         "deployment",
@@ -1530,6 +1532,7 @@
         "external"
       ],
       "examples": [
+        "python3 scripts/prepare-player-package.py --random-name --config \"2006Scape Server/ServerConfig.json\" --mac-dmg --json",
         "python3 scripts/prepare-player-package.py MrGem --character MrGem --config \"2006Scape Server/ServerConfig.json\" --mac-dmg",
         "python3 scripts/prepare-player-package.py MrGem --character MrGem --prepared-dir dist/external-deployment --prepare-policy never",
         "python3 agent-navigation/tools/script_registry.py run player package -- MrGem --character MrGem --mac-dmg"

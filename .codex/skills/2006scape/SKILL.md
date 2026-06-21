@@ -142,8 +142,10 @@ scripts/provision-player-account.py PLAYER --character CHARACTER --prepared-dir 
 # Provision one player after a prepared bundle exists: create the ignored PBKDF2 account, audit it, write the generated password only to an owner-only ignored credentials env file, and render the safe player handoff note without printing the password.
 scripts/package-player-kit.py PLAYER --character CHARACTER --prepared-dir dist/external-deployment
 # Create and self-verify the public-safe per-player zip to send with the client archive, README-first handoff note, and checksums. It excludes passwords, private credentials, account records, secrets, runtime data, and bridge tokens.
+scripts/prepare-player-package.py --random-name --config "2006Scape Server/ServerConfig.json" --mac-dmg --json
+# One-command unnamed friend-test path: choose an unused Mr-style username/character, prepare the bundle when needed, provision the PBKDF2 account, write the generated 20-character password only to ignored private credentials, create the public-safe player kit, and optionally build a Finder-friendly iconed macOS .app/DMG without touching runtime.
 scripts/prepare-player-package.py PLAYER --character CHARACTER --config "2006Scape Server/ServerConfig.json" --mac-dmg
-# One-command friend-test path: prepare the bundle when needed, provision the PBKDF2 account, write the password only to ignored private credentials, create the public-safe player kit, and optionally build a Finder-friendly iconed macOS .app/DMG without touching runtime.
+# One-command named friend-test path: same as above, but with an operator-chosen account/character name. Read the ignored private credentials file only for a private handoff; never paste passwords into docs, logs, PRs, or public chat.
 scripts/package-macos-player-app.py PLAYER --character CHARACTER --prepared-dir dist/external-deployment --dmg
 # Build only the macOS .app/DMG wrapper from an already prepared bundle and handoff note. The .app should have icon, launch log, and visible failure alerts. Keep zip/player-kit flow for Windows/Linux and checksum-first handoffs.
 scripts/install-player-account-record.py PLAYER --ssh-target user@example.com --remote-accounts-dir '/opt/2006scape/2006Scape Server/data/accounts'

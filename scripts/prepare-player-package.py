@@ -4,6 +4,8 @@
 import argparse
 import json
 import os
+import re
+import secrets
 import subprocess
 import sys
 from pathlib import Path
@@ -13,6 +15,50 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = ROOT_DIR / "2006Scape Server" / "ServerConfig.json"
 DEFAULT_PREPARED_DIR = ROOT_DIR / "dist" / "external-deployment"
 DEFAULT_ACCOUNTS_DIR = ROOT_DIR / "2006Scape Server" / "data" / "accounts"
+SAFE_FILE_RE = re.compile(r"[^a-z0-9._-]+")
+SAFE_STEM_RE = re.compile(r"[^A-Za-z0-9_]+")
+MR_NAME_WORDS = (
+    "Scout",
+    "Gem",
+    "Flame",
+    "Fish",
+    "Wood",
+    "Athlete",
+    "Smith",
+    "Mine",
+    "Coal",
+    "Iron",
+    "Copper",
+    "Tin",
+    "Rune",
+    "Oak",
+    "Willow",
+    "Maple",
+    "Yew",
+    "Fletch",
+    "Cook",
+    "Chef",
+    "Bank",
+    "Quest",
+    "Clue",
+    "Trail",
+    "Stone",
+    "Anvil",
+    "Arrow",
+    "Bronze",
+    "Steel",
+    "Mith",
+    "Range",
+    "Prayer",
+    "Agile",
+    "Swift",
+    "Torch",
+    "Port",
+    "Vale",
+    "Cedar",
+    "Moss",
+    "Forge",
+)
 
 
 def fail(message):
@@ -23,6 +69,44 @@ def resolve_under_root(path):
     if path.is_absolute():
         return path
     return ROOT_DIR / path
+
+
+def safe_file_stem(value):
+    clean = SAFE_STEM_RE.sub("_", value.strip()).strip("_").lower()
+    return clean or "player"
+
+
+def safe_account_file_name(username):
+    normalized = username.strip().lower().replace(" ", "_")
+    return SAFE_FILE_RE.sub("_", normalized) + ".json"
+
+
+def account_artifacts_exist(prepared_dir, accounts_dir, username):
+    stem = safe_file_stem(username)
+    candidates = [
+        accounts_dir / safe_account_file_name(username),
+        prepared_dir / "private" / "player-credentials-{}.env".format(stem),
+        prepared_dir / "player-handoff-{}.md".format(stem),
+        prepared_dir / "player-kit-{}.zip".format(stem),
+    ]
+    return any(path.exists() for path in candidates)
+
+
+def suggest_mr_name(prepared_dir, accounts_dir):
+    base_candidates = ["Mr" + word for word in MR_NAME_WORDS if len("Mr" + word) <= 12]
+    available = [
+        name for name in base_candidates
+        if not account_artifacts_exist(prepared_dir, accounts_dir, name)
+    ]
+    if available:
+        return secrets.choice(available)
+    for _ in range(200):
+        word = secrets.choice(MR_NAME_WORDS)
+        suffix = str(secrets.randbelow(90) + 10)
+        name = ("Mr" + word)[:12 - len(suffix)] + suffix
+        if not account_artifacts_exist(prepared_dir, accounts_dir, name):
+            return name
+    fail("could not find an unused Mr-style player name")
 
 
 def reject_symlink(path, label):
@@ -121,7 +205,9 @@ def main():
             "Passwords are never printed and are written only to ignored private env files."
         )
     )
-    parser.add_argument("username", help="Player account username.")
+    parser.add_argument("username", nargs="?", help="Player account username.")
+    parser.add_argument("--random-name", action="store_true",
+            help="Choose an unused Mr-style username/character, inspired by existing test names.")
     parser.add_argument("--character", default="", help="Allowed/logged-in character. Defaults to username.")
     parser.add_argument("--config", default=str(DEFAULT_CONFIG), help="External-player server config for bundle preparation.")
     parser.add_argument("--prepared-dir", default=str(DEFAULT_PREPARED_DIR), help="Prepared deployment output directory.")
@@ -156,6 +242,15 @@ def main():
     reject_symlink(prepared_dir, "prepared deployment directory")
     if accounts_dir.exists():
         reject_symlink(accounts_dir, "accounts directory")
+    if args.random_name:
+        if args.username:
+            fail("--random-name cannot be combined with an explicit username")
+        if args.character:
+            fail("--random-name cannot be combined with --character; the generated character matches the username")
+        args.username = suggest_mr_name(prepared_dir, accounts_dir)
+        args.character = args.username
+    elif not args.username:
+        fail("username is required unless --random-name is set")
 
     prepared = prepare_bundle(args, prepared_dir)
 
@@ -227,12 +322,13 @@ def main():
         "success": True,
         "username": provision["username"],
         "character": provision["character"],
+        "nameGenerated": bool(args.random_name),
         "preparedDir": str(prepared_dir),
         "preparedBundleCreated": prepared,
         "playerKit": kit["playerKit"],
         "playerKitSha256": kit["playerKitSha256"],
         "privateCredentials": provision["privateCredentials"],
-        "accountRecord": str(accounts_dir / "{}.json".format(provision["username"].strip().lower().replace(" ", "_"))),
+        "accountRecord": str(accounts_dir / safe_account_file_name(provision["username"])),
         "handoffNote": provision["handoffNote"],
         "macApp": mac_package.get("appBundle", ""),
         "macDmg": mac_package.get("dmg", ""),

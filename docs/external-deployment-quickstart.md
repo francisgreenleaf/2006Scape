@@ -186,6 +186,17 @@ scripts/prepare-player-package.py PLAYER_USERNAME \
   --mac-dmg
 ```
 
+If the operator has not picked a name yet, let the helper choose an unused
+`Mr...` account/character name:
+
+```sh
+scripts/prepare-player-package.py \
+  --random-name \
+  --config "2006Scape Server/ServerConfig.json" \
+  --mac-dmg \
+  --json
+```
+
 That helper prepares `dist/external-deployment/` when needed, provisions the
 ignored PBKDF2 account, writes the generated password only under
 `dist/external-deployment/private/`, creates the public-safe
