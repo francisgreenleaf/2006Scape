@@ -46,6 +46,55 @@ env | LC_ALL=C sort | grep -E '(_USERNAME|_PASSWORD)='
 
 These are eight-character direct-TCP convenience passwords. They are fine for manual smoke testing with unique throwaway credentials, but they intentionally do not satisfy strict final deployment password policy.
 
+## Add A New VPS Player Account
+
+Use the player-package helper when an operator needs a new account, player kit,
+and optional Mac DMG. It writes the generated 20-character password only to an
+ignored owner-only private env file, never to stdout. The server reads PBKDF2
+account records during login, so installing one new account JSON does not require
+a server restart.
+
+For an operator-chosen name:
+
+```sh
+cd <local-worktree>
+scripts/prepare-player-package.py MrScout \
+  --character MrScout \
+  --config "2006Scape Server/ServerConfig.json" \
+  --mac-dmg \
+  --json
+```
+
+For a random unused name inspired by the existing `Mr...` test characters:
+
+```sh
+cd <local-worktree>
+scripts/prepare-player-package.py \
+  --random-name \
+  --config "2006Scape Server/ServerConfig.json" \
+  --mac-dmg \
+  --json
+```
+
+Read the JSON fields `username`, `privateCredentials`, `accountRecord`,
+`playerKit`, and `macDmg`. The password is in `privateCredentials` as
+`<USERNAME>_PASSWORD`; use it only for a private handoff to the player. Do not
+paste passwords into docs, logs, PRs, public chat, or Codex prompts unless the
+operator explicitly asks for a private local credential readout.
+
+Install only the generated account record onto the VPS with a dry-run first:
+
+```sh
+scripts/install-player-account-record.py USERNAME \
+  --accounts-dir "2006Scape Server/data/accounts" \
+  --ssh-target <operator-vps-ssh-target> \
+  --remote-accounts-dir '<vps-deploy-dir>/2006Scape Server/data/accounts'
+```
+
+If the printed plan is correct, rerun the same command with `--apply`. This
+copies one PBKDF2 account JSON, sets owner-only permissions through `install`,
+and does not start, stop, restart, or replace the live runtime.
+
 ## Player Connect Steps
 
 1. From the repo machine, use the packaged client folder:

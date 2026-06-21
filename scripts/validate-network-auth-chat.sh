@@ -1140,6 +1140,7 @@ grep -q -- "--prepared-dir dist/external-deployment" .codex/skills/2006scape-ext
 python3 agent-navigation/tools/script_registry.py show deployment_proof_bundle --json | grep -q -- "--prepared-dir dist/external-deployment"
 grep -q "scripts/render-player-handoff.py" README.md
 grep -q "scripts/prepare-player-package.py" README.md
+grep -q -- "--random-name" README.md
 grep -q "scripts/provision-player-account.py" README.md
 grep -q "scripts/package-macos-player-app.py" README.md
 grep -q "scripts/package-player-kit.py" README.md
@@ -1147,6 +1148,7 @@ grep -q "scripts/install-player-account-record.py" README.md
 grep -q "scripts/verify-player-kit.py" README.md
 grep -q "scripts/render-player-handoff.py" AGENTS.md
 grep -q "scripts/prepare-player-package.py" AGENTS.md
+grep -q -- "--random-name" AGENTS.md
 grep -q "scripts/provision-player-account.py" AGENTS.md
 grep -q "scripts/package-macos-player-app.py" AGENTS.md
 grep -q "scripts/package-player-kit.py" AGENTS.md
@@ -1154,6 +1156,7 @@ grep -q "scripts/install-player-account-record.py" AGENTS.md
 grep -q "scripts/verify-player-kit.py" AGENTS.md
 grep -q "scripts/render-player-handoff.py" docs/deployment-networking.md
 grep -q "scripts/prepare-player-package.py" docs/deployment-networking.md
+grep -q -- "--random-name" docs/deployment-networking.md
 grep -q "scripts/provision-player-account.py" docs/deployment-networking.md
 grep -q "scripts/package-macos-player-app.py" docs/deployment-networking.md
 grep -q "scripts/package-player-kit.py" docs/deployment-networking.md
@@ -1161,6 +1164,7 @@ grep -q "scripts/install-player-account-record.py" docs/deployment-networking.md
 grep -q "scripts/verify-player-kit.py" docs/deployment-networking.md
 grep -q "scripts/render-player-handoff.py" docs/external-deployment-quickstart.md
 grep -q "scripts/prepare-player-package.py" docs/external-deployment-quickstart.md
+grep -q -- "--random-name" docs/external-deployment-quickstart.md
 grep -q "scripts/provision-player-account.py" docs/external-deployment-quickstart.md
 grep -q "scripts/package-macos-player-app.py" docs/external-deployment-quickstart.md
 grep -q "scripts/package-player-kit.py" docs/external-deployment-quickstart.md
@@ -1175,13 +1179,16 @@ grep -q "scripts/install-player-account-record.py" docs/network-auth-agent-chat-
 grep -q "scripts/verify-player-kit.py" docs/network-auth-agent-chat-design.md
 grep -q "scripts/render-player-handoff.py" .codex/skills/2006scape/SKILL.md
 grep -q "scripts/prepare-player-package.py" .codex/skills/2006scape/SKILL.md
+grep -q -- "--random-name" .codex/skills/2006scape/SKILL.md
 grep -q "scripts/provision-player-account.py" .codex/skills/2006scape/SKILL.md
+grep -q -- "--random-name" .codex/skills/2006scape-script-registry/SKILL.md
 grep -q "scripts/package-macos-player-app.py" .codex/skills/2006scape/SKILL.md
 grep -q "scripts/package-player-kit.py" .codex/skills/2006scape/SKILL.md
 grep -q "scripts/install-player-account-record.py" .codex/skills/2006scape/SKILL.md
 grep -q "scripts/verify-player-kit.py" .codex/skills/2006scape/SKILL.md
 grep -q "scripts/render-player-handoff.py" .codex/skills/2006scape-external-deployment/SKILL.md
 grep -q "scripts/prepare-player-package.py" .codex/skills/2006scape-external-deployment/SKILL.md
+grep -q -- "--random-name" .codex/skills/2006scape-external-deployment/SKILL.md
 grep -q "scripts/provision-player-account.py" .codex/skills/2006scape-external-deployment/SKILL.md
 grep -q "scripts/package-macos-player-app.py" .codex/skills/2006scape-external-deployment/SKILL.md
 grep -q "scripts/package-player-kit.py" .codex/skills/2006scape-external-deployment/SKILL.md
@@ -1189,6 +1196,7 @@ grep -q "scripts/install-player-account-record.py" .codex/skills/2006scape-exter
 grep -q "scripts/verify-player-kit.py" .codex/skills/2006scape-external-deployment/SKILL.md
 grep -q "scripts/render-player-handoff.py" agent-navigation/data/script_registry.json
 grep -q "scripts/prepare-player-package.py" agent-navigation/data/script_registry.json
+grep -q -- "--random-name" agent-navigation/data/script_registry.json
 grep -q "scripts/provision-player-account.py" agent-navigation/data/script_registry.json
 grep -q "scripts/package-macos-player-app.py" agent-navigation/data/script_registry.json
 grep -q "scripts/package-player-kit.py" agent-navigation/data/script_registry.json
@@ -2916,6 +2924,54 @@ password = re.search(r"^MRONECMD_PASSWORD='([A-Za-z0-9]+)'$", credentials_text, 
 assert password not in summary_text
 assert summary["passwordPrinted"] is False, summary
 assert summary["runtimeTouched"] is False, summary
+PY
+
+RANDOM_PACKAGE_ACCOUNTS="$TMP_DIR/random-package-accounts"
+mkdir -p "$RANDOM_PACKAGE_ACCOUNTS"
+chmod 700 "$RANDOM_PACKAGE_ACCOUNTS"
+python3 scripts/prepare-player-package.py \
+    --random-name \
+    --prepared-dir "$TMP_DIR/prepared-tailscale" \
+    --accounts-dir "$RANDOM_PACKAGE_ACCOUNTS" \
+    --prepare-policy never \
+    --json > "$TMP_DIR/prepare-player-package-random.json"
+python3 - "$TMP_DIR/prepare-player-package-random.json" <<'PY'
+import json
+import re
+import sys
+from pathlib import Path
+
+summary_path = Path(sys.argv[1])
+summary_text = summary_path.read_text(encoding="utf-8")
+summary = json.loads(summary_text)
+assert summary["success"] is True, summary
+assert summary["nameGenerated"] is True, summary
+assert re.fullmatch(r"Mr[A-Za-z0-9]{1,10}", summary["username"]), summary
+assert summary["character"] == summary["username"], summary
+assert summary["preparedBundleCreated"] is False, summary
+assert Path(summary["playerKit"]).is_file(), summary
+assert Path(summary["privateCredentials"]).is_file(), summary
+assert Path(summary["handoffNote"]).is_file(), summary
+assert Path(summary["accountRecord"]).is_file(), summary
+assert summary["passwordPrinted"] is False, summary
+assert summary["runtimeTouched"] is False, summary
+assert not summary["macApp"], summary
+assert not summary["macDmg"], summary
+
+credentials_text = Path(summary["privateCredentials"]).read_text(encoding="utf-8")
+prefix = re.sub(r"[^A-Za-z0-9_]+", "_", summary["username"].strip()).strip("_").upper()
+password = re.search(r"^{}_PASSWORD='([A-Za-z0-9]+)'$".format(re.escape(prefix)), credentials_text, re.MULTILINE).group(1)
+assert len(password) == 20, credentials_text
+assert any(ch.islower() for ch in password), password
+assert any(ch.isupper() for ch in password), password
+assert any(ch.isdigit() for ch in password), password
+assert password not in summary_text
+
+account = json.loads(Path(summary["accountRecord"]).read_text(encoding="utf-8"))
+assert account["username"] == summary["username"].lower(), account
+assert account["allowedCharacters"] == [summary["username"].lower()], account
+assert account["passwordPolicy"]["minLength"] >= 12, account
+assert account["passwordPolicy"]["allowWeakPassword"] is False, account
 PY
 
 scripts/install-player-account-record.py MrOneCmd \
