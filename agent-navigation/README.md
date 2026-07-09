@@ -100,6 +100,8 @@ python3 agent-navigation/tools/launch_detached_runner.py \
 
 The supervisor does not restart the game server. It restarts the child only for classified transient bridge/session failures such as expired sessions, HTTP 502/503/504 gateway errors, connection resets, empty bridge replies, and one-off wrapper parse failures. Route stalls, death/combat safety stops, missing supplies, unreachable targets, explicit stop requests, and unknown exceptions are terminal by default.
 
+Use supervised launch especially for unattended mining, fletching, and woodcutting goals. The script registry includes copyable examples under `mining`, `fletching`, and `woodcutting`.
+
 ## Scripting Primitives
 
 Use [Agent Scripting Primitives](scripting-primitives.md) before adding or changing Java bridge tools. The bridge should expose stable gameplay inputs such as item-on-item, item-on-object, interface-button clicks, interface-item selection, walking, waiting, object/NPC interaction, combat, banking, shops, and inventory management. Strategy belongs in external Python scripts and JSON data.

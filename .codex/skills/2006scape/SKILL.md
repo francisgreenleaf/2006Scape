@@ -246,6 +246,9 @@ python3 agent-navigation/tools/catherby_food_runner.py --cycles 1 --quiet
 python3 agent-navigation/tools/catherby_food_runner_XS.py --profile PROFILE
 python3 agent-navigation/tools/runner_status_XS.py --profile PROFILE
 python3 agent-navigation/tools/launch_detached_runner.py --supervise --profile PROFILE --name runner-name --log agent-navigation/.local/runners/PROFILE/runner-name.log -- python3 agent-navigation/tools/SCRIPT.py --profile PROFILE
+python3 agent-navigation/tools/launch_detached_runner.py --supervise --profile PROFILE --name mining-iron --log agent-navigation/.local/runners/PROFILE/mining-iron.log -- python3 agent-navigation/tools/mining_runner.py --profile PROFILE --ores iron --target-mining-level 30 --quiet
+python3 agent-navigation/tools/launch_detached_runner.py --supervise --profile PROFILE --name fletching-long --log agent-navigation/.local/runners/PROFILE/fletching-long.log -- python3 agent-navigation/tools/fletching_runner.py --profile PROFILE --target-woodcutting-level 50 --target-fletching-level 50 --quiet
+python3 agent-navigation/tools/launch_detached_runner.py --supervise --profile PROFILE --name woodcutting-oak --log agent-navigation/.local/runners/PROFILE/woodcutting-oak.log -- python3 agent-navigation/tools/woodcutting_runner.py --profile PROFILE --tree oak --target-woodcutting-level 30 --quiet
 python3 agent-navigation/tools/catherby_food_runner.py --efficiency-report --quiet
 python3 agent-navigation/tools/smithing_runner.py --mode smith --item sword --amount 10
 python3 agent-navigation/tools/woodcutting_runner.py --tree oak --stop-when-inventory-full --quiet
