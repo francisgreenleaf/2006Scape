@@ -90,6 +90,13 @@ These notes are repo-specific operational memory from actual agent experience. A
 - **Use instead:** When a primitive-backed runner relies on a server skill interface, verify `click_interface_button` actually routes those button ids to the matching gameplay handler before debugging the Python loop.
 - **Validation:** After packaging and `runtime_doctor.py restart --replace-runtime --verify`, a live Tanner click converts cowhide to leather and leather recipe buttons consume leather/thread with XP gain.
 
+### Prove spellbook teleports through the authoritative handler
+
+- **Observed:** `click_interface_button` returned `success:true` for Ardougne button `6004` and Camelot button `4150`, but no teleport started and no runes were consumed.
+- **Cause:** The packet button path called `MagicTeleports.handleSpellTeleport`, while the bridge only posted a generic button event and returned a generic click acknowledgement.
+- **Use instead:** Route spellbook ids through `MagicTeleports`, report its typed outcome, and consume runes/add XP only after `startTeleport` sets the expected timer and destination.
+- **Validation:** `AgentToolServiceTest` proves Ardougne starts and consumes runes, Camelot missing-rune rejection stays put, game-state rejection preserves runes, and compact output keeps `teleportStarted`/`teleportStatus`.
+
 ### Use the documented agent-owned relaunch for clean bridge sessions
 
 - **Observed:** Stale clients, old `codex app-server --listen stdio://` children, and expired `agent-navigation/.local/rsbridge-session.json` files make fresh bridge testing unreliable after server restarts.

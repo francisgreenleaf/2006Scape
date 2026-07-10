@@ -15,6 +15,8 @@ Keep tools server-authoritative. HTTP handlers must not mutate gameplay directly
 
 Prefer a primitive-first bridge boundary. New gameplay strategies should usually be Python scripts that compose stable primitives such as `use_item_on_item`, `use_item_on_object`, `click_interface_button`, `select_interface_item`, `interact_object`, `interact_npc`, movement, wait, bank, shop, and combat tools. Add Java only when the bridge is missing a reusable gameplay input primitive; do not add a new bespoke Java tool for each skill loop.
 
+Interface dispatch is not automatically gameplay proof. `click_interface_button` routes spellbook teleport ids through `MagicTeleports` and reports `teleportStarted`/`teleportStatus`; for other generic buttons, `actionVerified:false` means the caller must prove the expected inventory, interface, XP, movement, or other post-state. Never use a generic "clicked" acknowledgement as evidence that a handler completed.
+
 All new or changed bridge primitives must be player/session scoped and profile-neutral. The claimed `AgentSession` player is the authority; do not hard-code a profile, default session files, profile-specific paths, or current-account assumptions into Java metadata, handlers, compact aliases, or result shaping. If a helper script is needed for proof or strategy, it must accept `--profile PROFILE` or honor `RS_PROFILE`/`RSBRIDGE_PROFILE` and pass that profile through to the bridge wrapper.
 
 Never print or copy bridge tokens. Use `agent-navigation/tools/rs-tool_XS.sh` or `agent-navigation/tools/rs-tool_XXS.sh` for routine live proof; use full `agent-navigation/tools/rs-tool.sh` only when a compact alias omits a named field needed to prove or debug the change.
