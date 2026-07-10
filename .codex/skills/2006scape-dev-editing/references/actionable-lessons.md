@@ -169,6 +169,13 @@ These notes are repo-specific operational memory from actual agent experience. A
 - **Use instead:** Keep long-range planning in `agent-navigation` route/trace/hazard tooling. Use `PathFinder` or bridge preview tools only to preflight local legs before movement.
 - **Validation:** A planned route should combine a learned macro path from `agent-navigation/tools/router.py` with local clipped reachability checks before issuing walk commands.
 
+### Keep passive teleports out of learned walk edges
+
+- **Observed:** ML2 marked Varrock-to-Ardougne routes proven even though they contained an untyped 607-tile jump from `3269,3167,0` to Ardougne after a real teleport had been recorded there.
+- **Cause:** `navdb.build_trace_graph()` added every changed passive tile as successful walking, and surface collision failure still appended the unreachable endpoint.
+- **Use instead:** Export teleports and object interactions as typed movement-transition evidence, require model and route geometry validation, and fail collision expansion closed on every coordinate layer.
+- **Validation:** `python3 agent-navigation/ml2-routing/route_ml.py validate-model` reports `invalidEdges: 0`; the exact regression route has `geometry.valid=true`, no Al Kharid waypoint, and no walk-step gap above 64 tiles.
+
 ### Keep passive movement logging out of the AI loop
 
 - **Observed:** Running `route_recorder.py` while server passive traces and agent batch traces existed double-counted movement and added stationary polling records to `agent-navigation/data/movement_traces.jsonl`.

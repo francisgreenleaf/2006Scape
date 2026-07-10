@@ -12,6 +12,7 @@ from typing import Any, Dict, Iterable, List, Tuple
 from . import VERSION
 from .common import chunked, distance, iter_jsonl, parse_tile, tile_key, utcnow, write_json
 from .paths import ARTIFACT_ROOT, ensure_artifact_dirs, latest_json, portable_artifact_path, resolve_artifact_path, timestamp_id
+from .validation import model_edge_warnings, walk_edge_warning
 
 
 MODEL_TYPE = "empirical_edge_cost_risk_v1"
@@ -169,13 +170,31 @@ def _route_attempt_training_record(record: Dict[str, Any]) -> Dict[str, Any] | N
     }
 
 
-def _load_edges(dataset_dir: Path) -> List[Dict[str, Any]]:
+def _load_edges(dataset_dir: Path) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
     records = list(iter_jsonl(dataset_dir / "edge_examples.jsonl"))
+    invalid_edges = []
+    for record in records:
+        left = parse_tile(record.get("fromTile") or record.get("from"))
+        right = parse_tile(record.get("toTile") or record.get("to"))
+        warning = walk_edge_warning(left, right) if left and right else {"type": "invalid_edge_tile"}
+        if warning:
+            invalid_edges.append({"from": record.get("from"), "to": record.get("to"), **warning})
+    if invalid_edges:
+        raise ValueError(
+            "dataset contains {} invalid untyped walk edges; first={}".format(
+                len(invalid_edges), invalid_edges[0]))
+    skipped_attempts = 0
     for attempt in iter_jsonl(dataset_dir / "route_attempts.jsonl"):
         training_record = _route_attempt_training_record(attempt)
-        if training_record:
-            records.append(training_record)
-    return records
+        if not training_record:
+            continue
+        left = parse_tile(training_record.get("fromTile"))
+        right = parse_tile(training_record.get("toTile"))
+        if not left or not right or walk_edge_warning(left, right):
+            skipped_attempts += 1
+            continue
+        records.append(training_record)
+    return records, {"skippedNonLocalRouteAttempts": skipped_attempts}
 
 
 def train_model(args: SimpleNamespace) -> Dict[str, Any]:
@@ -187,7 +206,7 @@ def train_model(args: SimpleNamespace) -> Dict[str, Any]:
             raise SystemExit("no dataset found; run export first")
         summary = __import__("json").load(latest.open())
         dataset_dir = resolve_artifact_path(summary["outputDir"])
-    records = _load_edges(dataset_dir)
+    records, input_diagnostics = _load_edges(dataset_dir)
     if not records:
         raise SystemExit("dataset has no edge examples: {}".format(dataset_dir))
     workers = max(1, int(args.workers or 1))
@@ -234,6 +253,7 @@ def train_model(args: SimpleNamespace) -> Dict[str, Any]:
             "records": len(records),
             "threadedChunks": len(pieces),
             "method": "empirical Bayes edge/region/object aggregation plus route-attempt outcome risk",
+            **input_diagnostics,
         },
         "global": global_final,
         "edgeStats": finalized_edges,
@@ -253,6 +273,16 @@ def train_model(args: SimpleNamespace) -> Dict[str, Any]:
             "objectInteractionPenalty": 25.0,
             "staleRoutePenalty": 90.0,
         },
+    }
+    integrity_warnings = model_edge_warnings(model)
+    if integrity_warnings:
+        raise ValueError(
+            "refusing to publish model with {} invalid untyped walk edges; first={}".format(
+                len(integrity_warnings), integrity_warnings[0]))
+    model["integrity"] = {
+        "valid": True,
+        "checkedEdges": len(finalized_edges),
+        "invalidEdges": 0,
     }
     write_json(output_dir / "model.json", model)
     if getattr(args, "update_latest", True):
@@ -279,7 +309,15 @@ def load_model(path: str | None = None) -> Dict[str, Any] | None:
     if not model_path.exists():
         return None
     with model_path.open("r", encoding="utf-8") as handle:
-        return json.load(handle)
+        model = json.load(handle)
+    warnings = model_edge_warnings(model)
+    model["integrity"] = {
+        "valid": not warnings,
+        "checkedEdges": len(model.get("edgeStats") or {}),
+        "invalidEdges": len(warnings),
+        "firstInvalidEdge": warnings[0] if warnings else None,
+    }
+    return model
 
 
 def segment_prediction(model: Dict[str, Any], from_tile: Dict[str, int], to_tile: Dict[str, int]) -> Dict[str, Any]:

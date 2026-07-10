@@ -615,6 +615,27 @@ def route_evidence(value):
     return {k: v for k, v in out.items() if v not in (None, "", [], {})}
 
 
+def route_geometry(value):
+    if not isinstance(value, dict):
+        return value
+    largest = value.get("largestDiscontinuity") if isinstance(value.get("largestDiscontinuity"), dict) else None
+    if largest:
+        largest = {
+            "index": largest.get("index"),
+            "from": tile(largest.get("from")),
+            "to": tile(largest.get("to")),
+            "distance": largest.get("distance"),
+            "planeChange": largest.get("planeChange"),
+        }
+        largest = {k: v for k, v in largest.items() if v not in (None, "", [], {})}
+    out = {
+        "valid": value.get("valid"),
+        "warnings": value.get("warningCount"),
+        "largestJump": largest,
+    }
+    return {k: v for k, v in out.items() if v not in (None, "", [], {})}
+
+
 def compact_command(command, limit=10):
     if not isinstance(command, list):
         return command
@@ -655,6 +676,8 @@ def route_decision(data, command):
         return "transition_first: use the required door/ladder/gate/etc, then request the next route"
     if status == "unsupported-coordinate-layer":
         return "do_not_execute: unsupported coordinate layer"
+    if status == "invalid-route-geometry":
+        return "do_not_execute: route geometry is corrupt"
     if review:
         return "review_before_execute: safety review is required"
     if actionable and command_present and status == "ok":
@@ -695,6 +718,7 @@ def route_definition(data):
         "arrival": data.get("arrivalRadius"),
         "planner": data.get("planner"),
         "evidence": route_evidence(data.get("evidence")),
+        "geometry": route_geometry(data.get("geometry")),
         "next": tile(data.get("next")),
         "end": tile(data.get("endTile") or data.get("targetTile")),
         "stepCount": data.get("routeStepCount"),

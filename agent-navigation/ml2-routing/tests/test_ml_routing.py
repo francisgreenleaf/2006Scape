@@ -34,10 +34,12 @@ from ml_routing.fast_planner import _route_hint_requirement_penalty  # noqa: E40
 from ml_routing.model import segment_prediction, train_model  # noqa: E402
 from ml_routing.planner import route_definition  # noqa: E402
 from ml_routing.transition_catalog import transition_catalog  # noqa: E402
-from ml_routing.validation import validate_route_steps  # noqa: E402
+from ml_routing.validation import model_edge_warnings, route_geometry_summary, validate_route_steps  # noqa: E402
 import execute_route_definition  # noqa: E402
+import navdb  # noqa: E402
 from execute_route_definition import choose_lookahead_target  # noqa: E402
 from route_ml import persist_route_definition  # noqa: E402
+from xs_common import route_definition as compact_route_definition  # noqa: E402
 
 
 class CommonTests(unittest.TestCase):
@@ -122,6 +124,52 @@ class CollisionTests(unittest.TestCase):
         self.assertNotIn({"x": 2, "y": 2, "height": 0}, path)
 
 
+class TraceGraphTests(unittest.TestCase):
+    def test_teleport_is_preserved_but_not_added_as_walk_edge(self):
+        record = {
+            "event": "teleport",
+            "teleported": True,
+            "mapRegionChanged": True,
+            "tool": "server_passive_tick",
+            "traceId": "teleport-regression",
+            "previousTile": {"x": 3269, "y": 3167, "height": 0},
+            "tile": {"x": 2662, "y": 3304, "height": 0},
+        }
+        with patch.object(navdb, "iter_movement_traces", return_value=iter([record])):
+            graph = navdb.build_trace_graph()
+        self.assertNotIn(("3269,3167,0", "2662,3304,0"), graph["edges"])
+        self.assertEqual(graph["transitionKinds"], {"teleport": 1})
+        self.assertEqual(graph["transitions"][0]["distance"], 607)
+
+    def test_object_interaction_is_not_collapsed_into_walk_edge(self):
+        record = {
+            "event": "object_interaction",
+            "tool": "server_passive_tick",
+            "objectId": 190,
+            "objectName": "Gate",
+            "previousTile": {"x": 2459, "y": 3382, "height": 0},
+            "tile": {"x": 2459, "y": 3385, "height": 0},
+        }
+        with patch.object(navdb, "iter_movement_traces", return_value=iter([record])):
+            graph = navdb.build_trace_graph()
+        self.assertFalse(graph["edges"])
+        self.assertEqual(graph["transitionKinds"], {"object_interaction": 1})
+        self.assertEqual(graph["transitions"][0]["objectId"], 190)
+
+    def test_normal_map_region_boundary_step_remains_walkable(self):
+        record = {
+            "event": "movement",
+            "mapRegionChanged": True,
+            "tool": "server_passive_tick",
+            "previousTile": {"x": 3053, "y": 3462, "height": 0},
+            "tile": {"x": 3053, "y": 3464, "height": 0},
+        }
+        with patch.object(navdb, "iter_movement_traces", return_value=iter([record])):
+            graph = navdb.build_trace_graph()
+        self.assertIn(("3053,3462,0", "3053,3464,0"), graph["edges"])
+        self.assertFalse(graph["transitions"])
+
+
 class BenchmarkTests(unittest.TestCase):
     def test_ml2_showcase_cases_keep_requested_mix(self):
         self.assertEqual(len(ML2_SHOWCASE_CASES), 10)
@@ -172,6 +220,37 @@ class ModelTests(unittest.TestCase):
             self.assertEqual(prediction["source"], "edge")
             self.assertGreater(prediction["confidence"], 0.5)
             self.assertIn("combatExposure", prediction)
+
+    def test_train_refuses_untyped_long_edge(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            dataset = Path(tmp) / "dataset"
+            dataset.mkdir()
+            record = {
+                "from": "3269,3167,0",
+                "to": "2662,3304,0",
+                "fromTile": {"x": 3269, "y": 3167, "height": 0},
+                "toTile": {"x": 2662, "y": 3304, "height": 0},
+                "attempts": 1,
+                "successes": 1,
+                "ticks": 1,
+                "distance": 607,
+            }
+            (dataset / "edge_examples.jsonl").write_text(json.dumps(record) + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "invalid untyped walk edges"):
+                train_model(SimpleNamespace(
+                    dataset_dir=str(dataset),
+                    model_id="invalid",
+                    output_dir=str(Path(tmp) / "model"),
+                    workers=2,
+                    update_latest=False,
+                ))
+
+    def test_model_audit_finds_exact_al_kharid_discontinuity(self):
+        warnings = model_edge_warnings({
+            "edgeStats": {"3269,3167,0>2662,3304,0": {"successes": 1}},
+        })
+        self.assertEqual(len(warnings), 1)
+        self.assertEqual(warnings[0]["distance"], 607)
 
     def test_train_uses_route_attempt_outcomes_for_risk(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -548,9 +627,76 @@ class ModelTests(unittest.TestCase):
             max_warnings=8,
             no_cache_direct=True,
         ), model)
-        self.assertEqual(result["status"], "error")
+        self.assertEqual(result["status"], "invalid-route-geometry")
         self.assertFalse(result["collisionExpanded"])
         self.assertIn("collision", result["message"])
+
+    def test_fast_route_rejects_surface_collision_failures(self):
+        model = {
+            "modelId": "tiny",
+            "trainedAt": "test",
+            "weights": {},
+            "global": {"averageTicks": 1.0, "averageDistance": 1.0, "riskScore": 0.0, "confidence": 0.8},
+            "regionStats": {},
+            "edgeStats": {
+                "3200,3200,0>3250,3200,0": {
+                    "successes": 3,
+                    "failures": 0,
+                    "averageTicks": 50.0,
+                    "averageDistance": 50.0,
+                    "riskScore": 0.0,
+                    "confidence": 0.8,
+                    "objectInteractionRate": 0.0,
+                },
+            },
+        }
+        args = SimpleNamespace(
+            from_tile="3200,3200,0",
+            to="3250,3200,0",
+            combat_level=30,
+            food=10,
+            coins=0,
+            run_energy=67,
+            run_enabled=True,
+            allow_lethal=False,
+            hazard_buffer=10,
+            graph_snap_distance=0,
+            max_batch_distance=24,
+            compress_gap=18,
+            max_suspects=5,
+            max_warnings=8,
+            no_cache_collision=False,
+            no_cache_direct=True,
+            no_cache_mesh=True,
+            collision_padding_tiles=64,
+            collision_max_expansions=250000,
+            waypoint_arrival_radius=1,
+            no_shortcut_optimize=False,
+            shortcut_max_span=128,
+            shortcut_min_savings=4,
+            shortcut_corridor_radius=18,
+            route_step_gap=10,
+        )
+        failed_expansion = {
+            "success": False,
+            "tiles": [{"x": 3200, "y": 3200, "height": 0}],
+            "distance": 0,
+            "warnings": [{"reason": "no-cache-clipped-path"}],
+            "failures": [{
+                "from": "3200,3200,0",
+                "to": "3250,3200,0",
+                "distance": 50,
+                "reason": "no-cache-clipped-path",
+            }],
+            "segmentsExpanded": 0,
+            "skippedObjectTransitions": 0,
+            "grid": {},
+        }
+        with patch("ml_routing.fast_planner.expand_route_path", return_value=failed_expansion):
+            result = fast_route(args, model)
+        self.assertEqual(result["status"], "invalid-route-geometry")
+        self.assertFalse(result["collision"]["success"])
+        self.assertIsNone(result["next"])
 
     def test_fast_route_blocks_separate_underground_areas(self):
         model = {
@@ -718,6 +864,43 @@ class ModelTests(unittest.TestCase):
 
 
 class ApiTests(unittest.TestCase):
+    def test_corrupt_route_is_non_actionable_and_compact_output_exposes_jump(self):
+        args = SimpleNamespace(
+            from_tile="3254,3421,0",
+            to="ardougne_south_bank",
+            allow_lethal=False,
+            max_batch_distance=24,
+            runner_max_batches=8,
+            trace_profile="",
+            route_evidence_jsonl="agent-navigation/.local/run-evidence/test.routes.jsonl",
+            no_route_evidence=False,
+            planner="fast",
+        )
+        candidate = {
+            "planner": "fast",
+            "mode": "learned",
+            "status": "ok",
+            "targetTile": {"x": 2618, "y": 3332, "height": 0},
+            "routeDistance": 894,
+            "edgeSources": {"model_trace": 2},
+            "routeSteps": [
+                {"type": "walk", "x": 3269, "y": 3167, "height": 0},
+                {"type": "walk", "x": 2662, "y": 3295, "height": 0},
+            ],
+        }
+        definition = route_definition(args, candidate)
+        self.assertEqual(definition["status"], "invalid-route-geometry")
+        self.assertFalse(definition["actionable"])
+        self.assertFalse(definition["evidence"]["proven"])
+        self.assertEqual(definition["geometry"]["largestDiscontinuity"]["distance"], 607)
+        self.assertEqual(definition["execution"]["command"], [])
+        compact = compact_route_definition(definition)
+        self.assertEqual(compact["geometry"]["largestJump"]["distance"], 607)
+        self.assertIn("do_not_execute", compact["decision"])
+        with tempfile.TemporaryDirectory() as tmp:
+            persisted = persist_route_definition(SimpleNamespace(route_definition_dir=tmp), definition)
+        self.assertEqual(persisted["execution"]["command"], [])
+
     def test_route_definition_includes_execution_and_feedback(self):
         args = SimpleNamespace(
             from_tile="1,1,0",
@@ -891,6 +1074,53 @@ class ApiTests(unittest.TestCase):
 
 
 class ExecutorTests(unittest.TestCase):
+    def test_executor_rejects_corrupt_route_before_bridge_action(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            route_path = Path(tmp) / "route.json"
+            evidence_path = Path(tmp) / "evidence.jsonl"
+            route_path.write_text(json.dumps({
+                "schemaVersion": 1,
+                "api": "2006scape.route-definition",
+                "routeId": "corrupt-regression",
+                "mode": "learned",
+                "from": "3254,3421,0",
+                "to": "ardougne_south_bank",
+                "targetTile": {"x": 2618, "y": 3332, "height": 0},
+                "routeSteps": [
+                    {"type": "walk", "x": 3269, "y": 3167, "height": 0},
+                    {"type": "walk", "x": 2662, "y": 3295, "height": 0},
+                ],
+            }), encoding="utf-8")
+            args = SimpleNamespace(
+                route_definition=str(route_path),
+                profile="",
+                evidence_jsonl=str(evidence_path),
+                run_mode="auto",
+                eat_at=0,
+                arrival_radius=None,
+                max_ticks=95,
+                max_walk_distance=36,
+                stop_distance=0,
+                transition_approach_distance=0,
+                transition_post_distance=0,
+                transition_max_ticks=20,
+                lookahead_distance=30,
+                lookahead_step_limit=4,
+                no_lookahead=False,
+                off_route_distance=-1,
+                stop_on_combat=False,
+                observe_on_contact=False,
+                report_every=100,
+            )
+            with patch.object(execute_route_definition.bridge, "observe") as observe, \
+                    patch.object(execute_route_definition.bridge, "call_tool") as call_tool:
+                self.assertEqual(execute_route_definition.run(args), 5)
+            observe.assert_not_called()
+            call_tool.assert_not_called()
+            outcome = json.loads(evidence_path.read_text(encoding="utf-8"))
+            self.assertEqual(outcome["problemKind"], "route_data_corruption")
+            self.assertEqual(outcome["geometry"]["largestDiscontinuity"]["distance"], 607)
+
     def test_executor_dispatches_object_transition_and_stops_walk_lookahead(self):
         with tempfile.TemporaryDirectory() as tmp:
             route_path = Path(tmp) / "route.json"

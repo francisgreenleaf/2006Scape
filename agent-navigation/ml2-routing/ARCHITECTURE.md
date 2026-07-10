@@ -21,6 +21,7 @@ route_ml.py export
         |
         v
 route_ml.py train --workers N
+route_ml.py validate-model
         |
         v
 models/<modelId>/model.json
@@ -65,6 +66,20 @@ This creates a clean training/evaluation surface for later gradient-boosted mode
 ## Fast And Full Planning
 
 `--planner fast` is the default ML2 test path. It loads the latest trained model, builds an in-memory graph from learned edge statistics and route hints, applies deterministic hazard checks, expands the selected macro path through cache-derived clipping, and returns a compact recommendation. If the learned graph is incomplete or clearly detouring, it can also test cache-derived alternatives and select them over the learned candidate. `cache_direct` searches start-to-target with hazard costs. `cache_mesh` keeps required learned object transitions, then replans ordinary walking legs from cache-derived clipping.
+
+### Integrity Gates
+
+ML2 treats movement discontinuities as typed evidence, not walking:
+
+- passive `teleport` records and `teleported=true` records are exported as movement transitions;
+- object interaction records are exported separately instead of becoming anonymous walk edges;
+- same-plane passive movement is bounded to two tiles per tick;
+- other untyped graph edges and route-definition walk steps are bounded to 64 tiles;
+- plane changes require an explicit typed transition.
+
+Dataset export writes `movement_transitions.jsonl` for excluded teleport/object/plane evidence. Model training fails before publishing if an invalid walk edge remains. Model loading and graph construction also audit old artifacts, collision expansion fails closed on both surface and underground routes, the route-definition contract exposes the largest anomaly, and the executor repeats the full geometry validation before any bridge action.
+
+This is intentionally defense in depth. A corrupt trace must pass ingestion, model release, planner expansion, definition validation, and executor preflight before it could move a character.
 
 `--planner full` wraps the existing `router.py` and `route_eval.py` logic. It is slower because it rebuilds trace-backed graphs, but it is useful for diagnostics and parity checks against the older deterministic planner.
 

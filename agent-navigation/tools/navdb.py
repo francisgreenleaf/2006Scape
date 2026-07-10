@@ -26,6 +26,8 @@ TRACE_FAILURE_EVENTS = set([
     "unexpected_combat",
     "max_ticks_reached",
 ])
+PASSIVE_TRACE_MAX_WALK_DISTANCE = 2
+UNTYPED_TRACE_MAX_WALK_DISTANCE = 64
 
 
 def load_json(name):
@@ -499,6 +501,57 @@ def object_info_key(info):
     return "{}:{}{}".format(object_id, name, suffix)
 
 
+def trace_movement_kind(record, previous, tile):
+    """Classify non-walk movement before it can become a graph edge."""
+    event = str(record.get("event") or record.get("batchStatus") or "").strip().lower()
+    if event == "teleport" or record.get("teleported") is True:
+        return "teleport"
+    if object_info_from_record(record) is not None:
+        return "object_interaction"
+    if previous.get("height", 0) != tile.get("height", 0):
+        return "plane_change"
+    source = str(record.get("_sourcePath") or "")
+    tool = str(record.get("tool") or "")
+    passive = tool == "server_passive_tick" or "player-movement-traces" in Path(source).parts
+    maximum = PASSIVE_TRACE_MAX_WALK_DISTANCE if passive else UNTYPED_TRACE_MAX_WALK_DISTANCE
+    if distance(previous, tile) > maximum:
+        return "map_region_jump" if record.get("mapRegionChanged") is True else "untyped_discontinuity"
+    return "walk"
+
+
+def trace_transition_record(record, previous, tile, kind, trace_id=""):
+    info = object_info_from_record(record)
+    movement_distance = distance(previous, tile)
+    transition = {
+        "schemaVersion": 1,
+        "recordType": "movement_transition",
+        "kind": kind,
+        "from": tile_key(previous),
+        "to": tile_key(tile),
+        "fromTile": previous,
+        "toTile": tile,
+        "distance": movement_distance if math.isfinite(movement_distance) else None,
+        "event": str(record.get("event") or record.get("batchStatus") or ""),
+        "tool": str(record.get("tool") or ""),
+        "traceId": trace_id,
+        "sourcePath": str(record.get("_sourcePath") or ""),
+        "sourceLine": record.get("_sourceLine"),
+        "timestamp": str(record.get("timestamp") or ""),
+        "success": not is_trace_failure(record),
+        "hitpointsLost": int(record.get("hitpointsLost") or 0),
+        "isInCombat": record_in_combat(record),
+    }
+    if info is not None:
+        transition.update({
+            "objectId": info.get("objectId"),
+            "objectName": info.get("name"),
+            "objectTile": info.get("tile"),
+            "option": info.get("option"),
+            "phase": info.get("phase"),
+        })
+    return {key: value for key, value in transition.items() if value not in (None, "", [], {})}
+
+
 def record_tick_weight(record):
     for key in ("batchTicks", "ticks"):
         try:
@@ -599,7 +652,10 @@ def build_trace_graph(extra_paths=None, profile=None, include_unscoped=False,
     nodes = {}
     edges = {}
     blockers = {}
+    transitions = []
+    transition_kinds = {}
     record_count = 0
+    walk_record_count = 0
     trace_ids = set()
     for record in iter_movement_traces(
             extra_paths, profile, include_unscoped, include_agent_batch, include_legacy_recorder):
@@ -621,9 +677,15 @@ def build_trace_graph(extra_paths=None, profile=None, include_unscoped=False,
             continue
         previous_key = tile_key(previous)
         nodes[previous_key] = previous
+        movement_kind = trace_movement_kind(record, previous, tile)
+        if movement_kind != "walk":
+            transitions.append(trace_transition_record(record, previous, tile, movement_kind, trace_id))
+            transition_kinds[movement_kind] = transition_kinds.get(movement_kind, 0) + 1
+            continue
         if previous_key == current_key:
             continue
         add_trace_edge(edges, previous_key, current_key, record, trace_id)
+        walk_record_count += 1
         if reversible_trace_record(record, previous, tile):
             add_trace_edge(edges, current_key, previous_key, record, trace_id, inferred_reverse=True)
     adjacency = {}
@@ -634,7 +696,11 @@ def build_trace_graph(extra_paths=None, profile=None, include_unscoped=False,
         "edges": edges,
         "adjacency": adjacency,
         "blockers": blockers,
+        "transitions": transitions,
         "recordCount": record_count,
+        "walkRecordCount": walk_record_count,
+        "transitionCount": len(transitions),
+        "transitionKinds": transition_kinds,
         "traceCount": len(trace_ids),
     }
 

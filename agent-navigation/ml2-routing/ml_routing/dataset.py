@@ -127,7 +127,7 @@ def _edge_record(db: Dict[str, Any], edge: Dict[str, Any], profile: str, generat
 
 def edge_examples(profile: str = "", include_unscoped: bool = False,
                   include_agent_batch: bool = False, include_legacy_recorder: bool = False,
-                  extra_trace_paths: Optional[List[str]] = None, generated_at: Optional[str] = None) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+                  extra_trace_paths: Optional[List[str]] = None, generated_at: Optional[str] = None) -> Tuple[List[Dict[str, Any]], Dict[str, Any], List[Dict[str, Any]]]:
     navdb = _load_nav_modules()
     db = navdb.load_db()
     generated_at = generated_at or utcnow().isoformat().replace("+00:00", "Z")
@@ -144,12 +144,21 @@ def edge_examples(profile: str = "", include_unscoped: bool = False,
     ]
     summary = {
         "traceRecords": graph["recordCount"],
+        "walkRecords": graph.get("walkRecordCount", 0),
         "traceSessions": graph["traceCount"],
         "nodes": len(graph["nodes"]),
         "edges": len(graph["edges"]),
         "blockers": len(graph["blockers"]),
+        "movementTransitions": graph.get("transitionCount", 0),
+        "movementTransitionKinds": graph.get("transitionKinds", {}),
     }
-    return records, summary
+    transitions = []
+    for item in graph.get("transitions", []):
+        transition = dict(item)
+        transition["generatedAt"] = generated_at
+        transition["profile"] = profile or ""
+        transitions.append(transition)
+    return records, summary, transitions
 
 
 def route_hint_edges(generated_at: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -338,11 +347,18 @@ def route_attempts(profile: str = "", include_local: bool = True, generated_at: 
 
 
 def object_transitions(profile: str = "", include_unscoped: bool = False,
+                       include_agent_batch: bool = False, include_legacy_recorder: bool = False,
+                       extra_trace_paths: Optional[List[str]] = None,
                        generated_at: Optional[str] = None) -> List[Dict[str, Any]]:
     navdb = _load_nav_modules()
     generated_at = generated_at or utcnow().isoformat().replace("+00:00", "Z")
     records = []
-    for record in navdb.iter_movement_traces(profile=profile, include_unscoped=include_unscoped):
+    for record in navdb.iter_movement_traces(
+            extra_paths=extra_trace_paths,
+            profile=profile,
+            include_unscoped=include_unscoped,
+            include_agent_batch=include_agent_batch,
+            include_legacy_recorder=include_legacy_recorder):
         info = navdb.object_info_from_record(record)
         if info is None:
             continue
@@ -372,6 +388,17 @@ def object_transitions(profile: str = "", include_unscoped: bool = False,
     return records
 
 
+def object_transitions_from_movement(records: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    transitions = []
+    for record in records:
+        if record.get("kind") != "object_interaction":
+            continue
+        item = dict(record)
+        item["recordType"] = "object_transition"
+        transitions.append(item)
+    return transitions
+
+
 def export_dataset(args: SimpleNamespace) -> Dict[str, Any]:
     ensure_artifact_dirs()
     now = utcnow()
@@ -380,7 +407,7 @@ def export_dataset(args: SimpleNamespace) -> Dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
     generated_at = now.isoformat().replace("+00:00", "Z")
 
-    edges, graph_summary = edge_examples(
+    edges, graph_summary, movement_transitions = edge_examples(
         profile=args.profile,
         include_unscoped=args.include_unscoped_traces,
         include_agent_batch=args.include_agent_batch_traces,
@@ -390,17 +417,14 @@ def export_dataset(args: SimpleNamespace) -> Dict[str, Any]:
     )
     hints = route_hint_edges(generated_at=generated_at)
     attempts = route_attempts(profile=args.profile, include_local=not args.no_local_evidence, generated_at=generated_at)
-    transitions = object_transitions(
-        profile=args.profile,
-        include_unscoped=args.include_unscoped_traces,
-        generated_at=generated_at,
-    )
+    transitions = object_transitions_from_movement(movement_transitions)
 
     counts = {
         "edgeExamples": write_jsonl(output_dir / "edge_examples.jsonl", edges),
         "routeHintEdges": write_jsonl(output_dir / "route_hint_edges.jsonl", hints),
         "routeAttempts": write_jsonl(output_dir / "route_attempts.jsonl", attempts),
         "objectTransitions": write_jsonl(output_dir / "object_transitions.jsonl", transitions),
+        "movementTransitions": write_jsonl(output_dir / "movement_transitions.jsonl", movement_transitions),
     }
     statuses = Counter(str(item.get("status") or "") for item in attempts)
     qualities = Counter(str((item.get("runEfficiency") or {}).get("warning") or "") for item in attempts)
