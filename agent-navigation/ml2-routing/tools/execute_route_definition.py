@@ -20,6 +20,12 @@ if str(ML_ROOT) not in sys.path:
     sys.path.insert(0, str(ML_ROOT))
 
 import bridge_script as bridge
+from controller_lease import (
+    ControllerBusyError,
+    ControllerLeaseError,
+    acquire_or_join_controller,
+    compact_lease,
+)
 from profile_utils import resolve_profile, run_evidence_path
 from usage_log import log_usage
 from ml_routing.validation import route_geometry_summary
@@ -329,6 +335,37 @@ def transition_args(step: Dict[str, Any], args: argparse.Namespace) -> Dict[str,
     return payload
 
 
+def controller_conflict_outcome(
+    args: argparse.Namespace,
+    definition: Dict[str, Any],
+    profile: str,
+    exc: Exception,
+) -> int:
+    current = compact_lease(exc.current) if isinstance(exc, ControllerBusyError) else {}
+    outcome = {
+        "schemaVersion": 1,
+        "event": "route_outcome",
+        "timestamp": utcnow(),
+        "source": "execute_route_definition",
+        "profile": profile,
+        "routeId": definition.get("routeId", ""),
+        "status": "controller_conflict",
+        "success": False,
+        "failureKind": "gameplay_controller_busy",
+        "problemKind": "controller_conflict",
+        "targetPlace": definition.get("to"),
+        "from": definition.get("from"),
+        "to": tile_key(normalize_tile(definition.get("targetTile"))),
+        "targetTile": normalize_tile(definition.get("targetTile")),
+        "activeController": current,
+        "message": str(exc),
+        "notes": "No bridge action was attempted because another controller owns this profile.",
+    }
+    append_jsonl(args.evidence_jsonl, {key: value for key, value in outcome.items() if value not in ("", [], {}, None)})
+    print(json.dumps({"event": "route_end", **outcome}, sort_keys=True), flush=True)
+    return 6
+
+
 def run(args: argparse.Namespace) -> int:
     definition_path = Path(args.route_definition)
     definition = json.loads(definition_path.read_text(encoding="utf-8"))
@@ -363,6 +400,26 @@ def run(args: argparse.Namespace) -> int:
         append_jsonl(args.evidence_jsonl, {key: value for key, value in outcome.items() if value not in ("", [], {}, None)})
         print(json.dumps({"event": "route_end", **outcome}, sort_keys=True), flush=True)
         return 5
+    try:
+        controller_lease = acquire_or_join_controller(
+            profile,
+            "ml2-route:{}".format(definition.get("routeId") or definition_path.stem),
+            "ml2_route_executor",
+        )
+    except (ControllerBusyError, ControllerLeaseError) as exc:
+        return controller_conflict_outcome(args, definition, profile, exc)
+    try:
+        return execute_valid_route(args, definition, profile, controller_lease)
+    finally:
+        controller_lease.release()
+
+
+def execute_valid_route(
+    args: argparse.Namespace,
+    definition: Dict[str, Any],
+    profile: str,
+    controller_lease,
+) -> int:
     player = bridge.observe(profile)
     player = set_run_for_mode(player, args.run_mode, profile)
     start_player = dict(player)
@@ -392,6 +449,17 @@ def run(args: argparse.Namespace) -> int:
     problem_kind = ""
     lookahead_distance = 0 if args.no_lookahead else int(args.lookahead_distance)
     while step_index < len(steps):
+        if controller_lease.stop_requested():
+            problem_kind = "controller_stop_requested"
+            break
+        try:
+            if controller_lease.owns:
+                controller_lease.refresh()
+            else:
+                controller_lease.current()
+        except ControllerLeaseError:
+            problem_kind = "controller_ownership_lost"
+            break
         batch += 1
         step = steps[step_index]
         if is_object_transition_step(step):

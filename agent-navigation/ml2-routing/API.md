@@ -133,6 +133,19 @@ Before any bridge observation or action, the executor validates the complete per
 {"status": "route_data_corruption", "problemKind": "route_data_corruption"}
 ```
 
+After geometry validation and still before any bridge action, the executor
+acquires the selected profile's gameplay-controller lease. A standalone route
+cannot compete with an active runner:
+
+```json
+{"status": "controller_conflict", "problemKind": "controller_conflict"}
+```
+
+An executor launched by the active supervised runner inherits that runner's
+opaque lease id and is allowed to proceed. The lease id is process plumbing;
+agents should use `gameplay_controller_XS.py status/stop`, not read or edit the
+lease file directly.
+
 ## Status Semantics
 
 `status: "requires-object-transition"` means ML2 cannot automatically include or execute the needed transition in this route definition yet, usually because the request crosses surface/underground layers or separate underground cache areas without a known transition chain. It does not mean every inline gate is unsupported. Known inline transitions should appear directly in `routeSteps` as `object_transition`.

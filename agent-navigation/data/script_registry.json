@@ -85,7 +85,7 @@
       "name": "Supervised Runner",
       "path": "agent-navigation/tools/supervised_runner.py",
       "kind": "runtime_helper",
-      "description": "Wraps any gameplay runner with conservative process supervision, profile-scoped child/supervisor pid files, status JSON, bounded backoff, and restarts only for known transient bridge/session failures.",
+      "description": "Wraps any gameplay runner with conservative process supervision, one profile-scoped gameplay-controller lease, child/supervisor pid files, status JSON, bounded backoff, and restarts only for known transient bridge/session failures.",
       "aliases": [
         "supervised runner",
         "runner supervisor",
@@ -103,6 +103,32 @@
       "examples": [
         "python3 agent-navigation/tools/supervised_runner.py --profile MrFlame --name mining-coal --log agent-navigation/.local/runners/mrflame/mining-coal.log -- python3 agent-navigation/tools/mining_runner.py --profile MrFlame --ores coal --quiet",
         "python3 agent-navigation/tools/launch_detached_runner.py --supervise --profile MrFlame --name mining-coal --log agent-navigation/.local/runners/mrflame/mining-coal.log --pid-file agent-navigation/.local/runners/mrflame/mining-coal.pid --supervisor-pid-file agent-navigation/.local/runners/mrflame/mining-coal.supervisor.pid -- python3 agent-navigation/tools/mining_runner.py --profile MrFlame --ores coal --quiet"
+      ]
+    },
+    {
+      "id": "gameplay_controller_xs",
+      "name": "Gameplay Controller XS",
+      "path": "agent-navigation/tools/gameplay_controller_XS.py",
+      "kind": "runtime_helper",
+      "description": "Shows the one active gameplay controller per profile and requests cooperative profile-scoped stops without process-name matching.",
+      "aliases": [
+        "gameplay controller",
+        "controller status",
+        "controller stop",
+        "runner status",
+        "stop runner"
+      ],
+      "tags": [
+        "runner",
+        "runtime",
+        "profile",
+        "controller",
+        "xs"
+      ],
+      "examples": [
+        "python3 agent-navigation/tools/gameplay_controller_XS.py status --profile MrFlame",
+        "python3 agent-navigation/tools/gameplay_controller_XS.py status --all",
+        "python3 agent-navigation/tools/gameplay_controller_XS.py stop --profile MrFlame --wait 5"
       ]
     },
     {

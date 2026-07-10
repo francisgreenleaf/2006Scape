@@ -35,6 +35,8 @@ agent-navigation/tools/rs-tool_XS.sh accept_trade_XS '{"expectPartner":"OTHER_PR
 agent-navigation/tools/rs-tool_XS.sh trade_status_XS '{}'
 python3 agent-navigation/tools/receive_trade.py --profile PROFILE --from OTHER_PROFILE --item coins --min-amount 100000
 python3 agent-navigation/tools/food_bank_XS.py
+python3 agent-navigation/tools/gameplay_controller_XS.py status --profile PROFILE
+python3 agent-navigation/tools/gameplay_controller_XS.py stop --profile PROFILE --wait 5
 ```
 
 Default order is XXS, then XS, then full. Use XXS for confirmation, health, position, survival, event, and stable status polls. Use XS when the next decision needs compact inventory, equipment, bank, nearby NPC/object, route, or skill context. `rs-tool_XS.sh` and `rs-tool_XXS.sh` automatically map known compact-capable base names to server-side `_XS`/`_XXS` aliases. Use `observe-slim.sh`, full `observe_state`, or base `rs-tool.sh` only when compact output omits a named field needed for debugging, complete evidence, or a new workflow. Direct `rs-tool.sh observe_state` is blocked unless `RS_ALLOW_FULL_OBSERVE=1` is set for an explicit evidence/debug command. Do not call full state in loops or immediately after every compact action result just to refresh; treat compact batch/tool results as the next observation when they contain the needed state.
@@ -51,7 +53,7 @@ For unattended long runners, prefer the shared lifecycle wrapper instead of runn
 python3 agent-navigation/tools/launch_detached_runner.py --supervise --profile PROFILE --name runner-name --log agent-navigation/.local/runners/PROFILE/runner-name.log -- python3 agent-navigation/tools/SCRIPT.py --profile PROFILE
 ```
 
-It never restarts the server, writes separate child/supervisor pid files and compact status JSON, and restarts the child only for classified transient bridge/session failures. Gameplay blockers, safety stops, explicit stop requests, and unknown exceptions are terminal by default.
+It never restarts the server, writes separate child/supervisor pid files and compact status JSON, and restarts the child only for classified transient bridge/session failures. It also owns the one gameplay-controller lease for the selected profile. A second runner or standalone ML2 executor fails with `controller_conflict` before acting; ML2 called by the active runner inherits its lease. Check all ownership with `gameplay_controller_XS.py status --all`, request a cooperative stop with `stop --profile PROFILE --wait 5`, and use launcher `--replace-controller` only for a deliberate handoff. Do not use `pkill` or manually remove the lease file. Gameplay blockers, safety stops, explicit stop requests, and unknown exceptions are terminal by default.
 
 Common long-run targets for supervised launch are `mining_runner.py`, `fletching_runner.py`, and `woodcutting_runner.py`; use `script_registry.py show mining --json`, `show fletching --json`, or `show woodcutting --json` for copyable examples.
 

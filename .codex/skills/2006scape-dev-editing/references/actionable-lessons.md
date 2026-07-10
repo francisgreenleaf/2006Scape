@@ -380,3 +380,10 @@ These notes are repo-specific operational memory from actual agent experience. A
 - **Cause:** `eat_best_food_XXS` returned only critical state and omitted `skills`, so the next before/after XP calculation treated the pre-action Agility XP as zero.
 - **Use instead:** After XXS recovery calls such as food, refresh with `observe_xs()` before computing XP deltas or other skill-derived progress.
 - **Validation:** `python3 -m py_compile agent-navigation/tools/agility_brimhaven_runner.py` passed, and the relaunched Brimhaven runner logged normal per-obstacle XP deltas while continuing live course progress.
+
+### One profile needs one gameplay-controller lease
+
+- **Observed:** A stale background mining/route process continued moving a character while a new ML2 route was executing, so otherwise valid route batches appeared to oscillate or head toward an old target.
+- **Cause:** Per-runner pid/status files identify individual processes but do not arbitrate ownership across different runner names and standalone route executors.
+- **Use instead:** Start unattended gameplay through `launch_detached_runner.py --supervise`. It and the ML2 executor share one profile-scoped lease under `.local/runners/<profile>/active-controller.json`; nested ML2 subprocesses inherit the active lease, while unrelated controllers fail with `controller_conflict`. Use `gameplay_controller_XS.py status/stop`, not process-name matching or manual lease deletion.
+- **Validation:** `test_controller_lease.py`, `test_supervised_runner.py`, and ML2 executor tests prove profile isolation, conflict refusal before child/bridge action, delegated nested routing, stale-owner cleanup, and cooperative stop.

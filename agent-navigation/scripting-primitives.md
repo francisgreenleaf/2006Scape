@@ -368,7 +368,7 @@ Current gameplay runners include:
 - `cowhide_combat_runner.py`: cow combat, hide pickup, food restock, and banking
   through existing combat, item, shop, bank-policy, and route primitives.
 - `marathon_runner.py`: route endurance/testing runner.
-- `route_ml.py define`: preferred ML1 route-definition API for normal A-to-B routing.
+- `ml2-routing/route_ml_XS.py define`: preferred ML2 route-definition API for normal A-to-B routing.
 - `route_runner.py`: deprecated standalone route execution and local path preflight; keep it for legacy diagnostics and compatibility executor checks.
 
 Map, memory, and support scripts are also registered in
@@ -376,10 +376,23 @@ Map, memory, and support scripts are also registered in
 
 For unattended or long-running gameplay, wrap the selected runner with
 `launch_detached_runner.py --supervise` or call `supervised_runner.py`
-directly. The supervisor is a process lifecycle layer only: it never restarts
-the game server, never changes gameplay strategy, and does not hide remote GUI
-claim work inside bridge calls. It writes profile-scoped status plus separate
-child/supervisor pid files under `.local/runners/`, applies bounded backoff, and
-restarts only for classified transient bridge/session failures. Route stalls,
-death/combat safety stops, missing supplies, unreachable targets, explicit stop
-requests, and unknown exceptions remain terminal by default.
+directly. The launcher acquires the one gameplay-controller lease for the
+selected profile before starting a child; a competing runner or standalone ML2
+executor fails closed with `controller_conflict` before any bridge action.
+Nested ML2 execution from the active supervised runner inherits the lease and
+remains valid. Inspect or stop controllers without process-name matching:
+
+```sh
+python3 agent-navigation/tools/gameplay_controller_XS.py status --profile PROFILE
+python3 agent-navigation/tools/gameplay_controller_XS.py status --all
+python3 agent-navigation/tools/gameplay_controller_XS.py stop --profile PROFILE --wait 5
+```
+
+The supervisor never restarts the game server or changes gameplay strategy. It
+writes profile-scoped status plus separate child/supervisor pid files under
+`.local/runners/`, applies bounded backoff, and restarts only classified
+transient bridge/session failures. Route stalls, death/combat safety stops,
+missing supplies, unreachable targets, explicit stop requests, and unknown
+exceptions remain terminal by default. Use launcher `--replace-controller`
+only for an intentional cooperative handoff; it never uses `pkill` or a process
+name match.

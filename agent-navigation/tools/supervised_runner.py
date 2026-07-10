@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import signal
 import subprocess
@@ -11,7 +12,15 @@ import sys
 import time
 from pathlib import Path
 
-from profile_utils import resolve_profile
+from controller_lease import (
+    ControllerBusyError,
+    ControllerLeaseError,
+    acquire_controller,
+    adopt_controller,
+    compact_lease,
+    LEASE_ENV,
+)
+from profile_utils import profile_from_argv, resolve_profile
 from runner_recovery import (
     check_session,
     classify_failure,
@@ -72,6 +81,11 @@ def parse_args(argv=None):
     parser.add_argument("--ssl-cert-file", default=os.environ.get("SSL_CERT_FILE") or "")
     parser.add_argument("--restart-on-unknown", action="store_true",
             help="Restart once-classified unknown failures too. Off by default.")
+    parser.add_argument("--replace-controller", action="store_true",
+            help="Ask the active controller for this profile to stop, then wait before acquiring ownership.")
+    parser.add_argument("--replace-wait", type=float, default=10.0,
+            help="Seconds to wait for a cooperative controller replacement.")
+    parser.add_argument("--controller-lease-id", default="", help=argparse.SUPPRESS)
     parser.add_argument("command", nargs=argparse.REMAINDER, help="Runner command after '--'.")
     args = parser.parse_args(argv)
     command = list(args.command or [])
@@ -79,6 +93,8 @@ def parse_args(argv=None):
         command = command[1:]
     if not command:
         raise SystemExit("expected a runner command after '--'")
+    if not args.profile:
+        args.profile = profile_from_argv(command, default="")
     if args.max_restarts < 0:
         raise SystemExit("--max-restarts must be >= 0")
     if args.backoff_initial < 0 or args.backoff_max < 0:
@@ -110,6 +126,7 @@ class Supervisor:
         self.last_reclaim = None
         self.current_status = "starting"
         self.stop_requested = False
+        self.controller_lease = None
 
     def base_status(self, status, extra=None):
         payload = {
@@ -135,6 +152,10 @@ class Supervisor:
             "lastClassification": self.last_classification.to_dict() if self.last_classification else None,
             "lastSessionStatus": self.last_session_status,
             "lastReclaim": self.last_reclaim,
+            "controllerLease": {
+                "active": self.controller_lease is not None,
+                "path": str(self.controller_lease.paths.active) if self.controller_lease else "",
+            },
         }
         if extra:
             payload.update(extra)
@@ -161,6 +182,8 @@ class Supervisor:
         if self.profile:
             env["RS_PROFILE"] = self.profile
             env["RSBRIDGE_PROFILE"] = self.profile
+        if self.controller_lease is not None:
+            env[LEASE_ENV] = self.controller_lease.lease_id
         log_handle = self.log_path.open("ab", buffering=0)
         try:
             proc = subprocess.Popen(
@@ -182,11 +205,44 @@ class Supervisor:
         return proc
 
     def wait_child(self, proc):
+        last_refresh = 0.0
         while True:
             try:
-                return proc.wait(timeout=1.0)
+                return proc.wait(timeout=0.5)
             except subprocess.TimeoutExpired:
-                continue
+                now = time.monotonic()
+                if self.controller_lease is not None and now - last_refresh >= 1.0:
+                    try:
+                        self.controller_lease.refresh()
+                    except ControllerLeaseError as exc:
+                        self.log_line("controller ownership lost: {}".format(exc))
+                        self.stop_requested = True
+                    last_refresh = now
+                if self.controller_lease is not None and self.controller_lease.stop_requested():
+                    self.stop_requested = True
+                if self.stop_requested:
+                    return self.stop_child(proc)
+
+    def stop_child(self, proc):
+        self.write_status("stopping")
+        if proc.poll() is None:
+            try:
+                os.killpg(proc.pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+            except OSError:
+                proc.terminate()
+        deadline = time.monotonic() + 8.0
+        while proc.poll() is None and time.monotonic() < deadline:
+            time.sleep(0.1)
+        if proc.poll() is None:
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            except OSError:
+                proc.kill()
+        return proc.wait()
 
     def maybe_reclaim(self):
         self.last_session_status = check_session(self.profile)
@@ -225,46 +281,101 @@ class Supervisor:
         })
         if delay > 0:
             self.log_line("transient failure; backing off {:.1f}s".format(delay))
-            time.sleep(delay)
+            deadline = time.monotonic() + delay
+            while time.monotonic() < deadline:
+                if self.controller_lease is not None:
+                    try:
+                        self.controller_lease.refresh()
+                    except ControllerLeaseError as exc:
+                        self.log_line("controller ownership lost during backoff: {}".format(exc))
+                        self.stop_requested = True
+                        return False
+                    if self.controller_lease.stop_requested():
+                        self.stop_requested = True
+                        return False
+                time.sleep(min(0.5, max(0.0, deadline - time.monotonic())))
+        return True
+
+    def acquire_controller(self):
+        if self.args.controller_lease_id:
+            self.controller_lease = adopt_controller(
+                self.profile,
+                self.args.controller_lease_id,
+                pid=os.getpid(),
+            )
+            return
+        self.controller_lease = acquire_controller(
+            self.profile,
+            self.name,
+            "supervised_runner",
+            replace=bool(self.args.replace_controller),
+            replace_wait_seconds=float(self.args.replace_wait),
+        )
 
     def run(self):
-        self.prepare_files()
-        while True:
-            self.attempt += 1
-            proc = self.launch_child()
-            exit_code = self.wait_child(proc)
-            if exit_code is None:
-                exit_code = proc.returncode if proc.returncode is not None else 1
-            self.last_exit_code = exit_code
-            self.child_pid = None
-            self.child_proc = None
+        try:
+            self.acquire_controller()
+        except (ControllerBusyError, ControllerLeaseError) as exc:
+            current = compact_lease(exc.current) if isinstance(exc, ControllerBusyError) else {}
+            self.write_status("controller_conflict", {"activeController": current, "message": str(exc)})
+            print(json.dumps({
+                "ok": False,
+                "status": "controller_conflict",
+                "profile": self.profile,
+                "controller": self.name,
+                "activeController": current,
+                "message": str(exc),
+            }, sort_keys=True, separators=(",", ":")), file=sys.stderr)
+            return 6
 
-            if exit_code == 0:
-                self.log_line("attempt={} child completed".format(self.attempt))
-                self.write_status("complete", {"completedAt": utc_now()})
-                return 0
+        try:
+            self.prepare_files()
+            while True:
+                self.attempt += 1
+                proc = self.launch_child()
+                exit_code = self.wait_child(proc)
+                if exit_code is None:
+                    exit_code = proc.returncode if proc.returncode is not None else 1
+                self.last_exit_code = exit_code
+                self.child_pid = None
+                self.child_proc = None
 
-            tail = read_log_tail(self.log_path)
-            classification = classify_failure(tail, exit_code=exit_code)
-            self.last_classification = classification
-            self.log_line("attempt={} child_exit={} classification={}:{}".format(
-                self.attempt, exit_code, classification.kind, classification.reason))
+                if self.stop_requested:
+                    self.log_line("controller stop completed")
+                    self.write_status("stopped", {"completedAt": utc_now()})
+                    return 0
 
-            if not self.should_retry(classification):
-                status = "unknown" if classification.kind == "unknown" else "terminal"
-                self.write_status(status, {"lastLogTail": tail[-1200:]})
-                return exit_code or 1
+                if exit_code == 0:
+                    self.log_line("attempt={} child completed".format(self.attempt))
+                    self.write_status("complete", {"completedAt": utc_now()})
+                    return 0
 
-            if self.restarts >= self.args.max_restarts:
-                self.write_status("retries_exhausted", {"lastLogTail": tail[-1200:]})
-                return exit_code or 1
+                tail = read_log_tail(self.log_path)
+                classification = classify_failure(tail, exit_code=exit_code)
+                self.last_classification = classification
+                self.log_line("attempt={} child_exit={} classification={}:{}".format(
+                    self.attempt, exit_code, classification.kind, classification.reason))
 
-            if self.needs_session_reclaim(classification) and not self.maybe_reclaim():
-                self.write_status("needs_reclaim", {"lastLogTail": tail[-1200:]})
-                return exit_code or 1
+                if not self.should_retry(classification):
+                    status = "unknown" if classification.kind == "unknown" else "terminal"
+                    self.write_status(status, {"lastLogTail": tail[-1200:]})
+                    return exit_code or 1
 
-            self.sleep_backoff()
-            self.restarts += 1
+                if self.restarts >= self.args.max_restarts:
+                    self.write_status("retries_exhausted", {"lastLogTail": tail[-1200:]})
+                    return exit_code or 1
+
+                if self.needs_session_reclaim(classification) and not self.maybe_reclaim():
+                    self.write_status("needs_reclaim", {"lastLogTail": tail[-1200:]})
+                    return exit_code or 1
+
+                if not self.sleep_backoff():
+                    self.write_status("stopped", {"completedAt": utc_now()})
+                    return 0
+                self.restarts += 1
+        finally:
+            if self.controller_lease is not None:
+                self.controller_lease.release()
 
 
 def main(argv=None):
