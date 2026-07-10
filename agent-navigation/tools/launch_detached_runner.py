@@ -2,15 +2,34 @@
 """Launch a repo-local runner in a detached session with log capture."""
 
 import argparse
+import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
+
+from controller_lease import (
+    ControllerBusyError,
+    ControllerLeaseError,
+    LEASE_ENV,
+    acquire_controller,
+    compact_lease,
+)
+from profile_utils import profile_from_argv, resolve_profile
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parents[1]
 SUPERVISED_RUNNER = SCRIPT_DIR / "supervised_runner.py"
+
+
+def infer_name(command):
+    for arg in command:
+        path = Path(str(arg))
+        if path.suffix in (".py", ".sh"):
+            return path.stem
+    return Path(str(command[0])).stem or "runner"
 
 
 def main(argv=None):
@@ -37,6 +56,10 @@ def main(argv=None):
             help="SSL_CERT_FILE for supervised remote bridge checks.")
     parser.add_argument("--restart-on-unknown", action="store_true",
             help="Let the supervisor restart unknown child failures. Off by default.")
+    parser.add_argument("--replace-controller", action="store_true",
+            help="Ask the selected profile's active controller to stop before launching this one.")
+    parser.add_argument("--replace-wait", type=float, default=10.0,
+            help="Seconds to wait for a cooperative controller replacement.")
     parser.add_argument("command", nargs=argparse.REMAINDER, help="Command to run after '--'.")
     args = parser.parse_args(argv)
 
@@ -46,12 +69,39 @@ def main(argv=None):
     if not command:
         raise SystemExit("expected a command after '--'")
 
+    profile = resolve_profile(args.profile or profile_from_argv(command, default=""), default="")
+    name = args.name or infer_name(command)
+    try:
+        controller_lease = acquire_controller(
+            profile,
+            name,
+            "supervised_runner" if args.supervise else "detached_runner",
+            replace=bool(args.replace_controller),
+            replace_wait_seconds=float(args.replace_wait),
+        )
+    except ControllerBusyError as exc:
+        print(json.dumps({
+            "ok": False,
+            "status": "controller_conflict",
+            "profile": profile,
+            "controller": name,
+            "activeController": compact_lease(exc.current),
+            "message": str(exc),
+        }, sort_keys=True, separators=(",", ":")), file=sys.stderr)
+        return 6
+
+    child_env = os.environ.copy()
+    child_env[LEASE_ENV] = controller_lease.lease_id
+    if profile:
+        child_env["RS_PROFILE"] = profile
+        child_env["RSBRIDGE_PROFILE"] = profile
+
     if args.supervise:
         supervised_command = [sys.executable, str(SUPERVISED_RUNNER)]
-        if args.profile:
-            supervised_command.extend(["--profile", args.profile])
-        if args.name:
-            supervised_command.extend(["--name", args.name])
+        if profile:
+            supervised_command.extend(["--profile", profile])
+        supervised_command.extend(["--name", name])
+        supervised_command.extend(["--controller-lease-id", controller_lease.lease_id])
         supervised_command.extend(["--log", args.log])
         if args.pid_file:
             supervised_command.extend(["--pid-file", args.pid_file])
@@ -74,15 +124,55 @@ def main(argv=None):
         supervised_command.append("--")
         supervised_command.extend(command)
 
-        proc = subprocess.Popen(
-            supervised_command,
-            cwd=str(REPO_ROOT),
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True,
-            env=os.environ.copy(),
-        )
+        try:
+            proc = subprocess.Popen(
+                supervised_command,
+                cwd=str(REPO_ROOT),
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+                env=child_env,
+            )
+        except Exception:
+            controller_lease.release()
+            raise
+        adopted = False
+        deadline = time.monotonic() + 3.0
+        while time.monotonic() < deadline:
+            try:
+                adopted = int(controller_lease.current().get("pid") or 0) == proc.pid
+            except ControllerLeaseError:
+                adopted = True
+                break
+            if adopted or proc.poll() is not None:
+                break
+            time.sleep(0.02)
+        if not adopted and proc.poll() is None:
+            proc.terminate()
+            try:
+                proc.wait(timeout=2.0)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+            controller_lease.release()
+            print(json.dumps({
+                "ok": False,
+                "status": "controller_adoption_timeout",
+                "profile": profile,
+                "controller": name,
+            }, sort_keys=True, separators=(",", ":")), file=sys.stderr)
+            return 6
+        if not adopted and proc.poll() is not None and proc.returncode:
+            controller_lease.release()
+            print(json.dumps({
+                "ok": False,
+                "status": "launch_failed",
+                "profile": profile,
+                "controller": name,
+                "returncode": proc.returncode,
+            }, sort_keys=True, separators=(",", ":")), file=sys.stderr)
+            return int(proc.returncode or 1)
         if args.supervisor_pid_file:
             pid_path = Path(args.supervisor_pid_file).expanduser().resolve()
             pid_path.parent.mkdir(parents=True, exist_ok=True)
@@ -95,15 +185,20 @@ def main(argv=None):
     log_mode = "ab" if args.append else "wb"
     log_handle = log_path.open(log_mode, buffering=0)
     try:
-        proc = subprocess.Popen(
-            command,
-            cwd=str(REPO_ROOT),
-            stdin=subprocess.DEVNULL,
-            stdout=log_handle,
-            stderr=subprocess.STDOUT,
-            start_new_session=True,
-            env=os.environ.copy(),
-        )
+        try:
+            proc = subprocess.Popen(
+                command,
+                cwd=str(REPO_ROOT),
+                stdin=subprocess.DEVNULL,
+                stdout=log_handle,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+                env=child_env,
+            )
+            controller_lease.transfer_pid(proc.pid)
+        except Exception:
+            controller_lease.release()
+            raise
     finally:
         log_handle.close()
 

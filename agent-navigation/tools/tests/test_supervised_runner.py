@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -16,6 +17,7 @@ TOOLS_DIR = Path(__file__).resolve().parents[1]
 REPO_ROOT = TOOLS_DIR.parents[1]
 SUPERVISED_RUNNER = TOOLS_DIR / "supervised_runner.py"
 LAUNCH_DETACHED = TOOLS_DIR / "launch_detached_runner.py"
+CONTROLLER_XS = TOOLS_DIR / "gameplay_controller_XS.py"
 
 
 class SupervisedRunnerSmokeTest(unittest.TestCase):
@@ -54,6 +56,7 @@ class SupervisedRunnerSmokeTest(unittest.TestCase):
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            env={**os.environ, "RS_CONTROLLER_ROOT": str(tmp / "controllers")},
             timeout=20,
         )
         status = json.loads(status_path.read_text(encoding="utf-8"))
@@ -149,6 +152,7 @@ class SupervisedRunnerSmokeTest(unittest.TestCase):
                 text=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                env={**os.environ, "RS_CONTROLLER_ROOT": str(tmp / "controllers")},
                 timeout=10,
             )
             self.assertEqual(proc.returncode, 0, proc.stderr)
@@ -166,6 +170,144 @@ class SupervisedRunnerSmokeTest(unittest.TestCase):
 
             self.assertEqual(status.get("status"), "complete", status)
             self.assertIn("detached hello", log_path.read_text(encoding="utf-8"))
+
+    def test_second_controller_is_refused_and_compact_stop_ends_first(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            child = tmp / "child.py"
+            child.write_text("import time\ntime.sleep(60)\n", encoding="utf-8")
+            blocked_child = tmp / "blocked.py"
+            blocked_marker = tmp / "blocked-ran.txt"
+            blocked_child.write_text(
+                "from pathlib import Path\nPath({!r}).write_text('ran')\n".format(str(blocked_marker)),
+                encoding="utf-8",
+            )
+            env = {**os.environ, "RS_CONTROLLER_ROOT": str(tmp / "controllers")}
+            first_status = tmp / "first.status.json"
+            first = subprocess.Popen(
+                [
+                    sys.executable,
+                    str(SUPERVISED_RUNNER),
+                    "--profile", "TestProfile",
+                    "--name", "first",
+                    "--log", str(tmp / "first.log"),
+                    "--status-file", str(first_status),
+                    "--", sys.executable, str(child),
+                ],
+                cwd=str(REPO_ROOT),
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                env=env,
+            )
+            try:
+                deadline = time.time() + 5.0
+                while time.time() < deadline:
+                    if first_status.exists():
+                        status = json.loads(first_status.read_text(encoding="utf-8"))
+                        if status.get("status") == "running":
+                            break
+                    time.sleep(0.05)
+                else:
+                    self.fail("first supervisor did not reach running state")
+
+                second = subprocess.run(
+                    [
+                        sys.executable,
+                        str(SUPERVISED_RUNNER),
+                        "--profile", "TestProfile",
+                        "--name", "second",
+                        "--log", str(tmp / "second.log"),
+                        "--status-file", str(tmp / "second.status.json"),
+                        "--", sys.executable, str(blocked_child),
+                    ],
+                    cwd=str(REPO_ROOT),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    env=env,
+                    timeout=10,
+                )
+                self.assertEqual(second.returncode, 6, second.stderr)
+                self.assertIn('"status":"controller_conflict"', second.stderr)
+                self.assertFalse(blocked_marker.exists())
+
+                stopped = subprocess.run(
+                    [sys.executable, str(CONTROLLER_XS), "stop", "--profile", "TestProfile", "--wait", "5"],
+                    cwd=str(REPO_ROOT),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    env=env,
+                    timeout=10,
+                )
+                self.assertEqual(stopped.returncode, 0, stopped.stdout + stopped.stderr)
+                self.assertEqual(json.loads(stopped.stdout)["status"], "stopped")
+                self.assertEqual(first.wait(timeout=10), 0)
+                self.assertEqual(json.loads(first_status.read_text(encoding="utf-8"))["status"], "stopped")
+            finally:
+                if first.poll() is None:
+                    first.terminate()
+                    first.wait(timeout=5)
+
+    def test_detached_replace_controller_performs_cooperative_handoff(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            long_child = tmp / "long.py"
+            long_child.write_text("import time\ntime.sleep(60)\n", encoding="utf-8")
+            next_marker = tmp / "next-ran.txt"
+            next_child = tmp / "next.py"
+            next_child.write_text(
+                "from pathlib import Path\nPath({!r}).write_text('ran')\n".format(str(next_marker)),
+                encoding="utf-8",
+            )
+            env = {**os.environ, "RS_CONTROLLER_ROOT": str(tmp / "controllers")}
+            first_status = tmp / "first.status.json"
+            first = subprocess.Popen(
+                [
+                    sys.executable, str(SUPERVISED_RUNNER),
+                    "--profile", "TestProfile", "--name", "first",
+                    "--log", str(tmp / "first.log"), "--status-file", str(first_status),
+                    "--", sys.executable, str(long_child),
+                ],
+                cwd=str(REPO_ROOT), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env,
+            )
+            try:
+                deadline = time.time() + 5.0
+                while time.time() < deadline:
+                    if first_status.exists() and json.loads(first_status.read_text(encoding="utf-8")).get("status") == "running":
+                        break
+                    time.sleep(0.05)
+                else:
+                    self.fail("first supervisor did not reach running state")
+
+                second_status = tmp / "second.status.json"
+                launched = subprocess.run(
+                    [
+                        sys.executable, str(LAUNCH_DETACHED), "--supervise",
+                        "--replace-controller", "--replace-wait", "5",
+                        "--profile", "TestProfile", "--name", "second",
+                        "--log", str(tmp / "second.log"), "--status-file", str(second_status),
+                        "--", sys.executable, str(next_child),
+                    ],
+                    cwd=str(REPO_ROOT), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    text=True, env=env, timeout=10,
+                )
+                self.assertEqual(launched.returncode, 0, launched.stderr)
+                self.assertEqual(first.wait(timeout=10), 0)
+                self.assertEqual(json.loads(first_status.read_text(encoding="utf-8"))["status"], "stopped")
+
+                deadline = time.time() + 5.0
+                while time.time() < deadline:
+                    if second_status.exists() and json.loads(second_status.read_text(encoding="utf-8")).get("status") == "complete":
+                        break
+                    time.sleep(0.05)
+                else:
+                    self.fail("replacement supervisor did not complete")
+                self.assertTrue(next_marker.exists())
+            finally:
+                if first.poll() is None:
+                    first.terminate()
+                    first.wait(timeout=5)
 
 
 if __name__ == "__main__":

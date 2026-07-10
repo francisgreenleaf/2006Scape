@@ -3,6 +3,7 @@
 
 from pathlib import Path
 import json
+import os
 import sys
 import tempfile
 from types import SimpleNamespace
@@ -37,6 +38,7 @@ from ml_routing.transition_catalog import transition_catalog  # noqa: E402
 from ml_routing.validation import model_edge_warnings, route_geometry_summary, validate_route_steps  # noqa: E402
 import execute_route_definition  # noqa: E402
 import navdb  # noqa: E402
+from controller_lease import LEASE_ENV, acquire_controller, controller_status  # noqa: E402
 from execute_route_definition import choose_lookahead_target  # noqa: E402
 from route_ml import persist_route_definition  # noqa: E402
 from xs_common import route_definition as compact_route_definition  # noqa: E402
@@ -1074,6 +1076,96 @@ class ApiTests(unittest.TestCase):
 
 
 class ExecutorTests(unittest.TestCase):
+    def test_executor_refuses_competing_profile_controller_before_bridge_action(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {
+            "RS_CONTROLLER_ROOT": str(Path(tmp) / "controllers"),
+            LEASE_ENV: "",
+        }):
+            route_path = Path(tmp) / "route.json"
+            evidence_path = Path(tmp) / "evidence.jsonl"
+            route_path.write_text(json.dumps({
+                "schemaVersion": 1,
+                "api": "2006scape.route-definition",
+                "routeId": "controller-conflict",
+                "mode": "cache_mesh",
+                "from": "0,0,0",
+                "to": "target",
+                "targetTile": {"x": 1, "y": 0, "height": 0},
+                "routeSteps": [
+                    {"type": "walk", "x": 0, "y": 0, "height": 0},
+                    {"type": "walk", "x": 1, "y": 0, "height": 0},
+                ],
+            }), encoding="utf-8")
+            lease = acquire_controller("UnitProfile", "old-runner", "supervised_runner")
+            args = SimpleNamespace(
+                route_definition=str(route_path), profile="UnitProfile", evidence_jsonl=str(evidence_path),
+                run_mode="auto", eat_at=0, arrival_radius=None, max_ticks=95, max_walk_distance=36,
+                stop_distance=0, transition_approach_distance=0, transition_post_distance=0,
+                transition_max_ticks=20, lookahead_distance=30, lookahead_step_limit=4,
+                no_lookahead=False, off_route_distance=-1, stop_on_combat=False,
+                observe_on_contact=False, report_every=100,
+            )
+            try:
+                with patch.object(execute_route_definition.bridge, "observe") as observe, \
+                        patch.object(execute_route_definition.bridge, "call_tool") as call_tool:
+                    self.assertEqual(execute_route_definition.run(args), 6)
+                observe.assert_not_called()
+                call_tool.assert_not_called()
+                outcome = json.loads(evidence_path.read_text(encoding="utf-8"))
+                self.assertEqual(outcome["problemKind"], "controller_conflict")
+                self.assertEqual(outcome["activeController"]["controller"], "old-runner")
+            finally:
+                lease.release()
+
+    def test_executor_can_join_parent_controller_lease(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.dict(os.environ, {
+            "RS_CONTROLLER_ROOT": str(Path(tmp) / "controllers"),
+        }):
+            route_path = Path(tmp) / "route.json"
+            route_path.write_text(json.dumps({
+                "schemaVersion": 1,
+                "api": "2006scape.route-definition",
+                "routeId": "delegated-route",
+                "mode": "cache_mesh",
+                "from": "0,0,0",
+                "to": "target",
+                "targetTile": {"x": 1, "y": 0, "height": 0},
+                "arrivalRadius": 0,
+                "routeSteps": [
+                    {"type": "walk", "x": 0, "y": 0, "height": 0},
+                    {"type": "walk", "x": 1, "y": 0, "height": 0},
+                ],
+            }), encoding="utf-8")
+            player = {
+                "name": "Unit", "tile": {"x": 0, "y": 0, "height": 0},
+                "hitpoints": 10, "maxHitpoints": 10, "runEnergy": 50,
+                "runEnabled": True, "inventory": [],
+            }
+
+            def call_tool(name, arguments, profile=""):
+                self.assertEqual(name, "walk_to_tile_until_arrived_XS")
+                player["tile"] = {"x": int(arguments["x"]), "y": int(arguments["y"]), "height": 0}
+                return {"success": True, "batchStatus": "arrived", "player": dict(player)}
+
+            args = SimpleNamespace(
+                route_definition=str(route_path), profile="UnitProfile", evidence_jsonl=str(Path(tmp) / "evidence.jsonl"),
+                run_mode="auto", eat_at=0, arrival_radius=None, max_ticks=95, max_walk_distance=36,
+                stop_distance=0, transition_approach_distance=0, transition_post_distance=0,
+                transition_max_ticks=20, lookahead_distance=30, lookahead_step_limit=4,
+                no_lookahead=False, off_route_distance=-1, stop_on_combat=False,
+                observe_on_contact=False, report_every=100,
+            )
+            parent = acquire_controller("UnitProfile", "outer-runner", "supervised_runner")
+            try:
+                with patch.dict(os.environ, {LEASE_ENV: parent.lease_id}), \
+                        patch.object(execute_route_definition.bridge, "observe", return_value=player), \
+                        patch.object(execute_route_definition.bridge, "call_tool", side_effect=call_tool):
+                    self.assertEqual(execute_route_definition.run(args), 0)
+                self.assertTrue(controller_status("UnitProfile")["active"])
+                self.assertEqual(controller_status("UnitProfile")["controller"], "outer-runner")
+            finally:
+                parent.release()
+
     def test_executor_rejects_corrupt_route_before_bridge_action(self):
         with tempfile.TemporaryDirectory() as tmp:
             route_path = Path(tmp) / "route.json"

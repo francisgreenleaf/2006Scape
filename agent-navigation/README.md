@@ -37,7 +37,8 @@ For the reliable server/client/login/bridge startup flow used before route explo
 - `tools/food_runner.py`: primitive fishing, cooking, fish-cook, and firemaking runner.
 - `tools/smithing_runner.py`: primitive smelting/smithing runner using furnace/anvil interactions, interface buttons, and `SmithingData`.
 - `tools/bank_loadout.py`: compact primitive bank-loadout helper that plans from observed inventory and applies only needed deposit/food/coin-float actions.
-- `tools/supervised_runner.py` and `tools/launch_detached_runner.py --supervise`: shared conservative supervision for long gameplay runners. It keeps child and supervisor pid files separate, writes compact status JSON, and restarts only after known transient bridge/session failures.
+- `tools/supervised_runner.py` and `tools/launch_detached_runner.py --supervise`: shared conservative supervision for long gameplay runners. It acquires one gameplay-controller lease per profile, keeps child and supervisor pid files separate, writes compact status JSON, and restarts only after known transient bridge/session failures.
+- `tools/gameplay_controller_XS.py`: compact status and cooperative stop control for one profile or all active profile controllers, without process-name matching.
 - `tools/agent_session_XS.py`, `tools/runner_status_XS.py`, `tools/catherby_food_runner_XS.py`, and `tools/route_failure_XS.py`: compact readers for session usage, cooperative runner status, Catherby runner control, and route execution recovery.
 - `tools/cowhide_combat_runner.py`: bounded cow combat, hide pickup, food restock, and banking runner built from route, combat, item, shop, and bank primitives.
 - `tools/render_profile_map.py`, `tools/render_heat_map.py`, `tools/render_fog_map.py`: plain-name active movement map renderers for the selected profile movement map, Heat Map, and profile fog.
@@ -97,6 +98,8 @@ python3 agent-navigation/tools/launch_detached_runner.py \
   --supervisor-pid-file agent-navigation/.local/runners/PROFILE/useful-runner-name.supervisor.pid \
   -- python3 agent-navigation/tools/mining_runner.py --profile PROFILE --ores iron --quiet
 ```
+
+The launcher reserves `agent-navigation/.local/runners/<profile>/active-controller.json` before the child can act. A second launcher or standalone ML2 executor for that profile returns `controller_conflict`; an ML2 executor started by the active supervised runner inherits the same lease. Use `gameplay_controller_XS.py status --profile PROFILE`, `status --all`, or `stop --profile PROFILE --wait 5` instead of PID searches. `--replace-controller` performs an intentional cooperative handoff and refuses if the current controller does not release in time.
 
 The supervisor does not restart the game server. It restarts the child only for classified transient bridge/session failures such as expired sessions, HTTP 502/503/504 gateway errors, connection resets, empty bridge replies, and one-off wrapper parse failures. Route stalls, death/combat safety stops, missing supplies, unreachable targets, explicit stop requests, and unknown exceptions are terminal by default.
 

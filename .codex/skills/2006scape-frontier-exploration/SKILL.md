@@ -18,6 +18,7 @@ Use passive server telemetry as the primary data source. Do not poll full state 
 ```sh
 agent-navigation/tools/observe_XS.sh
 python3 agent-navigation/ml2-routing/route_ml_XS.py define --from X,Y,H --to TARGET --combat-level N --food N --run-energy N --run-enabled
+python3 agent-navigation/tools/gameplay_controller_XS.py status --profile PROFILE
 python3 agent-navigation/ml2-routing/tools/execute_route_definition.py --route-definition agent-navigation/.local/ml2-route-definitions/ROUTE.json --run-mode auto --eat-at 10
 agent-navigation/tools/rs-tool_XS.sh walk_to_tile_until_arrived_XS '{"x":X,"y":Y,"height":0,"maxTicks":60,"maxWalkDistance":32,"stopOnCombat":true,"stopOnStall":true}'
 agent-navigation/tools/rs-tool_XS.sh preview_local_path '{"x":X,"y":Y,"height":0,"moveNear":true,"applyBounds":true,"maxWalkDistance":48}'
@@ -30,9 +31,9 @@ python3 agent-navigation/tools/navdb_XS.py self-test
 ## Decision Loop
 
 1. Observe current tile, HP, food, run energy, combat state, and nearby hazards.
-2. Use ML2 `agent-navigation/ml2-routing/route_ml_XS.py define --to X,Y,H ...` before moving. For coordinate targets, inspect `status`, `quality`, `safety`, `steps`, `run`, typed object transitions, and whether the result is a full route or a frontier/probe recommendation.
+2. Use ML2 `agent-navigation/ml2-routing/route_ml_XS.py define --to X,Y,H ...` before moving. For coordinate targets, inspect `decision`, `status`, `evidence`, `geometry`, `safety`, `steps`, `run`, typed object transitions, and whether the result is a full route or a frontier/probe recommendation.
 3. Preview local path for unknown legs and avoid repeated blocked vectors.
-4. Move with the ML2 `execution.command` / `agent-navigation/ml2-routing/tools/execute_route_definition.py --route-definition ...` for full route definitions, or use `walk_to_tile_until_arrived` for short clipped probes with combat/stall stop conditions. Do not use bare `route_runner.py --to ...` as the normal exploration executor.
+4. Move with the ML2 `execution.command` / `agent-navigation/ml2-routing/tools/execute_route_definition.py --route-definition ...` for full route definitions, or use `walk_to_tile_until_arrived` for short clipped probes with combat/stall stop conditions. `controller_conflict` means the selected profile already has a gameplay controller; inspect or cooperatively stop it rather than competing. Do not use bare `route_runner.py --to ...` as the normal exploration executor.
 5. If combat, HP loss, death, stall, or oscillation happens, stop probing that line and record it as evidence.
 6. If the route succeeds, name durable places/frontiers only when they are useful future targets.
 7. Validate route data and keep maps current when the graph changes materially.
