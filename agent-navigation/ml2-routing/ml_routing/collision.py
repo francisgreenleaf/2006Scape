@@ -747,10 +747,15 @@ def expand_route_path(tiles: Sequence[Tile], edges: Optional[Sequence[Any]] = No
         is_final = index == len(clean) - 2
         arrival_radius = final_arrival_radius if is_final else waypoint_arrival_radius
         if left.get("height", 0) != right.get("height", 0):
-            skipped_object_transitions += 1
-            warnings.append(_compact_failure(left, right, edge, "plane-change-transition"))
-            expanded.append(right)
-            continue
+            if _is_object_transition(edge):
+                skipped_object_transitions += 1
+                warnings.append(_compact_failure(left, right, edge, "typed-plane-change-transition"))
+                expanded.append(right)
+                continue
+            failure = _compact_failure(left, right, edge, "untyped-plane-change")
+            failures.append(failure)
+            warnings.append(failure)
+            break
         if _is_object_transition(edge):
             skipped_object_transitions += 1
             warnings.append(_compact_failure(left, right, edge, "object-transition-not-expanded"))
@@ -783,7 +788,7 @@ def expand_route_path(tiles: Sequence[Tile], edges: Optional[Sequence[Any]] = No
         failure = _compact_failure(left, right, edge, "no-cache-clipped-path")
         failures.append(failure)
         warnings.append(failure)
-        expanded.append(right)
+        break
 
     expanded = _dedupe_adjacent(expanded)
     shortcut_info = {

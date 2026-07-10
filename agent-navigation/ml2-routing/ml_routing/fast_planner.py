@@ -19,6 +19,7 @@ from .common import coordinate_layer, coordinate_layer_transition_block, distanc
 from .model import segment_prediction
 from .paths import ensure_tool_imports
 from .transition_catalog import reverse_transition, transition_pair
+from .validation import walk_edge_warning
 
 
 TRACE_SOURCE = "model_trace"
@@ -472,6 +473,7 @@ def _build_graph(model: Dict[str, Any], db: Dict[str, Any], navdb: Any, args: Si
     nodes: Dict[str, Dict[str, int]] = {}
     adjacency: Dict[str, List[Dict[str, Any]]] = {}
     hazard_warnings: Dict[str, List[Dict[str, Any]]] = {}
+    rejected_model_edges: List[Dict[str, Any]] = []
     for key, stats in model.get("edgeStats", {}).items():
         if ">" not in key or int(stats.get("successes") or 0) <= 0:
             continue
@@ -479,6 +481,11 @@ def _build_graph(model: Dict[str, Any], db: Dict[str, Any], navdb: Any, args: Si
         left = parse_tile(left_key)
         right = parse_tile(right_key)
         if not left or not right:
+            continue
+        geometry_warning = walk_edge_warning(left, right)
+        if geometry_warning:
+            geometry_warning["edge"] = key
+            rejected_model_edges.append(geometry_warning)
             continue
         if area_filter is not None and (not area_filter(left) or not area_filter(right)):
             continue
@@ -546,7 +553,12 @@ def _build_graph(model: Dict[str, Any], db: Dict[str, Any], navdb: Any, args: Si
             reverse_meta = dict(meta)
             reverse_meta["transition"] = reverse_transition(transition)
             _add_edge(adjacency, right_key, left_key, cost, ROUTE_HINT_SOURCE, reverse_meta)
-    return {"nodes": nodes, "adjacency": adjacency, "hazardWarningsByKey": hazard_warnings}
+    return {
+        "nodes": nodes,
+        "adjacency": adjacency,
+        "hazardWarningsByKey": hazard_warnings,
+        "rejectedModelEdges": rejected_model_edges,
+    }
 
 
 def _parse_tile_or_place(db: Dict[str, Any], navdb: Any, value: str) -> Tuple[Dict[str, int], str]:
@@ -1031,13 +1043,12 @@ def _apply_cache_collision(base: Dict[str, Any], route_eval: Any, tiles: List[Di
     base["routeSteps"] = route_steps
     base["routeStepCount"] = len(route_steps)
     if not expanded.get("success"):
-        if coordinate_layer(tiles[0]) == "underground":
-            message = "Underground route was rejected because cache collision could not expand every segment safely."
-            base["status"] = "error"
-            base["error"] = message
-            base["message"] = message
-        if base.get("quality") not in ("bad",):
-            base["quality"] = "suspicious"
+        message = "Route was rejected because cache collision could not expand every walk segment safely."
+        base["status"] = "invalid-route-geometry"
+        base["error"] = message
+        base["message"] = message
+        base["quality"] = "bad"
+        base["next"] = None
         return
     direct_distance = distance(tiles[0], target_tile)
     route_distance = int(expanded.get("distance") or 0)
@@ -1317,16 +1328,21 @@ def _maybe_select_cache_mesh(base: Dict[str, Any], mesh: Optional[Dict[str, Any]
     min_savings = float(getattr(args, "direct_candidate_min_savings", 24))
     mesh_rank = _quality_rank(mesh.get("quality"))
     base_rank = _quality_rank(base.get("quality"))
+    base_incomplete = base.get("status") != "ok"
     large_detour = float(base.get("detourRatio") or 1.0) >= float(getattr(args, "direct_candidate_min_detour", 1.22))
     safe_enough = mesh_rank <= base_rank + 1
-    if safe_enough and (savings >= min_savings or (large_detour and savings > 0)):
+    if base_incomplete or (safe_enough and (savings >= min_savings or (large_detour and savings > 0))):
         selected = dict(mesh)
         selected["selectedOverLearned"] = {
             "previousStatus": base.get("status"),
             "previousQuality": base.get("quality"),
             "previousRouteDistance": base.get("routeDistance"),
             "savedTiles": int(savings) if math.isfinite(savings) else None,
-            "reason": "cache mesh rebuilt walkable legs from cache collision and kept only required object transitions from the learned path",
+            "reason": (
+                "learned route geometry was incomplete; cache mesh rebuilt every walkable leg and kept only required object transitions"
+                if base_incomplete else
+                "cache mesh rebuilt walkable legs from cache collision and kept only required object transitions from the learned path"
+            ),
         }
         selected["learnedCandidate"] = _compact_direct_candidate(base)
         return selected
@@ -1469,6 +1485,13 @@ def fast_route(args: SimpleNamespace, model: Dict[str, Any]) -> Dict[str, Any]:
         return base
 
     graph = _build_graph(model, db, navdb, args, area_filter=_route_area_filter(start_tile, target["tile"]))
+    rejected_model_edges = graph.get("rejectedModelEdges") or []
+    if rejected_model_edges:
+        base["modelIntegrity"] = {
+            "valid": False,
+            "rejectedEdgeCount": len(rejected_model_edges),
+            "firstRejectedEdge": rejected_model_edges[0],
+        }
     start_key = _connect_start(graph, start_tile, args.graph_snap_distance)
     targets = _target_keys(graph, target)
     end_key, best, previous, settled = _dijkstra(graph, start_key, targets)

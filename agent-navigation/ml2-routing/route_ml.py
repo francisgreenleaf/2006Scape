@@ -19,7 +19,7 @@ from ml_routing.benchmark import run_benchmark
 from ml_routing.comparison_maps import run_comparison_maps
 from ml_routing.dataset import export_dataset
 from ml_routing.feedback import record_outcome
-from ml_routing.model import train_model
+from ml_routing.model import load_model, train_model
 from ml_routing.planner import DEFAULT_ROUTE_EVIDENCE_JSONL, rank_routes
 from profile_utils import is_default_profile, resolve_profile
 from usage_log import log_usage
@@ -60,14 +60,15 @@ def persist_route_definition(args: argparse.Namespace, definition: dict | None) 
     execution = definition.setdefault("execution", {})
     command = list(execution.get("command") or [])
     path_text = str(output_path)
-    if "--route-definition" in command:
-        index = command.index("--route-definition")
-        if index + 1 < len(command):
-            command[index + 1] = path_text
+    if command:
+        if "--route-definition" in command:
+            index = command.index("--route-definition")
+            if index + 1 < len(command):
+                command[index + 1] = path_text
+            else:
+                command.append(path_text)
         else:
-            command.append(path_text)
-    else:
-        command.extend(["--route-definition", path_text])
+            command.extend(["--route-definition", path_text])
     execution["command"] = command
     execution["routeDefinitionPath"] = path_text
     output_path.write_text(json.dumps(definition, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -180,6 +181,24 @@ def cmd_train(args: argparse.Namespace) -> int:
     }
     print(json.dumps(compact, indent=2, sort_keys=True))
     return 0
+
+
+def cmd_validate_model(args: argparse.Namespace) -> int:
+    model = load_model(args.model)
+    if not model:
+        print(json.dumps({"valid": False, "error": "no trained model found"}, indent=2, sort_keys=True))
+        return 2
+    integrity = model.get("integrity") or {}
+    result = {
+        "valid": integrity.get("valid") is True,
+        "modelId": model.get("modelId"),
+        "modelPath": model.get("modelPath"),
+        "checkedEdges": integrity.get("checkedEdges"),
+        "invalidEdges": integrity.get("invalidEdges"),
+        "firstInvalidEdge": integrity.get("firstInvalidEdge"),
+    }
+    print(json.dumps({key: value for key, value in result.items() if value is not None}, indent=2, sort_keys=True))
+    return 0 if result["valid"] else 2
 
 
 def cmd_route(args: argparse.Namespace) -> int:
@@ -304,6 +323,10 @@ def build_parser() -> argparse.ArgumentParser:
     train.add_argument("--output-dir", default="")
     train.add_argument("--workers", type=int, default=16)
     train.set_defaults(func=cmd_train)
+
+    validate_model = sub.add_parser("validate-model", help="Reject models containing untyped discontinuities.")
+    validate_model.add_argument("--model", default="")
+    validate_model.set_defaults(func=cmd_validate_model)
 
     route = sub.add_parser("route", help="Rank route candidates for an agent routing request.")
     add_shared_route_args(route)

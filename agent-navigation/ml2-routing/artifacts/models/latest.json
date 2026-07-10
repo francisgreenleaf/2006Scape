@@ -1,6 +1,6 @@
 {
-  "datasetDir": "artifacts/datasets/20260614-all-characters-latest",
-  "modelId": "20260614T202822Z-all-characters-latest",
-  "modelPath": "artifacts/models/20260614T202822Z-all-characters-latest/model.json",
-  "trainedAt": "2026-06-14T20:30:15Z"
+  "datasetDir": "artifacts/datasets/20260710-all-characters-route-integrity",
+  "modelId": "20260710T030300Z-all-characters-route-integrity",
+  "modelPath": "artifacts/models/20260710T030300Z-all-characters-route-integrity/model.json",
+  "trainedAt": "2026-07-10T03:08:36Z"
 }

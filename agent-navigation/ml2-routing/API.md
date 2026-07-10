@@ -38,6 +38,31 @@ The full response is a single JSON object with:
 
 The compact `route_ml_XS.py define` response intentionally hides developer-only route-quality, wrong-way, detour, and feedback-plumbing fields. Agents should key off `status`, `decision`, `evidence.summary`, `safety.review`, and especially the presence of `cmd`. If `cmd` is present, the route is meant to be executable; `safety.review=true` is an attention flag, not a rejection by itself.
 
+## Route Integrity
+
+Every emitted definition includes a `geometry` summary. Ordinary walk steps must form a continuous same-plane chain with no untyped gap above 64 tiles. Doors, ladders, ships, teleports, and other discontinuities are valid only when represented by an explicit typed transition step.
+
+```json
+{
+  "status": "invalid-route-geometry",
+  "actionable": false,
+  "geometry": {
+    "valid": false,
+    "largestDiscontinuity": {
+      "index": 42,
+      "from": {"x": 3269, "y": 3167, "height": 0},
+      "to": {"x": 2662, "y": 3295, "height": 0},
+      "distance": 607
+    }
+  },
+  "execution": {"command": []}
+}
+```
+
+The compact XS response always exposes `geometry.valid` and the largest invalid jump, even when that step would otherwise be hidden by the route-step preview limit. Never construct a command for `invalid-route-geometry`.
+
+`evidence.proven=true` applies to the complete validated route, not merely to the presence of one successful trace edge. Cache-planned routes remain valid to try but are not player-proven.
+
 ## Step Types
 
 Walk step:
@@ -102,11 +127,27 @@ If proof fails, execution stops and the outcome uses:
 {"problemKind": "object_transition_failed"}
 ```
 
+Before any bridge observation or action, the executor validates the complete persisted definition again. This protects against stale definitions created by older models. Invalid definitions stop with:
+
+```json
+{"status": "route_data_corruption", "problemKind": "route_data_corruption"}
+```
+
 ## Status Semantics
 
 `status: "requires-object-transition"` means ML2 cannot automatically include or execute the needed transition in this route definition yet, usually because the request crosses surface/underground layers or separate underground cache areas without a known transition chain. It does not mean every inline gate is unsupported. Known inline transitions should appear directly in `routeSteps` as `object_transition`.
 
 `evidence.proven: false` still means "not player/route-hint proven yet"; it is not automatically a rejection when `status` is `ok`, an execution command is present, and `safety.requiresReview`/`safety.review` is `false`.
+
+## Model Release Check
+
+Training rejects any untyped model walk edge above the same integrity limit. Validate a committed or freshly trained model with:
+
+```sh
+python3 agent-navigation/ml2-routing/route_ml.py validate-model
+```
+
+The command must report `valid: true` and `invalidEdges: 0` before updating the active model manifest.
 
 ## Tree Gnome Gate Example
 

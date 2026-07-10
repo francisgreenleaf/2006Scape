@@ -4,9 +4,9 @@ artifacts/*
 !artifacts/models/
 artifacts/models/*
 !artifacts/models/latest.json
-!artifacts/models/20260614T202822Z-all-characters-latest/
-artifacts/models/20260614T202822Z-all-characters-latest/*
-!artifacts/models/20260614T202822Z-all-characters-latest/model.json
+!artifacts/models/20260710T030300Z-all-characters-route-integrity/
+artifacts/models/20260710T030300Z-all-characters-route-integrity/*
+!artifacts/models/20260710T030300Z-all-characters-route-integrity/model.json
 !artifacts/datasets/
 artifacts/datasets/*
 !artifacts/datasets/latest.json
@@ -14,6 +14,9 @@ artifacts/datasets/*
 artifacts/datasets/20260531T182005Z/*
 !artifacts/datasets/20260531T182005Z/*.jsonl
 !artifacts/datasets/20260531T182005Z/summary.json
+!artifacts/datasets/20260710-all-characters-route-integrity/
+artifacts/datasets/20260710-all-characters-route-integrity/*
+!artifacts/datasets/20260710-all-characters-route-integrity/summary.json
 !artifacts/benchmarks/
 artifacts/benchmarks/*
 !artifacts/benchmarks/latest.json

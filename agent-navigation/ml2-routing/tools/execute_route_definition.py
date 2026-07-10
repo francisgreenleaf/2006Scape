@@ -13,12 +13,16 @@ from typing import Any, Dict, Iterable, List, Optional
 
 NAV_ROOT = Path(__file__).resolve().parents[2]
 TOOLS_DIR = NAV_ROOT / "tools"
+ML_ROOT = Path(__file__).resolve().parents[1]
 if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
+if str(ML_ROOT) not in sys.path:
+    sys.path.insert(0, str(ML_ROOT))
 
 import bridge_script as bridge
 from profile_utils import resolve_profile, run_evidence_path
 from usage_log import log_usage
+from ml_routing.validation import route_geometry_summary
 
 
 DEFAULT_EVIDENCE_JSONL = ""
@@ -333,6 +337,32 @@ def run(args: argparse.Namespace) -> int:
 
     profile = resolve_profile(args.profile, default="")
     args.evidence_jsonl = resolve_evidence_jsonl(args.evidence_jsonl, profile)
+    geometry = route_geometry_summary(definition.get("routeSteps") or [])
+    if not geometry["valid"]:
+        outcome = {
+            "schemaVersion": 1,
+            "event": "route_outcome",
+            "timestamp": utcnow(),
+            "source": "execute_route_definition",
+            "profile": profile,
+            "routeId": definition.get("routeId", ""),
+            "status": "route_data_corruption",
+            "success": False,
+            "failureKind": "invalid_route_definition",
+            "problemKind": "route_data_corruption",
+            "targetPlace": definition.get("to"),
+            "from": definition.get("from"),
+            "to": tile_key(normalize_tile(definition.get("targetTile"))),
+            "targetTile": normalize_tile(definition.get("targetTile")),
+            "routeMode": definition.get("mode"),
+            "routeDistance": definition.get("distanceTiles"),
+            "routeStepCount": len(definition.get("routeSteps") or []),
+            "geometry": geometry,
+            "notes": "Rejected the complete route definition before any bridge action because its walk geometry is invalid.",
+        }
+        append_jsonl(args.evidence_jsonl, {key: value for key, value in outcome.items() if value not in ("", [], {}, None)})
+        print(json.dumps({"event": "route_end", **outcome}, sort_keys=True), flush=True)
+        return 5
     player = bridge.observe(profile)
     player = set_run_for_mode(player, args.run_mode, profile)
     start_player = dict(player)

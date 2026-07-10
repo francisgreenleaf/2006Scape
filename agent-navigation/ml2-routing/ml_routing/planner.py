@@ -8,6 +8,7 @@ from typing import Any, Dict, Iterable, List, Tuple
 from .common import distance, parse_tile, tile_key
 from .model import load_model, segment_prediction
 from .paths import ensure_tool_imports
+from .validation import MAX_UNTYPED_WALK_DISTANCE, route_geometry_summary
 
 
 DEFAULT_ROUTE_EVIDENCE_JSONL = "agent-navigation/.local/run-evidence/ml2-route-executor.routes.jsonl"
@@ -328,15 +329,30 @@ def _route_evidence(candidate: Dict[str, Any]) -> Dict[str, Any]:
     route_hint_edges = int(sources.get("route_hint") or 0)
     cache_direct_edges = int(sources.get("cache_direct") or 0)
     cache_mesh_edges = int(sources.get("cache_mesh") or 0)
+    object_transition_edges = int(sources.get("object_transition") or 0)
+    total_edges = sum(max(0, int(value or 0)) for value in sources.values())
+    evidence_edges = trace_edges + route_hint_edges + object_transition_edges
+    fully_evidence_backed = total_edges > 0 and evidence_edges == total_edges
+    geometry_value = (candidate.get("geometry") or {}).get("valid")
+    geometry_invalid = geometry_value is False
+    geometry_valid = geometry_value is not False
     status_ok = candidate.get("status") == "ok"
-    if status_ok and trace_edges:
+    if geometry_invalid:
+        level = "invalid_route_geometry"
+        proven = False
+        summary = "Route geometry is invalid; do not execute it."
+    elif status_ok and fully_evidence_backed and trace_edges == total_edges:
         level = "trace_proven"
         proven = True
-        summary = "Backed by successful prior travel."
-    elif status_ok and route_hint_edges and routes_used:
+        summary = "The complete route is backed by successful prior travel."
+    elif status_ok and fully_evidence_backed and trace_edges and (route_hint_edges or object_transition_edges) and routes_used:
+        level = "evidence_backed"
+        proven = True
+        summary = "The complete route is backed by prior travel and verified route transitions."
+    elif status_ok and fully_evidence_backed and (route_hint_edges or object_transition_edges) and routes_used:
         level = "verified_route_hint"
         proven = True
-        summary = "Backed by verified route notes."
+        summary = "The complete route is backed by verified route notes."
     elif status_ok and route_hint_edges:
         level = "route_hint_backed"
         proven = False
@@ -355,11 +371,62 @@ def _route_evidence(candidate: Dict[str, Any]) -> Dict[str, Any]:
         "edgeSources": sources,
         "routesUsed": routes_used,
         "summary": summary,
+        "coverage": {
+            "totalEdges": total_edges,
+            "evidenceBackedEdges": evidence_edges,
+            "complete": fully_evidence_backed,
+            "geometryValid": geometry_valid,
+        },
     }
+
+
+def _attach_route_geometry(candidate: Dict[str, Any]) -> None:
+    route_steps = candidate.get("routeSteps") or candidate.get("waypoints") or []
+    if not route_steps and candidate.get("status") not in ("ok", "no-learned-route"):
+        candidate["geometry"] = {
+            "valid": None,
+            "checkedStepCount": 0,
+            "maxUntypedWalkDistance": MAX_UNTYPED_WALK_DISTANCE,
+            "warningCount": 0,
+            "warnings": [],
+        }
+        return
+    geometry = route_geometry_summary(route_steps)
+    collision_failures = candidate.get("collisionFailures") or []
+    if collision_failures:
+        converted = []
+        for item in collision_failures:
+            if not isinstance(item, dict):
+                continue
+            converted.append({
+                "type": "unexpandable_walk_segment",
+                "from": parse_tile(item.get("from")),
+                "to": parse_tile(item.get("to")),
+                "distance": item.get("distance"),
+                "reason": item.get("reason"),
+                "source": item.get("source"),
+            })
+        if converted:
+            geometry["valid"] = False
+            geometry["warnings"] = (geometry.get("warnings") or []) + converted[:8]
+            geometry["warningCount"] = int(geometry.get("warningCount") or 0) + len(converted)
+            largest = max(converted, key=lambda item: int(item.get("distance") or 0))
+            existing = geometry.get("largestDiscontinuity") or {}
+            if int(largest.get("distance") or 0) >= int(existing.get("distance") or 0):
+                geometry["largestDiscontinuity"] = largest
+    candidate["geometry"] = geometry
+    if candidate.get("status") in ("ok", "no-learned-route") and not geometry["valid"]:
+        previous_status = candidate.get("status")
+        candidate["status"] = "invalid-route-geometry"
+        candidate["error"] = "Route contains an invalid untyped walk discontinuity."
+        candidate["message"] = "Route geometry failed validation and cannot be executed."
+        candidate["next"] = None
+        geometry["previousStatus"] = previous_status
 
 
 def route_definition(args: SimpleNamespace, candidate: Dict[str, Any]) -> Dict[str, Any]:
     """Stable compact contract for agents that just need a route to execute."""
+    _attach_route_geometry(candidate)
     route_id = candidate.get("routeId") or _route_id(args, candidate)
     legacy_command = candidate.get("routeRunnerCommand") or _route_runner_command(args, candidate)
     evidence_jsonl = ""
@@ -397,6 +464,8 @@ def route_definition(args: SimpleNamespace, candidate: Dict[str, Any]) -> Dict[s
         review_reasons.append("route crosses coordinate layers or separate underground cache areas")
     if candidate.get("status") == "unsupported-coordinate-layer":
         review_reasons.append("route is outside a supported cache route area")
+    if candidate.get("status") == "invalid-route-geometry":
+        review_reasons.append("route geometry is invalid")
     if hazard_warnings:
         review_reasons.append("hazard warnings present")
     if run_segment_warnings:
@@ -424,6 +493,7 @@ def route_definition(args: SimpleNamespace, candidate: Dict[str, Any]) -> Dict[s
         "routeSteps": route_steps,
         "routeStepCount": len(route_steps),
         "routeStepSchema": "mixed_walk_object_transition_v1",
+        "geometry": candidate.get("geometry"),
         "evidence": evidence,
         "runPlan": run_plan,
         "runSegments": run_segments,
@@ -650,6 +720,7 @@ def _compact_candidate(candidate: Dict[str, Any]) -> Dict[str, Any]:
         "detourSegments", "frontierScore", "routeExecutionCommand", "routeRunnerCommand", "includes", "error",
         "message", "coordinateLayers", "transition", "planEnrichmentError", "improvement", "directCandidate", "selectedOverLearned",
         "learnedCandidate", "cacheMeshCandidate", "learnedExposure", "runPlan", "runSegments", "routeId", "routeDefinition",
+        "geometry", "modelIntegrity",
     ]
     compact = {key: candidate[key] for key in keep if key in candidate and candidate[key] not in (None, [], {})}
     compact["actionable"] = _is_actionable(candidate)
@@ -678,6 +749,12 @@ def _compact_candidate(candidate: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _is_actionable(candidate: Dict[str, Any]) -> bool:
+    geometry = candidate.get("geometry")
+    if isinstance(geometry, dict) and geometry.get("valid") is not True:
+        return False
+    collision = candidate.get("collision")
+    if isinstance(collision, dict) and collision.get("enabled") and collision.get("success") is False:
+        return False
     if candidate.get("status") == "ok":
         return True
     if candidate.get("status") == "no-learned-route" and candidate.get("next"):

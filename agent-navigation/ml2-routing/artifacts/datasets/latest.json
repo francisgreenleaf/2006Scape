@@ -1,42 +1,52 @@
 {
   "counts": {
-    "edgeExamples": 46288,
-    "objectTransitions": 20976,
-    "routeAttempts": 10848,
+    "edgeExamples": 66647,
+    "movementTransitions": 501337,
+    "objectTransitions": 344542,
+    "routeAttempts": 13238,
     "routeHintEdges": 808
   },
-  "generatedAt": "2026-05-31T18:20:05Z",
+  "generatedAt": "2026-07-10T03:07:32Z",
   "graph": {
     "blockers": 0,
-    "edges": 46288,
-    "nodes": 16616,
-    "traceRecords": 258505,
-    "traceSessions": 20905
+    "edges": 66647,
+    "movementTransitionKinds": {
+      "object_interaction": 344542,
+      "teleport": 156795
+    },
+    "movementTransitions": 501337,
+    "nodes": 23020,
+    "traceRecords": 2405778,
+    "traceSessions": 347331,
+    "walkRecords": 1867553
   },
   "inputs": {
     "includeAgentBatchTraces": false,
     "includeLegacyRecorderTraces": false,
     "includeUnscopedTraces": false,
-    "traceFile": []
+    "traceFile": [
+      "/Users/kevin/Documents/2006Scape/2006Scape Server/data/logs/player-movement-traces"
+    ]
   },
-  "outputDir": "artifacts/datasets/20260531T182005Z",
+  "outputDir": "artifacts/datasets/20260710-all-characters-route-integrity",
   "pipelineVersion": "0.1.0",
   "profile": "",
   "routeAttemptRunWarnings": {
-    "": 10848
+    "": 13238
   },
   "routeAttemptStatuses": {
-    "arrived": 9184,
+    "arrived": 10900,
     "bad_route": 4,
     "blocked": 5,
-    "max_ticks_reached": 11,
-    "off_route": 1,
-    "ok": 27,
+    "death": 4,
+    "max_ticks_reached": 14,
+    "object_transition_failed": 8,
+    "off_route": 8,
     "oscillation": 21,
-    "partial": 59,
-    "success": 1507,
-    "unknown": 29
+    "partial": 57,
+    "player_dead": 3,
+    "success": 2214
   },
-  "runId": "20260531T182005Z",
+  "runId": "20260710-all-characters-route-integrity",
   "schemaVersion": 1
 }
