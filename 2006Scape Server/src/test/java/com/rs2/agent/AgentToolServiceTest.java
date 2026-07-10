@@ -2,6 +2,7 @@ package com.rs2.agent;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.rs2.Constants;
 import com.rs2.game.content.StaticObjectList;
 import com.rs2.game.objects.Objects;
 import com.rs2.game.players.Client;
@@ -98,6 +99,101 @@ public class AgentToolServiceTest {
         assertFalse(AgentToolService.isFiremakingLog(2132));
         assertEquals(28, AgentToolService.cookingAmountForButton(53149));
         assertEquals(0, AgentToolService.cookingAmountForButton(12345));
+    }
+
+    @Test
+    public void ardougneSpellButtonStartsTeleportAndConsumesRunes() {
+        Player player = readySpellTeleportPlayer(20, "MrMage", 60);
+        addInventoryItem(player, 563, 2);
+        addInventoryItem(player, 555, 2);
+        JsonObject arguments = new JsonObject();
+        arguments.addProperty("buttonId", 6004);
+
+        JsonObject result = AgentToolService.handle(player, "click_interface_button", arguments);
+
+        assertTrue(result.get("success").getAsBoolean());
+        assertTrue(result.get("teleportStarted").getAsBoolean());
+        assertTrue(result.get("actionVerified").getAsBoolean());
+        assertEquals("started", result.get("teleportStatus").getAsString());
+        assertEquals("MagicTeleports.handleSpellTeleport", result.get("handler").getAsString());
+        assertEquals(2662, player.teleX);
+        assertEquals(3304, player.teleY);
+        assertTrue(player.teleTimer > 0);
+        assertEquals(0, inventoryCount(player, 563));
+        assertEquals(0, inventoryCount(player, 555));
+
+        JsonObject compact = AgentToolService.compactXsResult("click_interface_button", result, player, arguments);
+        assertTrue(compact.get("teleportStarted").getAsBoolean());
+        assertEquals("started", compact.get("teleportStatus").getAsString());
+        assertEquals("2662,3304,0", compact.get("destination").getAsString());
+    }
+
+    @Test
+    public void camelotSpellButtonReportsMissingRunesWithoutStarting() {
+        Player player = readySpellTeleportPlayer(21, "MrMage", 60);
+        JsonObject arguments = new JsonObject();
+        arguments.addProperty("buttonId", 4150);
+
+        JsonObject result = AgentToolService.handle(player, "click_interface_button", arguments);
+
+        assertFalse(result.get("success").getAsBoolean());
+        assertFalse(result.get("teleportStarted").getAsBoolean());
+        assertFalse(result.get("actionVerified").getAsBoolean());
+        assertEquals("missing_runes", result.get("teleportStatus").getAsString());
+        assertEquals(0, player.teleTimer);
+    }
+
+    @Test
+    public void spellTeleportReportsLevelAndWildernessRejections() {
+        JsonObject arguments = new JsonObject();
+        arguments.addProperty("buttonId", 4150);
+        Player lowMagic = readySpellTeleportPlayer(24, "MrLowMagic", 44);
+
+        JsonObject levelResult = AgentToolService.handle(lowMagic, "click_interface_button", arguments);
+
+        assertFalse(levelResult.get("success").getAsBoolean());
+        assertEquals("level_too_low", levelResult.get("teleportStatus").getAsString());
+
+        Player wilderness = readySpellTeleportPlayer(25, "MrWild", 60);
+        wilderness.wildLevel = 21;
+
+        JsonObject wildernessResult = AgentToolService.handle(wilderness, "click_interface_button", arguments);
+
+        assertFalse(wildernessResult.get("success").getAsBoolean());
+        assertEquals("wilderness_blocked", wildernessResult.get("teleportStatus").getAsString());
+    }
+
+    @Test
+    public void rejectedSpellTeleportDoesNotConsumeRunes() {
+        Player player = testPlayer(22, "MrMage");
+        player.playerLevel[Constants.MAGIC] = 60;
+        player.respawnTimer = -6;
+        player.randomEventsEnabled = false;
+        addInventoryItem(player, 563, 2);
+        addInventoryItem(player, 555, 2);
+        JsonObject arguments = new JsonObject();
+        arguments.addProperty("buttonId", 6004);
+
+        JsonObject result = AgentToolService.handle(player, "click_interface_button", arguments);
+
+        assertFalse(result.get("success").getAsBoolean());
+        assertEquals("gameplay_rejected", result.get("teleportStatus").getAsString());
+        assertEquals(2, inventoryCount(player, 563));
+        assertEquals(2, inventoryCount(player, 555));
+        assertEquals(0, player.teleTimer);
+    }
+
+    @Test
+    public void genericInterfaceButtonDoesNotClaimGameplayCompletion() {
+        Player player = testPlayer(23, "MrButton");
+        JsonObject arguments = new JsonObject();
+        arguments.addProperty("buttonId", 99999);
+
+        JsonObject result = AgentToolService.handle(player, "click_interface_button", arguments);
+
+        assertTrue(result.get("success").getAsBoolean());
+        assertFalse(result.get("actionVerified").getAsBoolean());
+        assertTrue(result.get("message").getAsString().contains("not verified"));
     }
 
     @Test
@@ -623,6 +719,29 @@ public class AgentToolServiceTest {
         player.playerName = playerName;
         player.outStream.packetEncryption = new IsaacRandom(new int[] {0, 0, 0, 0});
         return player;
+    }
+
+    private static Player readySpellTeleportPlayer(int playerId, String playerName, int magicLevel) {
+        Player player = testPlayer(playerId, playerName);
+        player.playerLevel[Constants.MAGIC] = magicLevel;
+        player.tutorialProgress = 36;
+        player.respawnTimer = -6;
+        player.randomEventsEnabled = false;
+        player.absX = 3200;
+        player.absY = 3200;
+        player.heightLevel = 0;
+        return player;
+    }
+
+    private static void addInventoryItem(Player player, int itemId, int amount) {
+        for (int slot = 0; slot < player.playerItems.length; slot++) {
+            if (player.playerItems[slot] <= 0) {
+                player.playerItems[slot] = itemId + 1;
+                player.playerItemsN[slot] = amount;
+                return;
+            }
+        }
+        throw new IllegalStateException("test inventory is full");
     }
 
     private static int inventoryCount(Player player, int itemId) {

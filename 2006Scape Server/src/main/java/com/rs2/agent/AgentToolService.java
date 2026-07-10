@@ -34,6 +34,8 @@ import com.rs2.game.content.custom.CustomContent;
 import com.rs2.game.content.custom.shops.CustomShops;
 import com.rs2.game.content.combat.range.DwarfCannon;
 import com.rs2.game.content.combat.magic.MagicData;
+import com.rs2.game.content.combat.magic.MagicTeleports;
+import com.rs2.game.content.combat.magic.SpellTeleport;
 import com.rs2.game.content.skills.SkillHandler;
 import com.rs2.game.content.skills.cooking.Cooking;
 import com.rs2.game.content.skills.cooking.CookingTutorialIsland;
@@ -760,6 +762,15 @@ public class AgentToolService {
         copyIfPresent(result, compact, "spell");
         copyIfPresent(result, compact, "spellId");
         copyIfPresent(result, compact, "spellIndex");
+        copyIfPresent(result, compact, "buttonId");
+        copyIfPresent(result, compact, "handler");
+        copyIfPresent(result, compact, "handlerInvoked");
+        copyIfPresent(result, compact, "actionVerified");
+        copyIfPresent(result, compact, "teleportStarted");
+        copyIfPresent(result, compact, "teleportStatus");
+        copyIfPresent(result, compact, "destination");
+        copyIfPresent(result, compact, "requiredLevel");
+        copyIfPresent(result, compact, "teleTimer");
         copyIfPresent(result, compact, "itemCountAfter");
         copyIfPresent(result, compact, "offered");
         copyIfPresent(result, compact, "offeredAmount");
@@ -852,6 +863,15 @@ public class AgentToolService {
         copyIfPresent(result, compact, "spell");
         copyIfPresent(result, compact, "spellId");
         copyIfPresent(result, compact, "spellIndex");
+        copyIfPresent(result, compact, "buttonId");
+        copyIfPresent(result, compact, "handler");
+        copyIfPresent(result, compact, "handlerInvoked");
+        copyIfPresent(result, compact, "actionVerified");
+        copyIfPresent(result, compact, "teleportStarted");
+        copyIfPresent(result, compact, "teleportStatus");
+        copyIfPresent(result, compact, "destination");
+        copyIfPresent(result, compact, "requiredLevel");
+        copyIfPresent(result, compact, "teleTimer");
         copyIfPresent(result, compact, "expectedItemId");
         copyIfPresent(result, compact, "expectedItemName");
         copyIfPresent(result, compact, "itemDelta");
@@ -1922,6 +1942,10 @@ public class AgentToolService {
         if (buttonId < 0) {
             return failure("buttonId is required.");
         }
+        SpellTeleport spellTeleport = SpellTeleport.forButtonId(buttonId);
+        if (spellTeleport != null) {
+            return clickSpellTeleport(player, buttonId, spellTeleport);
+        }
         if (buttonId == 1093 || buttonId == 1094 || buttonId == 1097) {
             if (player.autocastId > 0) {
                 player.getPlayerAssistant().resetAutocast();
@@ -1987,10 +2011,65 @@ public class AgentToolService {
         Climbing.handleLadderButtons(player, buttonId);
         DialogueOptions.handleDialogueOptions(player, buttonId);
         player.post(new ButtonActionEvent(buttonId));
-        JsonObject result = success("Clicked interface button " + buttonId + ".");
+        JsonObject result = success("Dispatched interface button " + buttonId + "; gameplay completion was not verified.");
         result.addProperty("buttonId", buttonId);
+        result.addProperty("handler", "shared_interface_dispatch");
+        result.addProperty("handlerInvoked", true);
+        result.addProperty("actionVerified", false);
         addPlayerState(result, player);
         return result;
+    }
+
+    private static JsonObject clickSpellTeleport(Player player, int buttonId, SpellTeleport teleport) {
+        player.post(new ButtonActionEvent(buttonId));
+        MagicTeleports.SpellTeleportResult outcome = MagicTeleports.handleSpellTeleport(player, teleport);
+        boolean started = outcome == MagicTeleports.SpellTeleportResult.STARTED;
+        String label = spellTeleportLabel(teleport);
+        JsonObject result = started
+                ? success("Started " + label + " teleport.")
+                : failure(spellTeleportFailureMessage(label, outcome));
+        result.addProperty("buttonId", buttonId);
+        result.addProperty("handler", "MagicTeleports.handleSpellTeleport");
+        result.addProperty("handlerInvoked", true);
+        result.addProperty("actionVerified", started);
+        result.addProperty("teleportStarted", started);
+        result.addProperty("teleportStatus", outcome.name().toLowerCase(Locale.ROOT));
+        result.addProperty("spell", teleport.name());
+        result.addProperty("requiredLevel", teleport.getRequiredLevel());
+        result.addProperty("teleTimer", player.teleTimer);
+        JsonObject destination = new JsonObject();
+        destination.addProperty("x", teleport.getDestX());
+        destination.addProperty("y", teleport.getDestY());
+        destination.addProperty("height", teleport.getDestZ());
+        result.add("destination", destination);
+        addPlayerState(result, player);
+        return result;
+    }
+
+    private static String spellTeleportLabel(SpellTeleport teleport) {
+        String value = teleport.name().toLowerCase(Locale.ROOT).replace('_', ' ');
+        return Character.toUpperCase(value.charAt(0)) + value.substring(1);
+    }
+
+    private static String spellTeleportFailureMessage(String label,
+            MagicTeleports.SpellTeleportResult outcome) {
+        switch (outcome) {
+        case ALREADY_TELEPORTING:
+            return "A teleport is already in progress.";
+        case WILDERNESS_BLOCKED:
+            return label + " teleport was blocked by the current Wilderness level.";
+        case LEVEL_TOO_LOW:
+            return label + " teleport requires a higher Magic level.";
+        case MISSING_RUNES:
+            return label + " teleport requires additional runes.";
+        case GAMEPLAY_REJECTED:
+            return label + " teleport was rejected by the current game state.";
+        case UNKNOWN_SPELL:
+            return "The spellbook button does not map to a known teleport.";
+        case STARTED:
+        default:
+            return label + " teleport did not start.";
+        }
     }
 
     private static boolean isSpinningWheelItemOnObject(int itemId, int objectId) {

@@ -166,6 +166,15 @@ cookable items used on known cooking objects, so scripts should not need to
 fall back to the legacy `cook_food` tool except in explicit stale-runtime
 compatibility paths.
 
+`click_interface_button` distinguishes dispatch from proof. For spellbook
+teleport button ids such as Camelot `4150` and Ardougne `6004`, it invokes the
+authoritative `MagicTeleports` handler and returns `teleportStarted`,
+`teleportStatus`, and the destination; `success:true` means the teleport timer
+actually started. Missing runes, low Magic, Wilderness restrictions, or other
+game-state rejection return `success:false` without claiming movement. Generic
+button ids return `actionVerified:false`; confirm the intended item, interface,
+XP, or other post-state instead of treating dispatch success as completion.
+
 Use `walk_path_steps` only for short adjacent client-style step queues. It
 enforces clipping by default; pass `allowObjectTransition=true` only directly
 after an object proof such as an opened gate where the server-side pathfinder
