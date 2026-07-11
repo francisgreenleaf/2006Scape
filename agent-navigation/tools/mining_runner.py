@@ -989,8 +989,30 @@ def buy_bronze_pickaxe(player, args, handle):
 def route_to_site_if_needed(player, site, args, handle):
     if chebyshev(tile_from_player(player), site["tile"]) <= int(site.get("arrivalRadius", 4)):
         return player
-    if not route_to_tile(site["tile"], args, handle, "mine_site"):
-        raise RuntimeError("could not route to mine site {}".format(site["id"]))
+    if route_to_tile(site["tile"], args, handle, "mine_site"):
+        return observe_xs()
+    # Manual underground sites can be reachable even when the cache route
+    # planner cannot stitch a full path.
+    result = call_tool("walk_to_tile_until_arrived_XS", {
+        "x": int(site["tile"]["x"]),
+        "y": int(site["tile"]["y"]),
+        "height": int(site["tile"].get("height", 0) or 0),
+        "stopDistance": int(site.get("arrivalRadius", 4)),
+        "maxTicks": int(args.route_max_ticks),
+        "maxWalkDistance": int(args.max_walk_distance),
+        "stopOnCombat": True,
+        "stopOnStall": True,
+    })
+    write_event(handle, "route_direct_walk_fallback", {
+        "reason": "mine_site",
+        "siteId": site["id"],
+        "success": bool(result.get("success")),
+        "batchStatus": result.get("batchStatus"),
+        "message": result.get("message"),
+        "player": compact_player(player_from(result) if result.get("success") else observe_xs()),
+    })
+    if result.get("success"):
+        return observe_xs()
     return observe_xs()
 
 
@@ -1249,6 +1271,44 @@ def primitive_mine_batch(ore, site, args, handle, start_player=None):
             )
         else:
             obj_tile = tile(obj.get("x", 0), obj.get("y", 0), obj.get("height", 0))
+        approach_tile = obj.get("nearestInteractionTile") or obj.get("walkTarget") or obj.get("interactionWalkTarget")
+        if isinstance(approach_tile, str):
+            try:
+                approach_tile = parse_tile(approach_tile)
+            except Exception:
+                approach_tile = None
+        elif isinstance(approach_tile, dict):
+            approach_tile = tile(
+                approach_tile.get("x", approach_tile.get("localX", 0)),
+                approach_tile.get("y", approach_tile.get("localY", 0)),
+                approach_tile.get("height", approach_tile.get("z", 0)),
+            )
+        else:
+            approach_tile = None
+        if approach_tile is not None and chebyshev(tile_from_player(player), approach_tile) > 0:
+            walk_result = call_tool("walk_to_tile_until_arrived_XS", {
+                "x": int(approach_tile["x"]),
+                "y": int(approach_tile["y"]),
+                "height": int(approach_tile.get("height", 0) or 0),
+                "stopDistance": 0,
+                "maxTicks": min(24, int(args.mine_max_ticks)),
+                "maxWalkDistance": int(args.max_walk_distance),
+                "stopOnCombat": True,
+                "stopOnStall": True,
+            })
+            if walk_result.get("success"):
+                player = player_from(walk_result)
+            write_event(handle, "primitive_mine_reach_approach", {
+                "ore": ore,
+                "siteId": site["id"],
+                "round": rounds + 1,
+                "object": obj,
+                "approachTile": approach_tile,
+                "success": bool(walk_result.get("success")),
+                "batchStatus": walk_result.get("batchStatus"),
+                "message": walk_result.get("message"),
+                "player": compact_player(player_from(walk_result)) if walk_result.get("player") else compact_player(player),
+            })
         free_slots_before_interact = int(player.get("freeInventorySlots", 0) or 0)
         write_event(handle, "primitive_mine_click", {
             "ore": ore,
@@ -1270,13 +1330,56 @@ def primitive_mine_batch(ore, site, args, handle, start_player=None):
                 "action": "Mine",
             })
         except RuntimeError as exc:
-            text = str(exc)
-            if not used_known_rock and "temporarily unavailable" not in text:
-                raise
             interact_result = {
                 "success": False,
-                "message": text,
+                "message": str(exc),
             }
+        if (
+            not interact_result.get("success", False)
+            and approach_tile is not None
+            and "reach" in str(interact_result.get("message", "")).lower()
+        ):
+            retry_walk = call_tool("walk_to_tile_until_arrived_XS", {
+                "x": int(approach_tile["x"]),
+                "y": int(approach_tile["y"]),
+                "height": int(approach_tile.get("height", 0) or 0),
+                "stopDistance": 0,
+                "maxTicks": min(24, int(args.mine_max_ticks)),
+                "maxWalkDistance": int(args.max_walk_distance),
+                "stopOnCombat": True,
+                "stopOnStall": True,
+            })
+            if retry_walk.get("success"):
+                player = player_from(retry_walk)
+            write_event(handle, "primitive_mine_reach_retry", {
+                "ore": ore,
+                "siteId": site["id"],
+                "round": rounds + 1,
+                "object": obj,
+                "approachTile": approach_tile,
+                "success": bool(retry_walk.get("success")),
+                "batchStatus": retry_walk.get("batchStatus"),
+                "message": retry_walk.get("message"),
+                "player": compact_player(player_from(retry_walk)) if retry_walk.get("player") else compact_player(player),
+            })
+            if retry_walk.get("success"):
+                try:
+                    interact_result = call_tool("interact_object_XS", {
+                        "objectId": obj.get("objectId"),
+                        "x": obj_tile["x"],
+                        "y": obj_tile["y"],
+                        "height": obj_tile.get("height", 0),
+                        "action": "Mine",
+                    })
+                except RuntimeError as exc:
+                    interact_result = {
+                        "success": False,
+                        "message": str(exc),
+                    }
+        if not interact_result.get("success", False) and not used_known_rock:
+            text = str(interact_result.get("message", ""))
+            if "temporarily unavailable" not in text and "reach" not in text.lower():
+                raise RuntimeError(text)
         interact_elapsed = round(time.monotonic() - interact_started, 3)
         write_event(handle, "primitive_mine_interact", {
             "ore": ore,
@@ -1421,7 +1524,16 @@ def bank_ores(player, site, ores, args, handle):
         return player
     if not player.get("inBankArea"):
         if not route_to_bank(site, args, handle):
-            raise RuntimeError("could not route to bank to deposit ores")
+            drop_ids = [ORE_DEFS[ore]["itemId"] for ore in ORE_DEFS.keys()]
+            drop_ids.extend(MINING_BYPRODUCT_ITEM_IDS)
+            drop_ids = sorted(set(drop_ids))
+            write_event(handle, "bank_route_failed_drop_fallback", {
+                "siteId": site["id"],
+                "itemIds": drop_ids,
+                "player": compact_player(player),
+            })
+            result = call_tool("drop_inventory_items", {"itemIds": drop_ids})
+            return player_from(result)
         player = observe()
         if not player.get("inBankArea") and site.get("bankTile"):
             bank_tile = site["bankTile"]
